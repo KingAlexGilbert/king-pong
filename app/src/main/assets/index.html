@@ -26,8 +26,15 @@ body.title-active .menu-toggle,
 body.title-active .title-jump-toggle,
 body.title-active .play-info-toggle{opacity:0!important;visibility:hidden!important;pointer-events:none!important}
 
+
+/* King Pong phone release UI: keep edge controls out of play unless menus are open. */
+body.menus-hidden:not(.title-active) .title-jump-toggle,
+body.menus-hidden:not(.title-active) .play-info-toggle{opacity:0!important;visibility:hidden!important;pointer-events:none!important}
+body.menus-hidden:not(.title-active) .menu-toggle{font-size:11px!important;padding:5px 7px!important;line-height:1.1!important;background:rgba(0,0,0,.56)!important;border-color:rgba(255,255,255,.34)!important;box-shadow:0 0 8px rgba(0,0,0,.55)!important}
+@media (orientation:landscape) and (max-height:620px){body.menus-hidden:not(.title-active) .menu-toggle{top:calc(env(safe-area-inset-top,0px) + 6px)!important;left:calc(env(safe-area-inset-left,0px) + 6px)!important}}
+
 </style>
-</head><body class="menus-hidden title-active"><canvas id="game" width="640" height="480" aria-label="King Pong game field"></canvas><button type="button" class="menu-toggle" id="menuToggle" aria-pressed="false" title="Show top and bottom menus">Show Menus</button><button type="button" class="title-jump-toggle" id="titleJumpButton" title="Return to title screen/main menu">Title Screen</button><button type="button" class="play-info-toggle" id="playInfoToggle" aria-pressed="true" title="Hide campaign goal/course info">Hide Goal Info</button><div class="title-screen" id="titleScreen" role="dialog" aria-modal="true" aria-labelledby="titleHeading"><div class="title-card"><h1 id="titleHeading">KING PONG</h1><div class="title-subtitle">Choose a save slot, then play Campaign, Custom Game, Two Player, or optional LAN Two Player. Custom Game uses completed maps; Two Player can use every map.</div><div class="save-badge" id="activeSaveBadge">Slot 1 selected</div><div class="save-slot-list" id="saveSlotList"><button type="button" class="save-slot" data-save-slot="0"><span class="slot-name">SLOT 1</span><span class="slot-detail">New Game</span><span class="slot-progress">Level 01 unlocked</span></button><button type="button" class="save-slot" data-save-slot="1"><span class="slot-name">SLOT 2</span><span class="slot-detail">New Game</span><span class="slot-progress">Level 01 unlocked</span></button><button type="button" class="save-slot" data-save-slot="2"><span class="slot-name">SLOT 3</span><span class="slot-detail">New Game</span><span class="slot-progress">Level 01 unlocked</span></button></div><div class="title-actions"><button type="button" id="titleCampaignButton">Campaign</button><button type="button" id="titleCustomButton">Custom Game</button><button type="button" id="titleTwoPlayerButton">Two Player</button><button type="button" id="titleLanButton">LAN Two Player</button><button type="button" id="titleBossButton" class="secret-boss-button" hidden>Secret Boss</button></div><div class="title-message" id="titleMessage">Campaign starts at your next unlocked level. Custom Game only shows completed levels. Two Player and LAN Two Player can choose any level. A secret boss appears after all 18 levels are cleared.</div><button type="button" class="erase-save-button" id="eraseSaveButton">Erase Selected Slot</button></div></div><div class="menu-stack" id="menuStack"><div class="controls" id="campaignControls"><span id="activeSlotMini">Slot 1</span><span>Campaign</span><button type="button" data-campaign="0">Training</button><button type="button" data-campaign="1">Ricochet</button><button type="button" data-campaign="2">Chaos</button><button type="button" id="customModeButton">Custom Game</button><button type="button" id="twoPlayerModeButton">Two Player</button><button type="button" id="lanModeButton" title="Optional LAN-only peer connection for Two Player">LAN Two Player</button><button type="button" id="musicButton" aria-pressed="false" title="Toggle original chiptune music with N">Music Off</button><label class="music-volume-control" title="Music volume"><span>Music Vol</span><input id="musicVolumeSlider" type="range" min="0" max="100" step="1" value="75" aria-label="Music volume" /><span class="value-pill" id="musicVolumeValue">75%</span></label><button type="button" id="restartButton">Restart Level</button></div><div class="status" id="statusText">Loading...</div><div class="custom-panel hidden" id="customPanel"><label><span>Level</span><select id="customLevelSelect" aria-label="Choose custom level"></select></label><span class="custom-readout" id="customLevelReadout">Level 01 - Training Circuit: Open Court</span><label class="cpu-custom-control"><span>CPU intelligence</span><input id="customIntelSlider" type="range" min="0" max="100" step="1" value="50" /><span class="value-pill" id="customIntelValue">50%</span></label><label class="cpu-custom-control"><span>CPU Paddle Speed</span><input id="customMaxMoveSlider" aria-label="CPU Paddle Speed" type="range" min="1" max="12" step="0.1" value="4.4" /><span class="value-pill" id="customMaxMoveValue">4.4</span></label><button type="button" id="customStartButton">Play Selected</button></div><div class="lan-panel hidden" id="lanPanel"><div class="lan-row lan-title-row"><strong>LAN Two Player</strong><span class="lan-status-pill" id="lanStatus">Offline</span></div><div class="lan-row lan-safe-note">LAN-only WebRTC with no STUN/TURN servers. Host runs the match; guest sends input only.</div><div class="lan-row"><button type="button" id="lanHostButton">Host Match</button><button type="button" id="lanJoinButton">Join Match</button><button type="button" id="lanDisconnectButton">Disconnect</button><label class="lan-code-label"><span>Room Code</span><input id="lanRoomCodeInput" type="text" maxlength="6" autocomplete="off" spellcheck="false" aria-label="LAN room code" /></label></div><div class="lan-grid"><label><span>Your connection text</span><textarea id="lanLocalSignal" readonly spellcheck="false" aria-label="Your LAN connection text"></textarea></label><label><span>Paste other player text</span><textarea id="lanRemoteSignal" spellcheck="false" aria-label="Paste other player LAN connection text"></textarea></label></div><div class="lan-row"><button type="button" id="lanCopyButton">Copy Your Text</button><button type="button" id="lanApplySignalButton">Use Pasted Text</button></div></div></div><div class="hint" id="controlHint"> Touch: drag to move - tap to serve/continue - two-finger tap pauses - keyboard/controller supported </div><div class="screen-fade" id="screenFade"></div><div class="ending-credits" id="endingCredits" aria-hidden="true"><div class="ending-credit-card"><div class="ending-credit-thanks">Thank you for playing</div><div class="ending-credit-byline">Made by: King Alex Gilbert</div></div></div> <script>
+</head><body class="menus-hidden title-active"><canvas id="game" width="640" height="480" aria-label="King Pong game field"></canvas><button type="button" class="menu-toggle" id="menuToggle" aria-pressed="false" title="Show top and bottom menus">Menu</button><button type="button" class="title-jump-toggle" id="titleJumpButton" title="Return to title screen/main menu">Title Screen</button><button type="button" class="play-info-toggle" id="playInfoToggle" aria-pressed="true" title="Hide campaign goal/course info">Hide Goal Info</button><div class="title-screen" id="titleScreen" role="dialog" aria-modal="true" aria-labelledby="titleHeading"><div class="title-card"><h1 id="titleHeading">KING PONG</h1><div class="title-subtitle">Choose a save slot, then play Campaign, Custom Game, Two Player, or optional LAN Two Player. Custom Game uses completed maps; Two Player can use every map.</div><div class="save-badge" id="activeSaveBadge">Slot 1 selected</div><div class="save-slot-list" id="saveSlotList"><button type="button" class="save-slot" data-save-slot="0"><span class="slot-name">SLOT 1</span><span class="slot-detail">New Game</span><span class="slot-progress">Level 01 unlocked</span></button><button type="button" class="save-slot" data-save-slot="1"><span class="slot-name">SLOT 2</span><span class="slot-detail">New Game</span><span class="slot-progress">Level 01 unlocked</span></button><button type="button" class="save-slot" data-save-slot="2"><span class="slot-name">SLOT 3</span><span class="slot-detail">New Game</span><span class="slot-progress">Level 01 unlocked</span></button></div><div class="title-actions"><button type="button" id="titleCampaignButton">Campaign</button><button type="button" id="titleCustomButton">Custom Game</button><button type="button" id="titleTwoPlayerButton">Two Player</button><button type="button" id="titleLanButton">LAN Two Player</button><button type="button" id="titleBossButton" class="secret-boss-button" hidden>Secret Boss</button></div><div class="title-message" id="titleMessage">Campaign starts at your next unlocked level. Custom Game only shows completed levels. Two Player and LAN Two Player can choose any level. A secret boss appears after all 18 levels are cleared.</div><button type="button" class="erase-save-button" id="eraseSaveButton">Erase Selected Slot</button></div></div><div class="menu-stack" id="menuStack"><div class="controls" id="campaignControls"><span id="activeSlotMini">Slot 1</span><span>Campaign</span><button type="button" data-campaign="0">Training</button><button type="button" data-campaign="1">Ricochet</button><button type="button" data-campaign="2">Chaos</button><button type="button" id="customModeButton">Custom Game</button><button type="button" id="twoPlayerModeButton">Two Player</button><button type="button" id="lanModeButton" title="Optional LAN-only peer connection for Two Player">LAN Two Player</button><button type="button" id="musicButton" aria-pressed="false" title="Toggle original chiptune music with N">Music Off</button><label class="music-volume-control" title="Music volume"><span>Music Vol</span><input id="musicVolumeSlider" type="range" min="0" max="100" step="1" value="75" aria-label="Music volume" /><span class="value-pill" id="musicVolumeValue">75%</span></label><button type="button" id="restartButton">Restart Level</button></div><div class="status" id="statusText">Loading...</div><div class="custom-panel hidden" id="customPanel"><label><span>Level</span><select id="customLevelSelect" aria-label="Choose custom level"></select></label><span class="custom-readout" id="customLevelReadout">Level 01 - Training Circuit: Open Court</span><label class="cpu-custom-control"><span>CPU intelligence</span><input id="customIntelSlider" type="range" min="0" max="100" step="1" value="50" /><span class="value-pill" id="customIntelValue">50%</span></label><label class="cpu-custom-control"><span>CPU Paddle Speed</span><input id="customMaxMoveSlider" aria-label="CPU Paddle Speed" type="range" min="1" max="12" step="0.1" value="4.4" /><span class="value-pill" id="customMaxMoveValue">4.4</span></label><button type="button" id="customStartButton">Play Selected</button></div><div class="lan-panel hidden" id="lanPanel"><div class="lan-row lan-title-row"><strong>LAN Two Player</strong><span class="lan-status-pill" id="lanStatus">Offline</span></div><div class="lan-row lan-safe-note">LAN-only WebRTC with no STUN/TURN servers. Host runs the match; guest sends input only.</div><div class="lan-row"><button type="button" id="lanHostButton">Host Match</button><button type="button" id="lanJoinButton">Join Match</button><button type="button" id="lanDisconnectButton">Disconnect</button><label class="lan-code-label"><span>Room Code</span><input id="lanRoomCodeInput" type="text" maxlength="6" autocomplete="off" spellcheck="false" aria-label="LAN room code" /></label></div><div class="lan-grid"><label><span>Your connection text</span><textarea id="lanLocalSignal" readonly spellcheck="false" aria-label="Your LAN connection text"></textarea></label><label><span>Paste other player text</span><textarea id="lanRemoteSignal" spellcheck="false" aria-label="Paste other player LAN connection text"></textarea></label></div><div class="lan-row"><button type="button" id="lanCopyButton">Copy Your Text</button><button type="button" id="lanApplySignalButton">Use Pasted Text</button></div></div></div><div class="hint" id="controlHint"> Touch: drag to move - tap to serve/continue - two-finger tap pauses - keyboard/controller supported </div><div class="screen-fade" id="screenFade"></div><div class="ending-credits" id="endingCredits" aria-hidden="true"><div class="ending-credit-card"><div class="ending-credit-thanks">Thank you for playing</div><div class="ending-credit-byline">Made by: King Alex Gilbert</div></div></div> <script>
 const LOCALIZATION = (() => {
 const english = {};
 const phraseTranslations = {
@@ -2894,7 +2901,7 @@ updateControlHint();
 function setMenusVisible(visible) {
 menusVisible = Boolean(visible);
 document.body.classList.toggle("menus-hidden", !menusVisible);
-menuToggle.textContent = menusVisible ? "Hide Menus" : "Show Menus";
+menuToggle.textContent = menusVisible ? "Hide Menus" : "Menu";
 menuToggle.setAttribute("aria-pressed", String(menusVisible));
 menuToggle.title = menusVisible
 ? "Hide top and bottom menus"
@@ -3208,7 +3215,7 @@ startEndingCreditsSequence();
 function bossDefeat() {
 gameOver = true;
 waitingForServe = true;
-endMessage = "The Hidden Wall overpowered you. Press Space or R to retry.";
+endMessage = "The Hidden Wall overpowered you. Tap to retry.";
 setMenusVisible(true);
 updateHud();
 }
@@ -3563,15 +3570,15 @@ return;
 }
 levelCleared = true;
 waitingForServe = true;
-endMessage = `${currentLevel().name} cleared! Press Space for the next level.`;
+endMessage = `${currentLevel().name} cleared! Tap for the next level.`;
 } else if (mode === 3) {
 gameOver = true;
 waitingForServe = true;
-endMessage = `Custom Level ${String(absoluteLevelNumber()).padStart(2, "0")} won! Press Space to replay or pick another level.`;
+endMessage = `Custom Level ${String(absoluteLevelNumber()).padStart(2, "0")} won! Tap to replay or pick another level.`;
 } else {
 gameOver = true;
 waitingForServe = true;
-endMessage = "Left player wins the practice round. Press Space to play again.";
+endMessage = "Left player wins the practice round. Tap to play again.";
 }
 } else {
 resetBall(1, !shouldAutoServeAfterPoint(), shouldAutoServeAfterPoint());
@@ -3591,10 +3598,10 @@ if (isWinningPoint) {
 gameOver = true;
 waitingForServe = true;
 endMessage = mode === 1
-? `${currentLevel().name} failed. Press Space or R to retry this level.`
+? `${currentLevel().name} failed. Tap to retry this level.`
 : mode === 3
-? `Custom Level ${String(absoluteLevelNumber()).padStart(2, "0")} lost. Press Space or R to retry, or pick another level.`
-: "Right player wins the practice round. Press Space to play again.";
+? `Custom Level ${String(absoluteLevelNumber()).padStart(2, "0")} lost. Tap to retry, or pick another level.`
+: "Right player wins the practice round. Tap to play again.";
 } else {
 resetBall(-1, !shouldAutoServeAfterPoint(), shouldAutoServeAfterPoint());
 }
@@ -3959,7 +3966,7 @@ ctx.fillStyle = "#fff";
 if (levelCleared) {
 drawText("LEVEL CLEARED", W / 2, H / 2 - 36, 24);
 drawText(endMessage, W / 2, H / 2 + 2, 14);
-drawText("SPACE: next level", W / 2, H / 2 + 38, 14);
+drawText("TAP: next level", W / 2, H / 2 + 38, 14);
 } else if (campaignCleared) {
 drawText("CAMPAIGN COMPLETE", W / 2, H / 2 - 36, 24);
 drawText(endMessage, W / 2, H / 2 + 2, 14);
@@ -3970,9 +3977,9 @@ const title = mode === 4
 : mode === 3 ? "CUSTOM MATCH OVER" : mode === 2 ? "PRACTICE ROUND OVER" : "LEVEL FAILED";
 drawText(title, W / 2, H / 2 - 36, mode === 4 ? 21 : 24);
 drawText(endMessage, W / 2, H / 2 + 2, 14);
-drawText(mode === 4 ? "SPACE/R: rematch - 0/Esc: title" : mode === 3 ? "SPACE/R: replay - menus: choose another level" : "SPACE or R: retry", W / 2, H / 2 + 38, 14);
+drawText(mode === 4 ? "TAP: rematch" : mode === 3 ? "TAP: replay - menus: choose another level" : "TAP: retry", W / 2, H / 2 + 38, 14);
 } else if (waitingForServe) {
-drawText(mode === 4 ? "THE HIDDEN WALL WAITS" : "SPACE TO SERVE", W / 2, H / 2 - 14, mode === 4 ? 20 : 22);
+drawText(mode === 4 ? "THE HIDDEN WALL WAITS" : "TAP TO SERVE", W / 2, H / 2 - 14, mode === 4 ? 20 : 22);
 drawText(mode === 4 ? "Multiple balls are live. Break the boss health bar before yours empties." : mode === 3 ? "Custom match: beat the CPU using your chosen settings" : "Reach the goal before the CPU to clear the level", W / 2, H / 2 + 22, 13);
 }
 }
