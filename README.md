@@ -8,6 +8,24 @@ Feel free to test it out, play around with it, and modify it. Hope you enjoy it!
 
 Made by: King Alex Gilbert
 
+## Screenshots
+
+### Title Screen
+
+![King Pong title screen](screenshots/title-screen.png)
+
+### Gameplay
+
+![King Pong gameplay](screenshots/gameplay.png)
+
+### Level Cleared
+
+![King Pong level cleared](screenshots/level-clear.png)
+
+### Level Failed
+
+![King Pong level failed](screenshots/level-failed.png)
+
 HOW TO DOWNLOAD:
 
 The Android APK can be downloaded from the Releases section of this GitHub repository.
