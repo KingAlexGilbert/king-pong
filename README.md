@@ -34,7 +34,7 @@ After downloading the APK, install it on your Android device. You may need to al
 
 Note: If you already have King Pong installed and want to keep your save data, update over the existing app. Do not uninstall first, because uninstalling may remove local save data.
 
-BUILD FROM SOURCE:
+## BUILD FROM SOURCE:
 
 If you want to build King Pong yourself:
 
@@ -52,7 +52,7 @@ If you want to build King Pong yourself:
 
     app/build/outputs/apk/debug/
 
-SOURCE CODE:
+## SOURCE CODE:
 
 The main game code is located at:
 
@@ -62,7 +62,7 @@ The Android WebView wrapper is located at:
 
 app/src/main/java/com/kingalex/kingpong/MainActivity.java
 
-LICENSE
+## LICENSE
 
 This project is released under the GNU General Public License v3.0.
 
