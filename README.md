@@ -38,19 +38,19 @@ Note: If you already have King Pong installed and want to keep your save data, u
 
 If you want to build King Pong yourself:
 
-    Download or clone this repository.
+Download or clone this repository.
 
-    Open the project folder in Android Studio.
+Open the project folder in Android Studio.
 
-    Let Android Studio sync the Gradle project.
+Let Android Studio sync the Gradle project.
 
-    Build the APK using:
+Build the APK using:
 
-    Build → Generate App Bundles or APKs → Build APK(s)
+Build → Generate App Bundles or APKs → Build APK(s)
 
-    The generated APK should appear in:
+The generated APK should appear in:
 
-    app/build/outputs/apk/debug/
+app/build/outputs/apk/debug/
 
 ## SOURCE CODE:
 
