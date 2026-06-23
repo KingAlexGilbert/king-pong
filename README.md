@@ -26,7 +26,7 @@ Made by: King Alex Gilbert
 
 ![King Pong level failed](Screenshots/level-failed.png)
 
-HOW TO DOWNLOAD:
+## HOW TO DOWNLOAD:
 
 The Android APK can be downloaded from the Releases section of this GitHub repository.
 
