@@ -12,19 +12,19 @@ Made by: King Alex Gilbert
 
 ### Title Screen
 
-![King Pong title screen](screenshots/title-screen.png)
+![King Pong title screen](Screenshots/title-screen.png)
 
 ### Gameplay
 
-![King Pong gameplay](screenshots/gameplay.png)
+![King Pong gameplay](Screenshots/gameplay.png)
 
 ### Level Cleared
 
-![King Pong level cleared](screenshots/level-clear.png)
+![King Pong level cleared](Screenshots/level-clear.png)
 
 ### Level Failed
 
-![King Pong level failed](screenshots/level-failed.png)
+![King Pong level failed](Screenshots/level-failed.png)
 
 HOW TO DOWNLOAD:
 
