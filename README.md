@@ -20,7 +20,7 @@ Made by: King Alex Gilbert
 
 ### Level Cleared
 
-![King Pong level cleared](Screenshots/level-clear.png)
+![King Pong level cleared](Screenshots/level-cleared.png)
 
 ### Level Failed
 
