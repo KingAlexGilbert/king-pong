@@ -44,6 +44,10 @@ The Android WebView wrapper is located at:
 
 app/src/main/java/com/kingalex/kingpong/MainActivity.java
 
-LICENSE:
+LICENSE
 
-This project is shared so people can test it, learn from it, and modify it. A formal license file may be added later.
+This project is released under the GNU General Public License v3.0.
+
+Modified versions that are distributed should remain open-source under the same license.
+
+Copyright (C) 2026 King Alex Gilbert
