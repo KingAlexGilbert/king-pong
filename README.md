@@ -28,7 +28,7 @@ Made by: King Alex Gilbert
 
 ## HOW TO DOWNLOAD:
 
-Android:
+ANDROID:
 
 Download the Android APK from Releases and install it on your Android device.
 
@@ -36,7 +36,7 @@ You may need to allow installation from unknown sources depending on your device
 
 Save data note: If you already have King Pong installed and want to keep your save data, update over the existing app. Do not uninstall first, because uninstalling may remove local save data.
 
-Windows:
+WINDOWS:
 
 Download one of the Windows versions from Releases:
 
@@ -53,7 +53,7 @@ If you trust this official GitHub release, choose More info → Run anyway if Sm
 
 ## BUILD FROM SOURCE:
 
-Android:
+ANDROID:
 
 If you want to build King Pong yourself:
 
@@ -63,7 +63,7 @@ If you want to build King Pong yourself:
 4. Build the APK using: `Build → Generate App Bundles or APKs → Build APK(s)`
 5. The generated APK should appear in: `android/app/build/outputs/apk/debug/`
 
-Windows
+WINDOWS:
 
 If you want to build the Windows version yourself:
 
