@@ -33,8 +33,23 @@ body.menus-hidden:not(.title-active) .play-info-toggle{opacity:0!important;visib
 body.menus-hidden:not(.title-active) .menu-toggle{font-size:11px!important;padding:5px 7px!important;line-height:1.1!important;background:rgba(0,0,0,.56)!important;border-color:rgba(255,255,255,.34)!important;box-shadow:0 0 8px rgba(0,0,0,.55)!important}
 @media (orientation:landscape) and (max-height:620px){body.menus-hidden:not(.title-active) .menu-toggle{top:calc(env(safe-area-inset-top,0px) + 6px)!important;left:calc(env(safe-area-inset-left,0px) + 6px)!important}}
 
+
+/* King Pong phone release v1.0.3: icon battery indicator and local clock for fullscreen play and title screen. */
+.battery-indicator{position:fixed;top:calc(env(safe-area-inset-top,0px) + 8px);right:calc(env(safe-area-inset-right,0px) + 8px);z-index:72;width:44px;height:22px;display:flex;align-items:center;justify-content:center;box-sizing:border-box;pointer-events:none;user-select:none;opacity:.86;filter:drop-shadow(0 0 8px rgba(0,0,0,.7))}
+.battery-indicator .battery-shell{position:relative;width:34px;height:16px;border:2px solid rgba(255,255,255,.82);border-radius:3px;background:rgba(0,0,0,.56);box-sizing:border-box;box-shadow:0 0 8px rgba(255,255,255,.08),inset 0 0 3px rgba(255,255,255,.16)}
+.battery-indicator .battery-shell::after{content:"";position:absolute;right:-5px;top:4px;width:3px;height:6px;background:rgba(255,255,255,.82);border-radius:0 2px 2px 0}
+.battery-indicator .battery-fill{position:absolute;left:2px;top:2px;bottom:2px;width:0%;min-width:1px;max-width:calc(100% - 4px);background:rgba(255,255,255,.86);border-radius:1px;transition:width .35s ease,background-color .35s ease}
+.battery-indicator.low .battery-fill{background:rgba(255,120,120,.9)}
+.battery-indicator.charging .battery-fill{background:rgba(170,255,190,.92);box-shadow:0 0 8px rgba(170,255,190,.45)}
+.battery-indicator .battery-bolt{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:12px;line-height:1;color:#111;text-shadow:0 0 2px rgba(255,255,255,.75);opacity:0;transition:opacity .18s ease;z-index:2}
+.battery-indicator.charging .battery-bolt{opacity:1}
+.battery-indicator.unavailable{opacity:.42}.clock-indicator{position:fixed;bottom:4px;left:10px;z-index:55;min-width:0;padding:2px 4px;border:1px solid rgba(255,255,255,.36);border-radius:4px;background:rgba(0,0,0,.42);color:rgba(255,255,255,.78);font-family:monospace;font-size:9px;line-height:1;text-align:center;letter-spacing:0;box-sizing:border-box;pointer-events:none;user-select:none;opacity:.64;text-shadow:0 0 5px rgba(0,0,0,.95);box-shadow:0 0 5px rgba(0,0,0,.48),inset 0 0 2px rgba(255,255,255,.06);white-space:nowrap;transform:translateZ(0)}
+body.menus-hidden:not(.title-active) .title-jump-toggle,body.menus-hidden:not(.title-active) .play-info-toggle{opacity:0;visibility:hidden;pointer-events:none}
+.play-info-toggle{top:40px}
+@media (orientation:landscape) and (max-height:620px){.battery-indicator{top:calc(env(safe-area-inset-top,0px) + 6px);right:calc(env(safe-area-inset-right,0px) + 6px);width:40px;height:20px}.battery-indicator .battery-shell{width:31px;height:15px}.battery-indicator .battery-bolt{font-size:11px}.clock-indicator{bottom:3px;left:10px;font-size:8px;padding:2px 3px}.play-info-toggle{top:34px!important}}
+
 </style>
-</head><body class="menus-hidden title-active"><canvas id="game" width="640" height="480" aria-label="King Pong game field"></canvas><button type="button" class="menu-toggle" id="menuToggle" aria-pressed="false" title="Show top and bottom menus">Menu</button><button type="button" class="title-jump-toggle" id="titleJumpButton" title="Return to title screen/main menu">Title Screen</button><button type="button" class="play-info-toggle" id="playInfoToggle" aria-pressed="true" title="Hide campaign goal/course info">Hide Goal Info</button><div class="title-screen" id="titleScreen" role="dialog" aria-modal="true" aria-labelledby="titleHeading"><div class="title-card"><h1 id="titleHeading">KING PONG</h1><div class="title-subtitle">Choose a save slot, then play Campaign, Custom Game, Two Player, or optional LAN Two Player. Custom Game uses completed maps; Two Player can use every map.</div><div class="save-badge" id="activeSaveBadge">Slot 1 selected</div><div class="save-slot-list" id="saveSlotList"><button type="button" class="save-slot" data-save-slot="0"><span class="slot-name">SLOT 1</span><span class="slot-detail">New Game</span><span class="slot-progress">Level 01 unlocked</span></button><button type="button" class="save-slot" data-save-slot="1"><span class="slot-name">SLOT 2</span><span class="slot-detail">New Game</span><span class="slot-progress">Level 01 unlocked</span></button><button type="button" class="save-slot" data-save-slot="2"><span class="slot-name">SLOT 3</span><span class="slot-detail">New Game</span><span class="slot-progress">Level 01 unlocked</span></button></div><div class="title-actions"><button type="button" id="titleCampaignButton">Campaign</button><button type="button" id="titleCustomButton">Custom Game</button><button type="button" id="titleTwoPlayerButton">Two Player</button><button type="button" id="titleLanButton">LAN Two Player</button><button type="button" id="titleBossButton" class="secret-boss-button" hidden>Secret Boss</button></div><div class="title-message" id="titleMessage">Campaign starts at your next unlocked level. Custom Game only shows completed levels. Two Player and LAN Two Player can choose any level. A secret boss appears after all 18 levels are cleared.</div><button type="button" class="erase-save-button" id="eraseSaveButton">Erase Selected Slot</button></div></div><div class="menu-stack" id="menuStack"><div class="controls" id="campaignControls"><span id="activeSlotMini">Slot 1</span><span>Campaign</span><button type="button" data-campaign="0">Training</button><button type="button" data-campaign="1">Ricochet</button><button type="button" data-campaign="2">Chaos</button><button type="button" id="customModeButton">Custom Game</button><button type="button" id="twoPlayerModeButton">Two Player</button><button type="button" id="lanModeButton" title="Optional LAN-only peer connection for Two Player">LAN Two Player</button><button type="button" id="musicButton" aria-pressed="false" title="Toggle original chiptune music with N">Music Off</button><label class="music-volume-control" title="Music volume"><span>Music Vol</span><input id="musicVolumeSlider" type="range" min="0" max="100" step="1" value="75" aria-label="Music volume" /><span class="value-pill" id="musicVolumeValue">75%</span></label><button type="button" id="restartButton">Restart Level</button></div><div class="status" id="statusText">Loading...</div><div class="custom-panel hidden" id="customPanel"><label><span>Level</span><select id="customLevelSelect" aria-label="Choose custom level"></select></label><span class="custom-readout" id="customLevelReadout">Level 01 - Training Circuit: Open Court</span><label class="cpu-custom-control"><span>CPU intelligence</span><input id="customIntelSlider" type="range" min="0" max="100" step="1" value="50" /><span class="value-pill" id="customIntelValue">50%</span></label><label class="cpu-custom-control"><span>CPU Paddle Speed</span><input id="customMaxMoveSlider" aria-label="CPU Paddle Speed" type="range" min="1" max="12" step="0.1" value="4.4" /><span class="value-pill" id="customMaxMoveValue">4.4</span></label><button type="button" id="customStartButton">Play Selected</button></div><div class="lan-panel hidden" id="lanPanel"><div class="lan-row lan-title-row"><strong>LAN Two Player</strong><span class="lan-status-pill" id="lanStatus">Offline</span></div><div class="lan-row lan-safe-note">LAN-only WebRTC with no STUN/TURN servers. Host runs the match; guest sends input only.</div><div class="lan-row"><button type="button" id="lanHostButton">Host Match</button><button type="button" id="lanJoinButton">Join Match</button><button type="button" id="lanDisconnectButton">Disconnect</button><label class="lan-code-label"><span>Room Code</span><input id="lanRoomCodeInput" type="text" maxlength="6" autocomplete="off" spellcheck="false" aria-label="LAN room code" /></label></div><div class="lan-grid"><label><span>Your connection text</span><textarea id="lanLocalSignal" readonly spellcheck="false" aria-label="Your LAN connection text"></textarea></label><label><span>Paste other player text</span><textarea id="lanRemoteSignal" spellcheck="false" aria-label="Paste other player LAN connection text"></textarea></label></div><div class="lan-row"><button type="button" id="lanCopyButton">Copy Your Text</button><button type="button" id="lanApplySignalButton">Use Pasted Text</button></div></div></div><div class="hint" id="controlHint"> Touch: drag to move - tap to serve/continue - two-finger tap pauses - keyboard/controller supported </div><div class="screen-fade" id="screenFade"></div><div class="ending-credits" id="endingCredits" aria-hidden="true"><div class="ending-credit-card"><div class="ending-credit-thanks">Thank you for playing</div><div class="ending-credit-byline">Made by: King Alex Gilbert</div></div></div> <script>
+</head><body class="menus-hidden title-active"><canvas id="game" width="640" height="480" aria-label="King Pong game field"></canvas><button type="button" class="menu-toggle" id="menuToggle" aria-pressed="false" title="Show top and bottom menus">Menu</button><button type="button" class="title-jump-toggle" id="titleJumpButton" title="Return to title screen/main menu">Title Screen</button><button type="button" class="play-info-toggle" id="playInfoToggle" aria-pressed="true" title="Hide campaign goal/course info">Hide Goal Info</button><div class="battery-indicator unavailable" id="batteryIndicator" aria-live="polite" role="img" aria-label="Battery level unavailable" title="Battery level unavailable"><div class="battery-shell"><div class="battery-fill"></div><div class="battery-bolt">⚡</div></div></div><div class="clock-indicator" id="clockIndicator" aria-live="polite" role="timer" aria-label="Current time">--:--</div><div class="title-screen" id="titleScreen" role="dialog" aria-modal="true" aria-labelledby="titleHeading"><div class="title-card"><h1 id="titleHeading">KING PONG</h1><div class="title-subtitle">Choose a save slot, then play Campaign, Custom Game, Two Player, or optional LAN Two Player. Custom Game uses completed maps; Two Player can use every map.</div><div class="save-badge" id="activeSaveBadge">Slot 1 selected</div><div class="save-slot-list" id="saveSlotList"><button type="button" class="save-slot" data-save-slot="0"><span class="slot-name">SLOT 1</span><span class="slot-detail">New Game</span><span class="slot-progress">Level 01 unlocked</span></button><button type="button" class="save-slot" data-save-slot="1"><span class="slot-name">SLOT 2</span><span class="slot-detail">New Game</span><span class="slot-progress">Level 01 unlocked</span></button><button type="button" class="save-slot" data-save-slot="2"><span class="slot-name">SLOT 3</span><span class="slot-detail">New Game</span><span class="slot-progress">Level 01 unlocked</span></button></div><div class="title-actions"><button type="button" id="titleCampaignButton">Campaign</button><button type="button" id="titleCustomButton">Custom Game</button><button type="button" id="titleTwoPlayerButton">Two Player</button><button type="button" id="titleLanButton">LAN Two Player</button><button type="button" id="titleBossButton" class="secret-boss-button" hidden>Secret Boss</button></div><div class="title-message" id="titleMessage">Campaign starts at your next unlocked level. Custom Game only shows completed levels. Two Player and LAN Two Player can choose any level. A secret boss appears after all 18 levels are cleared.</div><button type="button" class="erase-save-button" id="eraseSaveButton">Erase Selected Slot</button></div></div><div class="menu-stack" id="menuStack"><div class="controls" id="campaignControls"><span id="activeSlotMini">Slot 1</span><span>Campaign</span><button type="button" data-campaign="0">Training</button><button type="button" data-campaign="1">Ricochet</button><button type="button" data-campaign="2">Chaos</button><button type="button" id="customModeButton">Custom Game</button><button type="button" id="twoPlayerModeButton">Two Player</button><button type="button" id="lanModeButton" title="Optional LAN-only peer connection for Two Player">LAN Two Player</button><button type="button" id="musicButton" aria-pressed="false" title="Toggle original chiptune music with N">Music Off</button><label class="music-volume-control" title="Music volume"><span>Music Vol</span><input id="musicVolumeSlider" type="range" min="0" max="100" step="1" value="75" aria-label="Music volume" /><span class="value-pill" id="musicVolumeValue">75%</span></label><button type="button" id="restartButton">Restart Level</button></div><div class="status" id="statusText">Loading...</div><div class="custom-panel hidden" id="customPanel"><label><span>Level</span><select id="customLevelSelect" aria-label="Choose custom level"></select></label><span class="custom-readout" id="customLevelReadout">Level 01 - Training Circuit: Open Court</span><label class="cpu-custom-control"><span>CPU intelligence</span><input id="customIntelSlider" type="range" min="0" max="100" step="1" value="50" /><span class="value-pill" id="customIntelValue">50%</span></label><label class="cpu-custom-control"><span>CPU Paddle Speed</span><input id="customMaxMoveSlider" aria-label="CPU Paddle Speed" type="range" min="1" max="12" step="0.1" value="4.4" /><span class="value-pill" id="customMaxMoveValue">4.4</span></label><button type="button" id="customStartButton">Play Selected</button></div><div class="lan-panel hidden" id="lanPanel"><div class="lan-row lan-title-row"><strong>LAN Two Player</strong><span class="lan-status-pill" id="lanStatus">Offline</span></div><div class="lan-row lan-safe-note">LAN-only WebRTC with no STUN/TURN servers. Host runs the match; guest sends input only.</div><div class="lan-row"><button type="button" id="lanHostButton">Host Match</button><button type="button" id="lanJoinButton">Join Match</button><button type="button" id="lanDisconnectButton">Disconnect</button><label class="lan-code-label"><span>Room Code</span><input id="lanRoomCodeInput" type="text" maxlength="6" autocomplete="off" spellcheck="false" aria-label="LAN room code" /></label></div><div class="lan-grid"><label><span>Your connection text</span><textarea id="lanLocalSignal" readonly spellcheck="false" aria-label="Your LAN connection text"></textarea></label><label><span>Paste other player text</span><textarea id="lanRemoteSignal" spellcheck="false" aria-label="Paste other player LAN connection text"></textarea></label></div><div class="lan-row"><button type="button" id="lanCopyButton">Copy Your Text</button><button type="button" id="lanApplySignalButton">Use Pasted Text</button></div></div></div><div class="hint" id="controlHint"> Touch: drag to move - tap to serve/continue - two-finger tap pauses - keyboard/controller supported </div><div class="screen-fade" id="screenFade"></div><div class="ending-credits" id="endingCredits" aria-hidden="true"><div class="ending-credit-card"><div class="ending-credit-thanks">Thank you for playing</div><div class="ending-credit-byline">Made by: King Alex Gilbert</div></div></div> <script>
 const LOCALIZATION = (() => {
 const english = {};
 const phraseTranslations = {
@@ -560,15 +575,15 @@ hazards: [
 },
 {
 name: "Pinball Alley",
-goal: 6,
-ballSpeed: 5.45,
-maxSpeed: 11.8,
+goal: 5,
+ballSpeed: 5.2,
+maxSpeed: 11,
 hazards: [
-{ type: "circle", x: 240, y: 120, r: 15, boost: 0.5 },
-{ type: "circle", x: 320, y: 240, r: 18, boost: 0.5 },
-{ type: "circle", x: 400, y: 360, r: 15, boost: 0.5 },
-{ type: "rect", x: 132, y: 160, w: 12, h: 160, vy: 1.35, minY: 84, maxY: 236, bounce: 0.28 },
-{ type: "rect", x: W - 144, y: 160, w: 12, h: 160, vy: -1.35, minY: 84, maxY: 236, bounce: 0.28 }
+{ type: "circle", x: 240, y: 120, r: 15, boost: 0.38 },
+{ type: "circle", x: 320, y: 240, r: 18, boost: 0.38 },
+{ type: "circle", x: 400, y: 360, r: 15, boost: 0.38 },
+{ type: "rect", x: 132, y: 160, w: 12, h: 160, vy: 1.1, minY: 84, maxY: 236, bounce: 0.23 },
+{ type: "rect", x: W - 144, y: 160, w: 12, h: 160, vy: -1.1, minY: 84, maxY: 236, bounce: 0.23 }
 ]
 }
 ]
@@ -4228,6 +4243,84 @@ refreshGamepadConnection();
 window.addEventListener("gamepaddisconnected", () => {
 refreshGamepadConnection();
 });
+
+
+// King Pong battery indicator: Android WebView bridge first, browser Battery API fallback if available.
+const batteryIndicator = document.getElementById("batteryIndicator");
+const batteryFill = batteryIndicator ? batteryIndicator.querySelector(".battery-fill") : null;
+let browserBattery = null;
+function updateBatteryIndicator(level, charging) {
+if (!batteryIndicator) return;
+const numericLevel = Number(level);
+if (!Number.isFinite(numericLevel) || numericLevel < 0) {
+batteryIndicator.classList.add("unavailable");
+batteryIndicator.classList.remove("charging", "low");
+if (batteryFill) batteryFill.style.width = "0%";
+batteryIndicator.title = "Battery level unavailable";
+batteryIndicator.setAttribute("aria-label", "Battery level unavailable");
+return;
+}
+const clamped = Math.max(0, Math.min(100, Math.round(numericLevel)));
+batteryIndicator.classList.remove("unavailable");
+batteryIndicator.classList.toggle("charging", !!charging);
+batteryIndicator.classList.toggle("low", clamped <= 20 && !charging);
+if (batteryFill) batteryFill.style.width = clamped + "%";
+const label = `Battery ${clamped}%${charging ? " - charging" : ""}`;
+batteryIndicator.title = label;
+batteryIndicator.setAttribute("aria-label", label);
+}
+function updateBatteryFromAndroidBridge() {
+try {
+if (window.KingPongBattery && typeof window.KingPongBattery.getBatteryLevel === "function") {
+const level = window.KingPongBattery.getBatteryLevel();
+const charging = typeof window.KingPongBattery.isCharging === "function" ? window.KingPongBattery.isCharging() : false;
+updateBatteryIndicator(level, charging);
+return true;
+}
+} catch (err) {}
+return false;
+}
+async function initBatteryIndicator() {
+if (updateBatteryFromAndroidBridge()) {
+setInterval(updateBatteryFromAndroidBridge, 15000);
+return;
+}
+if (navigator.getBattery) {
+try {
+browserBattery = await navigator.getBattery();
+const refreshBrowserBattery = () => updateBatteryIndicator(browserBattery.level * 100, browserBattery.charging);
+refreshBrowserBattery();
+browserBattery.addEventListener("levelchange", refreshBrowserBattery);
+browserBattery.addEventListener("chargingchange", refreshBrowserBattery);
+return;
+} catch (err) {}
+}
+updateBatteryIndicator(-1, false);
+}
+initBatteryIndicator();
+// King Pong local time indicator: uses the device/browser clock and updates while the app is open.
+const clockIndicator = document.getElementById("clockIndicator");
+function formatKingPongClock(date) {
+try {
+return new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(date);
+} catch (err) {
+let h = date.getHours();
+const m = String(date.getMinutes()).padStart(2, "0");
+const suffix = h >= 12 ? "PM" : "AM";
+h = h % 12 || 12;
+return `${h}:${m} ${suffix}`;
+}
+}
+function updateClockIndicator() {
+if (!clockIndicator) return;
+const label = formatKingPongClock(new Date());
+clockIndicator.textContent = label;
+clockIndicator.setAttribute("aria-label", `Current time ${label}`);
+clockIndicator.title = `Current time ${label}`;
+}
+updateClockIndicator();
+setInterval(updateClockIndicator, 15000);
+
 handleViewportChange();
 setMenusVisible(false);
 refreshGamepadConnection();
