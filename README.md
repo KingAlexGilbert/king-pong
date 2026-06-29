@@ -1,6 +1,6 @@
-King Pong is a Pong-inspired Android arcade campaign game that I made in my free time.
+King Pong is a Pong-inspired Android and Windows arcade campaign game that I made in my free time.
 
-It features campaign progression, language detection, controller support, touch controls, local two-player mode, LAN play, saves, and a secret ending.
+It features campaign progression, language detection, controller support, touch controls, local two-player mode, LAN play, saves, battery and clock indicators, and a secret ending.
 
 The project was developed with AI-assisted coding and packaging help, then manually tested and polished to give it that human touch.
 
@@ -28,31 +28,74 @@ Made by: King Alex Gilbert
 
 ## HOW TO DOWNLOAD:
 
-The Android APK can be downloaded from the Releases section of this GitHub repository.
+Android:
 
-After downloading the APK, install it on your Android device. You may need to allow installation from unknown sources depending on your device's settings.
+Download the Android APK from Releases and install it on your Android device.
 
-Note: If you already have King Pong installed and want to keep your save data, update over the existing app. Do not uninstall first, because uninstalling may remove local save data.
+You may need to allow installation from unknown sources depending on your device settings.
+
+Save data note: If you already have King Pong installed and want to keep your save data, update over the existing app. Do not uninstall first, because uninstalling may remove local save data.
+
+Windows:
+
+Download one of the Windows versions from Releases:
+
+- `KingPongSetup.exe` - recommended Windows installer
+- `KingPong-WebView2-Portable.zip` - portable Windows version
+
+For the portable version, extract the zip folder first, then run the King Pong EXE inside it.
+
+## Windows Note
+
+The Windows installer is currently unsigned, so Windows may show an unknown publisher or SmartScreen warning. This is normal for unsigned indie releases.
+
+If you trust this official GitHub release, choose More info → Run anyway if SmartScreen appears.
 
 ## BUILD FROM SOURCE:
+
+Android:
 
 If you want to build King Pong yourself:
 
 1. Download or clone this repository.
-2. Open the project folder in Android Studio.
+2. Open the `android` folder in Android Studio.
 3. Let Android Studio sync the Gradle project.
 4. Build the APK using: `Build → Generate App Bundles or APKs → Build APK(s)`
-5. The generated APK should appear in: `app/build/outputs/apk/debug/`
+5. The generated APK should appear in: `android/app/build/outputs/apk/debug/`
+
+Windows
+
+If you want to build the Windows version yourself:
+
+1. Download or clone this repository.
+2. Go to the `windows/webview-2` folder.
+3. Run `build-windows.bat`.
+4. The portable Windows build should be generated in the `dist` folder.
+
+To build the Windows installer:
+
+1. Install Inno Setup 6.
+2. Go to the `windows/installer exe` folder.
+3. Run `build-installer.bat`.
+4. The installer should appear in the `Output` folder.
 
 ## SOURCE CODE:
 
 The main game code is located at:
 
-app/src/main/assets/index.html
+`android/app/src/main/assets/index.html`
 
 The Android WebView wrapper is located at:
 
-app/src/main/java/com/kingalex/kingpong/MainActivity.java
+`android/app/src/main/java/com/kingalex/kingpong/MainActivity.java`
+
+The Windows WebView2 version is located at:
+
+`windows/webview-2/`
+
+The Windows installer project is located at:
+
+`windows/installer exe/`
 
 ## LICENSE
 
