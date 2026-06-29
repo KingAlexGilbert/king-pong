@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>King Pong</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #080808;
+      color: white;
+      text-align: center;
+    }
+
+    header {
+      padding: 60px 20px 30px;
+      background: linear-gradient(#111, #080808);
+    }
+
+    h1 {
+      font-size: 48px;
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      font-size: 20px;
+      color: #ddd;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .buttons {
+      margin-top: 30px;
+    }
+
+    .button {
+      display: inline-block;
+      margin: 10px;
+      padding: 14px 22px;
+      background: #ffffff;
+      color: #000000;
+      text-decoration: none;
+      font-weight: bold;
+      border-radius: 8px;
+    }
+
+    .button:hover {
+      background: #dddddd;
+    }
+
+    section {
+      padding: 35px 20px;
+      max-width: 1000px;
+      margin: auto;
+    }
+
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 15px;
+      margin-top: 20px;
+    }
+
+    .feature {
+      background: #151515;
+      padding: 18px;
+      border-radius: 10px;
+      border: 1px solid #333;
+    }
+
+    .screenshots img {
+      max-width: 90%;
+      margin: 18px 0;
+      border: 2px solid #333;
+      border-radius: 10px;
+    }
+
+    footer {
+      padding: 30px;
+      color: #aaa;
+      border-top: 1px solid #222;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>King Pong</h1>
+    <p class="subtitle">
+      A Pong-inspired Android and Windows arcade campaign game made by King Alex Gilbert.
+    </p>
+
+    <div class="buttons">
+      <a class="button" href="https://github.com/KingAlexGilbert/king-pong/releases">Download</a>
+      <a class="button" href="https://github.com/KingAlexGilbert/king-pong">View Source</a>
+    </div>
+  </header>
+
+  <section>
+    <h2>About the Game</h2>
+    <p>
+      King Pong features campaign progression, saves, controller support, touch controls,
+      local two-player mode, LAN play, battery and clock indicators, and a secret ending.
+    </p>
+    <p>
+      The project was developed with AI-assisted coding and packaging help, then manually
+      tested and polished to give it that human touch.
+    </p>
+  </section>
+
+  <section>
+    <h2>Features</h2>
+    <div class="features">
+      <div class="feature">Campaign Mode</div>
+      <div class="feature">Android APK</div>
+      <div class="feature">Windows Installer</div>
+      <div class="feature">Portable Windows Version</div>
+      <div class="feature">Controller Support</div>
+      <div class="feature">Touch Controls</div>
+      <div class="feature">LAN Play</div>
+      <div class="feature">Secret Boss</div>
+    </div>
+  </section>
+
+  <section class="screenshots">
+    <h2>Screenshots</h2>
+
+    <h3>Title Screen</h3>
+    <img src="images/title-screen.png" alt="King Pong title screen" />
+
+    <h3>Gameplay</h3>
+    <img src="images/gameplay.png" alt="King Pong gameplay" />
+
+    <h3>Level Cleared</h3>
+    <img src="images/level-cleared.png" alt="King Pong level cleared" />
+
+    <h3>Level Failed</h3>
+    <img src="images/level-failed.png" alt="King Pong level failed" />
+  </section>
+
+  <section>
+    <h2>Downloads</h2>
+    <p>
+      Download King Pong for Android or Windows from the GitHub Releases page.
+    </p>
+    <a class="button" href="https://github.com/KingAlexGilbert/king-pong/releases">Go to Releases</a>
+  </section>
+
+  <footer>
+    Made by: King Alex Gilbert<br />
+    Released under the GNU General Public License v3.0
+  </footer>
+</body>
+</html>
