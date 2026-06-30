@@ -8,6 +8,14 @@ Feel free to test it out, play around with it, and modify it. Hope you enjoy it!
 
 Made by: King Alex Gilbert
 
+## Gameplay Demo
+
+[![King Pong Gameplay Demo](screenshots/king-pong-thumbnail.png)](https://youtu.be/2Z1foE1dnKw)
+
+Watch the official King Pong gameplay demo:
+
+[King Pong - Android and Windows Gameplay Demo](https://youtu.be/2Z1foE1dnKw)
+
 ## Screenshots
 
 ### Title Screen
