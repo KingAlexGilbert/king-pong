@@ -10,7 +10,7 @@ Made by: King Alex Gilbert
 
 ## Gameplay Demo
 
-[![King Pong Gameplay Demo](screenshots/king-pong-thumbnail.png)](https://youtu.be/2Z1foE1dnKw)
+[![King Pong Gameplay Demo](Screenshots/king-pong-thumbnail.png)](https://youtu.be/2Z1foE1dnKw)
 
 Watch the official King Pong gameplay demo:
 
