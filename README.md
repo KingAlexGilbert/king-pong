@@ -53,6 +53,12 @@ Download one of the Windows versions from Releases:
 
 For the portable version, extract the zip folder first, then run the King Pong EXE inside it.
 
+### Itch.io
+
+You can also download King Pong on itch.io:
+
+https://king-alex-gilbert.itch.io/king-pong
+
 ## Windows Note
 
 The Windows installer is currently unsigned, so Windows may show an unknown publisher or SmartScreen warning. This is normal for unsigned indie releases.
