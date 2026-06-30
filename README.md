@@ -2,7 +2,7 @@ King Pong is a Pong-inspired Android and Windows arcade campaign game that I mad
 
 It features campaign progression, language detection, controller support, touch controls, local two-player mode, LAN play, saves, battery and clock indicators, and a secret ending.
 
-The project was developed with AI-assisted coding and packaging help, then manually tested and polished to give it that human touch.
+The project was developed with AI-assisted coding and packaging help, then manually tested, debugged, and polished to give it that human touch.
 
 Feel free to test it out, play around with it, and modify it. Hope you enjoy it!
 
