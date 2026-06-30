@@ -368,7 +368,10 @@ const BALL_HALF = BALL_SIZE / 2;
 const BASE_BALL_SPEED = 4.2;
 const RALLY_PLAYER_SPAWN_DISTANCE = 236;
 const RALLY_PLAYER_SPAWN_MIN_DISTANCE = 180;
-const RALLY_PLAYER_SPAWN_Y_JITTER = 0;
+const RALLY_PLAYER_SPAWN_Y_JITTER = 26;
+const RALLY_SPAWN_HAZARD_PADDING = 18;
+const RALLY_SPAWN_POCKET_PADDING = 34;
+const RALLY_SPAWN_MIN_VERTICAL_RATIO = 0.28;
 const TOTAL_LEVELS = 18;
 const SECRET_BOSS_LEVEL_NUMBER = TOTAL_LEVELS + 1;
 const BOSS_PLAYER_MAX_HEALTH = 12;
@@ -2830,27 +2833,57 @@ baseY: source.y,
 hitFlash: 0
 }));
 }
-function ballSpawnOverlapsHazard(x, y) {
+function ballSpawnOverlapsHazard(x, y, padding = RALLY_SPAWN_HAZARD_PADDING) {
 const testRect = {
-x: x - 3,
-y: y - 3,
-w: BALL_SIZE + 6,
-h: BALL_SIZE + 6
+x: x - padding,
+y: y - padding,
+w: BALL_SIZE + padding * 2,
+h: BALL_SIZE + padding * 2
 };
 return hazards.some((h) => {
 if (h.type === "circle") {
 const cx = x + BALL_HALF;
 const cy = y + BALL_HALF;
-return Math.hypot(cx - h.x, cy - h.y) < h.r + BALL_HALF + 6;
+return Math.hypot(cx - h.x, cy - h.y) < h.r + BALL_HALF + padding;
 }
 const rect = {
-x: h.x - 3,
-y: h.y - 3,
-w: h.w + 6,
-h: h.h + 6
+x: h.x - padding,
+y: h.y - padding,
+w: h.w + padding * 2,
+h: h.h + padding * 2
 };
 return rectsOverlap(testRect, rect);
 });
+}
+function ballSpawnInBarrierPocket(x, y) {
+const rectHazards = hazards.filter((h) => h.type === "rect");
+if (rectHazards.length < 2) return false;
+const centerX = x + BALL_HALF;
+const centerY = y + BALL_HALF;
+for (let i = 0; i < rectHazards.length; i++) {
+for (let j = i + 1; j < rectHazards.length; j++) {
+const a = rectHazards[i];
+const b = rectHazards[j];
+const leftEdge = Math.min(a.x, b.x);
+const rightEdge = Math.max(a.x + a.w, b.x + b.w);
+const topRect = a.y <= b.y ? a : b;
+const bottomRect = topRect === a ? b : a;
+const gapTop = topRect.y + topRect.h;
+const gapBottom = bottomRect.y;
+const gapHeight = gapBottom - gapTop;
+const sameColumn = centerX >= leftEdge - RALLY_SPAWN_POCKET_PADDING &&
+centerX <= rightEdge + RALLY_SPAWN_POCKET_PADDING &&
+Math.abs((a.x + a.w / 2) - (b.x + b.w / 2)) < Math.max(a.w, b.w) + RALLY_SPAWN_POCKET_PADDING * 2;
+const betweenBarriers = centerY > gapTop - BALL_HALF && centerY < gapBottom + BALL_HALF;
+if (sameColumn && betweenBarriers && gapHeight > BALL_SIZE && gapHeight < PADDLE_H * 3.2) {
+return true;
+}
+}
+}
+return false;
+}
+function isSafeBallSpawn(x, y) {
+return !ballSpawnOverlapsHazard(x, y) && !ballSpawnInBarrierPocket(x, y);
 }
 function findReceiverSideRallySpawn(direction) {
 const bounds = visiblePlayfieldBounds();
@@ -2880,7 +2913,7 @@ for (const yOffset of yOffsets) {
 const x = clamp(preferredX + xOffset, minX, maxX);
 const centerY = clamp(baseCenterY + yOffset, safeTop, safeBottom);
 const y = centerY - BALL_HALF;
-if (!ballSpawnOverlapsHazard(x, y)) {
+if (isSafeBallSpawn(x, y)) {
 return { x, y };
 }
 }
@@ -2890,11 +2923,25 @@ x: preferredX,
 y: clamp(baseCenterY, safeTop, safeBottom) - BALL_HALF
 };
 }
+function enforceMinimumBallSpawnAngle(direction, targetSpeed, maxSpeed) {
+const speed = Math.max(ballSpeed(), targetSpeed * 0.92, 0.001);
+const minVy = speed * RALLY_SPAWN_MIN_VERTICAL_RATIO;
+if (Math.abs(ball.vy) < minVy) {
+const bounds = visiblePlayfieldBounds();
+const centerY = ball.y + BALL_HALF;
+const centerBias = centerY < bounds.top + (bounds.bottom - bounds.top) / 2 ? 1 : -1;
+const sign = ball.vy < 0 ? -1 : ball.vy > 0 ? 1 : centerBias;
+ball.vy = sign * minVy;
+const vxMagnitude = Math.sqrt(Math.max(0.01, speed * speed - ball.vy * ball.vy));
+ball.vx = Math.sign(direction || ball.vx || 1) * vxMagnitude;
+}
+normalizeBallVelocity(targetSpeed * 0.92, maxSpeed);
+}
 function setRallyBallVelocity(direction, speed, level, spawnedForReceiver) {
 if (spawnedForReceiver) {
 const receiver = direction > 0 ? right : left;
 const targetCenter = clamp(
-receiver.y + PADDLE_H / 2 + (Math.random() * 2 - 1) * 10,
+receiver.y + PADDLE_H / 2 + (Math.random() * 2 - 1) * 18,
 visiblePlayfieldBounds().top + BALL_HALF,
 visiblePlayfieldBounds().bottom - BALL_HALF
 );
@@ -2902,7 +2949,7 @@ const targetX = direction > 0 ? receiver.x : receiver.x + PADDLE_W;
 const startCenterX = ball.x + BALL_HALF;
 const dx = Math.max(24, Math.abs(targetX - startCenterX));
 const dy = targetCenter - (ball.y + BALL_HALF);
-const angle = clamp(Math.atan2(dy, dx), -0.42, 0.42);
+const angle = clamp(Math.atan2(dy, dx), -0.46, 0.46);
 ball.vx = Math.cos(angle) * speed * direction;
 ball.vy = Math.sin(angle) * speed * 1.35;
 } else {
@@ -2910,7 +2957,7 @@ const angle = Math.random() * 0.82 - 0.41;
 ball.vx = direction * Math.cos(angle) * speed;
 ball.vy = Math.sin(angle) * speed * 1.6;
 }
-normalizeBallVelocity(speed * 0.92, level.maxSpeed || 10);
+enforceMinimumBallSpawnAngle(direction, speed, level.maxSpeed || 10);
 }
 function resetBall(direction = 1, waitForServe = true, spawnNearPlayer = false) {
 const level = currentLevel();
@@ -3175,7 +3222,7 @@ for (const yOffset of yOffsets) {
 const x = clamp(preferredX + xOffset, minX, maxX);
 const centerY = clamp(receiverCenterY + yOffset, safeTop, safeBottom);
 const y = centerY - BALL_HALF;
-if (!ballSpawnOverlapsHazard(x, y)) {
+if (isSafeBallSpawn(x, y)) {
 return { x, y };
 }
 }
@@ -3184,6 +3231,16 @@ return {
 x: preferredX,
 y: receiverCenterY - BALL_HALF
 };
+}
+function enforceMinimumBossBallSpawnAngle(vx, vy, direction, targetSpeed) {
+const speed = Math.max(Math.hypot(vx, vy), targetSpeed * 0.92, 0.001);
+const minVy = speed * RALLY_SPAWN_MIN_VERTICAL_RATIO;
+if (Math.abs(vy) < minVy) {
+const sign = vy < 0 ? -1 : vy > 0 ? 1 : (Math.random() < 0.5 ? -1 : 1);
+vy = sign * minVy;
+vx = Math.sign(direction || vx || 1) * Math.sqrt(Math.max(0.01, speed * speed - vy * vy));
+}
+return { vx, vy };
 }
 function createBossBall(index = 0, direction = null, useReceiverSideSpawn = false) {
 const bounds = visiblePlayfieldBounds();
@@ -3216,6 +3273,9 @@ vy = Math.sin(angle) * speed * 1.28;
 vx = Math.cos(spread) * speed * dir;
 vy = Math.sin(spread) * speed * 1.28;
 }
+const adjustedVelocity = enforceMinimumBossBallSpawnAngle(vx, vy, dir, speed);
+vx = adjustedVelocity.vx;
+vy = adjustedVelocity.vy;
 return {
 x: spawn.x,
 y: spawn.y,

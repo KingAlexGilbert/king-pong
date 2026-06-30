@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" /><title>King Pong HD</title> <style>:root{--accent:#60d8ff;--panel:rgba(0,0,0,0.82);--muted:#8a8a8a}html,body{margin:0;height:100%;background:radial-gradient(circle at center,#111 0%,#050505 44%,#000 100%);display:flex;align-items:center;justify-content:center;font-family:monospace;color:white;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}canvas{background:#000;image-rendering:pixelated;image-rendering:crisp-edges;display:block;touch-action:none;width:min(96vw,960px,calc(128vh - 8px));height:auto;max-width:none;max-height:none;border:2px solid #222;box-sizing:border-box;box-shadow:0 0 24px rgba(255,255,255,0.08),0 0 42px color-mix(in srgb,var(--accent) 24%,transparent)}@supports (height:100dvh){canvas{width:min(96vw,960px,calc(128dvh - 8px));max-height:none}}.menu-stack{position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:15;display:flex;flex-direction:column;align-items:center;gap:6px;width:min(96vw,980px);max-width:calc(100vw - 150px);box-sizing:border-box;pointer-events:none;transition:opacity 0.18s ease,transform 0.18s ease,visibility 0.18s ease}.controls{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px;padding:8px 10px;background:var(--panel);border:1px solid #333;color:#aaa;font-size:13px;user-select:none;width:fit-content;max-width:100%;box-sizing:border-box;white-space:normal;pointer-events:auto;transition:opacity 0.18s ease,transform 0.18s ease,visibility 0.18s ease}.menu-toggle{position:fixed;top:10px;left:10px;z-index:20;background:var(--panel);color:#d4d4d4;border:1px solid #444;font-family:monospace;font-size:12px;padding:6px 8px;cursor:pointer;user-select:none;transition:opacity 0.18s ease,border-color 0.18s ease,box-shadow 0.18s ease}.menu-toggle:hover,.menu-toggle:focus-visible{color:#fff;border-color:var(--accent);box-shadow:0 0 10px color-mix(in srgb,var(--accent) 35%,transparent);opacity:1}body.menus-hidden .menu-toggle{opacity:0.55}.title-jump-toggle{position:fixed;top:44px;left:10px;z-index:55;background:var(--panel);color:#d4d4d4;border:1px solid #444;font-family:monospace;font-size:12px;padding:6px 8px;cursor:pointer;user-select:none;transition:opacity 0.18s ease,border-color 0.18s ease,box-shadow 0.18s ease}.title-jump-toggle:hover,.title-jump-toggle:focus-visible{color:#fff;border-color:var(--accent);box-shadow:0 0 10px color-mix(in srgb,var(--accent) 35%,transparent);opacity:1}.play-info-toggle{position:fixed;top:10px;right:10px;z-index:55;background:var(--panel);color:#d4d4d4;border:1px solid #444;font-family:monospace;font-size:12px;padding:6px 8px;cursor:pointer;user-select:none;max-width:calc(100vw - 120px);white-space:normal;transition:opacity 0.18s ease,border-color 0.18s ease,box-shadow 0.18s ease}.play-info-toggle:hover,.play-info-toggle:focus-visible{color:#fff;border-color:var(--accent);box-shadow:0 0 10px color-mix(in srgb,var(--accent) 35%,transparent);opacity:1}body.play-info-hidden .play-info-toggle{opacity:0.55}body.menus-hidden .menu-stack,body.menus-hidden .hint{opacity:0;visibility:hidden;pointer-events:none}body.menus-hidden .menu-stack{transform:translate(-50%,-130%)}body.menus-hidden .hint{transform:translate(-50%,160%)}.controls button{background:#000;color:#aaa;border:1px solid #555;font-family:monospace;padding:4px 8px;cursor:pointer}.music-volume-control{display:flex;align-items:center;gap:6px;padding:3px 6px;border:1px solid #333;background:rgba(0,0,0,0.55);color:#aaa}.music-volume-control input[type="range"]{width:110px;accent-color:white;cursor:pointer}.music-volume-control .value-pill{min-width:34px}.controls button:hover,.controls button.active{color:#fff;border-color:var(--accent);box-shadow:0 0 10px color-mix(in srgb,var(--accent) 45%,transparent)}.custom-panel{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px 10px;padding:8px 10px;background:var(--panel);border:1px solid #333;color:#aaa;font-size:12px;user-select:none;width:fit-content;max-width:100%;box-sizing:border-box;pointer-events:auto;transition:opacity 0.18s ease,transform 0.18s ease,visibility 0.18s ease}.custom-panel.hidden{display:none}body.two-player-menus .status{display:none}body.two-player-menus .custom-readout{display:none}.cpu-custom-control.mode-hidden{display:none !important}.custom-panel label,.custom-readout{display:flex;align-items:center;gap:6px}.custom-readout{color:#fff;min-width:280px;justify-content:center}.custom-panel select,.custom-panel input[type="range"],.custom-panel button{font-family:monospace}.custom-panel select{max-width:min(62vw,360px);background:#000;color:#fff;border:1px solid #555;padding:4px 6px}.custom-panel input[type="range"]{width:120px;accent-color:white;cursor:pointer}.custom-panel button{background:#000;color:#aaa;border:1px solid #555;padding:4px 8px;cursor:pointer}.custom-panel button:hover,.custom-panel button:focus-visible{color:#fff;border-color:var(--accent);box-shadow:0 0 10px color-mix(in srgb,var(--accent) 45%,transparent)}.lan-panel{display:flex;flex-direction:column;gap:7px;padding:8px 10px;background:var(--panel);border:1px solid #333;color:#aaa;font-size:12px;user-select:none;width:min(96vw,880px);max-width:100%;box-sizing:border-box;pointer-events:auto;transition:opacity 0.18s ease,transform 0.18s ease,visibility 0.18s ease}.lan-panel.hidden{display:none}.lan-row{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px}.lan-title-row{color:#fff}.lan-safe-note{color:#8f8f8f;font-size:11px;text-align:center}.lan-status-pill{display:inline-block;min-width:120px;padding:3px 6px;color:#fff;border:1px solid #444;background:rgba(0,0,0,0.55);text-align:center}.lan-code-label{display:flex;align-items:center;gap:6px}.lan-code-label input{width:72px;text-transform:uppercase;text-align:center;background:#000;color:#fff;border:1px solid #555;font-family:monospace;padding:4px 6px}.lan-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.lan-grid label{display:flex;flex-direction:column;gap:4px;min-width:0;text-align:left}.lan-grid textarea{width:100%;min-height:52px;resize:vertical;box-sizing:border-box;background:#000;color:#fff;border:1px solid #555;font-family:monospace;font-size:10px;padding:5px}.lan-panel button{background:#000;color:#aaa;border:1px solid #555;font-family:monospace;padding:4px 8px;cursor:pointer}.lan-panel button:hover,.lan-panel button:focus-visible{color:#fff;border-color:var(--accent);box-shadow:0 0 10px color-mix(in srgb,var(--accent) 45%,transparent)}body.lan-connected .lan-status-pill{border-color:var(--accent);box-shadow:0 0 10px color-mix(in srgb,var(--accent) 35%,transparent)}.value-pill{display:inline-block;min-width:42px;color:#fff;text-align:right}.status{padding:6px 10px;background:var(--panel);border:1px solid #252525;color:#d4d4d4;font-size:12px;line-height:1.35;text-align:center;user-select:none;pointer-events:none;width:fit-content;max-width:100%;box-sizing:border-box;white-space:normal;transition:opacity 0.18s ease,transform 0.18s ease,visibility 0.18s ease}.hint{position:fixed;left:50%;bottom:10px;transform:translateX(-50%);width:fit-content;max-width:calc(100vw - 18px);text-align:center;color:#999;font-size:12px;line-height:1.35;pointer-events:none;padding:6px 10px;background:rgba(0,0,0,0.68);border:1px solid #222;box-sizing:border-box;transition:opacity 0.18s ease,transform 0.18s ease,visibility 0.18s ease}.title-screen{position:fixed;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;padding:18px;box-sizing:border-box;background:radial-gradient(circle at center,rgba(12,18,24,0.94) 0%,rgba(0,0,0,0.96) 58%,#000 100%);opacity:0;visibility:hidden;pointer-events:none;transition:opacity 0.18s ease,visibility 0.18s ease}body.title-active .title-screen{opacity:1;visibility:visible;pointer-events:auto}body.title-active .menu-toggle,body.title-active .menu-stack,body.title-active .hint{opacity:0;visibility:hidden;pointer-events:none}.title-card{width:min(92vw,620px);max-height:calc(100vh - 36px);overflow:auto;padding:22px;box-sizing:border-box;background:rgba(0,0,0,0.9);border:2px solid var(--accent);box-shadow:0 0 24px color-mix(in srgb,var(--accent) 35%,transparent);text-align:center}.title-card h1{margin:0 0 8px;font-size:clamp(24px,6vw,42px);letter-spacing:3px;color:#fff;text-shadow:0 0 12px var(--accent)}.title-subtitle,.slot-help,.title-message{color:#aaa;font-size:13px;line-height:1.45;margin:8px 0}.save-slot-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:16px 0 12px}.save-slot{min-height:82px;background:#050505;color:#aaa;border:1px solid #555;font-family:monospace;cursor:pointer;padding:8px;text-align:left;display:flex;flex-direction:column;gap:5px}.save-slot:hover,.save-slot.active,.save-slot:focus-visible{color:#fff;border-color:var(--accent);box-shadow:0 0 12px color-mix(in srgb,var(--accent) 45%,transparent);outline:none}.slot-name{font-size:14px;color:#fff}.slot-detail,.slot-progress{font-size:11px;line-height:1.35;color:#aaa}.title-actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:10px;margin-top:14px}.secret-boss-button{color:#ffd9ff;border-color:#9d4dff;text-shadow:0 0 10px #b14dff}.secret-boss-button[hidden]{display:none}.screen-fade{position:fixed;inset:0;z-index:90;background:#000;opacity:0;visibility:hidden;pointer-events:none;transition:opacity 0.78s ease,visibility 0.78s ease}.screen-fade.active{opacity:1;visibility:visible;pointer-events:auto}.ending-credits{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at center,rgba(18,12,35,0.4) 0%,rgba(0,0,0,0.96) 55%,#000 100%);color:#fff;opacity:0;visibility:hidden;pointer-events:none;transition:opacity 0.7s ease,visibility 0.7s ease}.ending-credits.active{opacity:1;visibility:visible;pointer-events:auto}.ending-credit-card{text-align:center;padding:28px 34px;border:2px solid #fff;background:rgba(0,0,0,0.68);box-shadow:0 0 28px rgba(255,255,255,0.35),0 0 54px rgba(177,77,255,0.34);animation:creditHover 2.6s ease-in-out infinite}.ending-credit-thanks{font-size:clamp(22px,6vw,44px);letter-spacing:3px;text-shadow:0 0 14px #fff,0 0 24px #b14dff;margin-bottom:14px}.ending-credit-byline{font-size:clamp(16px,4vw,28px);color:#d9c8ff;text-shadow:0 0 12px #9d4dff}@keyframes creditHover{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-10px) scale(1.025)}}.title-actions button,.erase-save-button{background:#000;color:#ddd;border:1px solid #555;font-family:monospace;cursor:pointer;padding:10px 12px}.title-actions button{min-height:58px;font-size:18px}.title-actions button:hover,.title-actions button:focus-visible,.erase-save-button:hover,.erase-save-button:focus-visible{color:#fff;border-color:var(--accent);box-shadow:0 0 12px color-mix(in srgb,var(--accent) 45%,transparent);outline:none}.title-actions button:disabled,.custom-panel button:disabled,.custom-panel select:disabled,.controls button:disabled{opacity:0.45;cursor:not-allowed;box-shadow:none;border-color:#333;color:#777}.erase-save-button{margin-top:12px;font-size:12px;padding:6px 10px}.save-badge{color:var(--accent);font-size:12px}@media (max-width:760px){.menu-stack{top:6px;gap:5px;max-width:calc(100vw - 120px)}.controls{gap:4px;font-size:11px;padding:6px}.controls button{padding:3px 5px}.music-volume-control{gap:4px;padding:2px 4px}.music-volume-control input[type="range"]{width:84px}.menu-toggle{top:6px;left:6px;font-size:11px;padding:5px 6px}.title-jump-toggle{top:38px;left:6px;font-size:11px;padding:5px 6px}.play-info-toggle{top:6px;right:6px;left:auto;font-size:11px;padding:5px 6px;max-width:calc(100vw - 110px)}.status{font-size:11px}.custom-panel{font-size:11px;gap:6px;padding:6px}.custom-panel select{max-width:82vw}.lan-grid{grid-template-columns:1fr}.custom-readout{min-width:0;width:100%}.hint{bottom:8px;font-size:11px}.save-slot-list,.title-actions{grid-template-columns:1fr}.title-card{padding:16px}}@media (max-width:560px){.menu-stack{top:42px;max-width:calc(100vw - 12px)}}
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" /><title>King Pong HD</title> <style>:root{--accent:#60d8ff;--panel:rgba(0,0,0,0.82);--muted:#8a8a8a}html,body{margin:0;height:100%;background:radial-gradient(circle at center,#111 0%,#050505 44%,#000 100%);display:flex;align-items:center;justify-content:center;font-family:monospace;color:white;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}canvas{background:#000;image-rendering:pixelated;image-rendering:crisp-edges;display:block;touch-action:none;width:min(96vw,960px,calc(128vh - 8px));height:auto;max-width:none;max-height:none;border:2px solid #222;box-sizing:border-box;box-shadow:0 0 24px rgba(255,255,255,0.08),0 0 42px color-mix(in srgb,var(--accent) 24%,transparent)}@supports (height:100dvh){canvas{width:min(96vw,960px,calc(128dvh - 8px));max-height:none}}.menu-stack{position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:15;display:flex;flex-direction:column;align-items:center;gap:6px;width:min(96vw,980px);max-width:calc(100vw - 150px);box-sizing:border-box;pointer-events:none;transition:opacity 0.18s ease,transform 0.18s ease,visibility 0.18s ease}.controls{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px;padding:8px 10px;background:var(--panel);border:1px solid #333;color:#aaa;font-size:13px;user-select:none;width:fit-content;max-width:100%;box-sizing:border-box;white-space:normal;pointer-events:auto;transition:opacity 0.18s ease,transform 0.18s ease,visibility 0.18s ease}.menu-toggle{position:fixed;top:10px;left:10px;z-index:20;background:var(--panel);color:#d4d4d4;border:1px solid #444;font-family:monospace;font-size:12px;padding:6px 8px;cursor:pointer;user-select:none;transition:opacity 0.18s ease,border-color 0.18s ease,box-shadow 0.18s ease}.menu-toggle:hover,.menu-toggle:focus-visible{color:#fff;border-color:var(--accent);box-shadow:0 0 10px color-mix(in srgb,var(--accent) 35%,transparent);opacity:1}body.menus-hidden .menu-toggle{opacity:0.55}.title-jump-toggle{position:fixed;top:44px;left:10px;z-index:55;background:var(--panel);color:#d4d4d4;border:1px solid #444;font-family:monospace;font-size:12px;padding:6px 8px;cursor:pointer;user-select:none;transition:opacity 0.18s ease,border-color 0.18s ease,box-shadow 0.18s ease}.title-jump-toggle:hover,.title-jump-toggle:focus-visible{color:#fff;border-color:var(--accent);box-shadow:0 0 10px color-mix(in srgb,var(--accent) 35%,transparent);opacity:1}.play-info-toggle{position:fixed;top:10px;right:10px;z-index:55;background:var(--panel);color:#d4d4d4;border:1px solid #444;font-family:monospace;font-size:12px;padding:6px 8px;cursor:pointer;user-select:none;max-width:calc(100vw - 120px);white-space:normal;transition:opacity 0.18s ease,border-color 0.18s ease,box-shadow 0.18s ease}.play-info-toggle:hover,.play-info-toggle:focus-visible{color:#fff;border-color:var(--accent);box-shadow:0 0 10px color-mix(in srgb,var(--accent) 35%,transparent);opacity:1}body.play-info-hidden .play-info-toggle{opacity:0.55}body.menus-hidden .menu-stack,body.menus-hidden .hint{opacity:0;visibility:hidden;pointer-events:none}body.menus-hidden .menu-stack{transform:translate(-50%,-130%)}body.menus-hidden .hint{transform:translate(-50%,160%)}.controls button{background:#000;color:#aaa;border:1px solid #555;font-family:monospace;padding:4px 8px;cursor:pointer}.music-volume-control{display:flex;align-items:center;gap:6px;padding:3px 6px;border:1px solid #333;background:rgba(0,0,0,0.55);color:#aaa}.music-volume-control input[type="range"]{width:110px;accent-color:white;cursor:pointer}.music-volume-control .value-pill{min-width:34px}.controls button:hover,.controls button.active{color:#fff;border-color:var(--accent);box-shadow:0 0 10px color-mix(in srgb,var(--accent) 45%,transparent)}.custom-panel{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px 10px;padding:8px 10px;background:var(--panel);border:1px solid #333;color:#aaa;font-size:12px;user-select:none;width:fit-content;max-width:100%;box-sizing:border-box;pointer-events:auto;transition:opacity 0.18s ease,transform 0.18s ease,visibility 0.18s ease}.custom-panel.hidden{display:none}body.two-player-menus .status{display:none}body.two-player-menus .custom-readout{display:none}.cpu-custom-control.mode-hidden{display:none !important}.custom-panel label,.custom-readout{display:flex;align-items:center;gap:6px}.custom-readout{color:#fff;min-width:280px;justify-content:center}.custom-panel select,.custom-panel input[type="range"],.custom-panel button{font-family:monospace}.custom-panel select,.custom-panel input,.lan-panel input,.lan-panel textarea{touch-action:manipulation;user-select:auto;-webkit-user-select:auto}.custom-panel select{max-width:min(62vw,360px);background:#000;color:#fff;border:1px solid #555;padding:4px 6px}.custom-panel input[type="range"]{width:120px;accent-color:white;cursor:pointer}.custom-panel button{background:#000;color:#aaa;border:1px solid #555;padding:4px 8px;cursor:pointer}.custom-panel button:hover,.custom-panel button:focus-visible{color:#fff;border-color:var(--accent);box-shadow:0 0 10px color-mix(in srgb,var(--accent) 45%,transparent)}.lan-panel{display:flex;flex-direction:column;gap:7px;padding:8px 10px;background:var(--panel);border:1px solid #333;color:#aaa;font-size:12px;user-select:none;width:min(96vw,880px);max-width:100%;box-sizing:border-box;pointer-events:auto;transition:opacity 0.18s ease,transform 0.18s ease,visibility 0.18s ease}.lan-panel.hidden{display:none}.lan-row{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px}.lan-title-row{color:#fff}.lan-safe-note{color:#8f8f8f;font-size:11px;text-align:center}.lan-status-pill{display:inline-block;min-width:120px;padding:3px 6px;color:#fff;border:1px solid #444;background:rgba(0,0,0,0.55);text-align:center}.lan-code-label{display:flex;align-items:center;gap:6px}.lan-code-label input{width:72px;text-transform:uppercase;text-align:center;background:#000;color:#fff;border:1px solid #555;font-family:monospace;padding:4px 6px}.lan-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.lan-grid label{display:flex;flex-direction:column;gap:4px;min-width:0;text-align:left}.lan-grid textarea{width:100%;min-height:52px;resize:vertical;box-sizing:border-box;background:#000;color:#fff;border:1px solid #555;font-family:monospace;font-size:10px;padding:5px}.lan-panel button{background:#000;color:#aaa;border:1px solid #555;font-family:monospace;padding:4px 8px;cursor:pointer}.lan-panel button:hover,.lan-panel button:focus-visible{color:#fff;border-color:var(--accent);box-shadow:0 0 10px color-mix(in srgb,var(--accent) 45%,transparent)}body.lan-connected .lan-status-pill{border-color:var(--accent);box-shadow:0 0 10px color-mix(in srgb,var(--accent) 35%,transparent)}.value-pill{display:inline-block;min-width:42px;color:#fff;text-align:right}.status{padding:6px 10px;background:var(--panel);border:1px solid #252525;color:#d4d4d4;font-size:12px;line-height:1.35;text-align:center;user-select:none;pointer-events:none;width:fit-content;max-width:100%;box-sizing:border-box;white-space:normal;transition:opacity 0.18s ease,transform 0.18s ease,visibility 0.18s ease}.hint{position:fixed;left:50%;bottom:10px;transform:translateX(-50%);width:fit-content;max-width:calc(100vw - 18px);text-align:center;color:#999;font-size:12px;line-height:1.35;pointer-events:none;padding:6px 10px;background:rgba(0,0,0,0.68);border:1px solid #222;box-sizing:border-box;transition:opacity 0.18s ease,transform 0.18s ease,visibility 0.18s ease}.title-screen{position:fixed;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;padding:18px;box-sizing:border-box;background:radial-gradient(circle at center,rgba(12,18,24,0.94) 0%,rgba(0,0,0,0.96) 58%,#000 100%);opacity:0;visibility:hidden;pointer-events:none;transition:opacity 0.18s ease,visibility 0.18s ease}body.title-active .title-screen{opacity:1;visibility:visible;pointer-events:auto}body.title-active .menu-toggle,body.title-active .menu-stack,body.title-active .hint{opacity:0;visibility:hidden;pointer-events:none}.title-card{width:min(92vw,620px);max-height:calc(100vh - 36px);overflow:auto;padding:22px;box-sizing:border-box;background:rgba(0,0,0,0.9);border:2px solid var(--accent);box-shadow:0 0 24px color-mix(in srgb,var(--accent) 35%,transparent);text-align:center}.title-card h1{margin:0 0 8px;font-size:clamp(24px,6vw,42px);letter-spacing:3px;color:#fff;text-shadow:0 0 12px var(--accent)}.title-subtitle,.slot-help,.title-message{color:#aaa;font-size:13px;line-height:1.45;margin:8px 0}.save-slot-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:16px 0 12px}.save-slot{min-height:82px;background:#050505;color:#aaa;border:1px solid #555;font-family:monospace;cursor:pointer;padding:8px;text-align:left;display:flex;flex-direction:column;gap:5px}.save-slot:hover,.save-slot.active,.save-slot:focus-visible{color:#fff;border-color:var(--accent);box-shadow:0 0 12px color-mix(in srgb,var(--accent) 45%,transparent);outline:none}.slot-name{font-size:14px;color:#fff}.slot-detail,.slot-progress{font-size:11px;line-height:1.35;color:#aaa}.title-actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:10px;margin-top:14px}.secret-boss-button{color:#ffd9ff;border-color:#9d4dff;text-shadow:0 0 10px #b14dff}.secret-boss-button[hidden]{display:none}.screen-fade{position:fixed;inset:0;z-index:90;background:#000;opacity:0;visibility:hidden;pointer-events:none;transition:opacity 0.78s ease,visibility 0.78s ease}.screen-fade.active{opacity:1;visibility:visible;pointer-events:auto}.ending-credits{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at center,rgba(18,12,35,0.4) 0%,rgba(0,0,0,0.96) 55%,#000 100%);color:#fff;opacity:0;visibility:hidden;pointer-events:none;transition:opacity 0.7s ease,visibility 0.7s ease}.ending-credits.active{opacity:1;visibility:visible;pointer-events:auto}.ending-credit-card{text-align:center;padding:28px 34px;border:2px solid #fff;background:rgba(0,0,0,0.68);box-shadow:0 0 28px rgba(255,255,255,0.35),0 0 54px rgba(177,77,255,0.34);animation:creditHover 2.6s ease-in-out infinite}.ending-credit-thanks{font-size:clamp(22px,6vw,44px);letter-spacing:3px;text-shadow:0 0 14px #fff,0 0 24px #b14dff;margin-bottom:14px}.ending-credit-byline{font-size:clamp(16px,4vw,28px);color:#d9c8ff;text-shadow:0 0 12px #9d4dff}@keyframes creditHover{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-10px) scale(1.025)}}.title-actions button,.erase-save-button{background:#000;color:#ddd;border:1px solid #555;font-family:monospace;cursor:pointer;padding:10px 12px}.title-actions button{min-height:58px;font-size:18px}.title-actions button:hover,.title-actions button:focus-visible,.erase-save-button:hover,.erase-save-button:focus-visible{color:#fff;border-color:var(--accent);box-shadow:0 0 12px color-mix(in srgb,var(--accent) 45%,transparent);outline:none}.title-actions button:disabled,.custom-panel button:disabled,.custom-panel select:disabled,.controls button:disabled{opacity:0.45;cursor:not-allowed;box-shadow:none;border-color:#333;color:#777}.erase-save-button{margin-top:12px;font-size:12px;padding:6px 10px}.save-badge{color:var(--accent);font-size:12px}@media (max-width:760px){.menu-stack{top:6px;gap:5px;max-width:calc(100vw - 120px)}.controls{gap:4px;font-size:11px;padding:6px}.controls button{padding:3px 5px}.music-volume-control{gap:4px;padding:2px 4px}.music-volume-control input[type="range"]{width:84px}.menu-toggle{top:6px;left:6px;font-size:11px;padding:5px 6px}.title-jump-toggle{top:38px;left:6px;font-size:11px;padding:5px 6px}.play-info-toggle{top:6px;right:6px;left:auto;font-size:11px;padding:5px 6px;max-width:calc(100vw - 110px)}.status{font-size:11px}.custom-panel{font-size:11px;gap:6px;padding:6px}.custom-panel select{max-width:82vw}.lan-grid{grid-template-columns:1fr}.custom-readout{min-width:0;width:100%}.hint{bottom:8px;font-size:11px}.save-slot-list,.title-actions{grid-template-columns:1fr}.title-card{padding:16px}}@media (max-width:560px){.menu-stack{top:42px;max-width:calc(100vw - 12px)}}
 @media (orientation:landscape) and (max-height:620px){
   .menu-toggle,.title-jump-toggle,.play-info-toggle{font-size:clamp(11px,1.8vw,14px);padding:5px 8px;line-height:1.2}
   .menu-toggle{top:calc(env(safe-area-inset-top,0px) + 8px);left:calc(env(safe-area-inset-left,0px) + 8px)}
@@ -230,6 +230,7 @@ active.blur();
 }
 }
 function preventMenuKeyboardActivation(e) {
+if (e.target instanceof HTMLSelectElement || e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 if (!MENU_KEY_BLOCKLIST.has(e.key)) return;
 if (isMenuKeyboardControl(e.target) || isMenuKeyboardControl(document.activeElement)) {
 e.preventDefault();
@@ -241,6 +242,11 @@ const menuControls = document.querySelectorAll(
 ".title-screen button, .menu-stack button, .menu-stack select, .menu-stack input, .menu-stack textarea, .menu-toggle, .title-jump-toggle, .play-info-toggle"
 );
 menuControls.forEach((control) => {
+const isNativeFormControl = control instanceof HTMLSelectElement || control instanceof HTMLInputElement || control instanceof HTMLTextAreaElement;
+if (isNativeFormControl) {
+control.removeAttribute("data-keyboard-menu-disabled");
+return;
+}
 control.tabIndex = -1;
 control.setAttribute("data-keyboard-menu-disabled", "true");
 control.addEventListener("pointerup", () => {
@@ -344,7 +350,8 @@ const BALL_HALF = BALL_SIZE / 2;
 const BASE_BALL_SPEED = 4.2;
 const RALLY_PLAYER_SPAWN_DISTANCE = 236;
 const RALLY_PLAYER_SPAWN_MIN_DISTANCE = 180;
-const RALLY_PLAYER_SPAWN_Y_JITTER = 0;
+const RALLY_PLAYER_SPAWN_Y_JITTER = 32;
+const SPAWN_HAZARD_PADDING = 14;
 const TOTAL_LEVELS = 18;
 const SECRET_BOSS_LEVEL_NUMBER = TOTAL_LEVELS + 1;
 const BOSS_PLAYER_MAX_HEALTH = 12;
@@ -2672,26 +2679,96 @@ hitFlash: 0
 }));
 }
 function ballSpawnOverlapsHazard(x, y) {
+const pad = SPAWN_HAZARD_PADDING;
 const testRect = {
-x: x - 3,
-y: y - 3,
-w: BALL_SIZE + 6,
-h: BALL_SIZE + 6
+x: x - pad,
+y: y - pad,
+w: BALL_SIZE + pad * 2,
+h: BALL_SIZE + pad * 2
 };
 return hazards.some((h) => {
 if (h.type === "circle") {
 const cx = x + BALL_HALF;
 const cy = y + BALL_HALF;
-return Math.hypot(cx - h.x, cy - h.y) < h.r + BALL_HALF + 6;
+return Math.hypot(cx - h.x, cy - h.y) < h.r + BALL_HALF + pad;
 }
 const rect = {
-x: h.x - 3,
-y: h.y - 3,
-w: h.w + 6,
-h: h.h + 6
+x: h.x - pad,
+y: h.y - pad,
+w: h.w + pad * 2,
+h: h.h + pad * 2
 };
 return rectsOverlap(testRect, rect);
 });
+}
+function ballSpawnInsideVerticalBarrierPocket(x, y) {
+const cx = x + BALL_HALF;
+const cy = y + BALL_HALF;
+const verticalRects = hazards.filter((h) => h.type === "rect" && h.h >= Math.max(42, h.w * 2.4));
+for (let i = 0; i < verticalRects.length; i++) {
+for (let j = i + 1; j < verticalRects.length; j++) {
+const a = verticalRects[i];
+const b = verticalRects[j];
+const aLeft = a.x;
+const aRight = a.x + a.w;
+const aTop = a.y;
+const aBottom = a.y + a.h;
+const bLeft = b.x;
+const bRight = b.x + b.w;
+const bTop = b.y;
+const bBottom = b.y + b.h;
+const left = aLeft <= bLeft ? a : b;
+const right = left === a ? b : a;
+const leftRight = left.x + left.w;
+const horizontalGap = right.x - leftRight;
+const verticalOverlap = Math.min(aBottom, bBottom) - Math.max(aTop, bTop);
+if (horizontalGap > BALL_SIZE + 6 && horizontalGap < 150 && verticalOverlap > BALL_SIZE) {
+const inGap = cx > leftRight - 12 && cx < right.x + 12;
+const inOverlap = cy > Math.max(aTop, bTop) - 28 && cy < Math.min(aBottom, bBottom) + 28;
+if (inGap && inOverlap) {
+return true;
+}
+}
+const sameColumn = Math.abs((a.x + a.w / 2) - (b.x + b.w / 2)) < 34;
+if (sameColumn) {
+const top = a.y <= b.y ? a : b;
+const bottom = top === a ? b : a;
+const verticalGap = bottom.y - (top.y + top.h);
+const sharedLeft = Math.max(aLeft, bLeft) - 36;
+const sharedRight = Math.min(aRight, bRight) + 36;
+if (verticalGap > BALL_SIZE + 6 && verticalGap < 190) {
+const inVerticalGap = cy > top.y + top.h - 14 && cy < bottom.y + 14;
+const nearColumn = cx > sharedLeft && cx < sharedRight;
+if (nearColumn && inVerticalGap) {
+return true;
+}
+}
+}
+}
+}
+return false;
+}
+function ballSpawnIsUnsafe(x, y) {
+return ballSpawnOverlapsHazard(x, y) || ballSpawnInsideVerticalBarrierPocket(x, y);
+}
+function findCenterSafeSpawn(level) {
+const bounds = visiblePlayfieldBounds();
+const safeTop = bounds.top + BALL_HALF;
+const safeBottom = bounds.bottom - BALL_HALF;
+const baseX = W / 2 - BALL_HALF;
+const baseY = visiblePlayfieldCenterY() - BALL_HALF;
+const offsets = [
+[0, 0], [0, -36], [0, 36], [-42, 0], [42, 0],
+[-42, -32], [42, 32], [-72, 24], [72, -24]
+];
+for (const [xOffset, yOffset] of offsets) {
+const x = clamp(baseX + xOffset, BALL_HALF, W - BALL_SIZE - BALL_HALF);
+const y = clamp(baseY + yOffset, safeTop - BALL_HALF, safeBottom - BALL_HALF);
+if (!ballSpawnIsUnsafe(x, y)) {
+return { x, y };
+}
+}
+return { x: baseX, y: baseY };
 }
 function findReceiverSideRallySpawn(direction) {
 const bounds = visiblePlayfieldBounds();
@@ -2721,7 +2798,7 @@ for (const yOffset of yOffsets) {
 const x = clamp(preferredX + xOffset, minX, maxX);
 const centerY = clamp(baseCenterY + yOffset, safeTop, safeBottom);
 const y = centerY - BALL_HALF;
-if (!ballSpawnOverlapsHazard(x, y)) {
+if (!ballSpawnIsUnsafe(x, y)) {
 return { x, y };
 }
 }
@@ -2731,11 +2808,23 @@ x: preferredX,
 y: clamp(baseCenterY, safeTop, safeBottom) - BALL_HALF
 };
 }
+function applySpawnEscapeAngle(speed, level) {
+const hasRectBarriers = Array.isArray(level.hazards) && level.hazards.some((h) => h.type === "rect");
+const minVy = speed * (hasRectBarriers ? 0.34 : 0.18);
+if (Math.abs(ball.vy) >= minVy) {
+return;
+}
+const sign = ball.vy === 0 ? (Math.random() < 0.5 ? -1 : 1) : Math.sign(ball.vy);
+const currentSpeed = Math.max(speed, ballSpeed(), minVy + 0.1);
+ball.vy = sign * minVy;
+const vxSign = ball.vx < 0 ? -1 : 1;
+ball.vx = vxSign * Math.sqrt(Math.max(0.5, currentSpeed * currentSpeed - ball.vy * ball.vy));
+}
 function setRallyBallVelocity(direction, speed, level, spawnedForReceiver) {
 if (spawnedForReceiver) {
 const receiver = direction > 0 ? right : left;
 const targetCenter = clamp(
-receiver.y + PADDLE_H / 2 + (Math.random() * 2 - 1) * 10,
+receiver.y + PADDLE_H / 2 + (Math.random() * 2 - 1) * 14,
 visiblePlayfieldBounds().top + BALL_HALF,
 visiblePlayfieldBounds().bottom - BALL_HALF
 );
@@ -2743,7 +2832,7 @@ const targetX = direction > 0 ? receiver.x : receiver.x + PADDLE_W;
 const startCenterX = ball.x + BALL_HALF;
 const dx = Math.max(24, Math.abs(targetX - startCenterX));
 const dy = targetCenter - (ball.y + BALL_HALF);
-const angle = clamp(Math.atan2(dy, dx), -0.42, 0.42);
+const angle = clamp(Math.atan2(dy, dx), -0.46, 0.46);
 ball.vx = Math.cos(angle) * speed * direction;
 ball.vy = Math.sin(angle) * speed * 1.35;
 } else {
@@ -2751,7 +2840,9 @@ const angle = Math.random() * 0.82 - 0.41;
 ball.vx = direction * Math.cos(angle) * speed;
 ball.vy = Math.sin(angle) * speed * 1.6;
 }
+applySpawnEscapeAngle(speed, level);
 normalizeBallVelocity(speed * 0.92, level.maxSpeed || 10);
+applySpawnEscapeAngle(speed, level);
 }
 function resetBall(direction = 1, waitForServe = true, spawnNearPlayer = false) {
 const level = currentLevel();
@@ -2759,10 +2850,7 @@ const speed = level.ballSpeed || BASE_BALL_SPEED;
 const useReceiverSideSpawn = spawnNearPlayer && shouldAutoServeAfterPoint();
 const spawn = useReceiverSideSpawn
 ? findReceiverSideRallySpawn(direction)
-: {
-x: W / 2 - BALL_SIZE / 2,
-y: visiblePlayfieldCenterY() - BALL_SIZE / 2
-};
+: findCenterSafeSpawn(level);
 ball.x = spawn.x;
 ball.y = spawn.y;
 ball.prevX = ball.x;
@@ -3011,7 +3099,7 @@ for (const yOffset of yOffsets) {
 const x = clamp(preferredX + xOffset, minX, maxX);
 const centerY = clamp(receiverCenterY + yOffset, safeTop, safeBottom);
 const y = centerY - BALL_HALF;
-if (!ballSpawnOverlapsHazard(x, y)) {
+if (!ballSpawnIsUnsafe(x, y)) {
 return { x, y };
 }
 }
@@ -3020,6 +3108,19 @@ return {
 x: preferredX,
 y: receiverCenterY - BALL_HALF
 };
+}
+function applyBossSpawnEscapeAngle(bossBall, speed, level = BOSS_LEVEL) {
+const hasRectBarriers = Array.isArray(level.hazards) && level.hazards.some((h) => h.type === "rect");
+const minVy = speed * (hasRectBarriers ? 0.3 : 0.16);
+if (Math.abs(bossBall.vy) >= minVy) {
+return bossBall;
+}
+const sign = bossBall.vy === 0 ? (Math.random() < 0.5 ? -1 : 1) : Math.sign(bossBall.vy);
+const currentSpeed = Math.max(speed, bossBallSpeed(bossBall), minVy + 0.1);
+bossBall.vy = sign * minVy;
+const vxSign = bossBall.vx < 0 ? -1 : 1;
+bossBall.vx = vxSign * Math.sqrt(Math.max(0.5, currentSpeed * currentSpeed - bossBall.vy * bossBall.vy));
+return bossBall;
 }
 function createBossBall(index = 0, direction = null, useReceiverSideSpawn = false) {
 const bounds = visiblePlayfieldBounds();
@@ -3052,7 +3153,7 @@ vy = Math.sin(angle) * speed * 1.28;
 vx = Math.cos(spread) * speed * dir;
 vy = Math.sin(spread) * speed * 1.28;
 }
-return {
+const bossBall = {
 x: spawn.x,
 y: spawn.y,
 prevX: spawn.x,
@@ -3061,6 +3162,7 @@ vx,
 vy,
 id: Date.now() + Math.random() + index
 };
+return applyBossSpawnEscapeAngle(bossBall, speed, BOSS_LEVEL);
 }
 function bossBallRect(bossBall) {
 return { x: bossBall.x, y: bossBall.y, w: BALL_SIZE, h: BALL_SIZE };
@@ -4168,9 +4270,13 @@ restartButton.addEventListener("click", () => {
 requestRetryLevel();
 });
 window.addEventListener("keydown", (e) => {
-const targetIsGameControl = e.target instanceof HTMLButtonElement
-|| e.target instanceof HTMLInputElement
-|| e.target instanceof HTMLSelectElement;
+const targetIsNativeFormControl = e.target instanceof HTMLInputElement
+|| e.target instanceof HTMLSelectElement
+|| e.target instanceof HTMLTextAreaElement;
+if (targetIsNativeFormControl) {
+return;
+}
+const targetIsGameControl = e.target instanceof HTMLButtonElement;
 if (targetIsGameControl && MENU_KEY_BLOCKLIST.has(e.key)) {
 e.preventDefault();
 releaseMenuKeyboardFocus();
