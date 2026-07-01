@@ -34,7 +34,7 @@ Watch the official King Pong gameplay demo:
 
 ![King Pong level failed](Screenshots/level-failed.png)
 
-## Downloads:
+## Downloads
 
 ### Android:
 
@@ -65,7 +65,7 @@ The Windows installer is currently unsigned, so Windows may show an unknown publ
 
 If you trust this official GitHub release, choose More info → Run anyway if SmartScreen appears.
 
-## Build From Source:
+## Build From Source
 
 ### Android:
 
@@ -93,7 +93,7 @@ To build the Windows installer:
 3. Run `build-installer.bat`.
 4. The installer should appear in the `Output` folder.
 
-## Source Code:
+## Source Code
 
 The main game code is located at:
 
@@ -111,7 +111,16 @@ The Windows installer project is located at:
 
 `windows/installer exe/`
 
-## License: 
+## Documentation & History
+
+This repository includes additional documentation for people who want to explore how King Pong was built and how the project evolved.
+
+* `development-history/` — prompt-history documents and reconstructed making-of notes covering the creation of King Pong, the HTML game development process, and the Android/Windows conversion work.
+* `archive/early-builds/` — early HTML prototypes that helped inspire King Pong, including the original Pong-style base and the first expanded difficulty version.
+
+These files are not required to play or build the current version of King Pong. They are included for transparency, project history, and documentation.
+
+## License 
 
 This project is released under the GNU General Public License v3.0.
 
