@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Pong-Style Arcade Game</title>
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: monospace;
+      color: white;
+      overflow: hidden;
+    }
+
+    canvas {
+      background: #000;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      width: min(96vw, 960px);
+      height: auto;
+      border: 2px solid #222;
+    }
+
+    .controls {
+      position: fixed;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      background: rgba(0, 0, 0, 0.85);
+      border: 1px solid #333;
+      color: #aaa;
+      font-size: 13px;
+      user-select: none;
+    }
+
+    .controls.hidden {
+      display: none;
+    }
+
+    .controls button {
+      background: #000;
+      color: #aaa;
+      border: 1px solid #555;
+      font-family: monospace;
+      padding: 4px 8px;
+      cursor: pointer;
+    }
+
+    .controls button:hover,
+    .controls button.active {
+      color: #fff;
+      border-color: #fff;
+    }
+
+    .slider-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    input[type="range"] {
+      width: 130px;
+      accent-color: white;
+      cursor: pointer;
+    }
+
+    .difficulty-label {
+      min-width: 52px;
+      color: #fff;
+      text-align: left;
+    }
+
+    .hint {
+      position: fixed;
+      bottom: 12px;
+      width: 100%;
+      text-align: center;
+      color: #777;
+      font-size: 14px;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="game" width="640" height="480"></canvas>
+
+  <div class="controls" id="cpuControls">
+    <span>CPU difficulty</span>
+    <button type="button" data-difficulty="0">Easy</button>
+    <button type="button" data-difficulty="1">Medium</button>
+    <button type="button" data-difficulty="2">Hard</button>
+    <label class="slider-wrap">
+      <span>Slider</span>
+      <input id="difficultySlider" type="range" min="0" max="2" step="1" value="1" />
+    </label>
+    <span class="difficulty-label" id="difficultyLabel">Medium</span>
+  </div>
+
+  <div class="hint">
+    W/S: left paddle - Up/Down: right paddle - 1: vs CPU - 2: two-player - E/M/H: CPU difficulty - Space: serve/restart - P: pause
+  </div>
+
+  <script>
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
+
+    const cpuControls = document.getElementById("cpuControls");
+    const difficultySlider = document.getElementById("difficultySlider");
+    const difficultyLabel = document.getElementById("difficultyLabel");
+    const difficultyButtons = Array.from(document.querySelectorAll("[data-difficulty]"));
+
+    const W = canvas.width;
+    const H = canvas.height;
+
+    const PADDLE_W = 8;
+    const PADDLE_H = 64;
+    const PADDLE_SPEED = 6;
+    const PADDLE_MARGIN = 32;
+
+    const BALL_SIZE = 8;
+    const BASE_BALL_SPEED = 4.2;
+    const MAX_BALL_SPEED = 9.5;
+
+    const WINNING_SCORE = 11;
+
+    const DIFFICULTIES = [
+      {
+        name: "Easy",
+        reaction: 0.035,
+        maxMove: 2.45,
+        prediction: 0.15,
+        error: 68,
+        deadZone: 20
+      },
+      {
+        name: "Medium",
+        reaction: 0.075,
+        maxMove: 4.4,
+        prediction: 0.55,
+        error: 24,
+        deadZone: 8
+      },
+      {
+        name: "Hard",
+        reaction: 0.145,
+        maxMove: 6.8,
+        prediction: 1.0,
+        error: 5,
+        deadZone: 2
+      }
+    ];
+
+    const keys = new Set();
+
+    let mode = 1; // 1 = player vs CPU, 2 = two-player
+    let difficulty = 1; // 0 = easy, 1 = medium, 2 = hard
+    let cpuErrorOffset = 0;
+    let paused = false;
+    let waitingForServe = true;
+    let gameOver = false;
+
+    const left = {
+      x: PADDLE_MARGIN,
+      y: H / 2 - PADDLE_H / 2,
+      score: 0
+    };
+
+    const right = {
+      x: W - PADDLE_MARGIN - PADDLE_W,
+      y: H / 2 - PADDLE_H / 2,
+      score: 0
+    };
+
+    const ball = {
+      x: W / 2 - BALL_SIZE / 2,
+      y: H / 2 - BALL_SIZE / 2,
+      vx: BASE_BALL_SPEED,
+      vy: 2,
+      speed: BASE_BALL_SPEED,
+      lastScored: 0
+    };
+
+    let audioCtx = null;
+
+    function beep(freq, duration, volume = 0.05) {
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+
+        osc.frequency.value = freq;
+        osc.type = "square";
+
+        gain.gain.value = volume;
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch {
+        // Audio may be blocked by the browser before user interaction.
+      }
+    }
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function lerp(a, b, amount) {
+      return a + (b - a) * amount;
+    }
+
+    function setDifficulty(index) {
+      difficulty = clamp(Math.round(Number(index)), 0, DIFFICULTIES.length - 1);
+      const active = DIFFICULTIES[difficulty];
+
+      difficultySlider.value = String(difficulty);
+      difficultyLabel.textContent = active.name;
+
+      difficultyButtons.forEach((button) => {
+        button.classList.toggle("active", Number(button.dataset.difficulty) === difficulty);
+      });
+
+      chooseCpuError();
+    }
+
+    function updateControlsVisibility() {
+      cpuControls.classList.toggle("hidden", mode !== 1);
+    }
+
+    function chooseCpuError() {
+      const cfg = DIFFICULTIES[difficulty];
+      cpuErrorOffset = (Math.random() * 2 - 1) * cfg.error;
+    }
+
+    function resetPaddles() {
+      left.y = H / 2 - PADDLE_H / 2;
+      right.y = H / 2 - PADDLE_H / 2;
+    }
+
+    function resetBall(direction = 1) {
+      ball.x = W / 2 - BALL_SIZE / 2;
+      ball.y = H / 2 - BALL_SIZE / 2;
+      ball.speed = BASE_BALL_SPEED;
+      ball.vx = direction * BASE_BALL_SPEED;
+
+      const angle = (Math.random() * 0.8 - 0.4);
+      ball.vy = Math.sin(angle) * BASE_BALL_SPEED * 1.6;
+
+      chooseCpuError();
+      waitingForServe = true;
+    }
+
+    function newGame() {
+      left.score = 0;
+      right.score = 0;
+      gameOver = false;
+      paused = false;
+      resetPaddles();
+      resetBall(Math.random() < 0.5 ? -1 : 1);
+      updateControlsVisibility();
+    }
+
+    function serve() {
+      if (gameOver) {
+        newGame();
+      } else {
+        waitingForServe = false;
+        beep(440, 0.04);
+      }
+    }
+
+    function rectsOverlap(a, b) {
+      return (
+        a.x < b.x + b.w &&
+        a.x + a.w > b.x &&
+        a.y < b.y + b.h &&
+        a.y + a.h > b.y
+      );
+    }
+
+    function hitPaddle(paddle, direction) {
+      const paddleCenter = paddle.y + PADDLE_H / 2;
+      const ballCenter = ball.y + BALL_SIZE / 2;
+      const relative = (ballCenter - paddleCenter) / (PADDLE_H / 2);
+
+      const bounceAngle = relative * 0.95;
+      ball.speed = Math.min(ball.speed + 0.35, MAX_BALL_SPEED);
+
+      ball.vx = direction * Math.cos(bounceAngle) * ball.speed;
+      ball.vy = Math.sin(bounceAngle) * ball.speed;
+
+      if (direction > 0) {
+        ball.x = paddle.x + PADDLE_W;
+        chooseCpuError();
+      } else {
+        ball.x = paddle.x - BALL_SIZE;
+      }
+
+      beep(180 + Math.abs(relative) * 220, 0.035);
+    }
+
+    function updatePlayerPaddles() {
+      if (keys.has("w") || keys.has("W")) {
+        left.y -= PADDLE_SPEED;
+      }
+
+      if (keys.has("s") || keys.has("S")) {
+        left.y += PADDLE_SPEED;
+      }
+
+      if (mode === 2) {
+        if (keys.has("ArrowUp")) {
+          right.y -= PADDLE_SPEED;
+        }
+
+        if (keys.has("ArrowDown")) {
+          right.y += PADDLE_SPEED;
+        }
+      }
+
+      left.y = clamp(left.y, 0, H - PADDLE_H);
+      right.y = clamp(right.y, 0, H - PADDLE_H);
+    }
+
+    function predictBallCenterAtRightPaddle() {
+      const centerX = ball.x + BALL_SIZE / 2;
+      const centerY = ball.y + BALL_SIZE / 2;
+
+      if (ball.vx <= 0) {
+        return centerY;
+      }
+
+      const targetX = right.x;
+      const timeToPaddle = Math.max(0, (targetX - centerX) / ball.vx);
+      const rawY = centerY + ball.vy * timeToPaddle;
+
+      const top = BALL_SIZE / 2;
+      const bottom = H - BALL_SIZE / 2;
+      const range = bottom - top;
+      const period = range * 2;
+      let folded = (rawY - top) % period;
+
+      if (folded < 0) {
+        folded += period;
+      }
+
+      if (folded > range) {
+        folded = period - folded;
+      }
+
+      return top + folded;
+    }
+
+    function updateCPU() {
+      const cfg = DIFFICULTIES[difficulty];
+      const ballCenter = ball.y + BALL_SIZE / 2;
+      const predictedCenter = predictBallCenterAtRightPaddle();
+
+      let targetCenter;
+
+      if (ball.vx > 0 && !waitingForServe) {
+        targetCenter = lerp(ballCenter, predictedCenter, cfg.prediction) + cpuErrorOffset;
+      } else {
+        targetCenter = H / 2;
+      }
+
+      const targetY = clamp(targetCenter - PADDLE_H / 2, 0, H - PADDLE_H);
+      const delta = targetY - right.y;
+
+      if (Math.abs(delta) > cfg.deadZone) {
+        const easedMove = delta * cfg.reaction;
+        right.y += clamp(easedMove, -cfg.maxMove, cfg.maxMove);
+      }
+
+      right.y = clamp(right.y, 0, H - PADDLE_H);
+    }
+
+    function updateBall() {
+      if (waitingForServe || gameOver) return;
+
+      ball.x += ball.vx;
+      ball.y += ball.vy;
+
+      if (ball.y <= 0) {
+        ball.y = 0;
+        ball.vy *= -1;
+        beep(300, 0.025);
+      }
+
+      if (ball.y + BALL_SIZE >= H) {
+        ball.y = H - BALL_SIZE;
+        ball.vy *= -1;
+        beep(300, 0.025);
+      }
+
+      const ballRect = {
+        x: ball.x,
+        y: ball.y,
+        w: BALL_SIZE,
+        h: BALL_SIZE
+      };
+
+      const leftRect = {
+        x: left.x,
+        y: left.y,
+        w: PADDLE_W,
+        h: PADDLE_H
+      };
+
+      const rightRect = {
+        x: right.x,
+        y: right.y,
+        w: PADDLE_W,
+        h: PADDLE_H
+      };
+
+      if (ball.vx < 0 && rectsOverlap(ballRect, leftRect)) {
+        hitPaddle(left, 1);
+      }
+
+      if (ball.vx > 0 && rectsOverlap(ballRect, rightRect)) {
+        hitPaddle(right, -1);
+      }
+
+      if (ball.x + BALL_SIZE < 0) {
+        right.score++;
+        ball.lastScored = 1;
+        beep(110, 0.18);
+        checkWin();
+        resetBall(-1);
+      }
+
+      if (ball.x > W) {
+        left.score++;
+        ball.lastScored = -1;
+        beep(110, 0.18);
+        checkWin();
+        resetBall(1);
+      }
+    }
+
+    function checkWin() {
+      if (left.score >= WINNING_SCORE || right.score >= WINNING_SCORE) {
+        gameOver = true;
+        waitingForServe = true;
+      }
+    }
+
+    function update() {
+      if (paused) return;
+
+      updatePlayerPaddles();
+
+      if (mode === 1) {
+        updateCPU();
+      }
+
+      updateBall();
+    }
+
+    function drawRect(x, y, w, h) {
+      ctx.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h));
+    }
+
+    function drawCenterLine() {
+      ctx.fillStyle = "#fff";
+
+      const dashH = 16;
+      const gap = 12;
+      const x = W / 2 - 2;
+
+      for (let y = 0; y < H; y += dashH + gap) {
+        drawRect(x, y, 4, dashH);
+      }
+    }
+
+    const SEGMENTS = {
+      0: ["a", "b", "c", "d", "e", "f"],
+      1: ["b", "c"],
+      2: ["a", "b", "g", "e", "d"],
+      3: ["a", "b", "c", "d", "g"],
+      4: ["f", "g", "b", "c"],
+      5: ["a", "f", "g", "c", "d"],
+      6: ["a", "f", "e", "d", "c", "g"],
+      7: ["a", "b", "c"],
+      8: ["a", "b", "c", "d", "e", "f", "g"],
+      9: ["a", "b", "c", "d", "f", "g"]
+    };
+
+    function drawDigit(num, x, y, scale = 4) {
+      const active = SEGMENTS[num];
+      const t = scale;
+      const w = 8 * scale;
+      const h = 14 * scale;
+
+      const seg = {
+        a: [x + t, y, w, t],
+        b: [x + w + t, y + t, t, h / 2 - t],
+        c: [x + w + t, y + h / 2 + t, t, h / 2 - t],
+        d: [x + t, y + h, w, t],
+        e: [x, y + h / 2 + t, t, h / 2 - t],
+        f: [x, y + t, t, h / 2 - t],
+        g: [x + t, y + h / 2, w, t]
+      };
+
+      for (const s of active) {
+        drawRect(...seg[s]);
+      }
+    }
+
+    function drawScore(score, x, y) {
+      const chars = String(score).split("").map(Number);
+      const scale = 4;
+      const digitW = 10 * scale;
+      const spacing = 8;
+
+      chars.forEach((digit, i) => {
+        drawDigit(digit, x + i * (digitW + spacing), y, scale);
+      });
+    }
+
+    function drawText(text, x, y, size = 16, align = "center") {
+      ctx.font = `${size}px monospace`;
+      ctx.textAlign = align;
+      ctx.textBaseline = "middle";
+      ctx.fillText(text, x, y);
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = "#000";
+      ctx.fillRect(0, 0, W, H);
+
+      ctx.fillStyle = "#fff";
+
+      drawCenterLine();
+
+      drawScore(left.score, W / 2 - 112, 36);
+      drawScore(right.score, W / 2 + 72, 36);
+
+      drawRect(left.x, left.y, PADDLE_W, PADDLE_H);
+      drawRect(right.x, right.y, PADDLE_W, PADDLE_H);
+      drawRect(ball.x, ball.y, BALL_SIZE, BALL_SIZE);
+
+      if (waitingForServe && !gameOver) {
+        drawText("SPACE TO SERVE", W / 2, H - 42, 16);
+      }
+
+      if (gameOver) {
+        const winner = left.score > right.score ? "LEFT PLAYER WINS" : "RIGHT PLAYER WINS";
+        drawText(winner, W / 2, H / 2 - 20, 20);
+        drawText("SPACE TO PLAY AGAIN", W / 2, H / 2 + 18, 16);
+      }
+
+      if (paused) {
+        drawText("PAUSED", W / 2, H / 2, 24);
+      }
+
+      const modeText = mode === 1
+        ? `1 PLAYER - CPU ${DIFFICULTIES[difficulty].name.toUpperCase()}`
+        : "2 PLAYERS";
+
+      drawText(modeText, W / 2, 18, 12);
+    }
+
+    function loop() {
+      update();
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    difficultyButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        setDifficulty(button.dataset.difficulty);
+      });
+    });
+
+    difficultySlider.addEventListener("input", () => {
+      setDifficulty(difficultySlider.value);
+    });
+
+    window.addEventListener("keydown", (e) => {
+      keys.add(e.key);
+
+      if (e.key === " ") {
+        e.preventDefault();
+        serve();
+      }
+
+      if (e.key === "p" || e.key === "P") {
+        paused = !paused;
+      }
+
+      if (e.key === "1") {
+        mode = 1;
+        newGame();
+      }
+
+      if (e.key === "2") {
+        mode = 2;
+        newGame();
+      }
+
+      if (e.key === "e" || e.key === "E") {
+        setDifficulty(0);
+      }
+
+      if (e.key === "m" || e.key === "M") {
+        setDifficulty(1);
+      }
+
+      if (e.key === "h" || e.key === "H") {
+        setDifficulty(2);
+      }
+    });
+
+    window.addEventListener("keyup", (e) => {
+      keys.delete(e.key);
+    });
+
+    setDifficulty(1);
+    newGame();
+    loop();
+  </script>
+</body>
+</html>
