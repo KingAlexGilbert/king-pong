@@ -48,8 +48,8 @@ Save data note: If you already have King Pong installed and want to keep your sa
 
 Download one of the Windows versions from Releases:
 
-- `KingPongSetup.exe` - recommended Windows installer
-- `KingPong-WebView2-Portable.zip` - portable Windows version
+- `KingPongSetup.v1.0.3.exe` - recommended Windows installer
+- `King.Pong.v1.0.3.Portable.zip` - portable Windows version
 
 For the portable version, extract the zip folder first, then run the King Pong EXE inside it.
 
