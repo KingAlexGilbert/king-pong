@@ -1,8 +1,19 @@
-<resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
-    <style name="Base.Theme.KingPong" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your light theme here. -->
-        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        Lightweight King Pong theme.
+        This intentionally uses a built-in Android platform theme instead of Material3,
+        so the project does not need the com.google.android.material dependency.
+    -->
+    <style name="Base.Theme.KingPong" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowBackground">@android:color/black</item>
+        <item name="android:statusBarColor">@android:color/black</item>
+        <item name="android:navigationBarColor">@android:color/black</item>
+        <item name="android:fontFamily">sans</item>
+        <item name="android:colorAccent">#60D8FF</item>
     </style>
 
     <style name="Theme.KingPong" parent="Base.Theme.KingPong" />

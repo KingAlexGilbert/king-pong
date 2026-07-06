@@ -1,40 +1,127 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" /><title>King Pong HD</title> <style>:root{--accent:#60d8ff;--panel:rgba(0,0,0,0.82);--muted:#8a8a8a}html,body{margin:0;height:100%;background:radial-gradient(circle at center,#111 0%,#050505 44%,#000 100%);display:flex;align-items:center;justify-content:center;font-family:monospace;color:white;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}canvas{background:#000;image-rendering:pixelated;image-rendering:crisp-edges;display:block;touch-action:none;width:min(96vw,960px,calc(128vh - 8px));height:auto;max-width:none;max-height:none;border:2px solid #222;box-sizing:border-box;box-shadow:0 0 24px rgba(255,255,255,0.08),0 0 42px color-mix(in srgb,var(--accent) 24%,transparent)}@supports (height:100dvh){canvas{width:min(96vw,960px,calc(128dvh - 8px));max-height:none}}.menu-stack{position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:15;display:flex;flex-direction:column;align-items:center;gap:6px;width:min(96vw,980px);max-width:calc(100vw - 150px);box-sizing:border-box;pointer-events:none;transition:opacity 0.18s ease,transform 0.18s ease,visibility 0.18s ease}.controls{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px;padding:8px 10px;background:var(--panel);border:1px solid #333;color:#aaa;font-size:13px;user-select:none;width:fit-content;max-width:100%;box-sizing:border-box;white-space:normal;pointer-events:auto;transition:opacity 0.18s ease,transform 0.18s ease,visibility 0.18s ease}.menu-toggle{position:fixed;top:10px;left:10px;z-index:20;background:var(--panel);color:#d4d4d4;border:1px solid #444;font-family:monospace;font-size:12px;padding:6px 8px;cursor:pointer;user-select:none;transition:opacity 0.18s ease,border-color 0.18s ease,box-shadow 0.18s ease}.menu-toggle:hover,.menu-toggle:focus-visible{color:#fff;border-color:var(--accent);box-shadow:0 0 10px color-mix(in srgb,var(--accent) 35%,transparent);opacity:1}body.menus-hidden .menu-toggle{opacity:0.55}.title-jump-toggle{position:fixed;top:44px;left:10px;z-index:55;background:var(--panel);color:#d4d4d4;border:1px solid #444;font-family:monospace;font-size:12px;padding:6px 8px;cursor:pointer;user-select:none;transition:opacity 0.18s ease,border-color 0.18s ease,box-shadow 0.18s ease}.title-jump-toggle:hover,.title-jump-toggle:focus-visible{color:#fff;border-color:var(--accent);box-shadow:0 0 10px color-mix(in srgb,var(--accent) 35%,transparent);opacity:1}.play-info-toggle{position:fixed;top:10px;right:10px;z-index:55;background:var(--panel);color:#d4d4d4;border:1px solid #444;font-family:monospace;font-size:12px;padding:6px 8px;cursor:pointer;user-select:none;max-width:calc(100vw - 120px);white-space:normal;transition:opacity 0.18s ease,border-color 0.18s ease,box-shadow 0.18s ease}.play-info-toggle:hover,.play-info-toggle:focus-visible{color:#fff;border-color:var(--accent);box-shadow:0 0 10px color-mix(in srgb,var(--accent) 35%,transparent);opacity:1}body.play-info-hidden .play-info-toggle{opacity:0.55}body.menus-hidden .menu-stack,body.menus-hidden .hint{opacity:0;visibility:hidden;pointer-events:none}body.menus-hidden .menu-stack{transform:translate(-50%,-130%)}body.menus-hidden .hint{transform:translate(-50%,160%)}.controls button{background:#000;color:#aaa;border:1px solid #555;font-family:monospace;padding:4px 8px;cursor:pointer}.music-volume-control{display:flex;align-items:center;gap:6px;padding:3px 6px;border:1px solid #333;background:rgba(0,0,0,0.55);color:#aaa}.music-volume-control input[type="range"]{width:110px;accent-color:white;cursor:pointer}.music-volume-control .value-pill{min-width:34px}.controls button:hover,.controls button.active{color:#fff;border-color:var(--accent);box-shadow:0 0 10px color-mix(in srgb,var(--accent) 45%,transparent)}.custom-panel{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px 10px;padding:8px 10px;background:var(--panel);border:1px solid #333;color:#aaa;font-size:12px;user-select:none;width:fit-content;max-width:100%;box-sizing:border-box;pointer-events:auto;transition:opacity 0.18s ease,transform 0.18s ease,visibility 0.18s ease}.custom-panel.hidden{display:none}body.two-player-menus .status{display:none}body.two-player-menus .custom-readout{display:none}.cpu-custom-control.mode-hidden{display:none !important}.custom-panel label,.custom-readout{display:flex;align-items:center;gap:6px}.custom-readout{color:#fff;min-width:280px;justify-content:center}.custom-panel select,.custom-panel input[type="range"],.custom-panel button{font-family:monospace}.custom-panel select,.custom-panel input,.lan-panel input,.lan-panel textarea{touch-action:manipulation;user-select:auto;-webkit-user-select:auto}.custom-panel select{max-width:min(62vw,360px);background:#000;color:#fff;border:1px solid #555;padding:4px 6px}.custom-panel input[type="range"]{width:120px;accent-color:white;cursor:pointer}.custom-panel button{background:#000;color:#aaa;border:1px solid #555;padding:4px 8px;cursor:pointer}.custom-panel button:hover,.custom-panel button:focus-visible{color:#fff;border-color:var(--accent);box-shadow:0 0 10px color-mix(in srgb,var(--accent) 45%,transparent)}.lan-panel{display:flex;flex-direction:column;gap:7px;padding:8px 10px;background:var(--panel);border:1px solid #333;color:#aaa;font-size:12px;user-select:none;width:min(96vw,880px);max-width:100%;box-sizing:border-box;pointer-events:auto;transition:opacity 0.18s ease,transform 0.18s ease,visibility 0.18s ease}.lan-panel.hidden{display:none}.lan-row{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px}.lan-title-row{color:#fff}.lan-safe-note{color:#8f8f8f;font-size:11px;text-align:center}.lan-status-pill{display:inline-block;min-width:120px;padding:3px 6px;color:#fff;border:1px solid #444;background:rgba(0,0,0,0.55);text-align:center}.lan-code-label{display:flex;align-items:center;gap:6px}.lan-code-label input{width:72px;text-transform:uppercase;text-align:center;background:#000;color:#fff;border:1px solid #555;font-family:monospace;padding:4px 6px}.lan-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.lan-grid label{display:flex;flex-direction:column;gap:4px;min-width:0;text-align:left}.lan-grid textarea{width:100%;min-height:52px;resize:vertical;box-sizing:border-box;background:#000;color:#fff;border:1px solid #555;font-family:monospace;font-size:10px;padding:5px}.lan-panel button{background:#000;color:#aaa;border:1px solid #555;font-family:monospace;padding:4px 8px;cursor:pointer}.lan-panel button:hover,.lan-panel button:focus-visible{color:#fff;border-color:var(--accent);box-shadow:0 0 10px color-mix(in srgb,var(--accent) 45%,transparent)}body.lan-connected .lan-status-pill{border-color:var(--accent);box-shadow:0 0 10px color-mix(in srgb,var(--accent) 35%,transparent)}.value-pill{display:inline-block;min-width:42px;color:#fff;text-align:right}.status{padding:6px 10px;background:var(--panel);border:1px solid #252525;color:#d4d4d4;font-size:12px;line-height:1.35;text-align:center;user-select:none;pointer-events:none;width:fit-content;max-width:100%;box-sizing:border-box;white-space:normal;transition:opacity 0.18s ease,transform 0.18s ease,visibility 0.18s ease}.hint{position:fixed;left:50%;bottom:10px;transform:translateX(-50%);width:fit-content;max-width:calc(100vw - 18px);text-align:center;color:#999;font-size:12px;line-height:1.35;pointer-events:none;padding:6px 10px;background:rgba(0,0,0,0.68);border:1px solid #222;box-sizing:border-box;transition:opacity 0.18s ease,transform 0.18s ease,visibility 0.18s ease}.title-screen{position:fixed;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;padding:18px;box-sizing:border-box;background:radial-gradient(circle at center,rgba(12,18,24,0.94) 0%,rgba(0,0,0,0.96) 58%,#000 100%);opacity:0;visibility:hidden;pointer-events:none;transition:opacity 0.18s ease,visibility 0.18s ease}body.title-active .title-screen{opacity:1;visibility:visible;pointer-events:auto}body.title-active .menu-toggle,body.title-active .menu-stack,body.title-active .hint{opacity:0;visibility:hidden;pointer-events:none}.title-card{width:min(92vw,620px);max-height:calc(100vh - 36px);overflow:auto;padding:22px;box-sizing:border-box;background:rgba(0,0,0,0.9);border:2px solid var(--accent);box-shadow:0 0 24px color-mix(in srgb,var(--accent) 35%,transparent);text-align:center}.title-card h1{margin:0 0 8px;font-size:clamp(24px,6vw,42px);letter-spacing:3px;color:#fff;text-shadow:0 0 12px var(--accent)}.title-subtitle,.slot-help,.title-message{color:#aaa;font-size:13px;line-height:1.45;margin:8px 0}.save-slot-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:16px 0 12px}.save-slot{min-height:82px;background:#050505;color:#aaa;border:1px solid #555;font-family:monospace;cursor:pointer;padding:8px;text-align:left;display:flex;flex-direction:column;gap:5px}.save-slot:hover,.save-slot.active,.save-slot:focus-visible{color:#fff;border-color:var(--accent);box-shadow:0 0 12px color-mix(in srgb,var(--accent) 45%,transparent);outline:none}.slot-name{font-size:14px;color:#fff}.slot-detail,.slot-progress{font-size:11px;line-height:1.35;color:#aaa}.title-actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:10px;margin-top:14px}.secret-boss-button{color:#ffd9ff;border-color:#9d4dff;text-shadow:0 0 10px #b14dff}.secret-boss-button[hidden]{display:none}.screen-fade{position:fixed;inset:0;z-index:90;background:#000;opacity:0;visibility:hidden;pointer-events:none;transition:opacity 0.78s ease,visibility 0.78s ease}.screen-fade.active{opacity:1;visibility:visible;pointer-events:auto}.ending-credits{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at center,rgba(18,12,35,0.4) 0%,rgba(0,0,0,0.96) 55%,#000 100%);color:#fff;opacity:0;visibility:hidden;pointer-events:none;transition:opacity 0.7s ease,visibility 0.7s ease}.ending-credits.active{opacity:1;visibility:visible;pointer-events:auto}.ending-credit-card{text-align:center;padding:28px 34px;border:2px solid #fff;background:rgba(0,0,0,0.68);box-shadow:0 0 28px rgba(255,255,255,0.35),0 0 54px rgba(177,77,255,0.34);animation:creditHover 2.6s ease-in-out infinite}.ending-credit-thanks{font-size:clamp(22px,6vw,44px);letter-spacing:3px;text-shadow:0 0 14px #fff,0 0 24px #b14dff;margin-bottom:14px}.ending-credit-byline{font-size:clamp(16px,4vw,28px);color:#d9c8ff;text-shadow:0 0 12px #9d4dff}@keyframes creditHover{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-10px) scale(1.025)}}.title-actions button,.erase-save-button{background:#000;color:#ddd;border:1px solid #555;font-family:monospace;cursor:pointer;padding:10px 12px}.title-actions button{min-height:58px;font-size:18px}.title-actions button:hover,.title-actions button:focus-visible,.erase-save-button:hover,.erase-save-button:focus-visible{color:#fff;border-color:var(--accent);box-shadow:0 0 12px color-mix(in srgb,var(--accent) 45%,transparent);outline:none}.title-actions button:disabled,.custom-panel button:disabled,.custom-panel select:disabled,.controls button:disabled{opacity:0.45;cursor:not-allowed;box-shadow:none;border-color:#333;color:#777}.erase-save-button{margin-top:12px;font-size:12px;padding:6px 10px}.save-badge{color:var(--accent);font-size:12px}@media (max-width:760px){.menu-stack{top:6px;gap:5px;max-width:calc(100vw - 120px)}.controls{gap:4px;font-size:11px;padding:6px}.controls button{padding:3px 5px}.music-volume-control{gap:4px;padding:2px 4px}.music-volume-control input[type="range"]{width:84px}.menu-toggle{top:6px;left:6px;font-size:11px;padding:5px 6px}.title-jump-toggle{top:38px;left:6px;font-size:11px;padding:5px 6px}.play-info-toggle{top:6px;right:6px;left:auto;font-size:11px;padding:5px 6px;max-width:calc(100vw - 110px)}.status{font-size:11px}.custom-panel{font-size:11px;gap:6px;padding:6px}.custom-panel select{max-width:82vw}.lan-grid{grid-template-columns:1fr}.custom-readout{min-width:0;width:100%}.hint{bottom:8px;font-size:11px}.save-slot-list,.title-actions{grid-template-columns:1fr}.title-card{padding:16px}}@media (max-width:560px){.menu-stack{top:42px;max-width:calc(100vw - 12px)}}
-@media (orientation:landscape) and (max-height:620px){
-  .menu-toggle,.title-jump-toggle,.play-info-toggle{font-size:clamp(11px,1.8vw,14px);padding:5px 8px;line-height:1.2}
-  .menu-toggle{top:calc(env(safe-area-inset-top,0px) + 8px);left:calc(env(safe-area-inset-left,0px) + 8px)}
-  .title-jump-toggle{top:calc(env(safe-area-inset-top,0px) + 48px);left:calc(env(safe-area-inset-left,0px) + 8px)}
-  .play-info-toggle{top:calc(env(safe-area-inset-top,0px) + 8px);right:calc(env(safe-area-inset-right,0px) + 8px);max-width:min(24vw,190px)}
-  .menu-stack{top:calc(env(safe-area-inset-top,0px) + 8px);width:min(58vw,calc(100vw - 360px));max-width:calc(100vw - 360px);gap:5px}
-  .controls{font-size:clamp(10px,1.55vw,13px);gap:6px;padding:6px 8px;max-width:100%;justify-content:center}
-  .controls button,.custom-panel button,.lan-panel button{padding:4px 7px}
-  .music-volume-control{gap:5px;padding:3px 5px}
-  .music-volume-control input[type="range"]{width:min(18vw,130px)}
-  .status{font-size:clamp(10px,1.45vw,12px);line-height:1.25;max-width:100%;padding:5px 8px}
-  .custom-panel,.lan-panel{font-size:clamp(10px,1.45vw,12px);max-width:100%}
-  .custom-readout{min-width:0;width:100%}
-  .hint{font-size:clamp(10px,1.45vw,12px);max-width:min(72vw,900px);bottom:calc(env(safe-area-inset-bottom,0px) + 8px)}
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" /><title>King Pong HD</title> <style>:root{--accent:#60d8ff;--panel:rgba(0,0,0,0.82)}
+html,body{margin:0;height:100%;background:radial-gradient(circle at center,#111 0%,#050505 44%,#000 100%);display:flex;align-items:center;justify-content:center;font-family:monospace;color:white;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
+canvas{background:#000;image-rendering:pixelated;image-rendering:crisp-edges;display:block;touch-action:none;width:min(96vw,960px,calc(128vh - 8px));height:auto;max-width:none;max-height:none;border:2px solid #222;box-sizing:border-box;box-shadow:0 0 24px rgba(255,255,255,0.08),0 0 42px color-mix(in srgb,var(--accent) 24%,transparent)}
+@supports (height:100dvh){canvas{width:min(96vw,960px,calc(128dvh - 8px));max-height:none}
 }
-@media (orientation:landscape) and (max-width:780px){
-  .menu-stack{width:calc(100vw - 320px);max-width:calc(100vw - 320px)}
-  .play-info-toggle{max-width:150px}
+.menu-stack{position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:15;display:flex;flex-direction:column;align-items:center;gap:6px;width:min(96vw,980px);max-width:calc(100vw - 150px);box-sizing:border-box;pointer-events:none;transition:opacity 0.18s ease,transform 0.18s ease,visibility 0.18s ease}
+.controls{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px;padding:8px 10px;background:var(--panel);border:1px solid #333;color:#aaa;font-size:13px;user-select:none;width:fit-content;max-width:100%;box-sizing:border-box;white-space:normal;pointer-events:auto;transition:opacity 0.18s ease,transform 0.18s ease,visibility 0.18s ease}
+.menu-toggle{position:fixed;top:10px;left:10px;z-index:20;background:var(--panel);color:#d4d4d4;border:1px solid #444;font-family:monospace;font-size:12px;padding:6px 8px;cursor:pointer;user-select:none;transition:opacity 0.18s ease,border-color 0.18s ease,box-shadow 0.18s ease}
+.menu-toggle:hover,.menu-toggle:focus-visible{color:#fff;border-color:var(--accent);box-shadow:0 0 10px color-mix(in srgb,var(--accent) 35%,transparent);opacity:1}
+body.menus-hidden .menu-toggle{opacity:0.55}
+.title-jump-toggle{position:fixed;top:44px;left:10px;z-index:55;background:var(--panel);color:#d4d4d4;border:1px solid #444;font-family:monospace;font-size:12px;padding:6px 8px;cursor:pointer;user-select:none;transition:opacity 0.18s ease,border-color 0.18s ease,box-shadow 0.18s ease}
+.title-jump-toggle:hover,.title-jump-toggle:focus-visible{color:#fff;border-color:var(--accent);box-shadow:0 0 10px color-mix(in srgb,var(--accent) 35%,transparent);opacity:1}
+.play-info-toggle{position:fixed;top:10px;right:10px;z-index:55;background:var(--panel);color:#d4d4d4;border:1px solid #444;font-family:monospace;font-size:12px;padding:6px 8px;cursor:pointer;user-select:none;max-width:calc(100vw - 120px);white-space:normal;transition:opacity 0.18s ease,border-color 0.18s ease,box-shadow 0.18s ease}
+.play-info-toggle:hover,.play-info-toggle:focus-visible{color:#fff;border-color:var(--accent);box-shadow:0 0 10px color-mix(in srgb,var(--accent) 35%,transparent);opacity:1}
+body.play-info-hidden .play-info-toggle{opacity:0.55}
+body.menus-hidden .menu-stack,body.menus-hidden .hint{opacity:0;visibility:hidden;pointer-events:none}
+body.menus-hidden .menu-stack{transform:translate(-50%,-130%)}
+body.menus-hidden .hint{transform:translate(-50%,160%)}
+.controls button{background:#000;color:#aaa;border:1px solid #555;font-family:monospace;padding:4px 8px;cursor:pointer}
+.music-volume-control{display:flex;align-items:center;gap:6px;padding:3px 6px;border:1px solid #333;background:rgba(0,0,0,0.55);color:#aaa}
+.music-volume-control input[type="range"]{width:110px;accent-color:white;cursor:pointer}
+.music-volume-control .value-pill{min-width:34px}
+.controls button:hover,.controls button.active{color:#fff;border-color:var(--accent);box-shadow:0 0 10px color-mix(in srgb,var(--accent) 45%,transparent)}
+.custom-panel{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px 10px;padding:8px 10px;background:var(--panel);border:1px solid #333;color:#aaa;font-size:12px;user-select:none;width:fit-content;max-width:100%;box-sizing:border-box;pointer-events:auto;transition:opacity 0.18s ease,transform 0.18s ease,visibility 0.18s ease}
+.custom-panel.hidden{display:none}
+body.two-player-menus .status{display:none}
+body.two-player-menus .custom-readout{display:none}
+.cpu-custom-control.mode-hidden{display:none !important}
+.custom-panel label,.custom-readout{display:flex;align-items:center;gap:6px}
+.custom-readout{color:#fff;min-width:280px;justify-content:center}
+.custom-panel select,.custom-panel input[type="range"],.custom-panel button{font-family:monospace}
+.custom-panel select,.custom-panel input,.lan-panel input,.lan-panel textarea{touch-action:manipulation;user-select:auto;-webkit-user-select:auto}
+.custom-panel select{max-width:min(62vw,360px);background:#000;color:#fff;border:1px solid #555;padding:4px 6px}
+.custom-panel input[type="range"]{width:120px;accent-color:white;cursor:pointer}
+.custom-panel button{background:#000;color:#aaa;border:1px solid #555;padding:4px 8px;cursor:pointer}
+.custom-panel button:hover,.custom-panel button:focus-visible{color:#fff;border-color:var(--accent);box-shadow:0 0 10px color-mix(in srgb,var(--accent) 45%,transparent)}
+.lan-panel{display:flex;flex-direction:column;gap:7px;padding:8px 10px;background:var(--panel);border:1px solid #333;color:#aaa;font-size:12px;user-select:none;width:min(96vw,880px);max-width:100%;box-sizing:border-box;pointer-events:auto;transition:opacity 0.18s ease,transform 0.18s ease,visibility 0.18s ease}
+.lan-panel.hidden{display:none}
+.lan-row{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px}
+.lan-title-row{color:#fff}
+.lan-safe-note{color:#8f8f8f;font-size:11px;text-align:center}
+.lan-status-pill{display:inline-block;min-width:120px;padding:3px 6px;color:#fff;border:1px solid #444;background:rgba(0,0,0,0.55);text-align:center}
+.lan-code-label{display:flex;align-items:center;gap:6px}
+.lan-code-label input{width:72px;text-transform:uppercase;text-align:center;background:#000;color:#fff;border:1px solid #555;font-family:monospace;padding:4px 6px}
+.lan-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.lan-grid label{display:flex;flex-direction:column;gap:4px;min-width:0;text-align:left}
+.lan-grid textarea{width:100%;min-height:52px;resize:vertical;box-sizing:border-box;background:#000;color:#fff;border:1px solid #555;font-family:monospace;font-size:10px;padding:5px}
+.lan-panel button{background:#000;color:#aaa;border:1px solid #555;font-family:monospace;padding:4px 8px;cursor:pointer}
+.lan-panel button:hover,.lan-panel button:focus-visible{color:#fff;border-color:var(--accent);box-shadow:0 0 10px color-mix(in srgb,var(--accent) 45%,transparent)}
+body.lan-connected .lan-status-pill{border-color:var(--accent);box-shadow:0 0 10px color-mix(in srgb,var(--accent) 35%,transparent)}
+.value-pill{display:inline-block;min-width:42px;color:#fff;text-align:right}
+.status{padding:6px 10px;background:var(--panel);border:1px solid #252525;color:#d4d4d4;font-size:12px;line-height:1.35;text-align:center;user-select:none;pointer-events:none;width:fit-content;max-width:100%;box-sizing:border-box;white-space:normal;transition:opacity 0.18s ease,transform 0.18s ease,visibility 0.18s ease}
+.hint{position:fixed;left:50%;bottom:10px;transform:translateX(-50%);width:fit-content;max-width:calc(100vw - 18px);text-align:center;color:#999;font-size:12px;line-height:1.35;pointer-events:none;padding:6px 10px;background:rgba(0,0,0,0.68);border:1px solid #222;box-sizing:border-box;transition:opacity 0.18s ease,transform 0.18s ease,visibility 0.18s ease}
+.title-screen{position:fixed;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;padding:18px;box-sizing:border-box;background:radial-gradient(circle at center,rgba(12,18,24,0.94) 0%,rgba(0,0,0,0.96) 58%,#000 100%);opacity:0;visibility:hidden;pointer-events:none;transition:opacity 0.18s ease,visibility 0.18s ease}
+body.title-active .title-screen{opacity:1;visibility:visible;pointer-events:auto}
+body.title-active .menu-toggle,body.title-active .menu-stack,body.title-active .hint,body.title-active .title-jump-toggle,body.title-active .play-info-toggle{opacity:0;visibility:hidden;pointer-events:none}
+.title-card{width:min(92vw,620px);max-height:calc(100vh - 36px);overflow:auto;padding:22px;box-sizing:border-box;background:rgba(0,0,0,0.9);border:2px solid var(--accent);box-shadow:0 0 24px color-mix(in srgb,var(--accent) 35%,transparent);text-align:center}
+.title-card h1{margin:0 0 8px;font-size:clamp(24px,6vw,42px);letter-spacing:3px;color:#fff;text-shadow:0 0 12px var(--accent)}
+.title-subtitle,.slot-help,.title-message{color:#aaa;font-size:13px;line-height:1.45;margin:8px 0}
+.save-slot-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:16px 0 12px}
+.save-slot{min-height:82px;background:#050505;color:#aaa;border:1px solid #555;font-family:monospace;cursor:pointer;padding:8px;text-align:left;display:flex;flex-direction:column;gap:5px}
+.save-slot:hover,.save-slot.active,.save-slot:focus-visible{color:#fff;border-color:var(--accent);box-shadow:0 0 12px color-mix(in srgb,var(--accent) 45%,transparent);outline:none}
+.slot-name{font-size:14px;color:#fff}
+.slot-detail,.slot-progress{font-size:11px;line-height:1.35;color:#aaa}
+.title-actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:10px;margin-top:14px}
+.secret-boss-button{color:#ffd9ff;border-color:#9d4dff;text-shadow:0 0 10px #b14dff}
+.secret-boss-button[hidden]{display:none}
+.screen-fade{position:fixed;inset:0;z-index:90;background:#000;opacity:0;visibility:hidden;pointer-events:none;transition:opacity 0.78s ease,visibility 0.78s ease}
+.screen-fade.active{opacity:1;visibility:visible;pointer-events:auto}
+.ending-credits{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at center,rgba(18,12,35,0.4) 0%,rgba(0,0,0,0.96) 55%,#000 100%);color:#fff;opacity:0;visibility:hidden;pointer-events:none;transition:opacity 0.7s ease,visibility 0.7s ease}
+.ending-credits.active{opacity:1;visibility:visible;pointer-events:auto}
+.ending-credit-card{text-align:center;padding:28px 34px;border:2px solid #fff;background:rgba(0,0,0,0.68);box-shadow:0 0 28px rgba(255,255,255,0.35),0 0 54px rgba(177,77,255,0.34);animation:creditHover 2.6s ease-in-out infinite}
+.ending-credit-thanks{font-size:clamp(22px,6vw,44px);letter-spacing:3px;text-shadow:0 0 14px #fff,0 0 24px #b14dff;margin-bottom:14px}
+.ending-credit-byline{font-size:clamp(16px,4vw,28px);color:#d9c8ff;text-shadow:0 0 12px #9d4dff}
+@keyframes creditHover{0%,100%{transform:translateY(0) scale(1)}
+50%{transform:translateY(-10px) scale(1.025)}
 }
-
-/* King Pong phone UI polish: keep menu button visibly active, hide unneeded title-screen edge buttons. */
-.menu-toggle{color:#fff!important;border-color:#666!important;opacity:1!important;text-shadow:0 0 5px rgba(255,255,255,.28)}
-body.menus-hidden .menu-toggle{color:#fff!important;opacity:1!important}
-body.title-active .menu-toggle,
-body.title-active .title-jump-toggle,
-body.title-active .play-info-toggle{opacity:0!important;visibility:hidden!important;pointer-events:none!important}
-
-
-/* King Pong phone release UI: keep edge controls out of play unless menus are open. */
-body.menus-hidden:not(.title-active) .title-jump-toggle,
-body.menus-hidden:not(.title-active) .play-info-toggle{opacity:0!important;visibility:hidden!important;pointer-events:none!important}
-body.menus-hidden:not(.title-active) .menu-toggle{font-size:11px!important;padding:5px 7px!important;line-height:1.1!important;background:rgba(0,0,0,.56)!important;border-color:rgba(255,255,255,.34)!important;box-shadow:0 0 8px rgba(0,0,0,.55)!important}
-@media (orientation:landscape) and (max-height:620px){body.menus-hidden:not(.title-active) .menu-toggle{top:calc(env(safe-area-inset-top,0px) + 6px)!important;left:calc(env(safe-area-inset-left,0px) + 6px)!important}}
-
-
-/* King Pong phone release v1.0.3: icon battery indicator and local clock for fullscreen play and title screen. */
+.title-actions button,.erase-save-button{background:#000;color:#ddd;border:1px solid #555;font-family:monospace;cursor:pointer;padding:10px 12px}
+.title-actions button{min-height:58px;font-size:18px}
+.title-actions button:hover,.title-actions button:focus-visible,.erase-save-button:hover,.erase-save-button:focus-visible{color:#fff;border-color:var(--accent);box-shadow:0 0 12px color-mix(in srgb,var(--accent) 45%,transparent);outline:none}
+.title-actions button:disabled,.custom-panel button:disabled,.custom-panel select:disabled,.controls button:disabled{opacity:0.45;cursor:not-allowed;box-shadow:none;border-color:#333;color:#777}
+.erase-save-button{margin-top:12px;font-size:12px;padding:6px 10px}
+.save-badge{color:var(--accent);font-size:12px}
+@media (max-width:760px){.menu-stack{top:6px;gap:5px;max-width:calc(100vw - 120px)}
+.controls{gap:4px;font-size:11px;padding:6px}
+.controls button{padding:3px 5px}
+.music-volume-control{gap:4px;padding:2px 4px}
+.music-volume-control input[type="range"]{width:84px}
+.menu-toggle{top:6px;left:6px;font-size:11px;padding:5px 6px}
+.title-jump-toggle{top:38px;left:6px;font-size:11px;padding:5px 6px}
+.play-info-toggle{top:6px;right:6px;left:auto;font-size:11px;padding:5px 6px;max-width:calc(100vw - 110px)}
+.status{font-size:11px}
+.custom-panel{font-size:11px;gap:6px;padding:6px}
+.custom-panel select{max-width:82vw}
+.lan-grid{grid-template-columns:1fr}
+.custom-readout{min-width:0;width:100%}
+.hint{bottom:8px;font-size:11px}
+.save-slot-list,.title-actions{grid-template-columns:1fr}
+.title-card{padding:16px}
+}
+@media (max-width:560px){.menu-stack{top:42px;max-width:calc(100vw - 12px)}
+}
+@media (orientation:landscape) and (max-height:620px){ .menu-toggle,.title-jump-toggle,.play-info-toggle{font-size:clamp(11px,1.8vw,14px);padding:5px 8px;line-height:1.2}
+.menu-toggle{top:calc(env(safe-area-inset-top,0px) + 8px);left:calc(env(safe-area-inset-left,0px) + 8px)}
+.title-jump-toggle{top:calc(env(safe-area-inset-top,0px) + 48px);left:calc(env(safe-area-inset-left,0px) + 8px)}
+.play-info-toggle{top:calc(env(safe-area-inset-top,0px) + 8px);right:calc(env(safe-area-inset-right,0px) + 8px);max-width:min(24vw,190px)}
+.menu-stack{top:calc(env(safe-area-inset-top,0px) + 8px);width:min(58vw,calc(100vw - 360px));max-width:calc(100vw - 360px);gap:5px}
+.controls{font-size:clamp(10px,1.55vw,13px);gap:6px;padding:6px 8px;max-width:100%;justify-content:center}
+.controls button,.custom-panel button,.lan-panel button{padding:4px 7px}
+.music-volume-control{gap:5px;padding:3px 5px}
+.music-volume-control input[type="range"]{width:min(18vw,130px)}
+.status{font-size:clamp(10px,1.45vw,12px);line-height:1.25;max-width:100%;padding:5px 8px}
+.custom-panel,.lan-panel{font-size:clamp(10px,1.45vw,12px);max-width:100%}
+.custom-readout{min-width:0;width:100%}
+.hint{font-size:clamp(10px,1.45vw,12px);max-width:min(72vw,900px);bottom:calc(env(safe-area-inset-bottom,0px) + 8px)}
+}
+@media (orientation:landscape) and (max-width:780px){ .menu-stack{width:calc(100vw - 320px);max-width:calc(100vw - 320px)}
+.play-info-toggle{max-width:150px}
+}
+/* Final Android/touch release controls and system indicators. */
+.menu-toggle{color:#fff;border-color:#666;opacity:1;text-shadow:0 0 5px rgba(255,255,255,.28)}
+body.menus-hidden:not(.title-active) .title-jump-toggle,body.menus-hidden:not(.title-active) .play-info-toggle{opacity:0;visibility:hidden;pointer-events:none}
+body.menus-hidden:not(.title-active) .menu-toggle{font-size:11px;padding:5px 7px;line-height:1.1;background:rgba(0,0,0,.56);border-color:rgba(255,255,255,.34);box-shadow:0 0 8px rgba(0,0,0,.55)}
+.play-info-toggle{top:40px}
 .battery-indicator{position:fixed;top:calc(env(safe-area-inset-top,0px) + 8px);right:calc(env(safe-area-inset-right,0px) + 8px);z-index:72;width:44px;height:22px;display:flex;align-items:center;justify-content:center;box-sizing:border-box;pointer-events:none;user-select:none;opacity:.86;filter:drop-shadow(0 0 8px rgba(0,0,0,.7))}
 .battery-indicator .battery-shell{position:relative;width:34px;height:16px;border:2px solid rgba(255,255,255,.82);border-radius:3px;background:rgba(0,0,0,.56);box-sizing:border-box;box-shadow:0 0 8px rgba(255,255,255,.08),inset 0 0 3px rgba(255,255,255,.16)}
 .battery-indicator .battery-shell::after{content:"";position:absolute;right:-5px;top:4px;width:3px;height:6px;background:rgba(255,255,255,.82);border-radius:0 2px 2px 0}
@@ -43,13 +130,18 @@ body.menus-hidden:not(.title-active) .menu-toggle{font-size:11px!important;paddi
 .battery-indicator.charging .battery-fill{background:rgba(170,255,190,.92);box-shadow:0 0 8px rgba(170,255,190,.45)}
 .battery-indicator .battery-bolt{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:12px;line-height:1;color:#111;text-shadow:0 0 2px rgba(255,255,255,.75);opacity:0;transition:opacity .18s ease;z-index:2}
 .battery-indicator.charging .battery-bolt{opacity:1}
-.battery-indicator.unavailable{opacity:.42}.clock-indicator{position:fixed;bottom:4px;left:10px;z-index:55;min-width:0;padding:2px 4px;border:1px solid rgba(255,255,255,.36);border-radius:4px;background:rgba(0,0,0,.42);color:rgba(255,255,255,.78);font-family:monospace;font-size:9px;line-height:1;text-align:center;letter-spacing:0;box-sizing:border-box;pointer-events:none;user-select:none;opacity:.64;text-shadow:0 0 5px rgba(0,0,0,.95);box-shadow:0 0 5px rgba(0,0,0,.48),inset 0 0 2px rgba(255,255,255,.06);white-space:nowrap;transform:translateZ(0)}
-body.menus-hidden:not(.title-active) .title-jump-toggle,body.menus-hidden:not(.title-active) .play-info-toggle{opacity:0;visibility:hidden;pointer-events:none}
-.play-info-toggle{top:40px}
-@media (orientation:landscape) and (max-height:620px){.battery-indicator{top:calc(env(safe-area-inset-top,0px) + 6px);right:calc(env(safe-area-inset-right,0px) + 6px);width:40px;height:20px}.battery-indicator .battery-shell{width:31px;height:15px}.battery-indicator .battery-bolt{font-size:11px}.clock-indicator{bottom:3px;left:10px;font-size:8px;padding:2px 3px}.play-info-toggle{top:34px!important}}
-
+.battery-indicator.unavailable{opacity:.42}
+.clock-indicator{position:fixed;bottom:4px;left:10px;z-index:55;min-width:0;padding:2px 4px;border:1px solid rgba(255,255,255,.36);border-radius:4px;background:rgba(0,0,0,.42);color:rgba(255,255,255,.78);font-family:monospace;font-size:9px;line-height:1;text-align:center;letter-spacing:0;box-sizing:border-box;pointer-events:none;user-select:none;opacity:.64;text-shadow:0 0 5px rgba(0,0,0,.95);box-shadow:0 0 5px rgba(0,0,0,.48),inset 0 0 2px rgba(255,255,255,.06);white-space:nowrap;transform:translateZ(0)}
+@media (orientation:landscape) and (max-height:620px){body.menus-hidden:not(.title-active) .menu-toggle{top:calc(env(safe-area-inset-top,0px) + 6px);left:calc(env(safe-area-inset-left,0px) + 6px)}
+.battery-indicator{top:calc(env(safe-area-inset-top,0px) + 6px);right:calc(env(safe-area-inset-right,0px) + 6px);width:40px;height:20px}
+.battery-indicator .battery-shell{width:31px;height:15px}
+.battery-indicator .battery-bolt{font-size:11px}
+.clock-indicator{bottom:3px;left:10px;font-size:8px;padding:2px 3px}
+.play-info-toggle{top:34px}
+}
 </style>
 </head><body class="menus-hidden title-active"><canvas id="game" width="640" height="480" aria-label="King Pong game field"></canvas><button type="button" class="menu-toggle" id="menuToggle" aria-pressed="false" title="Show top and bottom menus">Menu</button><button type="button" class="title-jump-toggle" id="titleJumpButton" title="Return to title screen/main menu">Title Screen</button><button type="button" class="play-info-toggle" id="playInfoToggle" aria-pressed="true" title="Hide campaign goal/course info">Hide Goal Info</button><div class="battery-indicator unavailable" id="batteryIndicator" aria-live="polite" role="img" aria-label="Battery level unavailable" title="Battery level unavailable"><div class="battery-shell"><div class="battery-fill"></div><div class="battery-bolt">⚡</div></div></div><div class="clock-indicator" id="clockIndicator" aria-live="polite" role="timer" aria-label="Current time">--:--</div><div class="title-screen" id="titleScreen" role="dialog" aria-modal="true" aria-labelledby="titleHeading"><div class="title-card"><h1 id="titleHeading">KING PONG</h1><div class="title-subtitle">Choose a save slot, then play Campaign, Custom Game, Two Player, or optional LAN Two Player. Custom Game uses completed maps; Two Player can use every map.</div><div class="save-badge" id="activeSaveBadge">Slot 1 selected</div><div class="save-slot-list" id="saveSlotList"><button type="button" class="save-slot" data-save-slot="0"><span class="slot-name">SLOT 1</span><span class="slot-detail">New Game</span><span class="slot-progress">Level 01 unlocked</span></button><button type="button" class="save-slot" data-save-slot="1"><span class="slot-name">SLOT 2</span><span class="slot-detail">New Game</span><span class="slot-progress">Level 01 unlocked</span></button><button type="button" class="save-slot" data-save-slot="2"><span class="slot-name">SLOT 3</span><span class="slot-detail">New Game</span><span class="slot-progress">Level 01 unlocked</span></button></div><div class="title-actions"><button type="button" id="titleCampaignButton">Campaign</button><button type="button" id="titleCustomButton">Custom Game</button><button type="button" id="titleTwoPlayerButton">Two Player</button><button type="button" id="titleLanButton">LAN Two Player</button><button type="button" id="titleBossButton" class="secret-boss-button" hidden>Secret Boss</button></div><div class="title-message" id="titleMessage">Campaign starts at your next unlocked level. Custom Game only shows completed levels. Two Player and LAN Two Player can choose any level. A secret boss appears after all 18 levels are cleared.</div><button type="button" class="erase-save-button" id="eraseSaveButton">Erase Selected Slot</button></div></div><div class="menu-stack" id="menuStack"><div class="controls" id="campaignControls"><span id="activeSlotMini">Slot 1</span><span>Campaign</span><button type="button" data-campaign="0">Training</button><button type="button" data-campaign="1">Ricochet</button><button type="button" data-campaign="2">Chaos</button><button type="button" id="customModeButton">Custom Game</button><button type="button" id="twoPlayerModeButton">Two Player</button><button type="button" id="lanModeButton" title="Optional LAN-only peer connection for Two Player">LAN Two Player</button><button type="button" id="musicButton" aria-pressed="false" title="Toggle original chiptune music with N">Music Off</button><label class="music-volume-control" title="Music volume"><span>Music Vol</span><input id="musicVolumeSlider" type="range" min="0" max="100" step="1" value="75" aria-label="Music volume" /><span class="value-pill" id="musicVolumeValue">75%</span></label><button type="button" id="restartButton">Restart Level</button></div><div class="status" id="statusText">Loading...</div><div class="custom-panel hidden" id="customPanel"><label><span>Level</span><select id="customLevelSelect" aria-label="Choose custom level"></select></label><span class="custom-readout" id="customLevelReadout">Level 01 - Training Circuit: Open Court</span><label class="cpu-custom-control"><span>CPU intelligence</span><input id="customIntelSlider" type="range" min="0" max="100" step="1" value="50" /><span class="value-pill" id="customIntelValue">50%</span></label><label class="cpu-custom-control"><span>CPU Paddle Speed</span><input id="customMaxMoveSlider" aria-label="CPU Paddle Speed" type="range" min="1" max="12" step="0.1" value="4.4" /><span class="value-pill" id="customMaxMoveValue">4.4</span></label><button type="button" id="customStartButton">Play Selected</button></div><div class="lan-panel hidden" id="lanPanel"><div class="lan-row lan-title-row"><strong>LAN Two Player</strong><span class="lan-status-pill" id="lanStatus">Offline</span></div><div class="lan-row lan-safe-note">LAN-only WebRTC with no STUN/TURN servers. Host runs the match; guest sends input only.</div><div class="lan-row"><button type="button" id="lanHostButton">Host Match</button><button type="button" id="lanJoinButton">Join Match</button><button type="button" id="lanDisconnectButton">Disconnect</button><label class="lan-code-label"><span>Room Code</span><input id="lanRoomCodeInput" type="text" maxlength="6" autocomplete="off" spellcheck="false" aria-label="LAN room code" /></label></div><div class="lan-grid"><label><span>Your connection text</span><textarea id="lanLocalSignal" readonly spellcheck="false" aria-label="Your LAN connection text"></textarea></label><label><span>Paste other player text</span><textarea id="lanRemoteSignal" spellcheck="false" aria-label="Paste other player LAN connection text"></textarea></label></div><div class="lan-row"><button type="button" id="lanCopyButton">Copy Your Text</button><button type="button" id="lanApplySignalButton">Use Pasted Text</button></div></div></div><div class="hint" id="controlHint"> Touch: drag to move - tap to serve/continue - two-finger tap pauses - keyboard/controller supported </div><div class="screen-fade" id="screenFade"></div><div class="ending-credits" id="endingCredits" aria-hidden="true"><div class="ending-credit-card"><div class="ending-credit-thanks">Thank you for playing</div><div class="ending-credit-byline">Made by: King Alex Gilbert</div></div></div> <script>
+// Localization
 const LOCALIZATION = (() => {
 const english = {};
 const phraseTranslations = {
@@ -109,15 +201,24 @@ return "en";
 const lang = detectLanguage();
 const phrases = phraseTranslations[lang] || english;
 const sorted = Object.keys(phrases).sort((a, b) => b.length - a.length);
+const translationCache = new Map();
+function rememberTranslation(source, translated) {
+if (translationCache.size > 2048) translationCache.clear();
+translationCache.set(source, translated);
+return translated;
+}
 function translateText(value) {
 if (value === null || value === undefined || lang === "en") return value;
-let out = String(value);
-if (!out.trim()) return out;
-if (phrases[out]) return phrases[out];
+const source = String(value);
+if (!source.trim()) return source;
+const cached = translationCache.get(source);
+if (cached !== undefined) return cached;
+if (phrases[source]) return rememberTranslation(source, phrases[source]);
+let out = source;
 for (const key of sorted) {
 if (out.includes(key)) out = out.split(key).join(phrases[key]);
 }
-return out;
+return rememberTranslation(source, out);
 }
 function localizeStaticDom(root = document.body) {
 if (lang === "en" || !root) return;
@@ -168,53 +269,55 @@ set(value) { titleDescriptor.set.call(this, localizeText(value)); }
 });
 }
 }
-const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d");
-const statusText = document.getElementById("statusText");
-const controlHint = document.getElementById("controlHint");
-const menuToggle = document.getElementById("menuToggle");
-const playInfoToggle = document.getElementById("playInfoToggle");
-const restartButton = document.getElementById("restartButton");
-const customModeButton = document.getElementById("customModeButton");
-const twoPlayerModeButton = document.getElementById("twoPlayerModeButton");
-const lanModeButton = document.getElementById("lanModeButton");
-const musicButton = document.getElementById("musicButton");
-const musicVolumeSlider = document.getElementById("musicVolumeSlider");
-const musicVolumeValue = document.getElementById("musicVolumeValue");
-const customPanel = document.getElementById("customPanel");
-const customLevelSelect = document.getElementById("customLevelSelect");
-const customLevelReadout = document.getElementById("customLevelReadout");
-const customIntelSlider = document.getElementById("customIntelSlider");
-const customIntelValue = document.getElementById("customIntelValue");
-const customMaxMoveSlider = document.getElementById("customMaxMoveSlider");
-const customMaxMoveValue = document.getElementById("customMaxMoveValue");
-const customStartButton = document.getElementById("customStartButton");
+// DOM handles
+const byId = (id) => document.getElementById(id);
+const canvas = byId("game");
+const ctx = canvas.getContext("2d", { alpha: false, desynchronized: true }) || canvas.getContext("2d");
+const statusText = byId("statusText");
+const controlHint = byId("controlHint");
+const menuToggle = byId("menuToggle");
+const playInfoToggle = byId("playInfoToggle");
+const restartButton = byId("restartButton");
+const customModeButton = byId("customModeButton");
+const twoPlayerModeButton = byId("twoPlayerModeButton");
+const lanModeButton = byId("lanModeButton");
+const musicButton = byId("musicButton");
+const musicVolumeSlider = byId("musicVolumeSlider");
+const musicVolumeValue = byId("musicVolumeValue");
+const customPanel = byId("customPanel");
+const customLevelSelect = byId("customLevelSelect");
+const customLevelReadout = byId("customLevelReadout");
+const customIntelSlider = byId("customIntelSlider");
+const customIntelValue = byId("customIntelValue");
+const customMaxMoveSlider = byId("customMaxMoveSlider");
+const customMaxMoveValue = byId("customMaxMoveValue");
+const customStartButton = byId("customStartButton");
 const campaignButtons = Array.from(document.querySelectorAll("[data-campaign]"));
-const titleScreen = document.getElementById("titleScreen");
-const activeSaveBadge = document.getElementById("activeSaveBadge");
-const activeSlotMini = document.getElementById("activeSlotMini");
-const titleMessage = document.getElementById("titleMessage");
-const titleCampaignButton = document.getElementById("titleCampaignButton");
-const titleCustomButton = document.getElementById("titleCustomButton");
-const titleTwoPlayerButton = document.getElementById("titleTwoPlayerButton");
-const titleLanButton = document.getElementById("titleLanButton");
-const titleBossButton = document.getElementById("titleBossButton");
-const titleJumpButton = document.getElementById("titleJumpButton");
-const screenFade = document.getElementById("screenFade");
-const endingCredits = document.getElementById("endingCredits");
-const eraseSaveButton = document.getElementById("eraseSaveButton");
+const titleScreen = byId("titleScreen");
+const activeSaveBadge = byId("activeSaveBadge");
+const activeSlotMini = byId("activeSlotMini");
+const titleMessage = byId("titleMessage");
+const titleCampaignButton = byId("titleCampaignButton");
+const titleCustomButton = byId("titleCustomButton");
+const titleTwoPlayerButton = byId("titleTwoPlayerButton");
+const titleLanButton = byId("titleLanButton");
+const titleBossButton = byId("titleBossButton");
+const titleJumpButton = byId("titleJumpButton");
+const screenFade = byId("screenFade");
+const endingCredits = byId("endingCredits");
+const eraseSaveButton = byId("eraseSaveButton");
 const saveSlotButtons = Array.from(document.querySelectorAll("[data-save-slot]"));
 const cpuCustomControls = Array.from(document.querySelectorAll(".cpu-custom-control"));
-const lanPanel = document.getElementById("lanPanel");
-const lanStatus = document.getElementById("lanStatus");
-const lanHostButton = document.getElementById("lanHostButton");
-const lanJoinButton = document.getElementById("lanJoinButton");
-const lanDisconnectButton = document.getElementById("lanDisconnectButton");
-const lanRoomCodeInput = document.getElementById("lanRoomCodeInput");
-const lanLocalSignal = document.getElementById("lanLocalSignal");
-const lanRemoteSignal = document.getElementById("lanRemoteSignal");
-const lanCopyButton = document.getElementById("lanCopyButton");
-const lanApplySignalButton = document.getElementById("lanApplySignalButton");
+const lanPanel = byId("lanPanel");
+const lanStatus = byId("lanStatus");
+const lanHostButton = byId("lanHostButton");
+const lanJoinButton = byId("lanJoinButton");
+const lanDisconnectButton = byId("lanDisconnectButton");
+const lanRoomCodeInput = byId("lanRoomCodeInput");
+const lanLocalSignal = byId("lanLocalSignal");
+const lanRemoteSignal = byId("lanRemoteSignal");
+const lanCopyButton = byId("lanCopyButton");
+const lanApplySignalButton = byId("lanApplySignalButton");
 const MENU_KEY_BLOCKLIST = new Set([" ", "Enter", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Home", "End", "PageUp", "PageDown"]);
 function isMenuKeyboardControl(element) {
 return Boolean(
@@ -264,8 +367,9 @@ window.addEventListener("touchstart", unlockMusicOnUserGesture, { passive: true,
 window.addEventListener("keydown", unlockMusicOnUserGesture, true);
 makeMenuControlsMouseAndTouchOnly();
 // Keep the original 640x480 game math, but render to a higher-resolution
-// canvas backing store so desktop/4K displays look sharper without changing
+// canvas backing store so high-DPI touchscreens look sharp without changing
 // the gameplay, collisions, saves, or LAN sync coordinates.
+// Canvas/game constants
 const W = 640;
 const H = 480;
 let renderScale = 1;
@@ -275,9 +379,9 @@ let cachedPlayfieldBounds = { top: 0, bottom: H };
 let cachedStaticBackground = null;
 let cachedStaticBackgroundAccent = "";
 let cachedStaticBackgroundScale = 0;
-const CSS_PLAYFIELD_MAX_WIDTH = 1920;
-const CSS_PLAYFIELD_MARGIN = 0;
+const CSS_PLAYFIELD_MAX_WIDTH = 960;
 const PHONE_LANDSCAPE_ZOOM = 1.18;
+const MAX_RENDER_SCALE = 2;
 function invalidatePlayfieldBoundsCache() {
 cachedPlayfieldBoundsFrame = -1;
 }
@@ -287,7 +391,7 @@ cachedStaticBackgroundScale = 0;
 }
 function syncCanvasBackingStore(cssWidth = canvas.clientWidth, cssHeight = canvas.clientHeight) {
 const dpr = Math.max(1, window.devicePixelRatio || 1);
-const targetScale = clamp(Math.ceil(Math.max(cssWidth / W, cssHeight / H) * dpr), 1, 3);
+const targetScale = clamp(Math.ceil(Math.max(cssWidth / W, cssHeight / H) * dpr), 1, MAX_RENDER_SCALE);
 if (targetScale !== renderScale || canvas.width !== W * targetScale || canvas.height !== H * targetScale) {
 renderScale = targetScale;
 canvas.width = W * renderScale;
@@ -305,8 +409,8 @@ const viewport = window.visualViewport || {
 width: window.innerWidth,
 height: window.innerHeight
 };
-const availableWidth = Math.max(1, viewport.width - CSS_PLAYFIELD_MARGIN);
-const availableHeight = Math.max(1, viewport.height - CSS_PLAYFIELD_MARGIN);
+const availableWidth = Math.max(1, viewport.width);
+const availableHeight = Math.max(1, viewport.height);
 const aspect = W / H;
 const isPhoneLandscape = availableWidth > availableHeight && Math.min(availableWidth, availableHeight) <= 620;
 let cssWidth;
@@ -401,6 +505,7 @@ let lanInputSeq = 0;
 let lanRemoteInput = { axis: 0, targetY: null, lastAt: 0 };
 let mode = 1; // 1 = campaign vs CPU, 2 = two-player practice, 3 = custom vs CPU, 4 = secret boss
 let menusVisible = false;
+let titleScreenVisible = document.body.classList.contains("title-active");
 let playInfoVisible = true;
 let activeSaveSlot = 0;
 let saveData = null;
@@ -449,6 +554,7 @@ let musicEnabled = true;
 let musicTimer = null;
 let musicStep = 0;
 let musicVolumeLevel = 0.75;
+// Campaign data
 const CAMPAIGNS = [
 {
 id: "training",
@@ -700,6 +806,7 @@ shortName: "Boss",
 accent: "#b14dff",
 levels: [BOSS_LEVEL]
 };
+// Music data and audio helpers
 const MUSIC_TRACKS = [
 {
 title: "Open Pulse",
@@ -975,7 +1082,7 @@ bassBoost: 1.08,
 accentBoost: 1.42
 };
 function isTitleMusicActive() {
-return document.body.classList.contains("title-active") && !creditsActive && !bossIntroActive;
+return titleScreenVisible && !creditsActive && !bossIntroActive;
 }
 function currentMusicTrack() {
 if (creditsActive) {
@@ -999,9 +1106,13 @@ return 1;
 const level = currentLevel();
 const baseSpeed = Math.max(0.1, level.ballSpeed || BASE_BALL_SPEED);
 const topSpeed = Math.max(baseSpeed + 0.1, level.maxSpeed || MAX_BALL_SPEED);
-const activeSpeed = mode === 4 && bossBalls.length
-? Math.max(...bossBalls.map((bossBall) => bossBallSpeed(bossBall)))
-: ballSpeed();
+let activeSpeed = ballSpeed();
+if (mode === 4 && bossBalls.length) {
+activeSpeed = 0;
+for (const bossBall of bossBalls) {
+activeSpeed = Math.max(activeSpeed, bossBallSpeed(bossBall));
+}
+}
 const speedRatio = clamp((activeSpeed - baseSpeed) / (topSpeed - baseSpeed), 0, 1);
 // As rallies get faster, push the chiptune tempo up too.
 // The cap keeps late-level music energetic without turning into noise.
@@ -1761,9 +1872,10 @@ const padAxis = pad ? gamepadVertical(pad, 1) : 0;
 const target = touchPaddleTargets.right !== null
 ? touchPaddleTargets.right
 : touchPaddleTargets.left !== null ? touchPaddleTargets.left : null;
+const bounds = visiblePlayfieldBounds();
 return {
 axis: clamp(keyAxis + padAxis, -1, 1),
-targetY: target === null ? null : clamp(target, visiblePlayfieldBounds().top, visiblePlayfieldBounds().bottom - PADDLE_H)
+targetY: target === null ? null : clamp(target, bounds.top, bounds.bottom - PADDLE_H)
 };
 }
 function sendLanInput(gamepads = null, force = false) {
@@ -2258,7 +2370,7 @@ saveProgressNow();
 populateCustomLevelSelect();
 updateModeControls();
 updateHud();
-if (document.body.classList.contains("title-active")) {
+if (titleScreenVisible) {
 showTitleScreen("CHEAT ACCEPTED. All 18 levels and the Secret Boss are unlocked for this save slot.");
 } else {
 statusText.textContent = "CHEAT ACCEPTED - ALL LEVELS + SECRET BOSS UNLOCKED";
@@ -2370,8 +2482,9 @@ titleMessage.textContent = message;
 if (message === FIRST_LAUNCH_HINT_MESSAGE) {
 markFirstLaunchHintSeen();
 }
-const wasTitleActive = document.body.classList.contains("title-active");
+const wasTitleActive = titleScreenVisible;
 document.body.classList.add("title-active");
+titleScreenVisible = true;
 if (!wasTitleActive) {
 resetMusicPhrase();
 }
@@ -2382,8 +2495,9 @@ setMenusVisible(false);
 renderSaveSlots();
 }
 function hideTitleScreen() {
-const wasTitleActive = document.body.classList.contains("title-active");
+const wasTitleActive = titleScreenVisible;
 document.body.classList.remove("title-active");
+titleScreenVisible = false;
 if (wasTitleActive) {
 resetMusicPhrase();
 }
@@ -2823,10 +2937,11 @@ ball.vx = vxSign * Math.sqrt(Math.max(0.5, currentSpeed * currentSpeed - ball.vy
 function setRallyBallVelocity(direction, speed, level, spawnedForReceiver) {
 if (spawnedForReceiver) {
 const receiver = direction > 0 ? right : left;
+const bounds = visiblePlayfieldBounds();
 const targetCenter = clamp(
 receiver.y + PADDLE_H / 2 + (Math.random() * 2 - 1) * 14,
-visiblePlayfieldBounds().top + BALL_HALF,
-visiblePlayfieldBounds().bottom - BALL_HALF
+bounds.top + BALL_HALF,
+bounds.bottom - BALL_HALF
 );
 const targetX = direction > 0 ? receiver.x : receiver.x + PADDLE_W;
 const startCenterX = ball.x + BALL_HALF;
@@ -3804,12 +3919,12 @@ prevY: ball.prevY,
 vx: ball.vx,
 vy: ball.vy
 };
+const bounds = visiblePlayfieldBounds();
 for (let i = 0; i < cfg.horizon; i++) {
 sim.prevX = sim.x;
 sim.prevY = sim.y;
 sim.x += sim.vx;
 sim.y += sim.vy;
-const bounds = visiblePlayfieldBounds();
 if (sim.y <= bounds.top) {
 sim.y = bounds.top;
 sim.vy = Math.abs(sim.vy);
@@ -3848,6 +3963,7 @@ right.y += move;
 }
 right.y = clamp(right.y, bounds.top, bounds.bottom - PADDLE_H);
 }
+// Main loop
 function update() {
 frame++;
 if (creditsActive) {
@@ -4103,11 +4219,11 @@ drawText(mode === 4 ? "Multiple balls are live. Break the boss health bar before
 function draw() {
 ctx.setTransform(renderScale, 0, 0, renderScale, 0, 0);
 ctx.imageSmoothingEnabled = false;
-const offsetX = shakeFrames > 0 ? (Math.random() * 2 - 1) * 2 : 0;
-const offsetY = shakeFrames > 0 ? (Math.random() * 2 - 1) * 2 : 0;
-if (shakeFrames > 0) shakeFrames--;
 ctx.save();
-ctx.translate(offsetX, offsetY);
+if (shakeFrames > 0) {
+ctx.translate((Math.random() * 2 - 1) * 2, (Math.random() * 2 - 1) * 2);
+shakeFrames--;
+}
 drawBackground();
 drawCenterLine();
 drawHazards();
@@ -4157,8 +4273,10 @@ drawOverlay();
 ctx.restore();
 }
 function loop() {
+if (!titleScreenVisible || bossIntroActive || creditsActive) {
 update();
 draw();
+}
 requestAnimationFrame(loop);
 }
 saveSlotButtons.forEach((button) => {
@@ -4351,8 +4469,9 @@ refreshGamepadConnection();
 });
 
 
+// Battery, clock, and startup
 // King Pong battery indicator: Android WebView bridge first, browser Battery API fallback if available.
-const batteryIndicator = document.getElementById("batteryIndicator");
+const batteryIndicator = byId("batteryIndicator");
 const batteryFill = batteryIndicator ? batteryIndicator.querySelector(".battery-fill") : null;
 let browserBattery = null;
 function updateBatteryIndicator(level, charging) {
@@ -4405,10 +4524,14 @@ updateBatteryIndicator(-1, false);
 }
 initBatteryIndicator();
 // King Pong local time indicator: uses the device/browser clock and updates while the app is open.
-const clockIndicator = document.getElementById("clockIndicator");
+const clockIndicator = byId("clockIndicator");
+let clockFormatter = null;
 function formatKingPongClock(date) {
 try {
-return new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(date);
+if (!clockFormatter) {
+clockFormatter = new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" });
+}
+return clockFormatter.format(date);
 } catch (err) {
 let h = date.getHours();
 const m = String(date.getMinutes()).padStart(2, "0");

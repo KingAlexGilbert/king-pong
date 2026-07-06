@@ -1,81 +1,647 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" /><title>King Pong Desktop HD</title> <style>:root{--accent:#60d8ff;--panel:rgba(0,0,0,0.82);--muted:#8a8a8a}html,body{margin:0;height:100%;background:radial-gradient(circle at center,#111 0%,#050505 44%,#000 100%);display:flex;align-items:center;justify-content:center;font-family:monospace;color:white;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}canvas{background:#000;image-rendering:pixelated;image-rendering:crisp-edges;display:block;touch-action:none;width:min(96vw,960px,calc(128vh - 8px));height:auto;max-width:none;max-height:none;border:2px solid #222;box-sizing:border-box;box-shadow:0 0 24px rgba(255,255,255,0.08),0 0 42px color-mix(in srgb,var(--accent) 24%,transparent)}@supports (height:100dvh){canvas{width:min(96vw,960px,calc(128dvh - 8px));max-height:none}}.menu-stack{position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:15;display:flex;flex-direction:column;align-items:center;gap:6px;width:min(96vw,980px);max-width:calc(100vw - 150px);box-sizing:border-box;pointer-events:none;transition:opacity 0.18s ease,transform 0.18s ease,visibility 0.18s ease}.controls{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px;padding:8px 10px;background:var(--panel);border:1px solid #333;color:#aaa;font-size:13px;user-select:none;width:fit-content;max-width:100%;box-sizing:border-box;white-space:normal;pointer-events:auto;transition:opacity 0.18s ease,transform 0.18s ease,visibility 0.18s ease}.menu-toggle{position:fixed;top:10px;left:10px;z-index:20;background:var(--panel);color:#d4d4d4;border:1px solid #444;font-family:monospace;font-size:12px;padding:6px 8px;cursor:pointer;user-select:none;transition:opacity 0.18s ease,border-color 0.18s ease,box-shadow 0.18s ease}.menu-toggle:hover,.menu-toggle:focus-visible{color:#fff;border-color:var(--accent);box-shadow:0 0 10px color-mix(in srgb,var(--accent) 35%,transparent);opacity:1}body.menus-hidden .menu-toggle{opacity:0.55}.title-jump-toggle{position:fixed;top:44px;left:10px;z-index:55;background:var(--panel);color:#d4d4d4;border:1px solid #444;font-family:monospace;font-size:12px;padding:6px 8px;cursor:pointer;user-select:none;transition:opacity 0.18s ease,border-color 0.18s ease,box-shadow 0.18s ease}.title-jump-toggle:hover,.title-jump-toggle:focus-visible{color:#fff;border-color:var(--accent);box-shadow:0 0 10px color-mix(in srgb,var(--accent) 35%,transparent);opacity:1}.play-info-toggle{position:fixed;top:10px;right:10px;z-index:55;background:var(--panel);color:#d4d4d4;border:1px solid #444;font-family:monospace;font-size:12px;padding:6px 8px;cursor:pointer;user-select:none;max-width:calc(100vw - 120px);white-space:normal;transition:opacity 0.18s ease,border-color 0.18s ease,box-shadow 0.18s ease}.play-info-toggle:hover,.play-info-toggle:focus-visible{color:#fff;border-color:var(--accent);box-shadow:0 0 10px color-mix(in srgb,var(--accent) 35%,transparent);opacity:1}body.play-info-hidden .play-info-toggle{opacity:0.55}body.menus-hidden .menu-stack,body.menus-hidden .hint{opacity:0;visibility:hidden;pointer-events:none}body.menus-hidden .menu-stack{transform:translate(-50%,-130%)}body.menus-hidden .hint{transform:translate(-50%,160%)}.controls button{background:#000;color:#aaa;border:1px solid #555;font-family:monospace;padding:4px 8px;cursor:pointer}.music-volume-control{display:flex;align-items:center;gap:6px;padding:3px 6px;border:1px solid #333;background:rgba(0,0,0,0.55);color:#aaa}.music-volume-control input[type="range"]{width:110px;accent-color:white;cursor:pointer}.music-volume-control .value-pill{min-width:34px}.controls button:hover,.controls button.active{color:#fff;border-color:var(--accent);box-shadow:0 0 10px color-mix(in srgb,var(--accent) 45%,transparent)}.custom-panel{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px 10px;padding:8px 10px;background:var(--panel);border:1px solid #333;color:#aaa;font-size:12px;user-select:none;width:fit-content;max-width:100%;box-sizing:border-box;pointer-events:auto;transition:opacity 0.18s ease,transform 0.18s ease,visibility 0.18s ease}.custom-panel.hidden{display:none}body.two-player-menus .status{display:none}body.two-player-menus .custom-readout{display:none}.cpu-custom-control.mode-hidden{display:none !important}.custom-panel label,.custom-readout{display:flex;align-items:center;gap:6px}.custom-readout{color:#fff;min-width:280px;justify-content:center}.custom-panel select,.custom-panel input[type="range"],.custom-panel button{font-family:monospace}.custom-panel select{max-width:min(62vw,360px);background:#000;color:#fff;border:1px solid #555;padding:4px 6px}.custom-panel select.native-level-select{display:none}.custom-level-picker-button{min-width:min(62vw,360px);max-width:min(62vw,460px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left}.level-picker-overlay{position:fixed;inset:0;z-index:70;display:flex;align-items:center;justify-content:center;padding:18px;box-sizing:border-box;background:rgba(0,0,0,.62);pointer-events:auto}.level-picker-overlay.hidden{display:none}.level-picker-card{width:min(92vw,720px);max-height:min(82vh,720px);display:flex;flex-direction:column;gap:10px;background:rgba(0,0,0,.94);border:2px solid var(--accent);box-shadow:0 0 26px color-mix(in srgb,var(--accent) 35%,transparent),0 0 70px rgba(0,0,0,.85);padding:14px;box-sizing:border-box}.level-picker-header{display:flex;align-items:center;justify-content:space-between;gap:12px;color:#fff;font-size:16px;letter-spacing:1px}.level-picker-close{background:#000;color:#ddd;border:1px solid #555;font-family:monospace;padding:5px 9px;cursor:pointer}.level-picker-close:hover,.level-picker-close:focus-visible{color:#fff;border-color:var(--accent);box-shadow:0 0 10px color-mix(in srgb,var(--accent) 45%,transparent)}.level-picker-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(245px,1fr));gap:7px;overflow:auto;padding:2px;scrollbar-color:var(--accent) #050505}.level-picker-option{background:#050505;color:#aaa;border:1px solid #444;font-family:monospace;font-size:12px;line-height:1.3;padding:8px 9px;text-align:left;cursor:pointer}.level-picker-option:hover,.level-picker-option:focus-visible,.level-picker-option.active{color:#fff;border-color:var(--accent);box-shadow:0 0 10px color-mix(in srgb,var(--accent) 38%,transparent);outline:none}.level-picker-option:disabled{opacity:.45;cursor:not-allowed;box-shadow:none;border-color:#333;color:#777}.custom-panel input[type="range"]{width:120px;accent-color:white;cursor:pointer}.custom-panel button{background:#000;color:#aaa;border:1px solid #555;padding:4px 8px;cursor:pointer}.custom-panel button:hover,.custom-panel button:focus-visible{color:#fff;border-color:var(--accent);box-shadow:0 0 10px color-mix(in srgb,var(--accent) 45%,transparent)}.lan-panel{display:flex;flex-direction:column;gap:7px;padding:8px 10px;background:var(--panel);border:1px solid #333;color:#aaa;font-size:12px;user-select:none;width:min(96vw,880px);max-width:100%;box-sizing:border-box;pointer-events:auto;transition:opacity 0.18s ease,transform 0.18s ease,visibility 0.18s ease}.lan-panel.hidden{display:none}.lan-row{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px}.lan-title-row{color:#fff}.lan-safe-note{color:#8f8f8f;font-size:11px;text-align:center}.lan-status-pill{display:inline-block;min-width:120px;padding:3px 6px;color:#fff;border:1px solid #444;background:rgba(0,0,0,0.55);text-align:center}.lan-code-label{display:flex;align-items:center;gap:6px}.lan-code-label input{width:72px;text-transform:uppercase;text-align:center;background:#000;color:#fff;border:1px solid #555;font-family:monospace;padding:4px 6px}.lan-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.lan-grid label{display:flex;flex-direction:column;gap:4px;min-width:0;text-align:left}.lan-grid textarea{width:100%;min-height:52px;resize:vertical;box-sizing:border-box;background:#000;color:#fff;border:1px solid #555;font-family:monospace;font-size:10px;padding:5px}.lan-panel button{background:#000;color:#aaa;border:1px solid #555;font-family:monospace;padding:4px 8px;cursor:pointer}.lan-panel button:hover,.lan-panel button:focus-visible{color:#fff;border-color:var(--accent);box-shadow:0 0 10px color-mix(in srgb,var(--accent) 45%,transparent)}body.lan-connected .lan-status-pill{border-color:var(--accent);box-shadow:0 0 10px color-mix(in srgb,var(--accent) 35%,transparent)}.value-pill{display:inline-block;min-width:42px;color:#fff;text-align:right}.status{padding:6px 10px;background:var(--panel);border:1px solid #252525;color:#d4d4d4;font-size:12px;line-height:1.35;text-align:center;user-select:none;pointer-events:none;width:fit-content;max-width:100%;box-sizing:border-box;white-space:normal;transition:opacity 0.18s ease,transform 0.18s ease,visibility 0.18s ease}.hint{position:fixed;left:50%;bottom:10px;transform:translateX(-50%);width:fit-content;max-width:calc(100vw - 18px);text-align:center;color:#999;font-size:12px;line-height:1.35;pointer-events:none;padding:6px 10px;background:rgba(0,0,0,0.68);border:1px solid #222;box-sizing:border-box;transition:opacity 0.18s ease,transform 0.18s ease,visibility 0.18s ease}.first-start-controls{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:35;width:min(92vw,620px);box-sizing:border-box;padding:18px 20px;background:rgba(0,0,0,.86);border:2px solid var(--accent);box-shadow:0 0 24px color-mix(in srgb,var(--accent) 35%,transparent),0 0 60px rgba(0,0,0,.75);color:#eee;font-family:monospace;text-align:center;pointer-events:none;user-select:none;transition:opacity .18s ease,visibility .18s ease,transform .18s ease}.first-start-controls.hidden,body.title-active .first-start-controls{opacity:0;visibility:hidden;transform:translate(-50%,-46%)}.first-start-controls h2{margin:0 0 10px;font-size:clamp(20px,3vw,30px);letter-spacing:2px;color:#fff;text-shadow:0 0 10px var(--accent)}.first-start-controls .controls-intro{margin:0 0 12px;color:#aaa;font-size:13px;line-height:1.4}.first-start-controls .control-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:10px 0 14px}.first-start-controls .control-line{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.18);font-size:13px}.first-start-controls .control-action{color:#aaa;text-align:left}.first-start-controls .control-key{color:#fff;text-align:right;text-shadow:0 0 8px var(--accent)}.first-start-controls .start-line{margin-top:8px;color:#fff;font-size:clamp(14px,2vw,18px);text-shadow:0 0 12px var(--accent)}@media (max-width:760px){.first-start-controls{padding:14px;width:min(94vw,520px)}.first-start-controls .control-grid{grid-template-columns:1fr;gap:6px}.first-start-controls .control-line{font-size:12px;padding:7px 8px}}.title-screen{position:fixed;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;padding:18px;box-sizing:border-box;background:radial-gradient(circle at center,rgba(12,18,24,0.94) 0%,rgba(0,0,0,0.96) 58%,#000 100%);opacity:0;visibility:hidden;pointer-events:none;transition:opacity 0.18s ease,visibility 0.18s ease}body.title-active .title-screen{opacity:1;visibility:visible;pointer-events:auto}body.title-active .menu-toggle,body.title-active .menu-stack,body.title-active .hint{opacity:0;visibility:hidden;pointer-events:none}.title-card{width:min(92vw,620px);max-height:calc(100vh - 36px);overflow:auto;padding:22px;box-sizing:border-box;background:rgba(0,0,0,0.9);border:2px solid var(--accent);box-shadow:0 0 24px color-mix(in srgb,var(--accent) 35%,transparent);text-align:center}.title-card h1{margin:0 0 8px;font-size:clamp(24px,6vw,42px);letter-spacing:3px;color:#fff;text-shadow:0 0 12px var(--accent)}.title-subtitle,.slot-help,.title-message{color:#aaa;font-size:13px;line-height:1.45;margin:8px 0}.save-slot-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:16px 0 12px}.save-slot{min-height:82px;background:#050505;color:#aaa;border:1px solid #555;font-family:monospace;cursor:pointer;padding:8px;text-align:left;display:flex;flex-direction:column;gap:5px}.save-slot:hover,.save-slot.active,.save-slot:focus-visible{color:#fff;border-color:var(--accent);box-shadow:0 0 12px color-mix(in srgb,var(--accent) 45%,transparent);outline:none}.slot-name{font-size:14px;color:#fff}.slot-detail,.slot-progress{font-size:11px;line-height:1.35;color:#aaa}.title-actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:10px;margin-top:14px}.secret-boss-button{color:#ffd9ff;border-color:#9d4dff;text-shadow:0 0 10px #b14dff}.secret-boss-button[hidden]{display:none}.screen-fade{position:fixed;inset:0;z-index:90;background:#000;opacity:0;visibility:hidden;pointer-events:none;transition:opacity 0.78s ease,visibility 0.78s ease}.screen-fade.active{opacity:1;visibility:visible;pointer-events:auto}.ending-credits{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at center,rgba(18,12,35,0.4) 0%,rgba(0,0,0,0.96) 55%,#000 100%);color:#fff;opacity:0;visibility:hidden;pointer-events:none;transition:opacity 0.7s ease,visibility 0.7s ease}.ending-credits.active{opacity:1;visibility:visible;pointer-events:auto}.ending-credit-card{text-align:center;padding:28px 34px;border:2px solid #fff;background:rgba(0,0,0,0.68);box-shadow:0 0 28px rgba(255,255,255,0.35),0 0 54px rgba(177,77,255,0.34);animation:creditHover 2.6s ease-in-out infinite}.ending-credit-thanks{font-size:clamp(22px,6vw,44px);letter-spacing:3px;text-shadow:0 0 14px #fff,0 0 24px #b14dff;margin-bottom:14px}.ending-credit-byline{font-size:clamp(16px,4vw,28px);color:#d9c8ff;text-shadow:0 0 12px #9d4dff}@keyframes creditHover{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-10px) scale(1.025)}}.title-actions button,.erase-save-button{background:#000;color:#ddd;border:1px solid #555;font-family:monospace;cursor:pointer;padding:10px 12px}.title-actions button{min-height:58px;font-size:18px}.title-actions button:hover,.title-actions button:focus-visible,.erase-save-button:hover,.erase-save-button:focus-visible{color:#fff;border-color:var(--accent);box-shadow:0 0 12px color-mix(in srgb,var(--accent) 45%,transparent);outline:none}.title-actions button:disabled,.custom-panel button:disabled,.custom-panel select:disabled,.controls button:disabled{opacity:0.45;cursor:not-allowed;box-shadow:none;border-color:#333;color:#777}.erase-save-button{margin-top:12px;font-size:12px;padding:6px 10px}.save-badge{color:var(--accent);font-size:12px}@media (max-width:760px){.menu-stack{top:6px;gap:5px;max-width:calc(100vw - 120px)}.controls{gap:4px;font-size:11px;padding:6px}.controls button{padding:3px 5px}.music-volume-control{gap:4px;padding:2px 4px}.music-volume-control input[type="range"]{width:84px}.menu-toggle{top:6px;left:6px;font-size:11px;padding:5px 6px}.title-jump-toggle{top:38px;left:6px;font-size:11px;padding:5px 6px}.play-info-toggle{top:6px;right:6px;left:auto;font-size:11px;padding:5px 6px;max-width:calc(100vw - 110px)}.status{font-size:11px}.custom-panel{font-size:11px;gap:6px;padding:6px}.custom-panel select{max-width:82vw}.lan-grid{grid-template-columns:1fr}.custom-readout{min-width:0;width:100%}.hint{bottom:8px;font-size:11px}.save-slot-list,.title-actions{grid-template-columns:1fr}.title-card{padding:16px}}@media (max-width:560px){.menu-stack{top:42px;max-width:calc(100vw - 12px)}}
-@media (orientation:landscape) and (max-height:620px){
-  .menu-toggle,.title-jump-toggle,.play-info-toggle{font-size:clamp(11px,1.8vw,14px);padding:5px 8px;line-height:1.2}
-  .menu-toggle{top:calc(env(safe-area-inset-top,0px) + 8px);left:calc(env(safe-area-inset-left,0px) + 8px)}
-  .title-jump-toggle{top:calc(env(safe-area-inset-top,0px) + 48px);left:calc(env(safe-area-inset-left,0px) + 8px)}
-  .play-info-toggle{top:calc(env(safe-area-inset-top,0px) + 8px);right:calc(env(safe-area-inset-right,0px) + 8px);max-width:min(24vw,190px)}
-  .menu-stack{top:calc(env(safe-area-inset-top,0px) + 8px);width:min(58vw,calc(100vw - 360px));max-width:calc(100vw - 360px);gap:5px}
-  .controls{font-size:clamp(10px,1.55vw,13px);gap:6px;padding:6px 8px;max-width:100%;justify-content:center}
-  .controls button,.custom-panel button,.lan-panel button{padding:4px 7px}
-  .music-volume-control{gap:5px;padding:3px 5px}
-  .music-volume-control input[type="range"]{width:min(18vw,130px)}
-  .status{font-size:clamp(10px,1.45vw,12px);line-height:1.25;max-width:100%;padding:5px 8px}
-  .custom-panel,.lan-panel{font-size:clamp(10px,1.45vw,12px);max-width:100%}
-  .custom-readout{min-width:0;width:100%}
-  .hint{font-size:clamp(10px,1.45vw,12px);max-width:min(72vw,900px);bottom:calc(env(safe-area-inset-bottom,0px) + 8px)}
-}
-@media (orientation:landscape) and (max-width:780px){
-  .menu-stack{width:calc(100vw - 320px);max-width:calc(100vw - 320px)}
-  .play-info-toggle{max-width:150px}
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" /><title>King Pong Desktop HD</title> <style>
+/* King Pong UI stylesheet: consolidated desktop/mobile rules with duplicate release overrides removed. */
+:root {
+  --accent: #60d8ff;
+  --panel: rgba(0, 0, 0, 0.82);
+  --muted: #8a8a8a;
+  --edge-gap: 10px;
 }
 
-/* King Pong phone UI polish: keep menu button visibly active, hide unneeded title-screen edge buttons. */
-.menu-toggle{color:#fff!important;border-color:#666!important;opacity:1!important;text-shadow:0 0 5px rgba(255,255,255,.28)}
-body.menus-hidden .menu-toggle{color:#fff!important;opacity:1!important}
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: radial-gradient(circle at center, #111 0%, #050505 44%, #000 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: monospace;
+  color: #fff;
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+html,
+body,
+button,
+input,
+select,
+textarea {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+}
+
+canvas {
+  background: #000;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  display: block;
+  touch-action: none;
+  width: min(100vw, calc(133.333vh));
+  height: auto;
+  max-height: 100vh;
+  border: 2px solid #222;
+  box-sizing: border-box;
+  box-shadow: 0 0 24px rgba(255, 255, 255, 0.08),
+              0 0 42px color-mix(in srgb, var(--accent) 24%, transparent);
+}
+
+@supports (height: 100dvh) {
+  canvas {
+    width: min(100vw, calc(133.333dvh));
+    max-height: 100dvh;
+  }
+}
+
+button,
+select,
+input,
+textarea {
+  font-family: monospace;
+}
+
+button {
+  background: #000;
+  color: #aaa;
+  border: 1px solid #555;
+  cursor: pointer;
+}
+
+button:hover,
+button:focus-visible,
+.controls button.active,
+.save-slot.active,
+.level-picker-option.active {
+  color: #fff;
+  border-color: var(--accent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 45%, transparent);
+  outline: none;
+}
+
+button:disabled,
+select:disabled,
+.level-picker-option:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+  border-color: #333;
+  color: #777;
+}
+
+.menu-toggle,
+.title-jump-toggle,
+.play-info-toggle {
+  position: fixed;
+  z-index: 55;
+  background: var(--panel);
+  color: #d4d4d4;
+  border: 1px solid #444;
+  font-size: 12px;
+  padding: 6px 8px;
+  user-select: none;
+  transition: opacity 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.menu-toggle { top: var(--edge-gap); left: var(--edge-gap); z-index: 20; }
+.title-jump-toggle { top: 44px; left: var(--edge-gap); }
+.play-info-toggle { top: 42px; right: var(--edge-gap); max-width: calc(100vw - 120px); white-space: normal; }
+
+body.menus-hidden .menu-toggle { opacity: 0.78; }
+body.play-info-hidden .play-info-toggle { opacity: 0.55; }
 body.title-active .menu-toggle,
 body.title-active .title-jump-toggle,
-body.title-active .play-info-toggle{opacity:0!important;visibility:hidden!important;pointer-events:none!important}
-
-
-/* King Pong phone release UI: keep edge controls out of play unless menus are open. */
-body.menus-hidden:not(.title-active) .title-jump-toggle,
-body.menus-hidden:not(.title-active) .play-info-toggle{opacity:0!important;visibility:hidden!important;pointer-events:none!important}
-body.menus-hidden:not(.title-active) .menu-toggle{font-size:11px!important;padding:5px 7px!important;line-height:1.1!important;background:rgba(0,0,0,.56)!important;border-color:rgba(255,255,255,.34)!important;box-shadow:0 0 8px rgba(0,0,0,.55)!important}
-@media (orientation:landscape) and (max-height:620px){body.menus-hidden:not(.title-active) .menu-toggle{top:calc(env(safe-area-inset-top,0px) + 6px)!important;left:calc(env(safe-area-inset-left,0px) + 6px)!important}}
-
-
-/* King Pong phone release v1.0.3: icon battery indicator and local clock for fullscreen play and title screen. */
-.battery-indicator{position:fixed;top:calc(env(safe-area-inset-top,0px) + 8px);right:calc(env(safe-area-inset-right,0px) + 8px);z-index:72;width:44px;height:22px;display:flex;align-items:center;justify-content:center;box-sizing:border-box;pointer-events:none;user-select:none;opacity:.86;filter:drop-shadow(0 0 8px rgba(0,0,0,.7))}
-.battery-indicator .battery-shell{position:relative;width:34px;height:16px;border:2px solid rgba(255,255,255,.82);border-radius:3px;background:rgba(0,0,0,.56);box-sizing:border-box;box-shadow:0 0 8px rgba(255,255,255,.08),inset 0 0 3px rgba(255,255,255,.16)}
-.battery-indicator .battery-shell::after{content:"";position:absolute;right:-5px;top:4px;width:3px;height:6px;background:rgba(255,255,255,.82);border-radius:0 2px 2px 0}
-.battery-indicator .battery-fill{position:absolute;left:2px;top:2px;bottom:2px;width:0%;min-width:1px;max-width:calc(100% - 4px);background:rgba(255,255,255,.86);border-radius:1px;transition:width .35s ease,background-color .35s ease}
-.battery-indicator.low .battery-fill{background:rgba(255,120,120,.9)}
-.battery-indicator.charging .battery-fill{background:rgba(170,255,190,.92);box-shadow:0 0 8px rgba(170,255,190,.45)}
-.battery-indicator .battery-bolt{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:12px;line-height:1;color:#111;text-shadow:0 0 2px rgba(255,255,255,.75);opacity:0;transition:opacity .18s ease;z-index:2}
-.battery-indicator.charging .battery-bolt{opacity:1}
-.battery-indicator.unavailable{opacity:.42}.clock-indicator{position:fixed;bottom:4px;left:10px;z-index:55;min-width:0;padding:2px 4px;border:1px solid rgba(255,255,255,.36);border-radius:4px;background:rgba(0,0,0,.42);color:rgba(255,255,255,.78);font-family:monospace;font-size:9px;line-height:1;text-align:center;letter-spacing:0;box-sizing:border-box;pointer-events:none;user-select:none;opacity:.64;text-shadow:0 0 5px rgba(0,0,0,.95);box-shadow:0 0 5px rgba(0,0,0,.48),inset 0 0 2px rgba(255,255,255,.06);white-space:nowrap;transform:translateZ(0)}
-body.menus-hidden:not(.title-active) .title-jump-toggle,body.menus-hidden:not(.title-active) .play-info-toggle{opacity:0;visibility:hidden;pointer-events:none}
-.play-info-toggle{top:40px}
-@media (orientation:landscape) and (max-height:620px){.battery-indicator{top:calc(env(safe-area-inset-top,0px) + 6px);right:calc(env(safe-area-inset-right,0px) + 6px);width:40px;height:20px}.battery-indicator .battery-shell{width:31px;height:15px}.battery-indicator .battery-bolt{font-size:11px}.clock-indicator{bottom:3px;left:10px;font-size:8px;padding:2px 3px}.play-info-toggle{top:34px!important}}
-
-
-/* King Pong desktop optimized build: keep the Android-era battery/clock, but restore the desktop layout and hotkey labels. */
-canvas{width:min(100vw,calc(133.333vh))!important;height:auto!important;max-height:100vh!important}
-@supports (height:100dvh){canvas{width:min(100vw,calc(133.333dvh))!important;max-height:100dvh!important}}
-body.menus-hidden:not(.title-active) .title-jump-toggle,
-body.menus-hidden:not(.title-active) .play-info-toggle{opacity:.82!important;visibility:visible!important;pointer-events:auto!important}
-body.menus-hidden:not(.title-active) .menu-toggle{font-size:12px!important;padding:6px 8px!important;line-height:normal!important;background:var(--panel)!important;border-color:#444!important;box-shadow:none!important;opacity:.78!important}
-.menu-toggle{color:#d4d4d4!important;border-color:#444!important;text-shadow:none!important}.menu-toggle:hover,.menu-toggle:focus-visible{color:#fff!important;border-color:var(--accent)!important}.title-jump-toggle{top:44px!important;left:10px!important}.play-info-toggle{top:42px!important;right:10px!important;max-width:calc(100vw - 120px)!important}.battery-indicator{top:10px!important;right:10px!important;width:44px!important;height:22px!important}.clock-indicator{bottom:10px!important;left:10px!important;font-size:12px!important;padding:4px 6px!important;opacity:.78!important}
-@media (orientation:landscape) and (max-height:620px){.menu-stack{top:8px!important;width:min(96vw,980px)!important;max-width:calc(100vw - 150px)!important}.play-info-toggle{top:42px!important;right:10px!important;max-width:calc(100vw - 120px)!important}.battery-indicator{top:10px!important;right:10px!important;width:44px!important;height:22px!important}.clock-indicator{bottom:10px!important;left:10px!important;font-size:12px!important;padding:4px 6px!important}.menu-toggle{top:10px!important;left:10px!important}.title-jump-toggle{top:44px!important;left:10px!important}}
-
-
-
-/* Desktop menu visibility fix: Title Screen and Goal Info controls only show after Menu (M) is opened. */
+body.title-active .play-info-toggle {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
 body.menus-hidden:not(.title-active) .title-jump-toggle,
 body.menus-hidden:not(.title-active) .play-info-toggle {
-  opacity: 0 !important;
-  visibility: hidden !important;
-  pointer-events: none !important;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
 }
 body:not(.menus-hidden):not(.title-active) .title-jump-toggle,
 body:not(.menus-hidden):not(.title-active) .play-info-toggle {
-  visibility: visible !important;
-  pointer-events: auto !important;
+  visibility: visible;
+  pointer-events: auto;
 }
 
+.menu-stack {
+  position: fixed;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 15;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: min(96vw, 980px);
+  max-width: calc(100vw - 150px);
+  box-sizing: border-box;
+  pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s ease;
+}
 
-/* King Pong WebView2 4K sharpness: improve DOM text rendering while canvas uses a higher backing scale. */
-html,body,button,input,select,textarea{ -webkit-font-smoothing: antialiased; text-rendering: geometricPrecision; }
+body.menus-hidden .menu-stack,
+body.menus-hidden .hint {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+body.menus-hidden .menu-stack { transform: translate(-50%, -130%); }
+body.menus-hidden .hint { transform: translate(-50%, 160%); }
+
+.controls,
+.custom-panel,
+.lan-panel,
+.status {
+  background: var(--panel);
+  border: 1px solid #333;
+  color: #aaa;
+  user-select: none;
+  box-sizing: border-box;
+  max-width: 100%;
+  transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s ease;
+}
+
+.controls,
+.custom-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  width: fit-content;
+  pointer-events: auto;
+}
+
+.controls { gap: 8px; padding: 8px 10px; font-size: 13px; white-space: normal; }
+.controls button { padding: 4px 8px; }
+
+.music-volume-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px;
+  border: 1px solid #333;
+  background: rgba(0, 0, 0, 0.55);
+  color: #aaa;
+}
+.music-volume-control input[type="range"] { width: 110px; accent-color: #fff; cursor: pointer; }
+.music-volume-control .value-pill { min-width: 34px; }
+
+.custom-panel {
+  gap: 8px 10px;
+  padding: 8px 10px;
+  font-size: 12px;
+}
+.custom-panel.hidden,
+.lan-panel.hidden,
+.level-picker-overlay.hidden { display: none; }
+body.two-player-menus .status,
+body.two-player-menus .custom-readout,
+.cpu-custom-control.mode-hidden { display: none; }
+.custom-panel label,
+.custom-readout {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.custom-readout { color: #fff; min-width: 280px; justify-content: center; }
+.custom-panel select {
+  max-width: min(62vw, 360px);
+  background: #000;
+  color: #fff;
+  border: 1px solid #555;
+  padding: 4px 6px;
+}
+.custom-panel select.native-level-select { display: none; }
+.custom-panel input[type="range"] { width: 120px; accent-color: #fff; cursor: pointer; }
+.custom-panel button { padding: 4px 8px; }
+.custom-level-picker-button {
+  min-width: min(62vw, 360px);
+  max-width: min(62vw, 460px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+.value-pill { display: inline-block; min-width: 42px; color: #fff; text-align: right; }
+
+.level-picker-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  box-sizing: border-box;
+  background: rgba(0, 0, 0, 0.62);
+  pointer-events: auto;
+}
+.level-picker-card {
+  width: min(92vw, 720px);
+  max-height: min(82vh, 720px);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: rgba(0, 0, 0, 0.94);
+  border: 2px solid var(--accent);
+  box-shadow: 0 0 26px color-mix(in srgb, var(--accent) 35%, transparent), 0 0 70px rgba(0, 0, 0, 0.85);
+  padding: 14px;
+  box-sizing: border-box;
+}
+.level-picker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #fff;
+  font-size: 16px;
+  letter-spacing: 1px;
+}
+.level-picker-close { padding: 5px 9px; }
+.level-picker-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(245px, 1fr));
+  gap: 7px;
+  overflow: auto;
+  padding: 2px;
+  scrollbar-color: var(--accent) #050505;
+}
+.level-picker-option {
+  background: #050505;
+  color: #aaa;
+  border: 1px solid #444;
+  font-size: 12px;
+  line-height: 1.3;
+  padding: 8px 9px;
+  text-align: left;
+}
+
+.lan-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 8px 10px;
+  font-size: 12px;
+  width: min(96vw, 880px);
+  pointer-events: auto;
+}
+.lan-row { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px; }
+.lan-title-row { color: #fff; }
+.lan-safe-note { color: #8f8f8f; font-size: 11px; text-align: center; }
+.lan-status-pill {
+  display: inline-block;
+  min-width: 120px;
+  padding: 3px 6px;
+  color: #fff;
+  border: 1px solid #444;
+  background: rgba(0, 0, 0, 0.55);
+  text-align: center;
+}
+body.lan-connected .lan-status-pill {
+  border-color: var(--accent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+.lan-code-label { display: flex; align-items: center; gap: 6px; }
+.lan-code-label input {
+  width: 72px;
+  text-transform: uppercase;
+  text-align: center;
+  background: #000;
+  color: #fff;
+  border: 1px solid #555;
+  padding: 4px 6px;
+}
+.lan-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.lan-grid label { display: flex; flex-direction: column; gap: 4px; min-width: 0; text-align: left; }
+.lan-grid textarea {
+  width: 100%;
+  min-height: 52px;
+  resize: vertical;
+  box-sizing: border-box;
+  background: #000;
+  color: #fff;
+  border: 1px solid #555;
+  font-size: 10px;
+  padding: 5px;
+}
+.lan-panel button { padding: 4px 8px; }
+
+.status {
+  padding: 6px 10px;
+  border-color: #252525;
+  color: #d4d4d4;
+  font-size: 12px;
+  line-height: 1.35;
+  text-align: center;
+  pointer-events: none;
+  width: fit-content;
+  white-space: normal;
+}
+
+.hint {
+  position: fixed;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  width: fit-content;
+  max-width: calc(100vw - 18px);
+  text-align: center;
+  color: #999;
+  font-size: 12px;
+  line-height: 1.35;
+  pointer-events: none;
+  padding: 6px 10px;
+  background: rgba(0, 0, 0, 0.68);
+  border: 1px solid #222;
+  box-sizing: border-box;
+  transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s ease;
+}
+
+.first-start-controls {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 35;
+  width: min(92vw, 620px);
+  box-sizing: border-box;
+  padding: 18px 20px;
+  background: rgba(0, 0, 0, 0.86);
+  border: 2px solid var(--accent);
+  box-shadow: 0 0 24px color-mix(in srgb, var(--accent) 35%, transparent), 0 0 60px rgba(0, 0, 0, 0.75);
+  color: #eee;
+  text-align: center;
+  pointer-events: none;
+  user-select: none;
+  transition: opacity 0.18s ease, visibility 0.18s ease, transform 0.18s ease;
+}
+.first-start-controls.hidden,
+body.title-active .first-start-controls {
+  opacity: 0;
+  visibility: hidden;
+  transform: translate(-50%, -46%);
+}
+.first-start-controls h2 {
+  margin: 0 0 10px;
+  font-size: clamp(20px, 3vw, 30px);
+  letter-spacing: 2px;
+  color: #fff;
+  text-shadow: 0 0 10px var(--accent);
+}
+.first-start-controls .controls-intro { margin: 0 0 12px; color: #aaa; font-size: 13px; line-height: 1.4; }
+.first-start-controls .control-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 10px 0 14px; }
+.first-start-controls .control-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  font-size: 13px;
+}
+.first-start-controls .control-action { color: #aaa; text-align: left; }
+.first-start-controls .control-key { color: #fff; text-align: right; text-shadow: 0 0 8px var(--accent); }
+.first-start-controls .start-line { margin-top: 8px; color: #fff; font-size: clamp(14px, 2vw, 18px); text-shadow: 0 0 12px var(--accent); }
+
+.title-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  box-sizing: border-box;
+  background: radial-gradient(circle at center, rgba(12, 18, 24, 0.94) 0%, rgba(0, 0, 0, 0.96) 58%, #000 100%);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.18s ease, visibility 0.18s ease;
+}
+body.title-active .title-screen { opacity: 1; visibility: visible; pointer-events: auto; }
+body.title-active .menu-stack,
+body.title-active .hint { opacity: 0; visibility: hidden; pointer-events: none; }
+.title-card {
+  width: min(92vw, 620px);
+  max-height: calc(100vh - 36px);
+  overflow: auto;
+  padding: 22px;
+  box-sizing: border-box;
+  background: rgba(0, 0, 0, 0.9);
+  border: 2px solid var(--accent);
+  box-shadow: 0 0 24px color-mix(in srgb, var(--accent) 35%, transparent);
+  text-align: center;
+}
+.title-card h1 {
+  margin: 0 0 8px;
+  font-size: clamp(24px, 6vw, 42px);
+  letter-spacing: 3px;
+  color: #fff;
+  text-shadow: 0 0 12px var(--accent);
+}
+.title-subtitle,
+.slot-help,
+.title-message { color: #aaa; font-size: 13px; line-height: 1.45; margin: 8px 0; }
+.save-slot-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 16px 0 12px; }
+.save-slot {
+  min-height: 82px;
+  background: #050505;
+  color: #aaa;
+  border: 1px solid #555;
+  padding: 8px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.slot-name { font-size: 14px; color: #fff; }
+.slot-detail,
+.slot-progress { font-size: 11px; line-height: 1.35; color: #aaa; }
+.title-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(135px, 1fr)); gap: 10px; margin-top: 14px; }
+.title-actions button { min-height: 58px; font-size: 18px; padding: 10px 12px; color: #ddd; }
+.secret-boss-button { color: #ffd9ff; border-color: #9d4dff; text-shadow: 0 0 10px #b14dff; }
+.secret-boss-button[hidden] { display: none; }
+.erase-save-button { margin-top: 12px; font-size: 12px; padding: 6px 10px; color: #ddd; }
+.save-badge { color: var(--accent); font-size: 12px; }
+
+.screen-fade,
+.ending-credits {
+  position: fixed;
+  inset: 0;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+.screen-fade {
+  z-index: 90;
+  background: #000;
+  transition: opacity 0.78s ease, visibility 0.78s ease;
+}
+.screen-fade.active { opacity: 1; visibility: visible; pointer-events: auto; }
+.ending-credits {
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at center, rgba(18, 12, 35, 0.4) 0%, rgba(0, 0, 0, 0.96) 55%, #000 100%);
+  color: #fff;
+  transition: opacity 0.7s ease, visibility 0.7s ease;
+}
+.ending-credits.active { opacity: 1; visibility: visible; pointer-events: auto; }
+.ending-credit-card {
+  text-align: center;
+  padding: 28px 34px;
+  border: 2px solid #fff;
+  background: rgba(0, 0, 0, 0.68);
+  box-shadow: 0 0 28px rgba(255, 255, 255, 0.35), 0 0 54px rgba(177, 77, 255, 0.34);
+  animation: creditHover 2.6s ease-in-out infinite;
+}
+.ending-credit-thanks { font-size: clamp(22px, 6vw, 44px); letter-spacing: 3px; text-shadow: 0 0 14px #fff, 0 0 24px #b14dff; margin-bottom: 14px; }
+.ending-credit-byline { font-size: clamp(16px, 4vw, 28px); color: #d9c8ff; text-shadow: 0 0 12px #9d4dff; }
+@keyframes creditHover {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-10px) scale(1.025); }
+}
+
+.battery-indicator {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 10px);
+  right: calc(env(safe-area-inset-right, 0px) + 10px);
+  z-index: 72;
+  width: 44px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  pointer-events: none;
+  user-select: none;
+  opacity: 0.86;
+  filter: drop-shadow(0 0 8px rgba(0, 0, 0, 0.7));
+}
+.battery-indicator .battery-shell {
+  position: relative;
+  width: 34px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.82);
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.56);
+  box-sizing: border-box;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.08), inset 0 0 3px rgba(255, 255, 255, 0.16);
+}
+.battery-indicator .battery-shell::after {
+  content: "";
+  position: absolute;
+  right: -5px;
+  top: 4px;
+  width: 3px;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.82);
+  border-radius: 0 2px 2px 0;
+}
+.battery-indicator .battery-fill {
+  position: absolute;
+  left: 2px;
+  top: 2px;
+  bottom: 2px;
+  width: 0%;
+  min-width: 1px;
+  max-width: calc(100% - 4px);
+  background: rgba(255, 255, 255, 0.86);
+  border-radius: 1px;
+  transition: width 0.35s ease, background-color 0.35s ease;
+}
+.battery-indicator.low .battery-fill { background: rgba(255, 120, 120, 0.9); }
+.battery-indicator.charging .battery-fill { background: rgba(170, 255, 190, 0.92); box-shadow: 0 0 8px rgba(170, 255, 190, 0.45); }
+.battery-indicator .battery-bolt {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 12px;
+  line-height: 1;
+  color: #111;
+  text-shadow: 0 0 2px rgba(255, 255, 255, 0.75);
+  opacity: 0;
+  transition: opacity 0.18s ease;
+  z-index: 2;
+}
+.battery-indicator.charging .battery-bolt { opacity: 1; }
+.battery-indicator.unavailable { opacity: 0.42; }
+
+.clock-indicator {
+  position: fixed;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
+  left: calc(env(safe-area-inset-left, 0px) + 10px);
+  z-index: 55;
+  min-width: 0;
+  padding: 4px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.36);
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.42);
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 12px;
+  line-height: 1;
+  text-align: center;
+  letter-spacing: 0;
+  box-sizing: border-box;
+  pointer-events: none;
+  user-select: none;
+  opacity: 0.78;
+  text-shadow: 0 0 5px rgba(0, 0, 0, 0.95);
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.48), inset 0 0 2px rgba(255, 255, 255, 0.06);
+  white-space: nowrap;
+  transform: translateZ(0);
+}
+
+@media (max-width: 760px) {
+  .menu-stack { gap: 5px; max-width: calc(100vw - 120px); }
+  .controls { gap: 4px; font-size: 11px; padding: 6px; }
+  .controls button { padding: 3px 5px; }
+  .music-volume-control { gap: 4px; padding: 2px 4px; }
+  .music-volume-control input[type="range"] { width: 84px; }
+  .menu-toggle { top: 6px; left: 6px; font-size: 11px; padding: 5px 6px; }
+  .title-jump-toggle { top: 38px; left: 6px; font-size: 11px; padding: 5px 6px; }
+  .play-info-toggle { top: 38px; right: 6px; font-size: 11px; padding: 5px 6px; max-width: calc(100vw - 110px); }
+  .status { font-size: 11px; }
+  .custom-panel { font-size: 11px; gap: 6px; padding: 6px; }
+  .custom-panel select { max-width: 82vw; }
+  .lan-grid { grid-template-columns: 1fr; }
+  .custom-readout { min-width: 0; width: 100%; }
+  .hint { bottom: 8px; font-size: 11px; }
+  .save-slot-list,
+  .title-actions { grid-template-columns: 1fr; }
+  .title-card { padding: 16px; }
+  .first-start-controls { padding: 14px; width: min(94vw, 520px); }
+  .first-start-controls .control-grid { grid-template-columns: 1fr; gap: 6px; }
+  .first-start-controls .control-line { font-size: 12px; padding: 7px 8px; }
+}
+
+@media (max-width: 560px) {
+  .menu-stack { top: 42px; max-width: calc(100vw - 12px); }
+}
+
+@media (orientation: landscape) and (max-height: 620px) {
+  .menu-toggle,
+  .title-jump-toggle,
+  .play-info-toggle { font-size: clamp(11px, 1.8vw, 14px); padding: 5px 8px; line-height: 1.2; }
+  .menu-stack { top: 8px; width: min(96vw, 980px); max-width: calc(100vw - 150px); gap: 5px; }
+  .controls { font-size: clamp(10px, 1.55vw, 13px); gap: 6px; padding: 6px 8px; }
+  .music-volume-control input[type="range"] { width: min(18vw, 130px); }
+  .status { font-size: clamp(10px, 1.45vw, 12px); line-height: 1.25; padding: 5px 8px; }
+  .custom-panel,
+  .lan-panel { font-size: clamp(10px, 1.45vw, 12px); }
+  .custom-readout { min-width: 0; width: 100%; }
+  .hint { font-size: clamp(10px, 1.45vw, 12px); max-width: min(72vw, 900px); bottom: calc(env(safe-area-inset-bottom, 0px) + 8px); }
+}
 </style>
 </head><body class="menus-hidden title-active"><canvas id="game" width="640" height="480" aria-label="King Pong game field"></canvas><button type="button" class="menu-toggle" id="menuToggle" aria-pressed="false" title="Show top and bottom menus with M">Menu (M)</button><button type="button" class="title-jump-toggle" id="titleJumpButton" title="Return to title screen/main menu">Title Screen</button><button type="button" class="play-info-toggle" id="playInfoToggle" aria-pressed="true" title="Hide campaign goal/course info with G">Hide Goal Info (G)</button><div class="battery-indicator unavailable" id="batteryIndicator" aria-live="polite" role="img" aria-label="Battery level unavailable" title="Battery level unavailable"><div class="battery-shell"><div class="battery-fill"></div><div class="battery-bolt">⚡</div></div></div><div class="clock-indicator" id="clockIndicator" aria-live="polite" role="timer" aria-label="Current time">--:--</div><div class="first-start-controls hidden" id="firstStartControls" aria-hidden="true"><h2>MAIN CONTROLS</h2><p class="controls-intro" id="firstStartControlsIntro">Learn the basics before the rally starts.</p><div class="control-grid"><div class="control-line"><span class="control-action" id="firstStartMoveLabel">Move paddle</span><span class="control-key" id="firstStartMoveKeys">W/S or Arrow Keys</span></div><div class="control-line"><span class="control-action">Serve / continue</span><span class="control-key">Space</span></div><div class="control-line"><span class="control-action">Pause</span><span class="control-key">P</span></div><div class="control-line"><span class="control-action">Restart</span><span class="control-key">R</span></div><div class="control-line"><span class="control-action">Menus</span><span class="control-key">M</span></div><div class="control-line"><span class="control-action">Title screen</span><span class="control-key">Esc / 0</span></div></div><div class="start-line">Press Space to start</div></div><div class="title-screen" id="titleScreen" role="dialog" aria-modal="true" aria-labelledby="titleHeading"><div class="title-card"><h1 id="titleHeading">KING PONG</h1><div class="title-subtitle">Choose a save slot, then play Campaign, Custom Game, Two Player, or optional LAN Two Player. Custom Game uses completed maps; Two Player can use every map.</div><div class="save-badge" id="activeSaveBadge">Slot 1 selected</div><div class="save-slot-list" id="saveSlotList"><button type="button" class="save-slot" data-save-slot="0"><span class="slot-name">SLOT 1</span><span class="slot-detail">New Game</span><span class="slot-progress">Level 01 unlocked</span></button><button type="button" class="save-slot" data-save-slot="1"><span class="slot-name">SLOT 2</span><span class="slot-detail">New Game</span><span class="slot-progress">Level 01 unlocked</span></button><button type="button" class="save-slot" data-save-slot="2"><span class="slot-name">SLOT 3</span><span class="slot-detail">New Game</span><span class="slot-progress">Level 01 unlocked</span></button></div><div class="title-actions"><button type="button" id="titleCampaignButton">Campaign</button><button type="button" id="titleCustomButton">Custom Game</button><button type="button" id="titleTwoPlayerButton">Two Player</button><button type="button" id="titleLanButton">LAN Two Player</button><button type="button" id="titleBossButton" class="secret-boss-button" hidden>Secret Boss</button></div><div class="title-message" id="titleMessage">Campaign starts at your next unlocked level. Custom Game only shows completed levels. Two Player and LAN Two Player can choose any level. A secret boss appears after all 18 levels are cleared.</div><button type="button" class="erase-save-button" id="eraseSaveButton">Erase Selected Slot</button></div></div><div class="menu-stack" id="menuStack"><div class="controls" id="campaignControls"><span id="activeSlotMini">Slot 1</span><span>Campaign</span><button type="button" data-campaign="0">Training</button><button type="button" data-campaign="1">Ricochet</button><button type="button" data-campaign="2">Chaos</button><button type="button" id="customModeButton">Custom Game</button><button type="button" id="twoPlayerModeButton">Two Player</button><button type="button" id="lanModeButton" title="Optional LAN-only peer connection for Two Player">LAN Two Player</button><button type="button" id="musicButton" aria-pressed="false" title="Toggle original chiptune music with N">Music Off (N)</button><label class="music-volume-control" title="Music volume"><span>Music Vol</span><input id="musicVolumeSlider" type="range" min="0" max="100" step="1" value="75" aria-label="Music volume" /><span class="value-pill" id="musicVolumeValue">75%</span></label><button type="button" id="restartButton">Restart Level (R)</button></div><div class="status" id="statusText">Loading...</div><div class="custom-panel hidden" id="customPanel"><label><span>Level</span><select id="customLevelSelect" class="native-level-select" aria-label="Choose custom level"></select><button type="button" id="customLevelPickerButton" class="custom-level-picker-button" aria-haspopup="dialog" aria-expanded="false">Choose Level</button></label><span class="custom-readout" id="customLevelReadout">Level 01 - Training Circuit: Open Court</span><label class="cpu-custom-control"><span>CPU intelligence</span><input id="customIntelSlider" type="range" min="0" max="100" step="1" value="50" /><span class="value-pill" id="customIntelValue">50%</span></label><label class="cpu-custom-control"><span>CPU Paddle Speed</span><input id="customMaxMoveSlider" aria-label="CPU Paddle Speed" type="range" min="1" max="12" step="0.1" value="4.4" /><span class="value-pill" id="customMaxMoveValue">4.4</span></label><button type="button" id="customStartButton">Play Selected</button></div><div class="lan-panel hidden" id="lanPanel"><div class="lan-row lan-title-row"><strong>LAN Two Player</strong><span class="lan-status-pill" id="lanStatus">Offline</span></div><div class="lan-row lan-safe-note">LAN-only WebRTC with no STUN/TURN servers. Host runs the match; guest sends input only.</div><div class="lan-row"><button type="button" id="lanHostButton">Host Match</button><button type="button" id="lanJoinButton">Join Match</button><button type="button" id="lanDisconnectButton">Disconnect</button><label class="lan-code-label"><span>Room Code</span><input id="lanRoomCodeInput" type="text" maxlength="6" autocomplete="off" spellcheck="false" aria-label="LAN room code" /></label></div><div class="lan-grid"><label><span>Your connection text</span><textarea id="lanLocalSignal" readonly spellcheck="false" aria-label="Your LAN connection text"></textarea></label><label><span>Paste other player text</span><textarea id="lanRemoteSignal" spellcheck="false" aria-label="Paste other player LAN connection text"></textarea></label></div><div class="lan-row"><button type="button" id="lanCopyButton">Copy Your Text</button><button type="button" id="lanApplySignalButton">Use Pasted Text</button></div></div></div><div class="level-picker-overlay hidden" id="levelPickerOverlay" role="dialog" aria-modal="true" aria-labelledby="levelPickerTitle"><div class="level-picker-card"><div class="level-picker-header"><strong id="levelPickerTitle">Choose Level</strong><button type="button" class="level-picker-close" id="levelPickerCloseButton">Close</button></div><div class="level-picker-list" id="levelPickerList"></div></div></div><div class="hint" id="controlHint"> Single/Custom/Boss: W/S or Arrow keys move - Two Player: W/S left, Arrow keys right - Space: serve/continue - P: pause - R: retry - M: menus - G: goals - N: music - 0/Esc: title </div><div class="screen-fade" id="screenFade"></div><div class="ending-credits" id="endingCredits" aria-hidden="true"><div class="ending-credit-card"><div class="ending-credit-thanks">Thank you for playing</div><div class="ending-credit-byline">Made by: King Alex Gilbert</div></div></div> <script>
 const LOCALIZATION = (() => {
@@ -137,14 +703,19 @@ return "en";
 const lang = detectLanguage();
 const phrases = phraseTranslations[lang] || english;
 const sorted = Object.keys(phrases).sort((a, b) => b.length - a.length);
+const translationCache = new Map();
 function translateText(value) {
 if (value === null || value === undefined || lang === "en") return value;
-let out = String(value);
-if (!out.trim()) return out;
-if (phrases[out]) return phrases[out];
+const raw = String(value);
+if (!raw.trim()) return raw;
+if (translationCache.has(raw)) return translationCache.get(raw);
+let out = phrases[raw] || raw;
+if (out === raw) {
 for (const key of sorted) {
 if (out.includes(key)) out = out.split(key).join(phrases[key]);
 }
+}
+translationCache.set(raw, out);
 return out;
 }
 function localizeStaticDom(root = document.body) {
@@ -171,6 +742,7 @@ return { lang, translateText, localizeStaticDom };
 function localizeText(value) {
 return LOCALIZATION.translateText(value);
 }
+const byId = (id) => document.getElementById(id);
 if (LOCALIZATION.lang !== "en") {
 document.documentElement.lang = LOCALIZATION.lang;
 document.title = localizeText(document.title);
@@ -196,61 +768,61 @@ set(value) { titleDescriptor.set.call(this, localizeText(value)); }
 });
 }
 }
-const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d");
-const statusText = document.getElementById("statusText");
-const controlHint = document.getElementById("controlHint");
-const menuToggle = document.getElementById("menuToggle");
-const playInfoToggle = document.getElementById("playInfoToggle");
-const restartButton = document.getElementById("restartButton");
-const customModeButton = document.getElementById("customModeButton");
-const twoPlayerModeButton = document.getElementById("twoPlayerModeButton");
-const lanModeButton = document.getElementById("lanModeButton");
-const musicButton = document.getElementById("musicButton");
-const musicVolumeSlider = document.getElementById("musicVolumeSlider");
-const musicVolumeValue = document.getElementById("musicVolumeValue");
-const customPanel = document.getElementById("customPanel");
-const customLevelSelect = document.getElementById("customLevelSelect");
-const customLevelPickerButton = document.getElementById("customLevelPickerButton");
-const levelPickerOverlay = document.getElementById("levelPickerOverlay");
-const levelPickerList = document.getElementById("levelPickerList");
-const levelPickerCloseButton = document.getElementById("levelPickerCloseButton");
-const customLevelReadout = document.getElementById("customLevelReadout");
-const customIntelSlider = document.getElementById("customIntelSlider");
-const customIntelValue = document.getElementById("customIntelValue");
-const customMaxMoveSlider = document.getElementById("customMaxMoveSlider");
-const customMaxMoveValue = document.getElementById("customMaxMoveValue");
-const customStartButton = document.getElementById("customStartButton");
+const canvas = byId("game");
+const ctx = canvas.getContext("2d", { alpha: false, desynchronized: true });
+const statusText = byId("statusText");
+const controlHint = byId("controlHint");
+const menuToggle = byId("menuToggle");
+const playInfoToggle = byId("playInfoToggle");
+const restartButton = byId("restartButton");
+const customModeButton = byId("customModeButton");
+const twoPlayerModeButton = byId("twoPlayerModeButton");
+const lanModeButton = byId("lanModeButton");
+const musicButton = byId("musicButton");
+const musicVolumeSlider = byId("musicVolumeSlider");
+const musicVolumeValue = byId("musicVolumeValue");
+const customPanel = byId("customPanel");
+const customLevelSelect = byId("customLevelSelect");
+const customLevelPickerButton = byId("customLevelPickerButton");
+const levelPickerOverlay = byId("levelPickerOverlay");
+const levelPickerList = byId("levelPickerList");
+const levelPickerCloseButton = byId("levelPickerCloseButton");
+const customLevelReadout = byId("customLevelReadout");
+const customIntelSlider = byId("customIntelSlider");
+const customIntelValue = byId("customIntelValue");
+const customMaxMoveSlider = byId("customMaxMoveSlider");
+const customMaxMoveValue = byId("customMaxMoveValue");
+const customStartButton = byId("customStartButton");
 const campaignButtons = Array.from(document.querySelectorAll("[data-campaign]"));
-const titleScreen = document.getElementById("titleScreen");
-const activeSaveBadge = document.getElementById("activeSaveBadge");
-const activeSlotMini = document.getElementById("activeSlotMini");
-const titleMessage = document.getElementById("titleMessage");
-const titleCampaignButton = document.getElementById("titleCampaignButton");
-const titleCustomButton = document.getElementById("titleCustomButton");
-const titleTwoPlayerButton = document.getElementById("titleTwoPlayerButton");
-const titleLanButton = document.getElementById("titleLanButton");
-const titleBossButton = document.getElementById("titleBossButton");
-const titleJumpButton = document.getElementById("titleJumpButton");
-const firstStartControls = document.getElementById("firstStartControls");
-const firstStartControlsIntro = document.getElementById("firstStartControlsIntro");
-const firstStartMoveLabel = document.getElementById("firstStartMoveLabel");
-const firstStartMoveKeys = document.getElementById("firstStartMoveKeys");
-const screenFade = document.getElementById("screenFade");
-const endingCredits = document.getElementById("endingCredits");
-const eraseSaveButton = document.getElementById("eraseSaveButton");
+const titleScreen = byId("titleScreen");
+const activeSaveBadge = byId("activeSaveBadge");
+const activeSlotMini = byId("activeSlotMini");
+const titleMessage = byId("titleMessage");
+const titleCampaignButton = byId("titleCampaignButton");
+const titleCustomButton = byId("titleCustomButton");
+const titleTwoPlayerButton = byId("titleTwoPlayerButton");
+const titleLanButton = byId("titleLanButton");
+const titleBossButton = byId("titleBossButton");
+const titleJumpButton = byId("titleJumpButton");
+const firstStartControls = byId("firstStartControls");
+const firstStartControlsIntro = byId("firstStartControlsIntro");
+const firstStartMoveLabel = byId("firstStartMoveLabel");
+const firstStartMoveKeys = byId("firstStartMoveKeys");
+const screenFade = byId("screenFade");
+const endingCredits = byId("endingCredits");
+const eraseSaveButton = byId("eraseSaveButton");
 const saveSlotButtons = Array.from(document.querySelectorAll("[data-save-slot]"));
 const cpuCustomControls = Array.from(document.querySelectorAll(".cpu-custom-control"));
-const lanPanel = document.getElementById("lanPanel");
-const lanStatus = document.getElementById("lanStatus");
-const lanHostButton = document.getElementById("lanHostButton");
-const lanJoinButton = document.getElementById("lanJoinButton");
-const lanDisconnectButton = document.getElementById("lanDisconnectButton");
-const lanRoomCodeInput = document.getElementById("lanRoomCodeInput");
-const lanLocalSignal = document.getElementById("lanLocalSignal");
-const lanRemoteSignal = document.getElementById("lanRemoteSignal");
-const lanCopyButton = document.getElementById("lanCopyButton");
-const lanApplySignalButton = document.getElementById("lanApplySignalButton");
+const lanPanel = byId("lanPanel");
+const lanStatus = byId("lanStatus");
+const lanHostButton = byId("lanHostButton");
+const lanJoinButton = byId("lanJoinButton");
+const lanDisconnectButton = byId("lanDisconnectButton");
+const lanRoomCodeInput = byId("lanRoomCodeInput");
+const lanLocalSignal = byId("lanLocalSignal");
+const lanRemoteSignal = byId("lanRemoteSignal");
+const lanCopyButton = byId("lanCopyButton");
+const lanApplySignalButton = byId("lanApplySignalButton");
 const MENU_KEY_BLOCKLIST = new Set([" ", "Enter", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Home", "End", "PageUp", "PageDown"]);
 function isMenuKeyboardControl(element) {
 return Boolean(
@@ -299,6 +871,7 @@ makeMenuControlsMouseAndTouchOnly();
 const W = 640;
 const H = 480;
 let renderScale = 1;
+const MAX_RENDER_SCALE = 3; // Performance-friendly cap; gameplay still uses the original 640x480 math.
 let frame = 0;
 let cachedPlayfieldBoundsFrame = -1;
 let cachedPlayfieldBounds = { top: 0, bottom: H };
@@ -316,7 +889,7 @@ cachedStaticBackgroundScale = 0;
 }
 function syncCanvasBackingStore(cssWidth = canvas.clientWidth, cssHeight = canvas.clientHeight) {
 const dpr = Math.max(1, window.devicePixelRatio || 1);
-const targetScale = clamp(Math.ceil(Math.max(cssWidth / W, cssHeight / H) * dpr), 1, 6);
+const targetScale = clamp(Math.ceil(Math.max(cssWidth / W, cssHeight / H) * dpr), 1, MAX_RENDER_SCALE);
 if (targetScale !== renderScale || canvas.width !== W * targetScale || canvas.height !== H * targetScale) {
 renderScale = targetScale;
 canvas.width = W * renderScale;
@@ -368,10 +941,7 @@ const BALL_HALF = BALL_SIZE / 2;
 const BASE_BALL_SPEED = 4.2;
 const RALLY_PLAYER_SPAWN_DISTANCE = 236;
 const RALLY_PLAYER_SPAWN_MIN_DISTANCE = 180;
-const RALLY_PLAYER_SPAWN_Y_JITTER = 26;
-const RALLY_SPAWN_HAZARD_PADDING = 18;
-const RALLY_SPAWN_POCKET_PADDING = 34;
-const RALLY_SPAWN_MIN_VERTICAL_RATIO = 0.28;
+const RALLY_PLAYER_SPAWN_Y_JITTER = 0;
 const TOTAL_LEVELS = 18;
 const SECRET_BOSS_LEVEL_NUMBER = TOTAL_LEVELS + 1;
 const BOSS_PLAYER_MAX_HEALTH = 12;
@@ -446,10 +1016,35 @@ let gameOver = false;
 let endMessage = "";
 let cpuErrorOffset = 0;
 let shakeFrames = 0;
-// Desktop/WebView2 V5: disable impact screen shake and white collision flashes.
-// These effects can look like screen flicker on high-refresh or 4K displays.
-const COLLISION_SCREEN_SHAKE_ENABLED = false;
-const COLLISION_HIT_FLASH_ENABLED = false;
+// Desktop visual feedback: keep the Android-style collision flashes and impact shake,
+// but scale the movement by the actual on-screen canvas size so TVs/4K displays do not lurch.
+const COLLISION_SCREEN_SHAKE_ENABLED = true;
+const COLLISION_HIT_FLASH_ENABLED = true;
+const DESKTOP_SHAKE_TARGET_CSS_PX = 2.2;
+const DESKTOP_SHAKE_LOGICAL_CAP = 0.9;
+const DESKTOP_SHAKE_MIN_LOGICAL = 0.18;
+const DESKTOP_SHAKE_DECAY_POWER = 0.8;
+const HIT_FLASH_DURATION_SCALE = 0.55;
+const HIT_FLASH_REFERENCE_FRAMES = 6;
+const HIT_FLASH_ALPHA_BASE = 0.18;
+const HIT_FLASH_ALPHA_RANGE = 0.34;
+function addScreenShake(frames) {
+if (!COLLISION_SCREEN_SHAKE_ENABLED) return;
+shakeFrames = Math.max(shakeFrames, Math.max(1, Math.round(frames)));
+}
+function applyHitFlash(hazard, frames) {
+if (!COLLISION_HIT_FLASH_ENABLED || !hazard) return;
+const softenedFrames = Math.max(1, Math.round(frames * HIT_FLASH_DURATION_SCALE));
+hazard.hitFlash = Math.max(hazard.hitFlash || 0, softenedFrames);
+}
+function currentShakeAmplitude() {
+if (!COLLISION_SCREEN_SHAKE_ENABLED || shakeFrames <= 0) return 0;
+const cssScale = Math.max(canvas.clientWidth / W || 1, canvas.clientHeight / H || 1, 1);
+const displayAwareCap = DESKTOP_SHAKE_TARGET_CSS_PX / cssScale;
+const logicalCap = clamp(Math.min(DESKTOP_SHAKE_LOGICAL_CAP, displayAwareCap), DESKTOP_SHAKE_MIN_LOGICAL, DESKTOP_SHAKE_LOGICAL_CAP);
+const decay = Math.pow(clamp(shakeFrames / 8, 0.25, 1), DESKTOP_SHAKE_DECAY_POWER);
+return logicalCap * decay;
+}
 const left = {
 x: PADDLE_MARGIN,
 y: H / 2 - PADDLE_H / 2,
@@ -2833,57 +3428,27 @@ baseY: source.y,
 hitFlash: 0
 }));
 }
-function ballSpawnOverlapsHazard(x, y, padding = RALLY_SPAWN_HAZARD_PADDING) {
+function ballSpawnOverlapsHazard(x, y) {
 const testRect = {
-x: x - padding,
-y: y - padding,
-w: BALL_SIZE + padding * 2,
-h: BALL_SIZE + padding * 2
+x: x - 3,
+y: y - 3,
+w: BALL_SIZE + 6,
+h: BALL_SIZE + 6
 };
 return hazards.some((h) => {
 if (h.type === "circle") {
 const cx = x + BALL_HALF;
 const cy = y + BALL_HALF;
-return Math.hypot(cx - h.x, cy - h.y) < h.r + BALL_HALF + padding;
+return Math.hypot(cx - h.x, cy - h.y) < h.r + BALL_HALF + 6;
 }
 const rect = {
-x: h.x - padding,
-y: h.y - padding,
-w: h.w + padding * 2,
-h: h.h + padding * 2
+x: h.x - 3,
+y: h.y - 3,
+w: h.w + 6,
+h: h.h + 6
 };
 return rectsOverlap(testRect, rect);
 });
-}
-function ballSpawnInBarrierPocket(x, y) {
-const rectHazards = hazards.filter((h) => h.type === "rect");
-if (rectHazards.length < 2) return false;
-const centerX = x + BALL_HALF;
-const centerY = y + BALL_HALF;
-for (let i = 0; i < rectHazards.length; i++) {
-for (let j = i + 1; j < rectHazards.length; j++) {
-const a = rectHazards[i];
-const b = rectHazards[j];
-const leftEdge = Math.min(a.x, b.x);
-const rightEdge = Math.max(a.x + a.w, b.x + b.w);
-const topRect = a.y <= b.y ? a : b;
-const bottomRect = topRect === a ? b : a;
-const gapTop = topRect.y + topRect.h;
-const gapBottom = bottomRect.y;
-const gapHeight = gapBottom - gapTop;
-const sameColumn = centerX >= leftEdge - RALLY_SPAWN_POCKET_PADDING &&
-centerX <= rightEdge + RALLY_SPAWN_POCKET_PADDING &&
-Math.abs((a.x + a.w / 2) - (b.x + b.w / 2)) < Math.max(a.w, b.w) + RALLY_SPAWN_POCKET_PADDING * 2;
-const betweenBarriers = centerY > gapTop - BALL_HALF && centerY < gapBottom + BALL_HALF;
-if (sameColumn && betweenBarriers && gapHeight > BALL_SIZE && gapHeight < PADDLE_H * 3.2) {
-return true;
-}
-}
-}
-return false;
-}
-function isSafeBallSpawn(x, y) {
-return !ballSpawnOverlapsHazard(x, y) && !ballSpawnInBarrierPocket(x, y);
 }
 function findReceiverSideRallySpawn(direction) {
 const bounds = visiblePlayfieldBounds();
@@ -2913,7 +3478,7 @@ for (const yOffset of yOffsets) {
 const x = clamp(preferredX + xOffset, minX, maxX);
 const centerY = clamp(baseCenterY + yOffset, safeTop, safeBottom);
 const y = centerY - BALL_HALF;
-if (isSafeBallSpawn(x, y)) {
+if (!ballSpawnOverlapsHazard(x, y)) {
 return { x, y };
 }
 }
@@ -2923,25 +3488,11 @@ x: preferredX,
 y: clamp(baseCenterY, safeTop, safeBottom) - BALL_HALF
 };
 }
-function enforceMinimumBallSpawnAngle(direction, targetSpeed, maxSpeed) {
-const speed = Math.max(ballSpeed(), targetSpeed * 0.92, 0.001);
-const minVy = speed * RALLY_SPAWN_MIN_VERTICAL_RATIO;
-if (Math.abs(ball.vy) < minVy) {
-const bounds = visiblePlayfieldBounds();
-const centerY = ball.y + BALL_HALF;
-const centerBias = centerY < bounds.top + (bounds.bottom - bounds.top) / 2 ? 1 : -1;
-const sign = ball.vy < 0 ? -1 : ball.vy > 0 ? 1 : centerBias;
-ball.vy = sign * minVy;
-const vxMagnitude = Math.sqrt(Math.max(0.01, speed * speed - ball.vy * ball.vy));
-ball.vx = Math.sign(direction || ball.vx || 1) * vxMagnitude;
-}
-normalizeBallVelocity(targetSpeed * 0.92, maxSpeed);
-}
 function setRallyBallVelocity(direction, speed, level, spawnedForReceiver) {
 if (spawnedForReceiver) {
 const receiver = direction > 0 ? right : left;
 const targetCenter = clamp(
-receiver.y + PADDLE_H / 2 + (Math.random() * 2 - 1) * 18,
+receiver.y + PADDLE_H / 2 + (Math.random() * 2 - 1) * 10,
 visiblePlayfieldBounds().top + BALL_HALF,
 visiblePlayfieldBounds().bottom - BALL_HALF
 );
@@ -2949,7 +3500,7 @@ const targetX = direction > 0 ? receiver.x : receiver.x + PADDLE_W;
 const startCenterX = ball.x + BALL_HALF;
 const dx = Math.max(24, Math.abs(targetX - startCenterX));
 const dy = targetCenter - (ball.y + BALL_HALF);
-const angle = clamp(Math.atan2(dy, dx), -0.46, 0.46);
+const angle = clamp(Math.atan2(dy, dx), -0.42, 0.42);
 ball.vx = Math.cos(angle) * speed * direction;
 ball.vy = Math.sin(angle) * speed * 1.35;
 } else {
@@ -2957,7 +3508,7 @@ const angle = Math.random() * 0.82 - 0.41;
 ball.vx = direction * Math.cos(angle) * speed;
 ball.vy = Math.sin(angle) * speed * 1.6;
 }
-enforceMinimumBallSpawnAngle(direction, speed, level.maxSpeed || 10);
+normalizeBallVelocity(speed * 0.92, level.maxSpeed || 10);
 }
 function resetBall(direction = 1, waitForServe = true, spawnNearPlayer = false) {
 const level = currentLevel();
@@ -3222,7 +3773,7 @@ for (const yOffset of yOffsets) {
 const x = clamp(preferredX + xOffset, minX, maxX);
 const centerY = clamp(receiverCenterY + yOffset, safeTop, safeBottom);
 const y = centerY - BALL_HALF;
-if (isSafeBallSpawn(x, y)) {
+if (!ballSpawnOverlapsHazard(x, y)) {
 return { x, y };
 }
 }
@@ -3231,16 +3782,6 @@ return {
 x: preferredX,
 y: receiverCenterY - BALL_HALF
 };
-}
-function enforceMinimumBossBallSpawnAngle(vx, vy, direction, targetSpeed) {
-const speed = Math.max(Math.hypot(vx, vy), targetSpeed * 0.92, 0.001);
-const minVy = speed * RALLY_SPAWN_MIN_VERTICAL_RATIO;
-if (Math.abs(vy) < minVy) {
-const sign = vy < 0 ? -1 : vy > 0 ? 1 : (Math.random() < 0.5 ? -1 : 1);
-vy = sign * minVy;
-vx = Math.sign(direction || vx || 1) * Math.sqrt(Math.max(0.01, speed * speed - vy * vy));
-}
-return { vx, vy };
 }
 function createBossBall(index = 0, direction = null, useReceiverSideSpawn = false) {
 const bounds = visiblePlayfieldBounds();
@@ -3273,9 +3814,6 @@ vy = Math.sin(angle) * speed * 1.28;
 vx = Math.cos(spread) * speed * dir;
 vy = Math.sin(spread) * speed * 1.28;
 }
-const adjustedVelocity = enforceMinimumBossBallSpawnAngle(vx, vy, dir, speed);
-vx = adjustedVelocity.vx;
-vy = adjustedVelocity.vy;
 return {
 x: spawn.x,
 y: spawn.y,
@@ -3366,8 +3904,8 @@ bossBall.vy = Math.abs(bossBall.vy);
 bossBall.vx += (h.vx || 0) * 0.28;
 bossBall.vy += (h.vy || 0) * 0.28;
 normalizeBossBallVelocity(bossBall, BOSS_LEVEL.ballSpeed * 0.88, BOSS_LEVEL.maxSpeed + (h.bounce || 0));
-if (COLLISION_HIT_FLASH_ENABLED) h.hitFlash = 8;
-if (COLLISION_SCREEN_SHAKE_ENABLED) shakeFrames = Math.max(shakeFrames, 4);
+applyHitFlash(h, 8);
+addScreenShake(4);
 beep(250, 0.024, 0.035);
 return true;
 }
@@ -3392,8 +3930,8 @@ bossBall.vy = bossBall.vy - 2 * dot * ny + (h.vy || 0) * 0.32;
 bossBall.x = h.x + nx * minDist - BALL_HALF;
 bossBall.y = h.y + ny * minDist - BALL_HALF;
 normalizeBossBallVelocity(bossBall, BOSS_LEVEL.ballSpeed * 0.9, BOSS_LEVEL.maxSpeed + (h.boost || 0.4));
-if (COLLISION_HIT_FLASH_ENABLED) h.hitFlash = 10;
-if (COLLISION_SCREEN_SHAKE_ENABLED) shakeFrames = Math.max(shakeFrames, 5);
+applyHitFlash(h, 10);
+addScreenShake(5);
 beep(420, 0.028, 0.04);
 return true;
 }
@@ -3419,14 +3957,14 @@ bossBall.x = paddle.x + PADDLE_W;
 } else {
 bossBall.x = paddle.x - BALL_SIZE;
 }
-if (COLLISION_SCREEN_SHAKE_ENABLED) shakeFrames = Math.max(shakeFrames, 3);
+addScreenShake(3);
 beep(170 + Math.abs(relative) * 240, 0.028, 0.04);
 }
 function damageBoss() {
 if (gameOver) return;
 bossEnemyHealth = Math.max(0, bossEnemyHealth - 1);
 playPlayerPointJingle();
-if (COLLISION_SCREEN_SHAKE_ENABLED) shakeFrames = Math.max(shakeFrames, 8);
+addScreenShake(8);
 if (bossEnemyHealth <= 0) {
 bossVictory();
 }
@@ -3435,7 +3973,7 @@ function damagePlayer() {
 if (gameOver) return;
 bossPlayerHealth = Math.max(0, bossPlayerHealth - 1);
 beep(82, 0.2, 0.075);
-if (COLLISION_SCREEN_SHAKE_ENABLED) shakeFrames = Math.max(shakeFrames, 8);
+addScreenShake(8);
 if (bossPlayerHealth <= 0) {
 bossDefeat();
 }
@@ -3576,7 +4114,7 @@ chooseCpuError();
 } else {
 ball.x = paddle.x - BALL_SIZE;
 }
-if (COLLISION_SCREEN_SHAKE_ENABLED) shakeFrames = Math.max(shakeFrames, 3);
+addScreenShake(3);
 beep(180 + Math.abs(relative) * 260, 0.035);
 }
 function updatePlayerPaddles(gamepads = getConnectedGamepads()) {
@@ -3728,8 +4266,8 @@ ball.vx += (h.vx || 0) * 0.32;
 ball.vy += (h.vy || 0) * 0.32;
 normalizeBallVelocity(level.ballSpeed * 0.9, level.maxSpeed + (h.bounce || 0));
 if (!quiet) {
-if (COLLISION_HIT_FLASH_ENABLED) h.hitFlash = 8;
-if (COLLISION_SCREEN_SHAKE_ENABLED) shakeFrames = Math.max(shakeFrames, 5);
+applyHitFlash(h, 8);
+addScreenShake(5);
 chooseCpuError();
 beep(330, 0.03);
 }
@@ -3759,8 +4297,8 @@ ball.y = h.y + ny * minDist - BALL_HALF;
 const boost = h.boost || 0.35;
 normalizeBallVelocity(level.ballSpeed * 0.94, level.maxSpeed + boost);
 if (!quiet) {
-if (COLLISION_HIT_FLASH_ENABLED) h.hitFlash = 10;
-if (COLLISION_SCREEN_SHAKE_ENABLED) shakeFrames = Math.max(shakeFrames, 6);
+applyHitFlash(h, 10);
+addScreenShake(6);
 chooseCpuError();
 beep(520, 0.035);
 }
@@ -3926,12 +4464,12 @@ prevY: ball.prevY,
 vx: ball.vx,
 vy: ball.vy
 };
+const bounds = visiblePlayfieldBounds();
 for (let i = 0; i < cfg.horizon; i++) {
 sim.prevX = sim.x;
 sim.prevY = sim.y;
 sim.x += sim.vx;
 sim.y += sim.vy;
-const bounds = visiblePlayfieldBounds();
 if (sim.y <= bounds.top) {
 sim.y = bounds.top;
 sim.vy = Math.abs(sim.vy);
@@ -4063,16 +4601,29 @@ drawDigit(text.charCodeAt(i) - 48, x + i * (digitW + spacing), y, scale);
 function drawHazards() {
 const accent = currentCampaign().accent;
 for (const h of hazards) {
+const hazardColor = h.color || accent;
+const flashRatio = clamp((h.hitFlash || 0) / HIT_FLASH_REFERENCE_FRAMES, 0, 1);
+const flashAlpha = flashRatio > 0 ? HIT_FLASH_ALPHA_BASE + flashRatio * HIT_FLASH_ALPHA_RANGE : 0;
 ctx.save();
-ctx.shadowColor = h.color || accent;
-ctx.shadowBlur = h.hitFlash > 0 ? 18 : 6;
-ctx.fillStyle = h.hitFlash > 0 ? "#fff" : (h.color || accent);
+ctx.shadowColor = flashRatio > 0 ? "#fff" : hazardColor;
+ctx.shadowBlur = 6 + flashRatio * 8;
+ctx.fillStyle = hazardColor;
 ctx.strokeStyle = "rgba(255, 255, 255, 0.65)";
 ctx.lineWidth = 2;
 if (h.type === "circle") {
 ctx.beginPath();
 ctx.arc(Math.round(h.x), Math.round(h.y), h.r, 0, Math.PI * 2);
 ctx.fill();
+if (flashAlpha > 0) {
+ctx.save();
+ctx.globalAlpha = flashAlpha;
+ctx.shadowBlur = 0;
+ctx.fillStyle = "#fff";
+ctx.beginPath();
+ctx.arc(Math.round(h.x), Math.round(h.y), h.r, 0, Math.PI * 2);
+ctx.fill();
+ctx.restore();
+}
 ctx.shadowBlur = 0;
 ctx.stroke();
 ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
@@ -4081,6 +4632,14 @@ ctx.arc(Math.round(h.x), Math.round(h.y), Math.max(3, h.r - 8), 0, Math.PI * 2);
 ctx.fill();
 } else {
 drawRect(h.x, h.y, h.w, h.h);
+if (flashAlpha > 0) {
+ctx.save();
+ctx.globalAlpha = flashAlpha;
+ctx.shadowBlur = 0;
+ctx.fillStyle = "#fff";
+drawRect(h.x, h.y, h.w, h.h);
+ctx.restore();
+}
 ctx.shadowBlur = 0;
 ctx.strokeRect(Math.round(h.x) + 0.5, Math.round(h.y) + 0.5, Math.round(h.w), Math.round(h.h));
 }
@@ -4228,10 +4787,16 @@ drawText(mode === 4 ? "Multiple balls are live. Break the boss health bar before
 function draw() {
 ctx.setTransform(renderScale, 0, 0, renderScale, 0, 0);
 ctx.imageSmoothingEnabled = false;
-const offsetX = COLLISION_SCREEN_SHAKE_ENABLED && shakeFrames > 0 ? (Math.random() * 2 - 1) * 2 : 0;
-const offsetY = COLLISION_SCREEN_SHAKE_ENABLED && shakeFrames > 0 ? (Math.random() * 2 - 1) * 2 : 0;
-if (COLLISION_SCREEN_SHAKE_ENABLED && shakeFrames > 0) shakeFrames--;
-else shakeFrames = 0;
+let offsetX = 0;
+let offsetY = 0;
+if (COLLISION_SCREEN_SHAKE_ENABLED && shakeFrames > 0) {
+const amplitude = currentShakeAmplitude();
+offsetX = (Math.random() * 2 - 1) * amplitude;
+offsetY = (Math.random() * 2 - 1) * amplitude;
+shakeFrames--;
+} else {
+shakeFrames = 0;
+}
 ctx.save();
 ctx.translate(offsetX, offsetY);
 drawBackground();
@@ -4282,9 +4847,14 @@ drawOverlay();
 }
 ctx.restore();
 }
+function shouldSkipCanvasFrame() {
+return document.body.classList.contains("title-active") && !creditsActive && !bossIntroActive;
+}
 function loop() {
+if (!shouldSkipCanvasFrame()) {
 update();
 draw();
+}
 requestAnimationFrame(loop);
 }
 saveSlotButtons.forEach((button) => {
@@ -4495,7 +5065,7 @@ refreshGamepadConnection();
 
 
 // King Pong battery indicator: Android WebView bridge first, browser Battery API fallback if available.
-const batteryIndicator = document.getElementById("batteryIndicator");
+const batteryIndicator = byId("batteryIndicator");
 const batteryFill = batteryIndicator ? batteryIndicator.querySelector(".battery-fill") : null;
 let browserBattery = null;
 function updateBatteryIndicator(level, charging) {
@@ -4548,17 +5118,21 @@ updateBatteryIndicator(-1, false);
 }
 initBatteryIndicator();
 // King Pong local time indicator: uses the device/browser clock and updates while the app is open.
-const clockIndicator = document.getElementById("clockIndicator");
-function formatKingPongClock(date) {
+const clockIndicator = byId("clockIndicator");
+const clockFormatter = (() => {
 try {
-return new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(date);
+return new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" });
 } catch (err) {
+return null;
+}
+})();
+function formatKingPongClock(date) {
+if (clockFormatter) return clockFormatter.format(date);
 let h = date.getHours();
 const m = String(date.getMinutes()).padStart(2, "0");
 const suffix = h >= 12 ? "PM" : "AM";
 h = h % 12 || 12;
 return `${h}:${m} ${suffix}`;
-}
 }
 function updateClockIndicator() {
 if (!clockIndicator) return;
