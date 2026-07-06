@@ -5,7 +5,7 @@
 - Consolidated redundant CSS and release override blocks
 Reduced unnecessary runtime work in rendering, localization, clock, and DOM lookups
 - Reworked the Android WebView wrapper to remove unused dependency bloat
-- Reduced the Android APK compile size from 5.8MB to about 300KB
+- Reduced the Android APK compile size from 5.8MB to about 350KB
 - Kept gameplay behavior and core features intact
 - Added screen shake and effects when the ball hits objects in the windows version
 
