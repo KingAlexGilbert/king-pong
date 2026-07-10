@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.1.0 - Progressive Paddle Shapes and Late-Game Rebalance
+
+- Added progressive paddle shapes and altered ball rebound trajectories for levels 3–18.
+- Rebalanced the final levels to account for the new paddle mechanics and reduce excessive difficulty.
+- Changed the enemy paddle color to match each level’s theme.
+- Fixed Custom Game issues where “Play Selected” could launch the wrong level or fail to start properly.
+- Added live level previews to Custom Game.
+- Added an “Exit Game” button to the Windows desktop version.
+
 ## v1.0.3 - Optimizations
 
 - Consolidated redundant CSS and release override blocks
