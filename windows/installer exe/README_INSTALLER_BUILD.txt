@@ -19,10 +19,6 @@ How to build:
 3. The installer will be created here:
    Output\KingPongSetup.exe
 
-For GitHub Releases, upload:
-- Output\KingPongSetup.exe as the recommended installer
-- Your portable zip as an optional portable version
-
 Note about UAC and SmartScreen:
 This installer is not code-signed unless you sign it locally with your own trusted code-signing certificate.
 Because it is unsigned, Windows UAC will show Publisher: Unknown and SmartScreen may warn some users.

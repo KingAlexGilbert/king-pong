@@ -70,6 +70,7 @@ namespace KingPongWebView2
         private Rectangle windowedBounds;
         private FormBorderStyle windowedBorderStyle;
         private bool isFullscreen;
+        private bool exitRequested;
 
         public KingPongForm()
         {
@@ -162,6 +163,15 @@ namespace KingPongWebView2
             settings.IsStatusBarEnabled = false;
             settings.AreBrowserAcceleratorKeysEnabled = false;
             settings.IsZoomControlEnabled = false;
+            settings.IsWebMessageEnabled = true;
+
+            // The HTML Exit Game button posts the string "kingpong:exit".
+            // Listen for that message and close the native WinForms window.
+            webView.CoreWebView2.WebMessageReceived += HandleWebMessageReceived;
+
+            // window.close() in the HTML reaches this event in WebView2.
+            // Supporting both paths keeps the Exit Game button reliable.
+            webView.CoreWebView2.WindowCloseRequested += (sender, args) => RequestExitFromGame();
 
             webView.CoreWebView2.ProcessFailed += (sender, args) =>
             {
@@ -173,6 +183,46 @@ namespace KingPongWebView2
             };
 
             webView.CoreWebView2.Navigate(new Uri(htmlPath).AbsoluteUri);
+        }
+
+        private void HandleWebMessageReceived(object sender, CoreWebView2WebMessageReceivedEventArgs args)
+        {
+            string message;
+
+            try
+            {
+                message = args.TryGetWebMessageAsString();
+            }
+            catch
+            {
+                // Ignore malformed or non-string messages from the page.
+                return;
+            }
+
+            if (string.Equals(message, "kingpong:exit", StringComparison.Ordinal))
+            {
+                RequestExitFromGame();
+            }
+        }
+
+        private void RequestExitFromGame()
+        {
+            // The page sends both a WebMessage and window.close(). Only close once.
+            if (exitRequested || IsDisposed || Disposing)
+            {
+                return;
+            }
+
+            exitRequested = true;
+
+            if (InvokeRequired)
+            {
+                BeginInvoke(new Action(Close));
+            }
+            else
+            {
+                Close();
+            }
         }
 
         private void ApplyFullscreen()

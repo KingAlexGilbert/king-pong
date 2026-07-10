@@ -210,7 +210,7 @@ body.two-player-menus .custom-readout,
   align-items: center;
   gap: 6px;
 }
-.custom-readout { color: #fff; min-width: 280px; justify-content: center; }
+.custom-readout { display: none !important; color: #fff; min-width: 280px; justify-content: center; }
 .custom-panel select {
   max-width: min(62vw, 360px);
   background: #000;
@@ -467,7 +467,53 @@ body.title-active .hint { opacity: 0; visibility: hidden; pointer-events: none; 
 .slot-progress { font-size: 11px; line-height: 1.35; color: #aaa; }
 .title-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(135px, 1fr)); gap: 10px; margin-top: 14px; }
 .title-actions button { min-height: 58px; font-size: 18px; padding: 10px 12px; color: #ddd; }
+.exit-game-button {
+  width: 100%;
+  min-height: 48px;
+  margin-top: 12px;
+  padding: 9px 12px;
+  font-size: 16px;
+  color: #ffb4b4;
+  border-color: #7a3434;
+  background: linear-gradient(180deg, #1a0909 0%, #0b0303 100%);
+}
+.exit-game-button:hover,
+.exit-game-button:focus-visible {
+  color: #fff;
+  border-color: #ff6f6f;
+  box-shadow: 0 0 12px rgba(255, 80, 80, 0.45);
+}
 .secret-boss-button { color: #ffd9ff; border-color: #9d4dff; text-shadow: 0 0 10px #b14dff; }
+.title-actions .secret-boss-button {
+  color: #ffd9ff !important;
+  border-color: #b14dff !important;
+  text-shadow: 0 0 10px #b14dff, 0 0 22px rgba(177, 77, 255, 0.95);
+  background: linear-gradient(180deg, #1b0826 0%, #120616 100%);
+  box-shadow: 0 0 10px rgba(177, 77, 255, 0.38),
+              0 0 24px rgba(177, 77, 255, 0.28),
+              inset 0 0 12px rgba(177, 77, 255, 0.12);
+  animation: secretBossPulse 1.9s ease-in-out infinite;
+}
+.title-actions .secret-boss-button:hover,
+.title-actions .secret-boss-button:focus-visible {
+  color: #fff2ff !important;
+  border-color: #e1a3ff !important;
+  box-shadow: 0 0 14px rgba(177, 77, 255, 0.60),
+              0 0 34px rgba(177, 77, 255, 0.52),
+              inset 0 0 14px rgba(177, 77, 255, 0.16);
+}
+@keyframes secretBossPulse {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(177, 77, 255, 0.38),
+                0 0 24px rgba(177, 77, 255, 0.28),
+                inset 0 0 12px rgba(177, 77, 255, 0.12);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(177, 77, 255, 0.62),
+                0 0 40px rgba(177, 77, 255, 0.46),
+                inset 0 0 16px rgba(177, 77, 255, 0.20);
+  }
+}
 .secret-boss-button[hidden] { display: none; }
 .erase-save-button { margin-top: 12px; font-size: 12px; padding: 6px 10px; color: #ddd; }
 .save-badge { color: var(--accent); font-size: 12px; }
@@ -643,7 +689,7 @@ body.title-active .hint { opacity: 0; visibility: hidden; pointer-events: none; 
   .hint { font-size: clamp(10px, 1.45vw, 12px); max-width: min(72vw, 900px); bottom: calc(env(safe-area-inset-bottom, 0px) + 8px); }
 }
 </style>
-</head><body class="menus-hidden title-active"><canvas id="game" width="640" height="480" aria-label="King Pong game field"></canvas><button type="button" class="menu-toggle" id="menuToggle" aria-pressed="false" title="Show top and bottom menus with M">Menu (M)</button><button type="button" class="title-jump-toggle" id="titleJumpButton" title="Return to title screen/main menu">Title Screen</button><button type="button" class="play-info-toggle" id="playInfoToggle" aria-pressed="true" title="Hide campaign goal/course info with G">Hide Goal Info (G)</button><div class="battery-indicator unavailable" id="batteryIndicator" aria-live="polite" role="img" aria-label="Battery level unavailable" title="Battery level unavailable"><div class="battery-shell"><div class="battery-fill"></div><div class="battery-bolt">⚡</div></div></div><div class="clock-indicator" id="clockIndicator" aria-live="polite" role="timer" aria-label="Current time">--:--</div><div class="first-start-controls hidden" id="firstStartControls" aria-hidden="true"><h2>MAIN CONTROLS</h2><p class="controls-intro" id="firstStartControlsIntro">Learn the basics before the rally starts.</p><div class="control-grid"><div class="control-line"><span class="control-action" id="firstStartMoveLabel">Move paddle</span><span class="control-key" id="firstStartMoveKeys">W/S or Arrow Keys</span></div><div class="control-line"><span class="control-action">Serve / continue</span><span class="control-key">Space</span></div><div class="control-line"><span class="control-action">Pause</span><span class="control-key">P</span></div><div class="control-line"><span class="control-action">Restart</span><span class="control-key">R</span></div><div class="control-line"><span class="control-action">Menus</span><span class="control-key">M</span></div><div class="control-line"><span class="control-action">Title screen</span><span class="control-key">Esc / 0</span></div></div><div class="start-line">Press Space to start</div></div><div class="title-screen" id="titleScreen" role="dialog" aria-modal="true" aria-labelledby="titleHeading"><div class="title-card"><h1 id="titleHeading">KING PONG</h1><div class="title-subtitle">Choose a save slot, then play Campaign, Custom Game, Two Player, or optional LAN Two Player. Custom Game uses completed maps; Two Player can use every map.</div><div class="save-badge" id="activeSaveBadge">Slot 1 selected</div><div class="save-slot-list" id="saveSlotList"><button type="button" class="save-slot" data-save-slot="0"><span class="slot-name">SLOT 1</span><span class="slot-detail">New Game</span><span class="slot-progress">Level 01 unlocked</span></button><button type="button" class="save-slot" data-save-slot="1"><span class="slot-name">SLOT 2</span><span class="slot-detail">New Game</span><span class="slot-progress">Level 01 unlocked</span></button><button type="button" class="save-slot" data-save-slot="2"><span class="slot-name">SLOT 3</span><span class="slot-detail">New Game</span><span class="slot-progress">Level 01 unlocked</span></button></div><div class="title-actions"><button type="button" id="titleCampaignButton">Campaign</button><button type="button" id="titleCustomButton">Custom Game</button><button type="button" id="titleTwoPlayerButton">Two Player</button><button type="button" id="titleLanButton">LAN Two Player</button><button type="button" id="titleBossButton" class="secret-boss-button" hidden>Secret Boss</button></div><div class="title-message" id="titleMessage">Campaign starts at your next unlocked level. Custom Game only shows completed levels. Two Player and LAN Two Player can choose any level. A secret boss appears after all 18 levels are cleared.</div><button type="button" class="erase-save-button" id="eraseSaveButton">Erase Selected Slot</button></div></div><div class="menu-stack" id="menuStack"><div class="controls" id="campaignControls"><span id="activeSlotMini">Slot 1</span><span>Campaign</span><button type="button" data-campaign="0">Training</button><button type="button" data-campaign="1">Ricochet</button><button type="button" data-campaign="2">Chaos</button><button type="button" id="customModeButton">Custom Game</button><button type="button" id="twoPlayerModeButton">Two Player</button><button type="button" id="lanModeButton" title="Optional LAN-only peer connection for Two Player">LAN Two Player</button><button type="button" id="musicButton" aria-pressed="false" title="Toggle original chiptune music with N">Music Off (N)</button><label class="music-volume-control" title="Music volume"><span>Music Vol</span><input id="musicVolumeSlider" type="range" min="0" max="100" step="1" value="75" aria-label="Music volume" /><span class="value-pill" id="musicVolumeValue">75%</span></label><button type="button" id="restartButton">Restart Level (R)</button></div><div class="status" id="statusText">Loading...</div><div class="custom-panel hidden" id="customPanel"><label><span>Level</span><select id="customLevelSelect" class="native-level-select" aria-label="Choose custom level"></select><button type="button" id="customLevelPickerButton" class="custom-level-picker-button" aria-haspopup="dialog" aria-expanded="false">Choose Level</button></label><span class="custom-readout" id="customLevelReadout">Level 01 - Training Circuit: Open Court</span><label class="cpu-custom-control"><span>CPU intelligence</span><input id="customIntelSlider" type="range" min="0" max="100" step="1" value="50" /><span class="value-pill" id="customIntelValue">50%</span></label><label class="cpu-custom-control"><span>CPU Paddle Speed</span><input id="customMaxMoveSlider" aria-label="CPU Paddle Speed" type="range" min="1" max="12" step="0.1" value="4.4" /><span class="value-pill" id="customMaxMoveValue">4.4</span></label><button type="button" id="customStartButton">Play Selected</button></div><div class="lan-panel hidden" id="lanPanel"><div class="lan-row lan-title-row"><strong>LAN Two Player</strong><span class="lan-status-pill" id="lanStatus">Offline</span></div><div class="lan-row lan-safe-note">LAN-only WebRTC with no STUN/TURN servers. Host runs the match; guest sends input only.</div><div class="lan-row"><button type="button" id="lanHostButton">Host Match</button><button type="button" id="lanJoinButton">Join Match</button><button type="button" id="lanDisconnectButton">Disconnect</button><label class="lan-code-label"><span>Room Code</span><input id="lanRoomCodeInput" type="text" maxlength="6" autocomplete="off" spellcheck="false" aria-label="LAN room code" /></label></div><div class="lan-grid"><label><span>Your connection text</span><textarea id="lanLocalSignal" readonly spellcheck="false" aria-label="Your LAN connection text"></textarea></label><label><span>Paste other player text</span><textarea id="lanRemoteSignal" spellcheck="false" aria-label="Paste other player LAN connection text"></textarea></label></div><div class="lan-row"><button type="button" id="lanCopyButton">Copy Your Text</button><button type="button" id="lanApplySignalButton">Use Pasted Text</button></div></div></div><div class="level-picker-overlay hidden" id="levelPickerOverlay" role="dialog" aria-modal="true" aria-labelledby="levelPickerTitle"><div class="level-picker-card"><div class="level-picker-header"><strong id="levelPickerTitle">Choose Level</strong><button type="button" class="level-picker-close" id="levelPickerCloseButton">Close</button></div><div class="level-picker-list" id="levelPickerList"></div></div></div><div class="hint" id="controlHint"> Single/Custom/Boss: W/S or Arrow keys move - Two Player: W/S left, Arrow keys right - Space: serve/continue - P: pause - R: retry - M: menus - G: goals - N: music - 0/Esc: title </div><div class="screen-fade" id="screenFade"></div><div class="ending-credits" id="endingCredits" aria-hidden="true"><div class="ending-credit-card"><div class="ending-credit-thanks">Thank you for playing</div><div class="ending-credit-byline">Made by: King Alex Gilbert</div></div></div> <script>
+</head><body class="menus-hidden title-active"><canvas id="game" width="640" height="480" aria-label="King Pong game field"></canvas><button type="button" class="menu-toggle" id="menuToggle" aria-pressed="false" title="Show top and bottom menus with M">Menu (M)</button><button type="button" class="title-jump-toggle" id="titleJumpButton" title="Return to title screen/main menu">Title Screen</button><button type="button" class="play-info-toggle" id="playInfoToggle" aria-pressed="true" title="Hide goal/course info with G">Hide Goal Info (G)</button><div class="battery-indicator unavailable" id="batteryIndicator" aria-live="polite" role="img" aria-label="Battery level unavailable" title="Battery level unavailable"><div class="battery-shell"><div class="battery-fill"></div><div class="battery-bolt">⚡</div></div></div><div class="clock-indicator" id="clockIndicator" aria-live="polite" role="timer" aria-label="Current time">--:--</div><div class="first-start-controls hidden" id="firstStartControls" aria-hidden="true"><h2>MAIN CONTROLS</h2><p class="controls-intro" id="firstStartControlsIntro">Learn the basics before the rally starts.</p><div class="control-grid"><div class="control-line"><span class="control-action" id="firstStartMoveLabel">Move paddle</span><span class="control-key" id="firstStartMoveKeys">W/S or Arrow Keys</span></div><div class="control-line"><span class="control-action">Serve / continue</span><span class="control-key">Space</span></div><div class="control-line"><span class="control-action">Pause</span><span class="control-key">P</span></div><div class="control-line"><span class="control-action">Restart</span><span class="control-key">R</span></div><div class="control-line"><span class="control-action">Menus</span><span class="control-key">M</span></div><div class="control-line"><span class="control-action">Title screen</span><span class="control-key">Esc / 0</span></div></div><div class="start-line">Press Space to start</div></div><div class="title-screen" id="titleScreen" role="dialog" aria-modal="true" aria-labelledby="titleHeading"><div class="title-card"><h1 id="titleHeading">KING PONG</h1><div class="title-subtitle">Choose a save slot, then play Campaign, Custom Game, Two Player, or optional LAN Two Player. Custom Game uses completed maps; Two Player can use every map.</div><div class="save-badge" id="activeSaveBadge">Slot 1 selected</div><div class="save-slot-list" id="saveSlotList"><button type="button" class="save-slot" data-save-slot="0"><span class="slot-name">SLOT 1</span><span class="slot-detail">New Game</span><span class="slot-progress">Level 01 unlocked</span></button><button type="button" class="save-slot" data-save-slot="1"><span class="slot-name">SLOT 2</span><span class="slot-detail">New Game</span><span class="slot-progress">Level 01 unlocked</span></button><button type="button" class="save-slot" data-save-slot="2"><span class="slot-name">SLOT 3</span><span class="slot-detail">New Game</span><span class="slot-progress">Level 01 unlocked</span></button></div><div class="title-actions"><button type="button" id="titleCampaignButton">Campaign</button><button type="button" id="titleCustomButton">Custom Game</button><button type="button" id="titleTwoPlayerButton">Two Player</button><button type="button" id="titleLanButton">LAN Two Player</button><button type="button" id="titleBossButton" class="secret-boss-button" hidden>Secret Boss</button></div><button type="button" class="exit-game-button" id="exitGameButton" title="Close King Pong">Exit Game</button><div class="title-message" id="titleMessage">Campaign starts at your next unlocked level. Custom Game only shows completed levels. Two Player and LAN Two Player can choose any level. A secret boss appears after all 18 levels are cleared.</div><button type="button" class="erase-save-button" id="eraseSaveButton">Erase Selected Slot</button></div></div><div class="menu-stack" id="menuStack"><div class="controls" id="campaignControls"><span id="activeSlotMini">Slot 1</span><span>Campaign</span><button type="button" data-campaign="0">Training</button><button type="button" data-campaign="1">Ricochet</button><button type="button" data-campaign="2">Chaos</button><button type="button" id="customModeButton">Custom Game</button><button type="button" id="twoPlayerModeButton">Two Player</button><button type="button" id="lanModeButton" title="Optional LAN-only peer connection for Two Player">LAN Two Player</button><button type="button" id="musicButton" aria-pressed="false" title="Toggle original chiptune music with N">Music Off (N)</button><label class="music-volume-control" title="Music volume"><span>Music Vol</span><input id="musicVolumeSlider" type="range" min="0" max="100" step="1" value="75" aria-label="Music volume" /><span class="value-pill" id="musicVolumeValue">75%</span></label><button type="button" id="restartButton">Restart Level (R)</button></div><div class="status" id="statusText">Loading...</div><div class="custom-panel hidden" id="customPanel"><label><span>Level</span><select id="customLevelSelect" class="native-level-select" aria-label="Choose custom level"></select><button type="button" id="customLevelPickerButton" class="custom-level-picker-button" aria-haspopup="dialog" aria-expanded="false">Choose Level</button></label><span class="custom-readout" id="customLevelReadout">Level 01 - Training Circuit: Open Court</span><label class="cpu-custom-control"><span>CPU intelligence</span><input id="customIntelSlider" type="range" min="0" max="100" step="1" value="50" /><span class="value-pill" id="customIntelValue">50%</span></label><label class="cpu-custom-control"><span>CPU Paddle Speed</span><input id="customMaxMoveSlider" aria-label="CPU Paddle Speed" type="range" min="1" max="12" step="0.1" value="4.4" /><span class="value-pill" id="customMaxMoveValue">4.4</span></label><button type="button" id="customStartButton">Play Selected</button></div><div class="lan-panel hidden" id="lanPanel"><div class="lan-row lan-title-row"><strong>LAN Two Player</strong><span class="lan-status-pill" id="lanStatus">Offline</span></div><div class="lan-row lan-safe-note">LAN-only WebRTC with no STUN/TURN servers. Host runs the match; guest sends input only.</div><div class="lan-row"><button type="button" id="lanHostButton">Host Match</button><button type="button" id="lanJoinButton">Join Match</button><button type="button" id="lanDisconnectButton">Disconnect</button><label class="lan-code-label"><span>Room Code</span><input id="lanRoomCodeInput" type="text" maxlength="6" autocomplete="off" spellcheck="false" aria-label="LAN room code" /></label></div><div class="lan-grid"><label><span>Your connection text</span><textarea id="lanLocalSignal" readonly spellcheck="false" aria-label="Your LAN connection text"></textarea></label><label><span>Paste other player text</span><textarea id="lanRemoteSignal" spellcheck="false" aria-label="Paste other player LAN connection text"></textarea></label></div><div class="lan-row"><button type="button" id="lanCopyButton">Copy Your Text</button><button type="button" id="lanApplySignalButton">Use Pasted Text</button></div></div></div><div class="level-picker-overlay hidden" id="levelPickerOverlay" role="dialog" aria-modal="true" aria-labelledby="levelPickerTitle"><div class="level-picker-card"><div class="level-picker-header"><strong id="levelPickerTitle">Choose Level</strong><button type="button" class="level-picker-close" id="levelPickerCloseButton">Close</button></div><div class="level-picker-list" id="levelPickerList"></div></div></div><div class="hint" id="controlHint"> Single/Custom/Boss: W/S or Arrow keys move - Two Player: W/S left, Arrow keys right - Space: serve/continue - P: pause - R: retry - M: menus - G: goals - N: music - 0/Esc: title </div><div class="screen-fade" id="screenFade"></div><div class="ending-credits" id="endingCredits" aria-hidden="true"><div class="ending-credit-card"><div class="ending-credit-thanks">Thank you for playing</div><div class="ending-credit-byline">Made by: King Alex Gilbert</div></div></div> <script>
 const LOCALIZATION = (() => {
 const english = {};
 const phraseTranslations = {
@@ -654,13 +700,13 @@ es: {
 "Campaign starts at your next unlocked level. Custom Game only shows completed levels. Two Player and LAN Two Player can choose any level. A secret boss appears after all 18 levels are cleared.": "La campaña empieza en tu siguiente nivel desbloqueado. El Juego personalizado solo muestra niveles completados. Dos jugadores y LAN pueden elegir cualquier nivel. Un jefe secreto aparece al completar los 18 niveles.",
 "Campaign starts at your next unlocked level. Custom Game only shows completed levels. Two Player and LAN Two Player can choose any level.": "La campaña empieza en tu siguiente nivel desbloqueado. El Juego personalizado solo muestra niveles completados. Dos jugadores y LAN pueden elegir cualquier nivel.",
 "Secret Boss is open. Campaign progress, Custom Game unlocks, and Boss access are saved to this slot.": "El Jefe secreto está abierto. El progreso de campaña, los desbloqueos personalizados y el acceso al jefe se guardan en esta ranura.",
-"Campaign": "Campaña", "Custom Game": "Juego personalizado", "Two Player": "Dos jugadores", "LAN Two Player": "Dos jugadores LAN", "Secret Boss": "Jefe secreto", "Boss Rematch": "Revancha del jefe",
+"Exit Game": "Salir del juego", "Campaign": "Campaña", "Custom Game": "Juego personalizado", "Two Player": "Dos jugadores", "LAN Two Player": "Dos jugadores LAN", "Secret Boss": "Jefe secreto", "Boss Rematch": "Revancha del jefe",
 "Title": "Título", "Training": "Entrenamiento", "Ricochet": "Rebote", "Chaos": "Caos", "Music On": "Música encendida", "Music Off": "Música apagada", "Music Vol": "Vol. música", "Restart Level": "Reiniciar nivel", "Restart Match": "Reiniciar partida", "Restart Boss": "Reiniciar jefe", "Loading...": "Cargando...",
 "Level": "Nivel", "Choose custom level": "Elegir nivel personalizado", "CPU intelligence": "Inteligencia de CPU", "CPU Paddle Speed": "Velocidad de paleta CPU", "Play Selected": "Jugar selección", "Offline": "Desconectado", "LAN-only WebRTC with no STUN/TURN servers. Host runs the match; guest sends input only.": "WebRTC solo LAN sin servidores STUN/TURN. El anfitrión ejecuta la partida; el invitado solo envía controles.",
 "Host Match": "Crear partida", "Join Match": "Unirse", "Disconnect": "Desconectar", "Room Code": "Código de sala", "Your connection text": "Tu texto de conexión", "Paste other player text": "Pega el texto del otro jugador", "Copy Your Text": "Copiar tu texto", "Use Pasted Text": "Usar texto pegado", "LAN room code": "Código de sala LAN", "Your LAN connection text": "Tu texto de conexión LAN", "Paste other player LAN connection text": "Pega el texto LAN del otro jugador",
 "Thank you for playing": "Gracias por jugar", "Made by:": "Hecho por:", "SLOT": "RANURA", "Slot": "Ranura", "selected": "seleccionada", "New Game": "Nueva partida", "unlocked": "desbloqueado", "Complete": "Completado", "Complete at least one campaign level to unlock Custom Game maps in this save slot.": "Completa al menos un nivel de campaña para desbloquear mapas personalizados en esta ranura.", "Erase Selected Slot": "Borrar ranura seleccionada",
 "Open Court": "Cancha abierta", "Center Post": "Poste central", "Split Gate": "Puerta dividida", "Side Rails": "Rieles laterales", "Drift Blocks": "Bloques móviles", "Pinball Warmup": "Calentamiento pinball", "Training Circuit": "Circuito de entrenamiento", "Twin Bumpers": "Rebotadores gemelos", "Shifting Gate": "Puerta móvil", "Mirror Sides": "Lados espejo", "Cross Traffic": "Tráfico cruzado", "Quad Posts": "Cuatro postes", "Pinball Alley": "Callejón pinball", "Ricochet League": "Liga de rebotes", "Sweepers": "Barrenderos", "Fortress": "Fortaleza", "Side Shuffle": "Mezcla lateral", "Vortex": "Vórtice", "Diamond Trap": "Trampa diamante", "Final Firewall": "Cortafuegos final", "Chaos Cup": "Copa del caos", "The Hidden Wall": "El muro oculto", "Boss": "Jefe",
-"LEVEL CLEARED": "NIVEL SUPERADO", "CAMPAIGN COMPLETE": "CAMPAÑA COMPLETA", "SECRET BOSS DEFEATED": "JEFE SECRETO DERROTADO", "BOSS FIGHT LOST": "PELEA DEL JEFE PERDIDA", "CUSTOM MATCH OVER": "PARTIDA PERSONALIZADA TERMINADA", "PRACTICE ROUND OVER": "RONDA DE PRÁCTICA TERMINADA", "LEVEL FAILED": "NIVEL FALLIDO", "SPACE TO SERVE": "ESPACIO PARA SACAR", "SPACE: next level": "ESPACIO: siguiente nivel", "SPACE or R: retry": "ESPACIO o R: reintentar", "SPACE/R: replay - menus: choose another level": "ESPACIO/R: repetir - menús: elegir otro nivel", "SPACE/R: rematch - 0/Esc: title": "ESPACIO/R: revancha - 0/Esc: título", "Menus: replay campaigns or open Custom Game": "Menús: repetir campañas o abrir Juego personalizado", "THE HIDDEN WALL WAITS": "EL MURO OCULTO ESPERA", "Multiple balls are live. Break the boss health bar before yours empties.": "Hay varias bolas activas. Rompe la barra de vida del jefe antes de quedarte sin vida.", "Custom match: beat the CPU using your chosen settings": "Partida personalizada: vence a la CPU con tus ajustes", "Reach the goal before the CPU to clear the level": "Alcanza la meta antes que la CPU para superar el nivel", "PAUSED": "PAUSA", "PLAYER": "JUGADOR", "Health": "Vida", "Goal": "Meta", "obstacle": "obstáculo", "obstacles": "obstáculos", "CPU intel": "intel. CPU", "CPU paddle speed": "vel. paleta CPU", "Two-player practice": "Práctica de dos jugadores", "all levels unlocked": "todos los niveles desbloqueados", "Custom CPU intel": "intel. CPU personalizada", "balls": "bolas", "ball": "bola", "Current tune:": "Tema actual:", "Show Menus (M)": "Mostrar menús (M)", "Hide Menus (M)": "Ocultar menús (M)", "Show Goal Info (G)": "Mostrar info de meta (G)", "Hide Goal Info (G)": "Ocultar info de meta (G)", "Hide campaign goal/course info": "Oculta la info de meta/curso con G", "Show campaign goal/course info": "Muestra la info de meta/curso con G", "Turn original chiptune music off": "Apaga la música chiptune original con N", "Turn original chiptune music on": "Enciende la música chiptune original con N", "Music volume": "Volumen de música", "Optional LAN-only peer connection for Two Player": "Conexión LAN opcional solo para dos jugadores",
+"LEVEL CLEARED": "NIVEL SUPERADO", "CAMPAIGN COMPLETE": "CAMPAÑA COMPLETA", "SECRET BOSS DEFEATED": "JEFE SECRETO DERROTADO", "BOSS FIGHT LOST": "PELEA DEL JEFE PERDIDA", "CUSTOM MATCH OVER": "PARTIDA PERSONALIZADA TERMINADA", "PRACTICE ROUND OVER": "RONDA DE PRÁCTICA TERMINADA", "LEVEL FAILED": "NIVEL FALLIDO", "SPACE TO SERVE": "ESPACIO PARA SACAR", "SPACE: next level": "ESPACIO: siguiente nivel", "SPACE or R: retry": "ESPACIO o R: reintentar", "SPACE/R: replay - menus: choose another level": "ESPACIO/R: repetir - menús: elegir otro nivel", "SPACE/R: rematch - 0/Esc: title": "ESPACIO/R: revancha - 0/Esc: título", "Menus: replay campaigns or open Custom Game": "Menús: repetir campañas o abrir Juego personalizado", "THE HIDDEN WALL WAITS": "EL MURO OCULTO ESPERA", "Multiple balls are live. Break the boss health bar before yours empties.": "Hay varias bolas activas. Rompe la barra de vida del jefe antes de quedarte sin vida.", "Custom match: beat the CPU using your chosen settings": "Partida personalizada: vence a la CPU con tus ajustes", "Reach the goal before the CPU to clear the level": "Alcanza la meta antes que la CPU para superar el nivel", "Reach the goal before the Other Player to win the round": "Raggiungi l'obiettivo prima dell'altro giocatore per vincere il round", "PAUSED": "PAUSA", "PLAYER": "JUGADOR", "Health": "Vida", "Goal": "Meta", "obstacle": "obstáculo", "obstacles": "obstáculos", "CPU intel": "intel. CPU", "CPU paddle speed": "vel. paleta CPU", "Two-player practice": "Práctica de dos jugadores", "Reach the goal before the Other Player to win the round": "Alcanza la meta antes que el otro jugador para ganar la ronda", "all levels unlocked": "todos los niveles desbloqueados", "Custom CPU intel": "intel. CPU personalizada", "balls": "bolas", "ball": "bola", "Current tune:": "Tema actual:", "Show Menus (M)": "Mostrar menús (M)", "Hide Menus (M)": "Ocultar menús (M)", "Show Goal Info (G)": "Mostrar info de meta (G)", "Hide Goal Info (G)": "Ocultar info de meta (G)", "Hide campaign goal/course info": "Oculta la info de meta/curso con G", "Show campaign goal/course info": "Muestra la info de meta/curso con G", "Turn original chiptune music off": "Apaga la música chiptune original con N", "Turn original chiptune music on": "Enciende la música chiptune original con N", "Music volume": "Volumen de música", "Optional LAN-only peer connection for Two Player": "Conexión LAN opcional solo para dos jugadores",
 "Single/Custom/Boss: W/S or Arrow keys move - Two Player: W/S left, Arrow keys right - Space: serve/continue - P: pause - R: retry - M: menus - G: goals - N: music - 0/Esc: title": "Un jugador/personalizado/jefe: W/S o Arriba/Abajo mueve la paleta - Dos jugadores mismo dispositivo: W/S izquierda, Arriba/Abajo derecha - Espacio: sacar/continuar - P: pausa - R: reintentar - M: menús - N: música - 1: campaña - 2: dos jugadores - 3: personalizado - 0/Esc: título",
 "LAN Two Player: W/S or Arrow keys move your paddle - Space: serve/continue - P: pause - R: retry - M: menus": "Dos jugadores LAN: cada dispositivo usa W/S o Arriba/Abajo para su paleta - Espacio sacar/continuar - P pausa - R reintentar - M menús",
 "Touch also supported: drag to move - Space: serve/continue - two-finger touch pauses": "Toque detectado: arrastra en el juego para moverte - toca al esperar para sacar/continuar - dos dedos pausa - M abre menús",
@@ -670,22 +716,22 @@ es: {
 },
 fr: {
 "Pong Campaign Arcade": "Arcade campagne Pong", "PONG CAMPAIGN": "CAMPAGNE PONG", "Choose a save slot, then play Campaign, Custom Game, Two Player, or optional LAN Two Player. Custom Game uses completed maps; Two Player can use every map.": "Choisissez un emplacement de sauvegarde, puis jouez Campagne, Partie personnalisée, Deux joueurs ou LAN optionnel. La Partie personnalisée utilise les cartes terminées; Deux joueurs peut utiliser toutes les cartes.", "Campaign starts at your next unlocked level. Custom Game only shows completed levels. Two Player and LAN Two Player can choose any level. A secret boss appears after all 18 levels are cleared.": "La campagne commence au prochain niveau débloqué. La Partie personnalisée affiche seulement les niveaux terminés. Deux joueurs et LAN peuvent choisir n'importe quel niveau. Un boss secret apparaît après les 18 niveaux.", "Campaign starts at your next unlocked level. Custom Game only shows completed levels. Two Player and LAN Two Player can choose any level.": "La campagne commence au prochain niveau débloqué. La Partie personnalisée affiche seulement les niveaux terminés. Deux joueurs et LAN peuvent choisir n'importe quel niveau.", "Secret Boss is open. Campaign progress, Custom Game unlocks, and Boss access are saved to this slot.": "Le Boss secret est ouvert. La progression, les déblocages et l'accès au boss sont sauvegardés ici.",
-"Campaign": "Campagne", "Custom Game": "Partie personnalisée", "Two Player": "Deux joueurs", "LAN Two Player": "Deux joueurs LAN", "Secret Boss": "Boss secret", "Boss Rematch": "Revanche du boss", "Title": "Titre", "Training": "Entraînement", "Ricochet": "Ricochet", "Chaos": "Chaos", "Music On": "Musique activée", "Music Off": "Musique désactivée", "Music Vol": "Vol. musique", "Restart Level": "Recommencer niveau", "Restart Match": "Recommencer match", "Restart Boss": "Recommencer boss", "Loading...": "Chargement...",
+"Exit Game": "Quitter le jeu", "Campaign": "Campagne", "Custom Game": "Partie personnalisée", "Two Player": "Deux joueurs", "LAN Two Player": "Deux joueurs LAN", "Secret Boss": "Boss secret", "Boss Rematch": "Revanche du boss", "Title": "Titre", "Training": "Entraînement", "Ricochet": "Ricochet", "Chaos": "Chaos", "Music On": "Musique activée", "Music Off": "Musique désactivée", "Music Vol": "Vol. musique", "Restart Level": "Recommencer niveau", "Restart Match": "Recommencer match", "Restart Boss": "Recommencer boss", "Loading...": "Chargement...",
 "Level": "Niveau", "Choose custom level": "Choisir un niveau", "CPU intelligence": "Intelligence CPU", "CPU Paddle Speed": "Vitesse raquette CPU", "Play Selected": "Jouer sélection", "Offline": "Hors ligne", "LAN-only WebRTC with no STUN/TURN servers. Host runs the match; guest sends input only.": "WebRTC LAN seulement sans serveurs STUN/TURN. L'hôte exécute le match; l'invité envoie seulement les commandes.", "Host Match": "Héberger", "Join Match": "Rejoindre", "Disconnect": "Déconnecter", "Room Code": "Code de salle", "Your connection text": "Votre texte de connexion", "Paste other player text": "Collez le texte de l'autre joueur", "Copy Your Text": "Copier votre texte", "Use Pasted Text": "Utiliser le texte collé", "LAN room code": "Code de salle LAN", "Your LAN connection text": "Votre texte de connexion LAN", "Paste other player LAN connection text": "Collez le texte LAN de l'autre joueur", "Thank you for playing": "Merci d'avoir joué", "Made by:": "Créé par:", "SLOT": "EMPLACEMENT", "Slot": "Emplacement", "selected": "sélectionné", "New Game": "Nouvelle partie", "unlocked": "débloqué", "Complete": "Terminé", "Complete at least one campaign level to unlock Custom Game maps in this save slot.": "Terminez au moins un niveau de campagne pour débloquer des cartes personnalisées dans cet emplacement.", "Erase Selected Slot": "Effacer l'emplacement",
 "Open Court": "Terrain ouvert", "Center Post": "Poteau central", "Split Gate": "Porte fendue", "Side Rails": "Rails latéraux", "Drift Blocks": "Blocs dérivants", "Pinball Warmup": "Échauffement flipper", "Training Circuit": "Circuit d'entraînement", "Twin Bumpers": "Bumpers jumeaux", "Shifting Gate": "Porte mouvante", "Mirror Sides": "Côtés miroir", "Cross Traffic": "Trafic croisé", "Quad Posts": "Quatre poteaux", "Pinball Alley": "Allée flipper", "Ricochet League": "Ligue ricochet", "Sweepers": "Balayeurs", "Fortress": "Forteresse", "Side Shuffle": "Mélange latéral", "Vortex": "Vortex", "Diamond Trap": "Piège diamant", "Final Firewall": "Pare-feu final", "Chaos Cup": "Coupe du chaos", "The Hidden Wall": "Le mur caché", "Boss": "Boss",
-"LEVEL CLEARED": "NIVEAU RÉUSSI", "CAMPAIGN COMPLETE": "CAMPAGNE TERMINÉE", "SECRET BOSS DEFEATED": "BOSS SECRET VAINCU", "BOSS FIGHT LOST": "COMBAT DE BOSS PERDU", "CUSTOM MATCH OVER": "PARTIE PERSONNALISÉE TERMINÉE", "PRACTICE ROUND OVER": "MANCHE D'ENTRAÎNEMENT TERMINÉE", "LEVEL FAILED": "NIVEAU ÉCHOUÉ", "SPACE TO SERVE": "ESPACE POUR SERVIR", "SPACE: next level": "ESPACE: niveau suivant", "SPACE or R: retry": "ESPACE ou R: réessayer", "SPACE/R: replay - menus: choose another level": "ESPACE/R: rejouer - menus: choisir un autre niveau", "SPACE/R: rematch - 0/Esc: title": "ESPACE/R: revanche - 0/Esc: titre", "Menus: replay campaigns or open Custom Game": "Menus: rejouer les campagnes ou ouvrir Partie personnalisée", "THE HIDDEN WALL WAITS": "LE MUR CACHÉ ATTEND", "Multiple balls are live. Break the boss health bar before yours empties.": "Plusieurs balles sont actives. Videz la barre de vie du boss avant la vôtre.", "Custom match: beat the CPU using your chosen settings": "Match personnalisé: battez la CPU avec vos réglages", "Reach the goal before the CPU to clear the level": "Atteignez l'objectif avant la CPU pour réussir", "PAUSED": "PAUSE", "PLAYER": "JOUEUR", "Health": "Vie", "Goal": "Objectif", "obstacle": "obstacle", "obstacles": "obstacles", "CPU intel": "intel CPU", "CPU paddle speed": "vitesse raquette CPU", "Two-player practice": "Entraînement deux joueurs", "all levels unlocked": "tous les niveaux débloqués", "Custom CPU intel": "intel CPU perso", "balls": "balles", "ball": "balle", "Current tune:": "Musique actuelle:", "Show Menus (M)": "Afficher menus (M)", "Hide Menus (M)": "Masquer menus (M)", "Show Goal Info (G)": "Afficher info objectif (G)", "Hide Goal Info (G)": "Masquer info objectif (G)", "Hide campaign goal/course info": "Masquer les infos objectif/parcours avec G", "Show campaign goal/course info": "Afficher les infos objectif/parcours avec G", "Music volume": "Volume musique", "Optional LAN-only peer connection for Two Player": "Connexion pair-à-pair LAN optionnelle pour Deux joueurs"
+"LEVEL CLEARED": "NIVEAU RÉUSSI", "CAMPAIGN COMPLETE": "CAMPAGNE TERMINÉE", "SECRET BOSS DEFEATED": "BOSS SECRET VAINCU", "BOSS FIGHT LOST": "COMBAT DE BOSS PERDU", "CUSTOM MATCH OVER": "PARTIE PERSONNALISÉE TERMINÉE", "PRACTICE ROUND OVER": "MANCHE D'ENTRAÎNEMENT TERMINÉE", "LEVEL FAILED": "NIVEAU ÉCHOUÉ", "SPACE TO SERVE": "ESPACE POUR SERVIR", "SPACE: next level": "ESPACE: niveau suivant", "SPACE or R: retry": "ESPACE ou R: réessayer", "SPACE/R: replay - menus: choose another level": "ESPACE/R: rejouer - menus: choisir un autre niveau", "SPACE/R: rematch - 0/Esc: title": "ESPACE/R: revanche - 0/Esc: titre", "Menus: replay campaigns or open Custom Game": "Menus: rejouer les campagnes ou ouvrir Partie personnalisée", "THE HIDDEN WALL WAITS": "LE MUR CACHÉ ATTEND", "Multiple balls are live. Break the boss health bar before yours empties.": "Plusieurs balles sont actives. Videz la barre de vie du boss avant la vôtre.", "Custom match: beat the CPU using your chosen settings": "Match personnalisé: battez la CPU avec vos réglages", "Reach the goal before the CPU to clear the level": "Atteignez l'objectif avant la CPU pour réussir", "PAUSED": "PAUSE", "PLAYER": "JOUEUR", "Health": "Vie", "Goal": "Objectif", "obstacle": "obstacle", "obstacles": "obstacles", "CPU intel": "intel CPU", "CPU paddle speed": "vitesse raquette CPU", "Two-player practice": "Entraînement deux joueurs", "Reach the goal before the Other Player to win the round": "Atteignez l'objectif avant l'autre joueur pour gagner la manche", "all levels unlocked": "tous les niveaux débloqués", "Custom CPU intel": "intel CPU perso", "balls": "balles", "ball": "balle", "Current tune:": "Musique actuelle:", "Show Menus (M)": "Afficher menus (M)", "Hide Menus (M)": "Masquer menus (M)", "Show Goal Info (G)": "Afficher info objectif (G)", "Hide Goal Info (G)": "Masquer info objectif (G)", "Hide campaign goal/course info": "Masquer les infos objectif/parcours avec G", "Show campaign goal/course info": "Afficher les infos objectif/parcours avec G", "Music volume": "Volume musique", "Optional LAN-only peer connection for Two Player": "Connexion pair-à-pair LAN optionnelle pour Deux joueurs"
 },
 de: {
 "Pong Campaign Arcade": "Pong-Kampagnen-Arcade", "PONG CAMPAIGN": "PONG-KAMPAGNE", "Choose a save slot, then play Campaign, Custom Game, Two Player, or optional LAN Two Player. Custom Game uses completed maps; Two Player can use every map.": "Wähle einen Speicherplatz, dann Kampagne, Eigenes Spiel, Zwei Spieler oder optional LAN Zwei Spieler. Eigenes Spiel nutzt abgeschlossene Karten; Zwei Spieler kann alle Karten nutzen.", "Campaign starts at your next unlocked level. Custom Game only shows completed levels. Two Player and LAN Two Player can choose any level. A secret boss appears after all 18 levels are cleared.": "Die Kampagne startet beim nächsten freigeschalteten Level. Eigenes Spiel zeigt nur abgeschlossene Level. Zwei Spieler und LAN können jedes Level wählen. Nach allen 18 Levels erscheint ein geheimer Boss.", "Campaign starts at your next unlocked level. Custom Game only shows completed levels. Two Player and LAN Two Player can choose any level.": "Die Kampagne startet beim nächsten freigeschalteten Level. Eigenes Spiel zeigt nur abgeschlossene Level. Zwei Spieler und LAN können jedes Level wählen.", "Secret Boss is open. Campaign progress, Custom Game unlocks, and Boss access are saved to this slot.": "Der geheime Boss ist offen. Kampagnenfortschritt, eigene Freischaltungen und Bosszugang sind hier gespeichert.",
-"Campaign": "Kampagne", "Custom Game": "Eigenes Spiel", "Two Player": "Zwei Spieler", "LAN Two Player": "LAN Zwei Spieler", "Secret Boss": "Geheimer Boss", "Boss Rematch": "Boss-Revanche", "Title": "Titel", "Training": "Training", "Ricochet": "Abprall", "Chaos": "Chaos", "Music On": "Musik an", "Music Off": "Musik aus", "Music Vol": "Musik-Lautst.", "Restart Level": "Level neu starten", "Restart Match": "Match neu starten", "Restart Boss": "Boss neu starten", "Loading...": "Lädt...", "Level": "Level", "Choose custom level": "Level wählen", "CPU intelligence": "CPU-Intelligenz", "CPU Paddle Speed": "CPU-Schlägergeschwindigkeit", "Play Selected": "Auswahl spielen", "Offline": "Offline", "LAN-only WebRTC with no STUN/TURN servers. Host runs the match; guest sends input only.": "Nur-LAN-WebRTC ohne STUN/TURN-Server. Der Host führt das Match aus; der Gast sendet nur Eingaben.", "Host Match": "Match hosten", "Join Match": "Beitreten", "Disconnect": "Trennen", "Room Code": "Raumcode", "Your connection text": "Dein Verbindungstext", "Paste other player text": "Text des anderen Spielers einfügen", "Copy Your Text": "Deinen Text kopieren", "Use Pasted Text": "Eingefügten Text nutzen", "LAN room code": "LAN-Raumcode", "Your LAN connection text": "Dein LAN-Verbindungstext", "Paste other player LAN connection text": "LAN-Text des anderen Spielers einfügen", "Thank you for playing": "Danke fürs Spielen", "Made by:": "Gemacht von:", "SLOT": "SLOT", "Slot": "Slot", "selected": "ausgewählt", "New Game": "Neues Spiel", "unlocked": "freigeschaltet", "Complete": "Abgeschlossen", "Erase Selected Slot": "Ausgewählten Slot löschen",
-"Open Court": "Offenes Feld", "Center Post": "Mittelpfosten", "Split Gate": "Geteiltes Tor", "Side Rails": "Seitenleisten", "Drift Blocks": "Drift-Blöcke", "Pinball Warmup": "Flipper-Aufwärmen", "Training Circuit": "Trainingskurs", "Twin Bumpers": "Doppelte Bumper", "Shifting Gate": "Wandertor", "Mirror Sides": "Spiegelseiten", "Cross Traffic": "Querverkehr", "Quad Posts": "Vier Pfosten", "Pinball Alley": "Flippergasse", "Ricochet League": "Abprall-Liga", "Sweepers": "Kehrer", "Fortress": "Festung", "Side Shuffle": "Seitenshuffle", "Vortex": "Wirbel", "Diamond Trap": "Diamantfalle", "Final Firewall": "Finale Firewall", "Chaos Cup": "Chaos-Pokal", "The Hidden Wall": "Die verborgene Wand", "Boss": "Boss", "LEVEL CLEARED": "LEVEL GESCHAFFT", "CAMPAIGN COMPLETE": "KAMPAGNE ABGESCHLOSSEN", "SECRET BOSS DEFEATED": "GEHEIMER BOSS BESIEGT", "BOSS FIGHT LOST": "BOSSKAMPF VERLOREN", "CUSTOM MATCH OVER": "EIGENES MATCH VORBEI", "PRACTICE ROUND OVER": "ÜBUNGSRUNDE VORBEI", "LEVEL FAILED": "LEVEL FEHLGESCHLAGEN", "SPACE TO SERVE": "LEERTASTE ZUM AUFSCHLAG", "PAUSED": "PAUSIERT", "PLAYER": "SPIELER", "Health": "Leben", "Goal": "Ziel", "obstacle": "Hindernis", "obstacles": "Hindernisse", "CPU intel": "CPU-Intel", "CPU paddle speed": "CPU-Schlägergeschw.", "Two-player practice": "Zwei-Spieler-Übung", "all levels unlocked": "alle Levels frei", "Custom CPU intel": "eigene CPU-Intel", "balls": "Bälle", "ball": "Ball", "Current tune:": "Aktuelle Melodie:", "Show Menus (M)": "Menüs zeigen (M)", "Hide Menus (M)": "Menüs ausblenden (M)", "Show Goal Info (G)": "Zielinfo zeigen (G)", "Hide Goal Info (G)": "Zielinfo ausblenden (G)", "Hide campaign goal/course info": "Kampagnenziel-/Kursinfo mit G ausblenden", "Show campaign goal/course info": "Kampagnenziel-/Kursinfo mit G anzeigen", "Music volume": "Musiklautstärke"
+"Exit Game": "Spiel beenden", "Campaign": "Kampagne", "Custom Game": "Eigenes Spiel", "Two Player": "Zwei Spieler", "LAN Two Player": "LAN Zwei Spieler", "Secret Boss": "Geheimer Boss", "Boss Rematch": "Boss-Revanche", "Title": "Titel", "Training": "Training", "Ricochet": "Abprall", "Chaos": "Chaos", "Music On": "Musik an", "Music Off": "Musik aus", "Music Vol": "Musik-Lautst.", "Restart Level": "Level neu starten", "Restart Match": "Match neu starten", "Restart Boss": "Boss neu starten", "Loading...": "Lädt...", "Level": "Level", "Choose custom level": "Level wählen", "CPU intelligence": "CPU-Intelligenz", "CPU Paddle Speed": "CPU-Schlägergeschwindigkeit", "Play Selected": "Auswahl spielen", "Offline": "Offline", "LAN-only WebRTC with no STUN/TURN servers. Host runs the match; guest sends input only.": "Nur-LAN-WebRTC ohne STUN/TURN-Server. Der Host führt das Match aus; der Gast sendet nur Eingaben.", "Host Match": "Match hosten", "Join Match": "Beitreten", "Disconnect": "Trennen", "Room Code": "Raumcode", "Your connection text": "Dein Verbindungstext", "Paste other player text": "Text des anderen Spielers einfügen", "Copy Your Text": "Deinen Text kopieren", "Use Pasted Text": "Eingefügten Text nutzen", "LAN room code": "LAN-Raumcode", "Your LAN connection text": "Dein LAN-Verbindungstext", "Paste other player LAN connection text": "LAN-Text des anderen Spielers einfügen", "Thank you for playing": "Danke fürs Spielen", "Made by:": "Gemacht von:", "SLOT": "SLOT", "Slot": "Slot", "selected": "ausgewählt", "New Game": "Neues Spiel", "unlocked": "freigeschaltet", "Complete": "Abgeschlossen", "Erase Selected Slot": "Ausgewählten Slot löschen",
+"Open Court": "Offenes Feld", "Center Post": "Mittelpfosten", "Split Gate": "Geteiltes Tor", "Side Rails": "Seitenleisten", "Drift Blocks": "Drift-Blöcke", "Pinball Warmup": "Flipper-Aufwärmen", "Training Circuit": "Trainingskurs", "Twin Bumpers": "Doppelte Bumper", "Shifting Gate": "Wandertor", "Mirror Sides": "Spiegelseiten", "Cross Traffic": "Querverkehr", "Quad Posts": "Vier Pfosten", "Pinball Alley": "Flippergasse", "Ricochet League": "Abprall-Liga", "Sweepers": "Kehrer", "Fortress": "Festung", "Side Shuffle": "Seitenshuffle", "Vortex": "Wirbel", "Diamond Trap": "Diamantfalle", "Final Firewall": "Finale Firewall", "Chaos Cup": "Chaos-Pokal", "The Hidden Wall": "Die verborgene Wand", "Boss": "Boss", "LEVEL CLEARED": "LEVEL GESCHAFFT", "CAMPAIGN COMPLETE": "KAMPAGNE ABGESCHLOSSEN", "SECRET BOSS DEFEATED": "GEHEIMER BOSS BESIEGT", "BOSS FIGHT LOST": "BOSSKAMPF VERLOREN", "CUSTOM MATCH OVER": "EIGENES MATCH VORBEI", "PRACTICE ROUND OVER": "ÜBUNGSRUNDE VORBEI", "LEVEL FAILED": "LEVEL FEHLGESCHLAGEN", "SPACE TO SERVE": "LEERTASTE ZUM AUFSCHLAG", "PAUSED": "PAUSIERT", "PLAYER": "SPIELER", "Health": "Leben", "Goal": "Ziel", "obstacle": "Hindernis", "obstacles": "Hindernisse", "CPU intel": "CPU-Intel", "CPU paddle speed": "CPU-Schlägergeschw.", "Two-player practice": "Zwei-Spieler-Übung", "Reach the goal before the Other Player to win the round": "Erreiche das Ziel vor dem anderen Spieler, um die Runde zu gewinnen", "all levels unlocked": "alle Levels frei", "Custom CPU intel": "eigene CPU-Intel", "balls": "Bälle", "ball": "Ball", "Current tune:": "Aktuelle Melodie:", "Show Menus (M)": "Menüs zeigen (M)", "Hide Menus (M)": "Menüs ausblenden (M)", "Show Goal Info (G)": "Zielinfo zeigen (G)", "Hide Goal Info (G)": "Zielinfo ausblenden (G)", "Hide campaign goal/course info": "Kampagnenziel-/Kursinfo mit G ausblenden", "Show campaign goal/course info": "Kampagnenziel-/Kursinfo mit G anzeigen", "Music volume": "Musiklautstärke"
 },
-pt: { "Pong Campaign Arcade": "Arcade Campanha Pong", "PONG CAMPAIGN": "CAMPANHA PONG", "Campaign": "Campanha", "Custom Game": "Jogo personalizado", "Two Player": "Dois jogadores", "LAN Two Player": "Dois jogadores LAN", "Secret Boss": "Chefe secreto", "Boss Rematch": "Revanche do chefe", "Title": "Título", "Training": "Treino", "Ricochet": "Ricochete", "Chaos": "Caos", "Music On": "Música ligada", "Music Off": "Música desligada", "Music Vol": "Vol. música", "Restart Level": "Reiniciar nível", "Restart Match": "Reiniciar partida", "Restart Boss": "Reiniciar chefe", "Loading...": "Carregando...", "Level": "Nível", "CPU intelligence": "Inteligência da CPU", "CPU Paddle Speed": "Velocidade da raquete CPU", "Play Selected": "Jogar selecionado", "Offline": "Offline", "Host Match": "Hospedar partida", "Join Match": "Entrar", "Disconnect": "Desconectar", "Room Code": "Código da sala", "Your connection text": "Seu texto de conexão", "Paste other player text": "Cole o texto do outro jogador", "Copy Your Text": "Copiar seu texto", "Use Pasted Text": "Usar texto colado", "Thank you for playing": "Obrigado por jogar", "Made by:": "Feito por:", "SLOT": "SLOT", "Slot": "Slot", "selected": "selecionado", "New Game": "Novo jogo", "unlocked": "desbloqueado", "Erase Selected Slot": "Apagar slot selecionado", "Open Court": "Quadra aberta", "Center Post": "Poste central", "Split Gate": "Portão dividido", "Side Rails": "Trilhos laterais", "Drift Blocks": "Blocos móveis", "Pinball Warmup": "Aquecimento pinball", "Training Circuit": "Circuito de treino", "Twin Bumpers": "Rebatedores gêmeos", "Shifting Gate": "Portão móvel", "Mirror Sides": "Lados espelho", "Cross Traffic": "Tráfego cruzado", "Quad Posts": "Quatro postes", "Pinball Alley": "Beco pinball", "Ricochet League": "Liga ricochete", "Sweepers": "Varredores", "Fortress": "Fortaleza", "Side Shuffle": "Embaralhar lateral", "Vortex": "Vórtice", "Diamond Trap": "Armadilha diamante", "Final Firewall": "Firewall final", "Chaos Cup": "Copa do caos", "The Hidden Wall": "A parede oculta", "Boss": "Chefe", "LEVEL CLEARED": "NÍVEL CONCLUÍDO", "CAMPAIGN COMPLETE": "CAMPANHA CONCLUÍDA", "SECRET BOSS DEFEATED": "CHEFE SECRETO DERROTADO", "BOSS FIGHT LOST": "LUTA DO CHEFE PERDIDA", "CUSTOM MATCH OVER": "PARTIDA PERSONALIZADA ENCERRADA", "PRACTICE ROUND OVER": "RODADA DE TREINO ENCERRADA", "LEVEL FAILED": "NÍVEL FALHOU", "SPACE TO SERVE": "ESPAÇO PARA SACAR", "PAUSED": "PAUSADO", "PLAYER": "JOGADOR", "Health": "Vida", "Goal": "Meta", "obstacle": "obstáculo", "obstacles": "obstáculos", "balls": "bolas", "ball": "bola", "Show Menus (M)": "Mostrar menus (M)", "Hide Menus (M)": "Ocultar menus (M)", "Show Goal Info (G)": "Mostrar info da meta (G)", "Hide Goal Info (G)": "Ocultar info da meta (G)", "Hide campaign goal/course info": "Ocultar info de meta/curso com G", "Show campaign goal/course info": "Mostrar info de meta/curso com G", "Music volume": "Volume da música" },
-it: { "Pong Campaign Arcade": "Arcade Campagna Pong", "PONG CAMPAIGN": "CAMPAGNA PONG", "Campaign": "Campagna", "Custom Game": "Gioco personalizzato", "Two Player": "Due giocatori", "LAN Two Player": "Due giocatori LAN", "Secret Boss": "Boss segreto", "Boss Rematch": "Rivincita boss", "Title": "Titolo", "Training": "Allenamento", "Ricochet": "Rimbalzo", "Chaos": "Caos", "Music On": "Musica attiva", "Music Off": "Musica disattiva", "Music Vol": "Vol. musica", "Restart Level": "Riavvia livello", "Restart Match": "Riavvia partita", "Restart Boss": "Riavvia boss", "Loading...": "Caricamento...", "Level": "Livello", "CPU intelligence": "Intelligenza CPU", "CPU Paddle Speed": "Velocità racchetta CPU", "Play Selected": "Gioca selezionato", "Offline": "Offline", "Host Match": "Ospita partita", "Join Match": "Unisciti", "Disconnect": "Disconnetti", "Room Code": "Codice stanza", "Thank you for playing": "Grazie per aver giocato", "Made by:": "Creato da:", "SLOT": "SLOT", "Slot": "Slot", "selected": "selezionato", "New Game": "Nuova partita", "unlocked": "sbloccato", "Erase Selected Slot": "Cancella slot selezionato", "Open Court": "Campo aperto", "Center Post": "Palo centrale", "Split Gate": "Cancello diviso", "Side Rails": "Binari laterali", "Drift Blocks": "Blocchi mobili", "Pinball Warmup": "Riscaldamento flipper", "Training Circuit": "Circuito allenamento", "Twin Bumpers": "Respingenti doppi", "Shifting Gate": "Cancello mobile", "Mirror Sides": "Lati specchio", "Cross Traffic": "Traffico incrociato", "Quad Posts": "Quattro pali", "Pinball Alley": "Vicolo flipper", "Ricochet League": "Lega rimbalzo", "Sweepers": "Spazzole", "Fortress": "Fortezza", "Side Shuffle": "Shuffle laterale", "Vortex": "Vortice", "Diamond Trap": "Trappola diamante", "Final Firewall": "Firewall finale", "Chaos Cup": "Coppa caos", "The Hidden Wall": "Il muro nascosto", "Boss": "Boss", "LEVEL CLEARED": "LIVELLO SUPERATO", "CAMPAIGN COMPLETE": "CAMPAGNA COMPLETA", "SECRET BOSS DEFEATED": "BOSS SEGRETO SCONFITTO", "BOSS FIGHT LOST": "BATTAGLIA BOSS PERSA", "LEVEL FAILED": "LIVELLO FALLITO", "SPACE TO SERVE": "SPAZIO PER SERVIRE", "PAUSED": "PAUSA", "PLAYER": "GIOCATORE", "Health": "Vita", "Goal": "Obiettivo", "obstacle": "ostacolo", "obstacles": "ostacoli", "balls": "palle", "ball": "palla", "Show Menus (M)": "Mostra menu (M)", "Hide Menus (M)": "Nascondi menu (M)", "Show Goal Info (G)": "Mostra info obiettivo (G)", "Hide Goal Info (G)": "Nascondi info obiettivo (G)", "Hide campaign goal/course info": "Nascondi info obiettivo/corso con G", "Show campaign goal/course info": "Mostra info obiettivo/corso con G", "Music volume": "Volume musica" },
-nl: { "Pong Campaign Arcade": "Pong Campagne Arcade", "PONG CAMPAIGN": "PONG CAMPAGNE", "Campaign": "Campagne", "Custom Game": "Aangepast spel", "Two Player": "Twee spelers", "LAN Two Player": "LAN twee spelers", "Secret Boss": "Geheime baas", "Boss Rematch": "Baas rematch", "Title": "Titel", "Training": "Training", "Ricochet": "Ricochet", "Chaos": "Chaos", "Music On": "Muziek aan", "Music Off": "Muziek uit", "Music Vol": "Muziekvolume", "Restart Level": "Level herstarten", "Restart Match": "Match herstarten", "Restart Boss": "Baas herstarten", "Loading...": "Laden...", "Level": "Level", "CPU intelligence": "CPU-intelligentie", "CPU Paddle Speed": "CPU-peddelsnelheid", "Play Selected": "Speel selectie", "Offline": "Offline", "Host Match": "Host match", "Join Match": "Meedoen", "Disconnect": "Verbreken", "Room Code": "Kamercode", "Thank you for playing": "Bedankt voor het spelen", "Made by:": "Gemaakt door:", "SLOT": "SLOT", "Slot": "Slot", "selected": "geselecteerd", "New Game": "Nieuw spel", "unlocked": "ontgrendeld", "Erase Selected Slot": "Wis geselecteerde slot", "Open Court": "Open veld", "Center Post": "Middenpaal", "Split Gate": "Gesplitste poort", "Side Rails": "Zijrails", "Drift Blocks": "Drijvende blokken", "Pinball Warmup": "Pinball warming-up", "Training Circuit": "Trainingscircuit", "Twin Bumpers": "Dubbele bumpers", "Shifting Gate": "Schuivende poort", "Mirror Sides": "Spiegelzijden", "Cross Traffic": "Kruisverkeer", "Quad Posts": "Vier palen", "Pinball Alley": "Pinball steeg", "Ricochet League": "Ricochet competitie", "Sweepers": "Vegers", "Fortress": "Vesting", "Side Shuffle": "Zijshuffle", "Vortex": "Draaikolk", "Diamond Trap": "Diamantval", "Final Firewall": "Laatste firewall", "Chaos Cup": "Chaosbeker", "The Hidden Wall": "De verborgen muur", "Boss": "Baas", "LEVEL CLEARED": "LEVEL GEHAALD", "CAMPAIGN COMPLETE": "CAMPAGNE VOLTOOID", "SECRET BOSS DEFEATED": "GEHEIME BAAS VERSLAGEN", "BOSS FIGHT LOST": "BAASGEVECHT VERLOREN", "LEVEL FAILED": "LEVEL MISLUKT", "SPACE TO SERVE": "SPATIE OM TE SERVEREN", "PAUSED": "GEPAUZEERD", "PLAYER": "SPELER", "Health": "Gezondheid", "Goal": "Doel", "obstacle": "obstakel", "obstacles": "obstakels", "balls": "ballen", "ball": "bal", "Show Menus (M)": "Menu's tonen (M)", "Hide Menus (M)": "Menu's verbergen (M)", "Show Goal Info (G)": "Doelinfo tonen (G)", "Hide Goal Info (G)": "Doelinfo verbergen (G)", "Hide campaign goal/course info": "Verberg campagne doel-/baaninfo met G", "Show campaign goal/course info": "Toon campagne doel-/baaninfo met G", "Music volume": "Muziekvolume" },
-ja: { "Pong Campaign Arcade": "ポン キャンペーン アーケード", "PONG CAMPAIGN": "ポン キャンペーン", "Choose a save slot, then play Campaign, Custom Game, Two Player, or optional LAN Two Player. Custom Game uses completed maps; Two Player can use every map.": "セーブスロットを選び、キャンペーン、カスタムゲーム、2人プレイ、またはLAN 2人プレイを選択します。カスタムゲームはクリア済みマップのみ、2人プレイは全マップを使用できます。", "Campaign starts at your next unlocked level. Custom Game only shows completed levels. Two Player and LAN Two Player can choose any level. A secret boss appears after all 18 levels are cleared.": "キャンペーンは次に解放されたレベルから始まります。カスタムゲームはクリア済みレベルのみ表示します。2人プレイとLANは全レベルを選べます。18レベルすべてをクリアすると隠しボスが現れます。", "Campaign starts at your next unlocked level. Custom Game only shows completed levels. Two Player and LAN Two Player can choose any level.": "キャンペーンは次に解放されたレベルから始まります。カスタムゲームはクリア済みレベルのみ表示します。2人プレイとLANは全レベルを選べます。", "Secret Boss is open. Campaign progress, Custom Game unlocks, and Boss access are saved to this slot.": "隠しボスが解放されました。キャンペーン進行、カスタム解放、ボスアクセスはこのスロットに保存されます。", "Campaign": "キャンペーン", "Custom Game": "カスタムゲーム", "Two Player": "2人プレイ", "LAN Two Player": "LAN 2人プレイ", "Secret Boss": "隠しボス", "Boss Rematch": "ボス再戦", "Title": "タイトル", "Training": "トレーニング", "Ricochet": "リコシェ", "Chaos": "カオス", "Music On": "音楽オン", "Music Off": "音楽オフ", "Music Vol": "音楽音量", "Restart Level": "レベル再開始", "Restart Match": "試合再開始", "Restart Boss": "ボス再開始", "Loading...": "読み込み中...", "Level": "レベル", "Choose custom level": "カスタムレベルを選択", "CPU intelligence": "CPU知能", "CPU Paddle Speed": "CPUパドル速度", "Play Selected": "選択をプレイ", "Offline": "オフライン", "LAN-only WebRTC with no STUN/TURN servers. Host runs the match; guest sends input only.": "STUN/TURNなしのLAN専用WebRTC。ホストが試合を実行し、ゲストは入力のみ送信します。", "Host Match": "ホストする", "Join Match": "参加する", "Disconnect": "切断", "Room Code": "ルームコード", "Your connection text": "自分の接続テキスト", "Paste other player text": "相手のテキストを貼り付け", "Copy Your Text": "自分のテキストをコピー", "Use Pasted Text": "貼り付けたテキストを使用", "Thank you for playing": "遊んでくれてありがとう", "Made by:": "制作:", "SLOT": "スロット", "Slot": "スロット", "selected": "選択中", "New Game": "新規ゲーム", "unlocked": "解放", "Erase Selected Slot": "選択スロットを削除", "Open Court": "オープンコート", "Center Post": "中央ポスト", "Split Gate": "分割ゲート", "Side Rails": "サイドレール", "Drift Blocks": "ドリフトブロック", "Pinball Warmup": "ピンボール練習", "Training Circuit": "トレーニングサーキット", "Twin Bumpers": "ツインバンパー", "Shifting Gate": "シフトゲート", "Mirror Sides": "ミラーサイド", "Cross Traffic": "クロストラフィック", "Quad Posts": "4本ポスト", "Pinball Alley": "ピンボール路地", "Ricochet League": "リコシェリーグ", "Sweepers": "スイーパー", "Fortress": "要塞", "Side Shuffle": "サイドシャッフル", "Vortex": "ボルテックス", "Diamond Trap": "ダイヤ罠", "Final Firewall": "最終ファイアウォール", "Chaos Cup": "カオスカップ", "The Hidden Wall": "隠された壁", "Boss": "ボス", "LEVEL CLEARED": "レベルクリア", "CAMPAIGN COMPLETE": "キャンペーンクリア", "SECRET BOSS DEFEATED": "隠しボス撃破", "BOSS FIGHT LOST": "ボス戦敗北", "CUSTOM MATCH OVER": "カスタム試合終了", "PRACTICE ROUND OVER": "練習ラウンド終了", "LEVEL FAILED": "レベル失敗", "SPACE TO SERVE": "スペースでサーブ", "PAUSED": "一時停止", "PLAYER": "プレイヤー", "Health": "体力", "Goal": "目標", "obstacle": "障害物", "obstacles": "障害物", "balls": "ボール", "ball": "ボール", "Show Menus (M)": "メニュー表示 (M)", "Hide Menus (M)": "メニュー非表示 (M)", "Show Goal Info (G)": "目標情報表示 (G)", "Hide Goal Info (G)": "目標情報非表示 (G)", "Hide campaign goal/course info": "Gでキャンペーン目標/コース情報を非表示", "Show campaign goal/course info": "Gでキャンペーン目標/コース情報を表示", "Music volume": "音楽音量" },
-ko: { "Pong Campaign Arcade": "퐁 캠페인 아케이드", "PONG CAMPAIGN": "퐁 캠페인", "Campaign": "캠페인", "Custom Game": "커스텀 게임", "Two Player": "2인 플레이", "LAN Two Player": "LAN 2인 플레이", "Secret Boss": "비밀 보스", "Boss Rematch": "보스 재전", "Title": "타이틀", "Training": "훈련", "Ricochet": "리코셰", "Chaos": "카오스", "Music On": "음악 켜짐", "Music Off": "음악 꺼짐", "Music Vol": "음악 볼륨", "Restart Level": "레벨 재시작", "Restart Match": "경기 재시작", "Restart Boss": "보스 재시작", "Loading...": "불러오는 중...", "Level": "레벨", "CPU intelligence": "CPU 지능", "CPU Paddle Speed": "CPU 패들 속도", "Play Selected": "선택 플레이", "Offline": "오프라인", "Host Match": "방 만들기", "Join Match": "참가", "Disconnect": "연결 끊기", "Room Code": "방 코드", "Thank you for playing": "플레이해 주셔서 감사합니다", "Made by:": "제작:", "SLOT": "슬롯", "Slot": "슬롯", "selected": "선택됨", "New Game": "새 게임", "unlocked": "해제됨", "Erase Selected Slot": "선택 슬롯 삭제", "Open Court": "오픈 코트", "Center Post": "중앙 기둥", "Split Gate": "분할 게이트", "Side Rails": "사이드 레일", "Drift Blocks": "드리프트 블록", "Pinball Warmup": "핀볼 워밍업", "Training Circuit": "훈련 서킷", "Twin Bumpers": "쌍둥이 범퍼", "Shifting Gate": "이동 게이트", "Mirror Sides": "거울 측면", "Cross Traffic": "교차 교통", "Quad Posts": "네 기둥", "Pinball Alley": "핀볼 골목", "Ricochet League": "리코셰 리그", "Sweepers": "스위퍼", "Fortress": "요새", "Side Shuffle": "사이드 셔플", "Vortex": "소용돌이", "Diamond Trap": "다이아몬드 함정", "Final Firewall": "최종 방화벽", "Chaos Cup": "카오스 컵", "The Hidden Wall": "숨겨진 벽", "Boss": "보스", "LEVEL CLEARED": "레벨 클리어", "CAMPAIGN COMPLETE": "캠페인 완료", "SECRET BOSS DEFEATED": "비밀 보스 격파", "BOSS FIGHT LOST": "보스전 패배", "LEVEL FAILED": "레벨 실패", "SPACE TO SERVE": "스페이스로 서브", "PAUSED": "일시정지", "PLAYER": "플레이어", "Health": "체력", "Goal": "목표", "obstacle": "장애물", "obstacles": "장애물", "balls": "공", "ball": "공", "Show Menus (M)": "메뉴 표시 (M)", "Hide Menus (M)": "메뉴 숨김 (M)", "Show Goal Info (G)": "목표 정보 표시 (G)", "Hide Goal Info (G)": "목표 정보 숨김 (G)", "Hide campaign goal/course info": "G로 캠페인 목표/코스 정보 숨김", "Show campaign goal/course info": "G로 캠페인 목표/코스 정보 표시", "Music volume": "음악 볼륨" },
-zh: { "Pong Campaign Arcade": "乒乓战役街机", "PONG CAMPAIGN": "乒乓战役", "Campaign": "战役", "Custom Game": "自定义游戏", "Two Player": "双人", "LAN Two Player": "局域网双人", "Secret Boss": "隐藏Boss", "Boss Rematch": "Boss重战", "Title": "标题", "Training": "训练", "Ricochet": "反弹", "Chaos": "混沌", "Music On": "音乐开", "Music Off": "音乐关", "Music Vol": "音乐音量", "Restart Level": "重开关卡", "Restart Match": "重开比赛", "Restart Boss": "重开Boss", "Loading...": "加载中...", "Level": "关卡", "CPU intelligence": "CPU智能", "CPU Paddle Speed": "CPU球拍速度", "Play Selected": "游玩所选", "Offline": "离线", "Host Match": "创建比赛", "Join Match": "加入比赛", "Disconnect": "断开", "Room Code": "房间码", "Thank you for playing": "感谢游玩", "Made by:": "制作:", "SLOT": "存档", "Slot": "存档", "selected": "已选择", "New Game": "新游戏", "unlocked": "已解锁", "Erase Selected Slot": "删除所选存档", "Open Court": "开阔球场", "Center Post": "中央柱", "Split Gate": "分裂门", "Side Rails": "侧边轨道", "Drift Blocks": "漂移方块", "Pinball Warmup": "弹珠热身", "Training Circuit": "训练巡回", "Twin Bumpers": "双弹柱", "Shifting Gate": "移动门", "Mirror Sides": "镜像边", "Cross Traffic": "交叉交通", "Quad Posts": "四柱", "Pinball Alley": "弹珠小巷", "Ricochet League": "反弹联赛", "Sweepers": "清扫器", "Fortress": "堡垒", "Side Shuffle": "侧向洗牌", "Vortex": "漩涡", "Diamond Trap": "钻石陷阱", "Final Firewall": "最终防火墙", "Chaos Cup": "混沌杯", "The Hidden Wall": "隐藏之墙", "Boss": "Boss", "LEVEL CLEARED": "关卡完成", "CAMPAIGN COMPLETE": "战役完成", "SECRET BOSS DEFEATED": "隐藏Boss击败", "BOSS FIGHT LOST": "Boss战失败", "LEVEL FAILED": "关卡失败", "SPACE TO SERVE": "空格发球", "PAUSED": "暂停", "PLAYER": "玩家", "Health": "生命", "Goal": "目标", "obstacle": "障碍", "obstacles": "障碍", "balls": "球", "ball": "球", "Show Menus (M)": "显示菜单 (M)", "Hide Menus (M)": "隐藏菜单 (M)", "Show Goal Info (G)": "显示目标信息 (G)", "Hide Goal Info (G)": "隐藏目标信息 (G)", "Hide campaign goal/course info": "用 G 隐藏战役目标/关卡信息", "Show campaign goal/course info": "用 G 显示战役目标/关卡信息", "Music volume": "音乐音量" }
+pt: { "Pong Campaign Arcade": "Arcade Campanha Pong", "PONG CAMPAIGN": "CAMPANHA PONG", "Exit Game": "Sair do jogo", "Campaign": "Campanha", "Custom Game": "Jogo personalizado", "Two Player": "Dois jogadores", "LAN Two Player": "Dois jogadores LAN", "Secret Boss": "Chefe secreto", "Boss Rematch": "Revanche do chefe", "Title": "Título", "Training": "Treino", "Ricochet": "Ricochete", "Chaos": "Caos", "Music On": "Música ligada", "Music Off": "Música desligada", "Music Vol": "Vol. música", "Restart Level": "Reiniciar nível", "Restart Match": "Reiniciar partida", "Restart Boss": "Reiniciar chefe", "Loading...": "Carregando...", "Level": "Nível", "CPU intelligence": "Inteligência da CPU", "CPU Paddle Speed": "Velocidade da raquete CPU", "Play Selected": "Jogar selecionado", "Offline": "Offline", "Host Match": "Hospedar partida", "Join Match": "Entrar", "Disconnect": "Desconectar", "Room Code": "Código da sala", "Your connection text": "Seu texto de conexão", "Paste other player text": "Cole o texto do outro jogador", "Copy Your Text": "Copiar seu texto", "Use Pasted Text": "Usar texto colado", "Thank you for playing": "Obrigado por jogar", "Made by:": "Feito por:", "SLOT": "SLOT", "Slot": "Slot", "selected": "selecionado", "New Game": "Novo jogo", "unlocked": "desbloqueado", "Erase Selected Slot": "Apagar slot selecionado", "Open Court": "Quadra aberta", "Center Post": "Poste central", "Split Gate": "Portão dividido", "Side Rails": "Trilhos laterais", "Drift Blocks": "Blocos móveis", "Pinball Warmup": "Aquecimento pinball", "Training Circuit": "Circuito de treino", "Twin Bumpers": "Rebatedores gêmeos", "Shifting Gate": "Portão móvel", "Mirror Sides": "Lados espelho", "Cross Traffic": "Tráfego cruzado", "Quad Posts": "Quatro postes", "Pinball Alley": "Beco pinball", "Ricochet League": "Liga ricochete", "Sweepers": "Varredores", "Fortress": "Fortaleza", "Side Shuffle": "Embaralhar lateral", "Vortex": "Vórtice", "Diamond Trap": "Armadilha diamante", "Final Firewall": "Firewall final", "Chaos Cup": "Copa do caos", "The Hidden Wall": "A parede oculta", "Boss": "Chefe", "LEVEL CLEARED": "NÍVEL CONCLUÍDO", "CAMPAIGN COMPLETE": "CAMPANHA CONCLUÍDA", "SECRET BOSS DEFEATED": "CHEFE SECRETO DERROTADO", "BOSS FIGHT LOST": "LUTA DO CHEFE PERDIDA", "CUSTOM MATCH OVER": "PARTIDA PERSONALIZADA ENCERRADA", "PRACTICE ROUND OVER": "RODADA DE TREINO ENCERRADA", "LEVEL FAILED": "NÍVEL FALHOU", "SPACE TO SERVE": "ESPAÇO PARA SACAR", "Reach the goal before the Other Player to win the round": "Alcance a meta antes do outro jogador para vencer a rodada", "PAUSED": "PAUSADO", "PLAYER": "JOGADOR", "Health": "Vida", "Goal": "Meta", "obstacle": "obstáculo", "obstacles": "obstáculos", "balls": "bolas", "ball": "bola", "Show Menus (M)": "Mostrar menus (M)", "Hide Menus (M)": "Ocultar menus (M)", "Show Goal Info (G)": "Mostrar info da meta (G)", "Hide Goal Info (G)": "Ocultar info da meta (G)", "Hide campaign goal/course info": "Ocultar info de meta/curso com G", "Show campaign goal/course info": "Mostrar info de meta/curso com G", "Music volume": "Volume da música" },
+it: { "Pong Campaign Arcade": "Arcade Campagna Pong", "PONG CAMPAIGN": "CAMPAGNA PONG", "Exit Game": "Esci dal gioco", "Campaign": "Campagna", "Custom Game": "Gioco personalizzato", "Two Player": "Due giocatori", "LAN Two Player": "Due giocatori LAN", "Secret Boss": "Boss segreto", "Boss Rematch": "Rivincita boss", "Title": "Titolo", "Training": "Allenamento", "Ricochet": "Rimbalzo", "Chaos": "Caos", "Music On": "Musica attiva", "Music Off": "Musica disattiva", "Music Vol": "Vol. musica", "Restart Level": "Riavvia livello", "Restart Match": "Riavvia partita", "Restart Boss": "Riavvia boss", "Loading...": "Caricamento...", "Level": "Livello", "CPU intelligence": "Intelligenza CPU", "CPU Paddle Speed": "Velocità racchetta CPU", "Play Selected": "Gioca selezionato", "Offline": "Offline", "Host Match": "Ospita partita", "Join Match": "Unisciti", "Disconnect": "Disconnetti", "Room Code": "Codice stanza", "Thank you for playing": "Grazie per aver giocato", "Made by:": "Creato da:", "SLOT": "SLOT", "Slot": "Slot", "selected": "selezionato", "New Game": "Nuova partita", "unlocked": "sbloccato", "Erase Selected Slot": "Cancella slot selezionato", "Open Court": "Campo aperto", "Center Post": "Palo centrale", "Split Gate": "Cancello diviso", "Side Rails": "Binari laterali", "Drift Blocks": "Blocchi mobili", "Pinball Warmup": "Riscaldamento flipper", "Training Circuit": "Circuito allenamento", "Twin Bumpers": "Respingenti doppi", "Shifting Gate": "Cancello mobile", "Mirror Sides": "Lati specchio", "Cross Traffic": "Traffico incrociato", "Quad Posts": "Quattro pali", "Pinball Alley": "Vicolo flipper", "Ricochet League": "Lega rimbalzo", "Sweepers": "Spazzole", "Fortress": "Fortezza", "Side Shuffle": "Shuffle laterale", "Vortex": "Vortice", "Diamond Trap": "Trappola diamante", "Final Firewall": "Firewall finale", "Chaos Cup": "Coppa caos", "The Hidden Wall": "Il muro nascosto", "Boss": "Boss", "LEVEL CLEARED": "LIVELLO SUPERATO", "CAMPAIGN COMPLETE": "CAMPAGNA COMPLETA", "SECRET BOSS DEFEATED": "BOSS SEGRETO SCONFITTO", "BOSS FIGHT LOST": "BATTAGLIA BOSS PERSA", "LEVEL FAILED": "LIVELLO FALLITO", "SPACE TO SERVE": "SPAZIO PER SERVIRE", "PAUSED": "PAUSA", "PLAYER": "GIOCATORE", "Health": "Vita", "Goal": "Obiettivo", "obstacle": "ostacolo", "obstacles": "ostacoli", "balls": "palle", "ball": "palla", "Show Menus (M)": "Mostra menu (M)", "Hide Menus (M)": "Nascondi menu (M)", "Show Goal Info (G)": "Mostra info obiettivo (G)", "Hide Goal Info (G)": "Nascondi info obiettivo (G)", "Hide campaign goal/course info": "Nascondi info obiettivo/corso con G", "Show campaign goal/course info": "Mostra info obiettivo/corso con G", "Music volume": "Volume musica" },
+nl: { "Pong Campaign Arcade": "Pong Campagne Arcade", "PONG CAMPAIGN": "PONG CAMPAGNE", "Exit Game": "Spel afsluiten", "Campaign": "Campagne", "Custom Game": "Aangepast spel", "Two Player": "Twee spelers", "LAN Two Player": "LAN twee spelers", "Secret Boss": "Geheime baas", "Boss Rematch": "Baas rematch", "Title": "Titel", "Training": "Training", "Ricochet": "Ricochet", "Chaos": "Chaos", "Music On": "Muziek aan", "Music Off": "Muziek uit", "Music Vol": "Muziekvolume", "Restart Level": "Level herstarten", "Restart Match": "Match herstarten", "Restart Boss": "Baas herstarten", "Loading...": "Laden...", "Level": "Level", "CPU intelligence": "CPU-intelligentie", "CPU Paddle Speed": "CPU-peddelsnelheid", "Play Selected": "Speel selectie", "Offline": "Offline", "Host Match": "Host match", "Join Match": "Meedoen", "Disconnect": "Verbreken", "Room Code": "Kamercode", "Thank you for playing": "Bedankt voor het spelen", "Made by:": "Gemaakt door:", "SLOT": "SLOT", "Slot": "Slot", "selected": "geselecteerd", "New Game": "Nieuw spel", "unlocked": "ontgrendeld", "Erase Selected Slot": "Wis geselecteerde slot", "Open Court": "Open veld", "Center Post": "Middenpaal", "Split Gate": "Gesplitste poort", "Side Rails": "Zijrails", "Drift Blocks": "Drijvende blokken", "Pinball Warmup": "Pinball warming-up", "Training Circuit": "Trainingscircuit", "Twin Bumpers": "Dubbele bumpers", "Shifting Gate": "Schuivende poort", "Mirror Sides": "Spiegelzijden", "Cross Traffic": "Kruisverkeer", "Quad Posts": "Vier palen", "Pinball Alley": "Pinball steeg", "Ricochet League": "Ricochet competitie", "Sweepers": "Vegers", "Fortress": "Vesting", "Side Shuffle": "Zijshuffle", "Vortex": "Draaikolk", "Diamond Trap": "Diamantval", "Final Firewall": "Laatste firewall", "Chaos Cup": "Chaosbeker", "The Hidden Wall": "De verborgen muur", "Boss": "Baas", "LEVEL CLEARED": "LEVEL GEHAALD", "CAMPAIGN COMPLETE": "CAMPAGNE VOLTOOID", "SECRET BOSS DEFEATED": "GEHEIME BAAS VERSLAGEN", "BOSS FIGHT LOST": "BAASGEVECHT VERLOREN", "LEVEL FAILED": "LEVEL MISLUKT", "SPACE TO SERVE": "SPATIE OM TE SERVEREN", "Reach the goal before the Other Player to win the round": "Bereik het doel voor de andere speler om de ronde te winnen", "PAUSED": "GEPAUZEERD", "PLAYER": "SPELER", "Health": "Gezondheid", "Goal": "Doel", "obstacle": "obstakel", "obstacles": "obstakels", "balls": "ballen", "ball": "bal", "Show Menus (M)": "Menu's tonen (M)", "Hide Menus (M)": "Menu's verbergen (M)", "Show Goal Info (G)": "Doelinfo tonen (G)", "Hide Goal Info (G)": "Doelinfo verbergen (G)", "Hide campaign goal/course info": "Verberg campagne doel-/baaninfo met G", "Show campaign goal/course info": "Toon campagne doel-/baaninfo met G", "Music volume": "Muziekvolume" },
+ja: { "Pong Campaign Arcade": "ポン キャンペーン アーケード", "PONG CAMPAIGN": "ポン キャンペーン", "Choose a save slot, then play Campaign, Custom Game, Two Player, or optional LAN Two Player. Custom Game uses completed maps; Two Player can use every map.": "セーブスロットを選び、キャンペーン、カスタムゲーム、2人プレイ、またはLAN 2人プレイを選択します。カスタムゲームはクリア済みマップのみ、2人プレイは全マップを使用できます。", "Campaign starts at your next unlocked level. Custom Game only shows completed levels. Two Player and LAN Two Player can choose any level. A secret boss appears after all 18 levels are cleared.": "キャンペーンは次に解放されたレベルから始まります。カスタムゲームはクリア済みレベルのみ表示します。2人プレイとLANは全レベルを選べます。18レベルすべてをクリアすると隠しボスが現れます。", "Campaign starts at your next unlocked level. Custom Game only shows completed levels. Two Player and LAN Two Player can choose any level.": "キャンペーンは次に解放されたレベルから始まります。カスタムゲームはクリア済みレベルのみ表示します。2人プレイとLANは全レベルを選べます。", "Secret Boss is open. Campaign progress, Custom Game unlocks, and Boss access are saved to this slot.": "隠しボスが解放されました。キャンペーン進行、カスタム解放、ボスアクセスはこのスロットに保存されます。", "Exit Game": "ゲームを終了", "Campaign": "キャンペーン", "Custom Game": "カスタムゲーム", "Two Player": "2人プレイ", "LAN Two Player": "LAN 2人プレイ", "Secret Boss": "隠しボス", "Boss Rematch": "ボス再戦", "Title": "タイトル", "Training": "トレーニング", "Ricochet": "リコシェ", "Chaos": "カオス", "Music On": "音楽オン", "Music Off": "音楽オフ", "Music Vol": "音楽音量", "Restart Level": "レベル再開始", "Restart Match": "試合再開始", "Restart Boss": "ボス再開始", "Loading...": "読み込み中...", "Level": "レベル", "Choose custom level": "カスタムレベルを選択", "CPU intelligence": "CPU知能", "CPU Paddle Speed": "CPUパドル速度", "Play Selected": "選択をプレイ", "Offline": "オフライン", "LAN-only WebRTC with no STUN/TURN servers. Host runs the match; guest sends input only.": "STUN/TURNなしのLAN専用WebRTC。ホストが試合を実行し、ゲストは入力のみ送信します。", "Host Match": "ホストする", "Join Match": "参加する", "Disconnect": "切断", "Room Code": "ルームコード", "Your connection text": "自分の接続テキスト", "Paste other player text": "相手のテキストを貼り付け", "Copy Your Text": "自分のテキストをコピー", "Use Pasted Text": "貼り付けたテキストを使用", "Thank you for playing": "遊んでくれてありがとう", "Made by:": "制作:", "SLOT": "スロット", "Slot": "スロット", "selected": "選択中", "New Game": "新規ゲーム", "unlocked": "解放", "Erase Selected Slot": "選択スロットを削除", "Open Court": "オープンコート", "Center Post": "中央ポスト", "Split Gate": "分割ゲート", "Side Rails": "サイドレール", "Drift Blocks": "ドリフトブロック", "Pinball Warmup": "ピンボール練習", "Training Circuit": "トレーニングサーキット", "Twin Bumpers": "ツインバンパー", "Shifting Gate": "シフトゲート", "Mirror Sides": "ミラーサイド", "Cross Traffic": "クロストラフィック", "Quad Posts": "4本ポスト", "Pinball Alley": "ピンボール路地", "Ricochet League": "リコシェリーグ", "Sweepers": "スイーパー", "Fortress": "要塞", "Side Shuffle": "サイドシャッフル", "Vortex": "ボルテックス", "Diamond Trap": "ダイヤ罠", "Final Firewall": "最終ファイアウォール", "Chaos Cup": "カオスカップ", "The Hidden Wall": "隠された壁", "Boss": "ボス", "LEVEL CLEARED": "レベルクリア", "CAMPAIGN COMPLETE": "キャンペーンクリア", "SECRET BOSS DEFEATED": "隠しボス撃破", "BOSS FIGHT LOST": "ボス戦敗北", "CUSTOM MATCH OVER": "カスタム試合終了", "PRACTICE ROUND OVER": "練習ラウンド終了", "LEVEL FAILED": "レベル失敗", "SPACE TO SERVE": "スペースでサーブ", "Reach the goal before the Other Player to win the round": "相手より先に目標へ到達してラウンドに勝利", "PAUSED": "一時停止", "PLAYER": "プレイヤー", "Health": "体力", "Goal": "目標", "obstacle": "障害物", "obstacles": "障害物", "balls": "ボール", "ball": "ボール", "Show Menus (M)": "メニュー表示 (M)", "Hide Menus (M)": "メニュー非表示 (M)", "Show Goal Info (G)": "目標情報表示 (G)", "Hide Goal Info (G)": "目標情報非表示 (G)", "Hide campaign goal/course info": "Gでキャンペーン目標/コース情報を非表示", "Show campaign goal/course info": "Gでキャンペーン目標/コース情報を表示", "Music volume": "音楽音量" },
+ko: { "Pong Campaign Arcade": "퐁 캠페인 아케이드", "PONG CAMPAIGN": "퐁 캠페인", "Exit Game": "게임 종료", "Campaign": "캠페인", "Custom Game": "커스텀 게임", "Two Player": "2인 플레이", "LAN Two Player": "LAN 2인 플레이", "Secret Boss": "비밀 보스", "Boss Rematch": "보스 재전", "Title": "타이틀", "Training": "훈련", "Ricochet": "리코셰", "Chaos": "카오스", "Music On": "음악 켜짐", "Music Off": "음악 꺼짐", "Music Vol": "음악 볼륨", "Restart Level": "레벨 재시작", "Restart Match": "경기 재시작", "Restart Boss": "보스 재시작", "Loading...": "불러오는 중...", "Level": "레벨", "CPU intelligence": "CPU 지능", "CPU Paddle Speed": "CPU 패들 속도", "Play Selected": "선택 플레이", "Offline": "오프라인", "Host Match": "방 만들기", "Join Match": "참가", "Disconnect": "연결 끊기", "Room Code": "방 코드", "Thank you for playing": "플레이해 주셔서 감사합니다", "Made by:": "제작:", "SLOT": "슬롯", "Slot": "슬롯", "selected": "선택됨", "New Game": "새 게임", "unlocked": "해제됨", "Erase Selected Slot": "선택 슬롯 삭제", "Open Court": "오픈 코트", "Center Post": "중앙 기둥", "Split Gate": "분할 게이트", "Side Rails": "사이드 레일", "Drift Blocks": "드리프트 블록", "Pinball Warmup": "핀볼 워밍업", "Training Circuit": "훈련 서킷", "Twin Bumpers": "쌍둥이 범퍼", "Shifting Gate": "이동 게이트", "Mirror Sides": "거울 측면", "Cross Traffic": "교차 교통", "Quad Posts": "네 기둥", "Pinball Alley": "핀볼 골목", "Ricochet League": "리코셰 리그", "Sweepers": "스위퍼", "Fortress": "요새", "Side Shuffle": "사이드 셔플", "Vortex": "소용돌이", "Diamond Trap": "다이아몬드 함정", "Final Firewall": "최종 방화벽", "Chaos Cup": "카오스 컵", "The Hidden Wall": "숨겨진 벽", "Boss": "보스", "LEVEL CLEARED": "레벨 클리어", "CAMPAIGN COMPLETE": "캠페인 완료", "SECRET BOSS DEFEATED": "비밀 보스 격파", "BOSS FIGHT LOST": "보스전 패배", "LEVEL FAILED": "레벨 실패", "SPACE TO SERVE": "스페이스로 서브", "Reach the goal before the Other Player to win the round": "다른 플레이어보다 먼저 목표에 도달해 라운드에서 승리하세요", "PAUSED": "일시정지", "PLAYER": "플레이어", "Health": "체력", "Goal": "목표", "obstacle": "장애물", "obstacles": "장애물", "balls": "공", "ball": "공", "Show Menus (M)": "메뉴 표시 (M)", "Hide Menus (M)": "메뉴 숨김 (M)", "Show Goal Info (G)": "목표 정보 표시 (G)", "Hide Goal Info (G)": "목표 정보 숨김 (G)", "Hide campaign goal/course info": "G로 캠페인 목표/코스 정보 숨김", "Show campaign goal/course info": "G로 캠페인 목표/코스 정보 표시", "Music volume": "음악 볼륨" },
+zh: { "Pong Campaign Arcade": "乒乓战役街机", "PONG CAMPAIGN": "乒乓战役", "Exit Game": "退出游戏", "Campaign": "战役", "Custom Game": "自定义游戏", "Two Player": "双人", "LAN Two Player": "局域网双人", "Secret Boss": "隐藏Boss", "Boss Rematch": "Boss重战", "Title": "标题", "Training": "训练", "Ricochet": "反弹", "Chaos": "混沌", "Music On": "音乐开", "Music Off": "音乐关", "Music Vol": "音乐音量", "Restart Level": "重开关卡", "Restart Match": "重开比赛", "Restart Boss": "重开Boss", "Loading...": "加载中...", "Level": "关卡", "CPU intelligence": "CPU智能", "CPU Paddle Speed": "CPU球拍速度", "Play Selected": "游玩所选", "Offline": "离线", "Host Match": "创建比赛", "Join Match": "加入比赛", "Disconnect": "断开", "Room Code": "房间码", "Thank you for playing": "感谢游玩", "Made by:": "制作:", "SLOT": "存档", "Slot": "存档", "selected": "已选择", "New Game": "新游戏", "unlocked": "已解锁", "Erase Selected Slot": "删除所选存档", "Open Court": "开阔球场", "Center Post": "中央柱", "Split Gate": "分裂门", "Side Rails": "侧边轨道", "Drift Blocks": "漂移方块", "Pinball Warmup": "弹珠热身", "Training Circuit": "训练巡回", "Twin Bumpers": "双弹柱", "Shifting Gate": "移动门", "Mirror Sides": "镜像边", "Cross Traffic": "交叉交通", "Quad Posts": "四柱", "Pinball Alley": "弹珠小巷", "Ricochet League": "反弹联赛", "Sweepers": "清扫器", "Fortress": "堡垒", "Side Shuffle": "侧向洗牌", "Vortex": "漩涡", "Diamond Trap": "钻石陷阱", "Final Firewall": "最终防火墙", "Chaos Cup": "混沌杯", "The Hidden Wall": "隐藏之墙", "Boss": "Boss", "LEVEL CLEARED": "关卡完成", "CAMPAIGN COMPLETE": "战役完成", "SECRET BOSS DEFEATED": "隐藏Boss击败", "BOSS FIGHT LOST": "Boss战失败", "LEVEL FAILED": "关卡失败", "SPACE TO SERVE": "空格发球", "Reach the goal before the Other Player to win the round": "先于另一位玩家达到目标以赢得本回合", "PAUSED": "暂停", "PLAYER": "玩家", "Health": "生命", "Goal": "目标", "obstacle": "障碍", "obstacles": "障碍", "balls": "球", "ball": "球", "Show Menus (M)": "显示菜单 (M)", "Hide Menus (M)": "隐藏菜单 (M)", "Show Goal Info (G)": "显示目标信息 (G)", "Hide Goal Info (G)": "隐藏目标信息 (G)", "Hide campaign goal/course info": "用 G 隐藏战役目标/关卡信息", "Show campaign goal/course info": "用 G 显示战役目标/关卡信息", "Music volume": "音乐音量" }
 };
 const supported = ["en", ...Object.keys(phraseTranslations)];
 function detectLanguage() {
@@ -803,6 +849,7 @@ const titleCustomButton = byId("titleCustomButton");
 const titleTwoPlayerButton = byId("titleTwoPlayerButton");
 const titleLanButton = byId("titleLanButton");
 const titleBossButton = byId("titleBossButton");
+const exitGameButton = byId("exitGameButton");
 const titleJumpButton = byId("titleJumpButton");
 const firstStartControls = byId("firstStartControls");
 const firstStartControlsIntro = byId("firstStartControlsIntro");
@@ -944,11 +991,11 @@ const RALLY_PLAYER_SPAWN_MIN_DISTANCE = 180;
 const RALLY_PLAYER_SPAWN_Y_JITTER = 0;
 const TOTAL_LEVELS = 18;
 const SECRET_BOSS_LEVEL_NUMBER = TOTAL_LEVELS + 1;
-const BOSS_PLAYER_MAX_HEALTH = 12;
+const BOSS_PLAYER_MAX_HEALTH = 13;
 const BOSS_ENEMY_MAX_HEALTH = 10;
 const BOSS_STARTING_BALLS = 1;
 const BOSS_MAX_BALLS = 3;
-const BOSS_SECOND_BALL_DELAY_FRAMES = 60 * 8;
+const BOSS_SECOND_BALL_DELAY_FRAMES = 60 * 10;
 const SAVE_SLOT_COUNT = 3;
 const SAVE_STORAGE_PREFIX = "pongCampaignSaveSlotV2";
 const keys = new Set();
@@ -1016,6 +1063,14 @@ let gameOver = false;
 let endMessage = "";
 let cpuErrorOffset = 0;
 let shakeFrames = 0;
+let customPreviewActive = false;
+let hazardTrapHitCount = 0;
+let hazardTrapWindowStartFrame = -9999;
+let lastHazardTrapHitFrame = -9999;
+let framesSincePaddleContact = 0;
+const HAZARD_TRAP_HIT_LIMIT = 5;
+const HAZARD_TRAP_WINDOW_FRAMES = 60 * 6;
+const HAZARD_TRAP_FALLBACK_FRAMES = 60 * 10;
 // Desktop visual feedback: keep the Android-style collision flashes and impact shake,
 // but scale the movement by the actual on-screen canvas size so TVs/4K displays do not lurch.
 const COLLISION_SCREEN_SHAKE_ENABLED = true;
@@ -1064,6 +1119,76 @@ vx: BASE_BALL_SPEED,
 vy: 1.6,
 lastScored: 0
 };
+
+// Progressive paddle faces. Levels 1-2 retain the classic flat paddle.
+// From level 3 onward, the visible face is also the collision surface, so
+// every ridge, cup, ramp, and notch changes the rebound angle.
+function makePaddleProfile(name, offsets, contactScale = 1.04, slopeInfluence = 0.7, aimStrength = 0, noise = 0, bias = 0) {
+return Object.freeze({
+name,
+offsets: Object.freeze(offsets.slice()),
+contactScale,
+slopeInfluence,
+aimStrength,
+noise,
+bias
+});
+}
+const DEFAULT_PADDLE_PROFILE = makePaddleProfile("Classic", [0, 0, 0, 0, 0, 0, 0, 0, 0]);
+const PLAYER_PADDLE_PROFILES = [
+DEFAULT_PADDLE_PROFILE,
+DEFAULT_PADDLE_PROFILE,
+makePaddleProfile("Soft Crown", [0, 1, 2, 3, 4, 3, 2, 1, 0], 1.03, 0.72),
+makePaddleProfile("High Crown", [0, 2, 4, 5, 4, 2, 1, 0, 0], 1.02, 0.76),
+makePaddleProfile("Low Crown", [0, 0, 1, 2, 4, 5, 4, 2, 0], 1.01, 0.80),
+makePaddleProfile("Shallow Cup", [4, 3, 2, 1, 0, 1, 2, 3, 4], 1.00, 0.84),
+makePaddleProfile("Top Hook", [0, 1, 3, 5, 4, 2, 1, 0, 0], 0.99, 0.88, 0, 0.003),
+makePaddleProfile("Bottom Hook", [0, 0, 1, 2, 4, 5, 3, 1, 0], 0.98, 0.92, 0, 0.004),
+makePaddleProfile("Rising Steps", [0, 1, 1, 2, 2, 3, 3, 4, 4], 0.97, 0.96, 0, 0.005),
+makePaddleProfile("Falling Steps", [4, 4, 3, 3, 2, 2, 1, 1, 0], 0.96, 1.00, 0, 0.006),
+makePaddleProfile("Hourglass", [4, 3, 1, 0, 0, 0, 1, 3, 4], 0.95, 1.04, 0, 0.008),
+makePaddleProfile("Diamond", [0, 1, 3, 5, 7, 5, 3, 1, 0], 0.94, 1.08, 0, 0.010),
+makePaddleProfile("Upper Notch", [2, 4, 5, 2, 0, 1, 2, 3, 2], 0.93, 1.12, 0, 0.012),
+makePaddleProfile("Lower Notch", [2, 3, 2, 1, 0, 2, 5, 4, 2], 0.92, 1.16, 0, 0.014),
+makePaddleProfile("Split Zigzag", [0, 3, 1, 5, 2, 6, 3, 5, 1], 0.91, 1.20, 0, 0.016),
+makePaddleProfile("Reverse Zigzag", [2, 5, 1, 4, 0, 5, 1, 4, 0], 0.90, 1.24, 0, 0.018),
+makePaddleProfile("Broken Crown", [1, 5, 2, 6, 1, 4, 0, 3, 1], 0.88, 1.28, 0, 0.020),
+makePaddleProfile("Final Ridge", [0, 5, 1, 6, 2, 7, 1, 5, 0], 0.86, 1.32, 0, 0.022)
+];
+const ENEMY_PADDLE_PROFILES = [
+DEFAULT_PADDLE_PROFILE,
+DEFAULT_PADDLE_PROFILE,
+makePaddleProfile("Center Crown", [0, 1, 3, 5, 6, 5, 3, 1, 0], 1.05, 0.76, 0.04),
+makePaddleProfile("Broad Crown", [0, 2, 4, 5, 5, 5, 4, 2, 0], 1.06, 0.80, 0.06),
+makePaddleProfile("Upper Lens", [0, 1, 3, 6, 7, 5, 3, 1, 0], 1.07, 0.84, 0.08),
+makePaddleProfile("Lower Lens", [0, 1, 3, 5, 7, 6, 3, 1, 0], 1.08, 0.88, 0.10),
+makePaddleProfile("Twin Crown", [0, 3, 5, 2, 0, 2, 5, 3, 0], 1.09, 0.92, 0.12),
+makePaddleProfile("Guided Cup", [5, 4, 2, 1, 0, 1, 2, 4, 5], 1.10, 0.96, 0.14),
+makePaddleProfile("Rising Ramp", [0, 1, 2, 3, 4, 5, 6, 7, 8], 1.11, 1.00, 0.16),
+makePaddleProfile("Falling Ramp", [8, 7, 6, 5, 4, 3, 2, 1, 0], 1.12, 1.04, 0.18),
+makePaddleProfile("Top Flare", [0, 3, 6, 7, 5, 3, 2, 1, 0], 1.13, 1.08, 0.20),
+makePaddleProfile("Bottom Flare", [0, 1, 2, 3, 5, 7, 6, 3, 0], 1.14, 1.12, 0.22),
+makePaddleProfile("Precision Diamond", [0, 2, 4, 6, 8, 6, 4, 2, 0], 1.15, 1.16, 0.24),
+makePaddleProfile("Precision Cup", [6, 4, 2, 1, 0, 1, 2, 4, 6], 1.16, 1.20, 0.26),
+makePaddleProfile("Triple Facet", [1, 5, 2, 6, 1, 6, 2, 5, 1], 1.17, 1.24, 0.28),
+makePaddleProfile("Control Wave", [2, 6, 3, 1, 4, 7, 4, 1, 2], 1.18, 1.28, 0.30),
+makePaddleProfile("Precision Ridge", [0, 3, 7, 4, 1, 5, 8, 4, 0], 1.19, 1.32, 0.32),
+makePaddleProfile("King Crown", [1, 5, 8, 4, 1, 4, 8, 5, 1], 1.20, 1.36, 0.34)
+];
+const BOSS_ADAPTIVE_PROFILES = [
+makePaddleProfile("Adaptive Flat", [0, 0, 0, 0, 0, 0, 0, 0, 0], 0.88, 1.25),
+makePaddleProfile("Adaptive Up Ramp", [0, 1, 2, 3, 4, 5, 6, 7, 8], 0.86, 1.85, 0, 0, -0.10),
+makePaddleProfile("Adaptive Down Ramp", [8, 7, 6, 5, 4, 3, 2, 1, 0], 0.86, 1.85, 0, 0, 0.10),
+makePaddleProfile("Adaptive Upper Hook", [0, 1, 4, 8, 7, 4, 2, 1, 0], 0.84, 1.95, 0, 0, -0.18),
+makePaddleProfile("Adaptive Lower Hook", [0, 1, 2, 4, 7, 8, 4, 1, 0], 0.84, 1.95, 0, 0, 0.18),
+makePaddleProfile("Adaptive Crown", [0, 2, 5, 8, 10, 8, 5, 2, 0], 0.82, 2.05),
+makePaddleProfile("Adaptive Cup", [9, 7, 4, 2, 0, 2, 4, 7, 9], 0.82, 2.05),
+makePaddleProfile("Adaptive Saw Up", [0, 5, 1, 7, 2, 8, 3, 6, 1], 0.80, 2.15, 0, 0, -0.24),
+makePaddleProfile("Adaptive Saw Down", [1, 6, 3, 8, 2, 7, 1, 5, 0], 0.80, 2.15, 0, 0, 0.24)
+];
+let bossAdaptiveProfile = BOSS_ADAPTIVE_PROFILES[0];
+let bossAdaptiveBallId = null;
+let bossAdaptiveDecisionFrame = -999;
 let hazards = [];
 let audioCtx = null;
 let musicEnabled = true;
@@ -1259,43 +1384,44 @@ hazards: [
 ]
 },
 {
+// Late-game balance pass: still chaotic, but less punishing and less drawn out.
 name: "Vortex",
-goal: 6,
-ballSpeed: 6.05,
-maxSpeed: 12.9,
+goal: 5,
+ballSpeed: 5.8,
+maxSpeed: 12.2,
 hazards: [
-{ type: "circle", x: 260, y: 172, r: 16, vx: 1.25, vy: 1.1, minX: 216, maxX: 330, minY: 126, maxY: 236, boost: 0.55 },
-{ type: "circle", x: 380, y: 308, r: 16, vx: -1.25, vy: -1.1, minX: 310, maxX: 424, minY: 244, maxY: 354, boost: 0.55 },
-{ type: "rect", x: 108, y: 92, w: 12, h: 116, vy: 1.6, minY: 68, maxY: 284, bounce: 0.28 },
-{ type: "rect", x: W - 120, y: 272, w: 12, h: 116, vy: -1.6, minY: 76, maxY: 292, bounce: 0.28 }
+{ type: "circle", x: 260, y: 172, r: 16, vx: 1.1, vy: 0.95, minX: 216, maxX: 330, minY: 126, maxY: 236, boost: 0.46 },
+{ type: "circle", x: 380, y: 308, r: 16, vx: -1.1, vy: -0.95, minX: 310, maxX: 424, minY: 244, maxY: 354, boost: 0.46 },
+{ type: "rect", x: 108, y: 92, w: 12, h: 116, vy: 1.35, minY: 68, maxY: 284, bounce: 0.24 },
+{ type: "rect", x: W - 120, y: 272, w: 12, h: 116, vy: -1.35, minY: 76, maxY: 292, bounce: 0.24 }
 ]
 },
 {
 name: "Diamond Trap",
-goal: 6,
-ballSpeed: 6.2,
-maxSpeed: 13.2,
+goal: 5,
+ballSpeed: 5.95,
+maxSpeed: 12.5,
 hazards: [
-{ type: "circle", x: W / 2, y: H / 2 - 86, r: 15, boost: 0.5 },
-{ type: "circle", x: W / 2 - 86, y: H / 2, r: 15, boost: 0.5 },
-{ type: "circle", x: W / 2 + 86, y: H / 2, r: 15, boost: 0.5 },
-{ type: "circle", x: W / 2, y: H / 2 + 86, r: 15, boost: 0.5 },
-{ type: "rect", x: W / 2 - 46, y: H / 2 - 6, w: 92, h: 12, vx: 1.7, minX: 256, maxX: 292, bounce: 0.36 }
+{ type: "circle", x: W / 2, y: H / 2 - 86, r: 15, boost: 0.43 },
+{ type: "circle", x: W / 2 - 86, y: H / 2, r: 15, boost: 0.43 },
+{ type: "circle", x: W / 2 + 86, y: H / 2, r: 15, boost: 0.43 },
+{ type: "circle", x: W / 2, y: H / 2 + 86, r: 15, boost: 0.43 },
+{ type: "rect", x: W / 2 - 46, y: H / 2 - 6, w: 92, h: 12, vx: 1.4, minX: 256, maxX: 292, bounce: 0.3 }
 ]
 },
 {
 name: "Final Firewall",
-goal: 7,
-ballSpeed: 6.35,
-maxSpeed: 13.6,
+goal: 6,
+ballSpeed: 5.95,
+maxSpeed: 12.7,
 hazards: [
-{ type: "rect", x: W / 2 - 10, y: 54, w: 20, h: 88, vy: 1.9, minY: 44, maxY: 168, bounce: 0.38 },
-{ type: "rect", x: W / 2 - 10, y: 196, w: 20, h: 88, vy: -1.9, minY: 164, maxY: 252, bounce: 0.38 },
-{ type: "rect", x: W / 2 - 10, y: 338, w: 20, h: 88, vy: 1.9, minY: 312, maxY: 392, bounce: 0.38 },
-{ type: "circle", x: 202, y: 144, r: 16, vx: 1.35, minX: 160, maxX: 286, boost: 0.55 },
-{ type: "circle", x: 438, y: 336, r: 16, vx: -1.35, minX: 354, maxX: 480, boost: 0.55 },
-{ type: "rect", x: 98, y: H / 2 - 68, w: 12, h: 136, bounce: 0.32 },
-{ type: "rect", x: W - 110, y: H / 2 - 68, w: 12, h: 136, bounce: 0.32 }
+{ type: "rect", x: W / 2 - 10, y: 54, w: 20, h: 88, vy: 1.45, minY: 44, maxY: 168, bounce: 0.31 },
+{ type: "rect", x: W / 2 - 10, y: 196, w: 20, h: 88, vy: -1.45, minY: 164, maxY: 252, bounce: 0.31 },
+{ type: "rect", x: W / 2 - 10, y: 338, w: 20, h: 88, vy: 1.45, minY: 312, maxY: 392, bounce: 0.31 },
+{ type: "circle", x: 202, y: 144, r: 16, vx: 1.1, minX: 160, maxX: 286, boost: 0.46 },
+{ type: "circle", x: 438, y: 336, r: 16, vx: -1.1, minX: 354, maxX: 480, boost: 0.46 },
+{ type: "rect", x: 98, y: H / 2 - 60, w: 12, h: 120, bounce: 0.28 },
+{ type: "rect", x: W - 110, y: H / 2 - 60, w: 12, h: 120, bounce: 0.28 }
 ]
 }
 ]
@@ -1304,8 +1430,8 @@ hazards: [
 const BOSS_LEVEL = {
 name: "The Hidden Wall",
 goal: 0,
-ballSpeed: 4.65,
-maxSpeed: 10.45,
+ballSpeed: 4.45,
+maxSpeed: 9.9,
 hazards: [
 { type: "rect", x: W / 2 - 7, y: 82, w: 14, h: 72, bounce: 0.18, color: "#9d4dff" },
 { type: "rect", x: W / 2 - 7, y: H - 154, w: 14, h: 72, bounce: 0.18, color: "#9d4dff" },
@@ -1861,6 +1987,8 @@ setMusicEnabled(!musicEnabled);
 function firstStartControlsShouldDisplay() {
 return Boolean(
 firstStartControlsVisible &&
+mode !== 3 &&
+!customPreviewActive &&
 waitingForServe &&
 !levelCleared &&
 !campaignCleared &&
@@ -1892,6 +2020,14 @@ firstStartControls.classList.toggle("hidden", !show);
 firstStartControls.setAttribute("aria-hidden", String(!show));
 }
 function showFirstStartControls() {
+// Custom Game has its own visible preview/start flow, so the onboarding wall must
+// never cover its level picker or settings. Preserve the one-time hint for a later
+// Campaign/Two Player launch instead.
+if (mode === 3 || customPreviewActive) {
+firstStartControlsVisible = false;
+updateFirstStartControls();
+return;
+}
 // Show the onboarding controls only once per app launch, on the first playable level.
 // Later campaign levels keep the normal in-game prompts so the overlay does not interrupt progression.
 if (firstStartControlsShownThisLaunch) {
@@ -2463,6 +2599,10 @@ function requestServeOrContinue() {
 if (document.body.classList.contains("title-active")) {
 return;
 }
+if (mode === 3 && customPreviewActive) {
+launchSelectedCustomLevel();
+return;
+}
 hideFirstStartControls();
 if (isLanGuestActive()) {
 sendLanAction("serve");
@@ -2681,13 +2821,14 @@ invalidateStaticBackgroundCache();
 function getCpuConfig() {
 if (mode === 4) {
 return {
-reaction: 0.125,
-maxMove: 5.85,
-prediction: 0.66,
-error: 18,
-deadZone: 4.5,
-horizon: 170,
-label: 94
+// Slightly less perfect tracking keeps the boss difficult without feeling automatic.
+reaction: 0.108,
+maxMove: 5.4,
+prediction: 0.58,
+error: 24,
+deadZone: 6,
+horizon: 150,
+label: 88
 };
 }
 if (mode === 3) {
@@ -2768,6 +2909,39 @@ error: 34,
 deadZone: 10.5,
 horizon: 145,
 label: 46
+};
+}
+if (levelNumber === 16) {
+return {
+reaction: 0.145,
+maxMove: 6.35,
+prediction: 0.78,
+error: 18,
+deadZone: 5.5,
+horizon: 205,
+label: 82
+};
+}
+if (levelNumber === 17) {
+return {
+reaction: 0.143,
+maxMove: 6.2,
+prediction: 0.76,
+error: 20,
+deadZone: 5.8,
+horizon: 202,
+label: 81
+};
+}
+if (levelNumber === 18) {
+return {
+reaction: 0.153,
+maxMove: 6.6,
+prediction: 0.84,
+error: 14,
+deadZone: 4.3,
+horizon: 220,
+label: 88
 };
 }
 return {
@@ -3041,6 +3215,7 @@ return isBossUnlocked()
 : "Campaign starts at your next unlocked level. Custom Game only shows completed levels. Two Player and LAN Two Player can choose any level.";
 }
 function showTitleScreen(message = titleScreenDefaultMessage()) {
+customPreviewActive = false;
 const wasTitleActive = document.body.classList.contains("title-active");
 const shouldPauseBehindTitle = !wasTitleActive && !gameOver && !creditsActive && !bossIntroActive;
 if (shouldPauseBehindTitle) {
@@ -3071,6 +3246,7 @@ resetMusicPhrase();
 }
 }
 function startCampaignFromSave() {
+customPreviewActive = false;
 closeLanConnection(false);
 hideTitleScreen();
 mode = 1;
@@ -3090,13 +3266,9 @@ beep(120, 0.08);
 return;
 }
 hideTitleScreen();
-closeLanConnection(false);
 mode = 3;
 populateCustomLevelSelect();
-setLevelByAbsoluteIndex(customLevelSelect.value || first, true);
-setMenusVisible(true);
-updateModeControls();
-updateHud();
+prepareCustomLevelPreview(customLevelSelect.value || first);
 }
 function startTwoPlayerFromTitle() {
 hideTitleScreen();
@@ -3249,6 +3421,53 @@ button.classList.toggle("active", option.value === customLevelSelect.value);
 levelPickerList.appendChild(button);
 });
 }
+function prepareCustomLevelPreview(value) {
+let selectedIndex = clamp(Math.round(Number(value) || 0), 0, TOTAL_LEVELS - 1);
+if (!isCustomLevelUnlocked(selectedIndex)) {
+const first = firstCompletedLevelIndex();
+if (first < 0) return false;
+selectedIndex = first;
+}
+mode = 3;
+customPreviewActive = true;
+activeCampaign = Math.floor(selectedIndex / 6);
+levelIndex = selectedIndex % 6;
+left.score = 0;
+right.score = 0;
+paused = false;
+gameOver = false;
+levelCleared = false;
+campaignCleared = false;
+creditsActive = false;
+bossIntroActive = false;
+bossBalls = [];
+endMessage = "";
+hideFirstStartControls();
+resetPaddles();
+cloneHazards();
+resetBall(Math.random() < 0.5 ? -1 : 1, true, false);
+setAccent();
+customLevelSelect.value = String(selectedIndex);
+const data = levelByAbsoluteIndex(selectedIndex);
+customLevelReadout.textContent = levelLabel(selectedIndex, data.campaign, data.level);
+updateModeControls();
+setMenusVisible(true);
+updateHud();
+return true;
+}
+function launchSelectedCustomLevel() {
+if (customLevelSelect.disabled) return false;
+const selectedIndex = clamp(Math.round(Number(customLevelSelect.value) || 0), 0, TOTAL_LEVELS - 1);
+mode = 3;
+customPreviewActive = false;
+setLevelByAbsoluteIndex(selectedIndex, true);
+hideFirstStartControls();
+waitingForServe = false;
+autoHideMenusForGameplay();
+beep(440, 0.04);
+updateHud();
+return true;
+}
 function applyCustomLevelPickerChoice(value) {
 if (customLevelSelect.disabled) return;
 if (isLanGuestActive()) {
@@ -3256,12 +3475,17 @@ syncCustomLevelSelectToCurrent();
 setLanStatus("Only the host changes levels");
 return;
 }
-if (mode !== 2) {
-mode = 3;
-}
-setLevelByAbsoluteIndex(value, true);
+const selectedIndex = clamp(Math.round(Number(value) || 0), 0, TOTAL_LEVELS - 1);
+if (mode === 2) {
+// Two Player has no Play Selected button, so choosing a map starts it immediately.
+setLevelByAbsoluteIndex(selectedIndex, true);
 sendLanState(true);
 updateLevelPickerButton();
+return;
+}
+// Custom Game selection is a true course preview. Space, tap, controller A,
+// or Play Selected starts the highlighted course from this preview.
+prepareCustomLevelPreview(selectedIndex);
 }
 function populateCustomLevelSelect() {
 customLevelSelect.innerHTML = "";
@@ -3396,11 +3620,10 @@ return;
 closeLanConnection(false);
 mode = 3;
 populateCustomLevelSelect();
-setLevelByAbsoluteIndex(customLevelSelect.value || first, restart);
-updateModeControls();
-updateHud();
+prepareCustomLevelPreview(customLevelSelect.value || first);
 }
 function startTwoPlayerMode(restart = true, showLevelPicker = true) {
+customPreviewActive = false;
 mode = 2;
 populateCustomLevelSelect();
 setLevelByAbsoluteIndex(customLevelSelect.value || selectedAbsoluteLevelIndex() || 0, restart);
@@ -3510,7 +3733,14 @@ ball.vy = Math.sin(angle) * speed * 1.6;
 }
 normalizeBallVelocity(speed * 0.92, level.maxSpeed || 10);
 }
+function resetHazardTrapGuard() {
+hazardTrapHitCount = 0;
+hazardTrapWindowStartFrame = frame;
+lastHazardTrapHitFrame = -9999;
+framesSincePaddleContact = 0;
+}
 function resetBall(direction = 1, waitForServe = true, spawnNearPlayer = false) {
+resetHazardTrapGuard();
 const level = currentLevel();
 const speed = level.ballSpeed || BASE_BALL_SPEED;
 const useReceiverSideSpawn = spawnNearPlayer && shouldAutoServeAfterPoint();
@@ -3532,6 +3762,7 @@ function shouldAutoServeAfterPoint() {
 return mode === 1 || mode === 3;
 }
 function startLevel() {
+customPreviewActive = false;
 left.score = 0;
 right.score = 0;
 paused = false;
@@ -3698,13 +3929,14 @@ document.body.classList.toggle("play-info-hidden", !playInfoVisible);
 playInfoToggle.textContent = playInfoVisible ? "Hide Goal Info (G)" : "Show Goal Info (G)";
 playInfoToggle.setAttribute("aria-pressed", String(playInfoVisible));
 playInfoToggle.title = playInfoVisible
-? "Hide campaign goal/course info with G"
-: "Show campaign goal/course info with G";
+? "Hide goal/course info with G"
+: "Show goal/course info with G";
 }
 function togglePlayInfo() {
 setPlayInfoVisible(!playInfoVisible);
 }
 function startBossFight(showIntroFade = false) {
+customPreviewActive = false;
 if (!isBossUnlocked()) {
 showTitleScreen("The Secret Boss is locked. Clear all 18 campaign levels first.");
 return;
@@ -3726,6 +3958,9 @@ bossPlayerHealth = BOSS_PLAYER_MAX_HEALTH;
 bossEnemyHealth = BOSS_ENEMY_MAX_HEALTH;
 bossRallyFrames = 0;
 bossCleared = false;
+bossAdaptiveProfile = BOSS_ADAPTIVE_PROFILES[0];
+bossAdaptiveBallId = null;
+bossAdaptiveDecisionFrame = -999;
 endMessage = "";
 resetMusicPhrase();
 resetPaddles();
@@ -3739,7 +3974,7 @@ function desiredBossBallCount() {
 if (bossRallyFrames < BOSS_SECOND_BALL_DELAY_FRAMES) {
 return BOSS_STARTING_BALLS;
 }
-if (bossEnemyHealth <= Math.floor(BOSS_ENEMY_MAX_HEALTH * 0.55)) {
+if (bossEnemyHealth <= Math.floor(BOSS_ENEMY_MAX_HEALTH * 0.45)) {
 return BOSS_MAX_BALLS;
 }
 return Math.min(BOSS_MAX_BALLS, BOSS_STARTING_BALLS + 1);
@@ -3945,17 +4180,21 @@ resolveBossRectCollision(bossBall, h);
 }
 }
 function hitBossPaddle(bossBall, paddle, direction) {
-const paddleCenter = paddle.y + PADDLE_H / 2;
+if (paddle === right) {
+selectBossAdaptiveProfile(bossBall, true);
+}
+const profile = activePaddleProfile(paddle);
 const ballCenter = bossBall.y + BALL_SIZE / 2;
-const relative = clamp((ballCenter - paddleCenter) / (PADDLE_H / 2), -1, 1);
-const bounceAngle = relative * 0.98;
+const relative = paddleRelativeContact(paddle, ballCenter);
+const bounceAngle = calculatePaddleBounceAngle(profile, paddle, direction, ballCenter, bossBall.vy, false);
 const speed = Math.min(bossBallSpeed(bossBall) + 0.16, BOSS_LEVEL.maxSpeed);
 bossBall.vx = direction * Math.cos(bounceAngle) * speed;
 bossBall.vy = Math.sin(bounceAngle) * speed;
+const surfaceX = paddleSurfaceX(paddle, direction, profile, ballCenter);
 if (direction > 0) {
-bossBall.x = paddle.x + PADDLE_W;
+bossBall.x = surfaceX;
 } else {
-bossBall.x = paddle.x - BALL_SIZE;
+bossBall.x = surfaceX - BALL_SIZE;
 }
 addScreenShake(3);
 beep(170 + Math.abs(relative) * 240, 0.028, 0.04);
@@ -4030,6 +4269,7 @@ function updateBossCPU() {
 const cfg = getCpuConfig();
 const bounds = visiblePlayfieldBounds();
 const targetBall = bossThreatBall();
+selectBossAdaptiveProfile(targetBall);
 const centerY = bounds.top + (bounds.bottom - bounds.top) / 2;
 const targetCenter = targetBall ? predictBossBallCenter(targetBall) : centerY;
 const targetY = clamp(targetCenter - PADDLE_H / 2, bounds.top, bounds.bottom - PADDLE_H);
@@ -4053,10 +4293,10 @@ bossBall.x += bossBall.vx;
 bossBall.y += bossBall.vy;
 reflectBossBallYForBounds(bossBall);
 resolveBossHazardCollisions(bossBall);
-if (bossBall.vx < 0 && rectsOverlapRaw(bossBall.x, bossBall.y, BALL_SIZE, BALL_SIZE, left.x, left.y, PADDLE_W, PADDLE_H)) {
+if (bossBall.vx < 0 && paddleIntersectsBall(bossBall, left, 1, activePaddleProfile(left))) {
 hitBossPaddle(bossBall, left, 1);
 }
-if (bossBall.vx > 0 && rectsOverlapRaw(bossBall.x, bossBall.y, BALL_SIZE, BALL_SIZE, right.x, right.y, PADDLE_W, PADDLE_H)) {
+if (bossBall.vx > 0 && paddleIntersectsBall(bossBall, right, -1, activePaddleProfile(right))) {
 hitBossPaddle(bossBall, right, -1);
 }
 if (bossBall.x + BALL_SIZE < 0) {
@@ -4099,20 +4339,152 @@ const target = clamp(speed, minSpeed, maxSpeed);
 ball.vx = (ball.vx / speed) * target;
 ball.vy = (ball.vy / speed) * target;
 }
+function activePaddleProfile(paddle) {
+if (mode === 4 || bossIntroActive) {
+return paddle === right ? bossAdaptiveProfile : DEFAULT_PADDLE_PROFILE;
+}
+// Keep local/LAN two-player fair: both human paddles remain classic.
+if (mode === 2) {
+return DEFAULT_PADDLE_PROFILE;
+}
+const index = clamp(selectedAbsoluteLevelIndex(), 0, TOTAL_LEVELS - 1);
+return paddle === right
+? ENEMY_PADDLE_PROFILES[index] || DEFAULT_PADDLE_PROFILE
+: PLAYER_PADDLE_PROFILES[index] || DEFAULT_PADDLE_PROFILE;
+}
+function paddleRelativeContact(paddle, centerY) {
+return clamp((centerY - (paddle.y + PADDLE_H / 2)) / (PADDLE_H / 2), -1, 1);
+}
+function paddleProfileOffset(profile, relative) {
+const values = profile.offsets;
+const scaled = clamp((relative + 1) * 0.5, 0, 1) * (values.length - 1);
+const low = Math.floor(scaled);
+const high = Math.min(values.length - 1, low + 1);
+const amount = scaled - low;
+return lerp(values[low], values[high], amount);
+}
+function paddleProfileSlopeAngle(profile, relative) {
+const sampleRadius = 0.08;
+const upper = clamp(relative - sampleRadius, -1, 1);
+const lower = clamp(relative + sampleRadius, -1, 1);
+const upperOffset = paddleProfileOffset(profile, upper);
+const lowerOffset = paddleProfileOffset(profile, lower);
+const deltaY = Math.max(1, (lower - upper) * PADDLE_H / 2);
+const faceSlope = (lowerOffset - upperOffset) / deltaY;
+return -Math.atan(faceSlope);
+}
+function paddleSurfaceX(paddle, direction, profile, centerY) {
+const relative = paddleRelativeContact(paddle, centerY);
+const offset = paddleProfileOffset(profile, relative);
+return direction > 0
+? paddle.x + PADDLE_W + offset
+: paddle.x - offset;
+}
+function paddleIntersectsBall(ballState, paddle, direction, profile) {
+const centerY = ballState.y + BALL_HALF;
+if (centerY < paddle.y - BALL_HALF || centerY > paddle.y + PADDLE_H + BALL_HALF) {
+return false;
+}
+const surfaceX = paddleSurfaceX(paddle, direction, profile, centerY);
+if (direction > 0) {
+const crossedFace = ballState.prevX >= surfaceX - 1 && ballState.x <= surfaceX;
+const embeddedInFace = ballState.x <= surfaceX && ballState.x + BALL_SIZE >= paddle.x;
+return crossedFace || embeddedInFace;
+}
+const previousRight = ballState.prevX + BALL_SIZE;
+const currentRight = ballState.x + BALL_SIZE;
+const crossedFace = previousRight <= surfaceX + 1 && currentRight >= surfaceX;
+const embeddedInFace = currentRight >= surfaceX && ballState.x <= paddle.x + PADDLE_W;
+return crossedFace || embeddedInFace;
+}
+function cpuReturnTargetAngle(ballCenter) {
+const bounds = visiblePlayfieldBounds();
+const playerCenter = left.y + PADDLE_H / 2;
+const fieldCenter = bounds.top + (bounds.bottom - bounds.top) / 2;
+const targetY = playerCenter <= fieldCenter
+? bounds.bottom - BALL_HALF - 18
+: bounds.top + BALL_HALF + 18;
+const horizontalDistance = Math.max(120, right.x - left.x);
+return clamp(Math.atan2(targetY - ballCenter, horizontalDistance), -0.90, 0.90);
+}
+function calculatePaddleBounceAngle(profile, paddle, direction, ballCenter, incomingVy = 0, allowCpuAim = true) {
+const relative = paddleRelativeContact(paddle, ballCenter);
+const contactAngle = relative * profile.contactScale;
+const surfaceAngle = paddleProfileSlopeAngle(profile, relative) * profile.slopeInfluence;
+let bounceAngle = contactAngle + surfaceAngle + profile.bias;
+if (allowCpuAim && direction < 0 && profile.aimStrength > 0 && mode !== 2) {
+const desired = cpuReturnTargetAngle(ballCenter);
+bounceAngle = lerp(bounceAngle, desired, profile.aimStrength);
+}
+if (profile.noise > 0) {
+bounceAngle += (Math.random() * 2 - 1) * profile.noise;
+}
+// Preserve a little of the incoming vertical momentum so the shapes feel
+// physical instead of behaving like scripted teleport angles.
+bounceAngle += clamp(incomingVy * 0.012, -0.07, 0.07);
+return clamp(bounceAngle, -1.16, 1.16);
+}
+function bossDesiredReturnAngle(contactY) {
+const bounds = visiblePlayfieldBounds();
+const playerCenter = left.y + PADDLE_H / 2;
+const fieldCenter = bounds.top + (bounds.bottom - bounds.top) / 2;
+const targetY = playerCenter < fieldCenter
+? bounds.bottom - BALL_HALF - 10
+: bounds.top + BALL_HALF + 10;
+return clamp(Math.atan2(targetY - contactY, Math.max(120, right.x - left.x)), -0.96, 0.96);
+}
+function selectBossAdaptiveProfile(targetBall, force = false) {
+if (!targetBall || targetBall.vx <= 0) {
+if (force) {
+bossAdaptiveProfile = BOSS_ADAPTIVE_PROFILES[0];
+bossAdaptiveBallId = null;
+}
+return bossAdaptiveProfile;
+}
+if (!force && targetBall.id === bossAdaptiveBallId && frame - bossAdaptiveDecisionFrame < 6) {
+return bossAdaptiveProfile;
+}
+const contactY = predictBossBallCenter(targetBall);
+const relative = paddleRelativeContact(right, contactY);
+const desiredAngle = bossDesiredReturnAngle(contactY);
+let bestProfile = BOSS_ADAPTIVE_PROFILES[0];
+let bestScore = Infinity;
+for (const candidate of BOSS_ADAPTIVE_PROFILES) {
+const candidateAngle = clamp(
+relative * candidate.contactScale
++ paddleProfileSlopeAngle(candidate, relative) * candidate.slopeInfluence
++ candidate.bias
++ clamp(targetBall.vy * 0.012, -0.07, 0.07),
+-1.16,
+1.16
+);
+const score = Math.abs(candidateAngle - desiredAngle);
+if (score < bestScore) {
+bestScore = score;
+bestProfile = candidate;
+}
+}
+bossAdaptiveProfile = bestProfile;
+bossAdaptiveBallId = targetBall.id;
+bossAdaptiveDecisionFrame = frame;
+return bestProfile;
+}
 function hitPaddle(paddle, direction) {
+resetHazardTrapGuard();
 const level = currentLevel();
-const paddleCenter = paddle.y + PADDLE_H / 2;
+const profile = activePaddleProfile(paddle);
 const ballCenter = ball.y + BALL_SIZE / 2;
-const relative = clamp((ballCenter - paddleCenter) / (PADDLE_H / 2), -1, 1);
-const bounceAngle = relative * 1.04;
+const relative = paddleRelativeContact(paddle, ballCenter);
+const bounceAngle = calculatePaddleBounceAngle(profile, paddle, direction, ballCenter, ball.vy, true);
 const speed = Math.min(ballSpeed() + 0.32 + absoluteLevelNumber() * 0.01, level.maxSpeed);
 ball.vx = direction * Math.cos(bounceAngle) * speed;
 ball.vy = Math.sin(bounceAngle) * speed;
+const surfaceX = paddleSurfaceX(paddle, direction, profile, ballCenter);
 if (direction > 0) {
-ball.x = paddle.x + PADDLE_W;
+ball.x = surfaceX;
 chooseCpuError();
 } else {
-ball.x = paddle.x - BALL_SIZE;
+ball.x = surfaceX - BALL_SIZE;
 }
 addScreenShake(3);
 beep(180 + Math.abs(relative) * 260, 0.035);
@@ -4218,6 +4590,44 @@ h.y = clamp(h.y, minY, maxY);
 }
 }
 }
+function forceBallOutOfHazardLoop(h = null) {
+const level = currentLevel();
+const speed = clamp(ballSpeed(), level.ballSpeed || BASE_BALL_SPEED, level.maxSpeed || 12);
+const bounds = visiblePlayfieldBounds();
+const fieldCenter = bounds.top + (bounds.bottom - bounds.top) / 2;
+const ballCenterY = ball.y + BALL_HALF;
+let verticalDirection = ballCenterY < fieldCenter ? 1 : -1;
+if (h && h.h >= 56) {
+const hazardCenterY = h.y + h.h / 2;
+if (hazardCenterY < fieldCenter - 8) verticalDirection = 1;
+if (hazardCenterY > fieldCenter + 8) verticalDirection = -1;
+}
+const horizontalDirection = ball.vx >= 0 ? 1 : -1;
+const escapeAngle = 0.72;
+ball.vx = horizontalDirection * Math.cos(escapeAngle) * speed;
+ball.vy = verticalDirection * Math.sin(escapeAngle) * speed;
+ball.y = clamp(ball.y + verticalDirection * 5, bounds.top, bounds.bottom - BALL_SIZE);
+hazardTrapHitCount = 0;
+hazardTrapWindowStartFrame = frame;
+lastHazardTrapHitFrame = frame;
+framesSincePaddleContact = 0;
+addScreenShake(3);
+beep(390, 0.025, 0.03);
+}
+function registerRectHazardHit(h) {
+if (frame - hazardTrapWindowStartFrame > HAZARD_TRAP_WINDOW_FRAMES) {
+hazardTrapHitCount = 0;
+hazardTrapWindowStartFrame = frame;
+}
+if (frame - lastHazardTrapHitFrame > 4) {
+hazardTrapHitCount++;
+}
+lastHazardTrapHitFrame = frame;
+const verticalWall = h.w <= 26 && h.h >= 56;
+if (verticalWall && hazardTrapHitCount >= HAZARD_TRAP_HIT_LIMIT) {
+forceBallOutOfHazardLoop(h);
+}
+}
 function resolveRectCollision(h, quiet = false) {
 const rect = { x: h.x, y: h.y, w: h.w, h: h.h };
 const b = ballRect();
@@ -4266,6 +4676,7 @@ ball.vx += (h.vx || 0) * 0.32;
 ball.vy += (h.vy || 0) * 0.32;
 normalizeBallVelocity(level.ballSpeed * 0.9, level.maxSpeed + (h.bounce || 0));
 if (!quiet) {
+registerRectHazardHit(h);
 applyHitFlash(h, 8);
 addScreenShake(5);
 chooseCpuError();
@@ -4386,16 +4797,25 @@ updateHud();
 }
 function updateBall() {
 if (waitingForServe || gameOver || levelCleared || campaignCleared) return;
+framesSincePaddleContact++;
 ball.prevX = ball.x;
 ball.prevY = ball.y;
 ball.x += ball.vx;
 ball.y += ball.vy;
 reflectYForBounds();
 resolveHazardCollisions();
-if (ball.vx < 0 && rectsOverlapRaw(ball.x, ball.y, BALL_SIZE, BALL_SIZE, left.x, left.y, PADDLE_W, PADDLE_H)) {
+const ballCenterX = ball.x + BALL_HALF;
+if (
+framesSincePaddleContact >= HAZARD_TRAP_FALLBACK_FRAMES &&
+ballCenterX > W * 0.22 &&
+ballCenterX < W * 0.78
+) {
+forceBallOutOfHazardLoop();
+}
+if (ball.vx < 0 && paddleIntersectsBall(ball, left, 1, activePaddleProfile(left))) {
 hitPaddle(left, 1);
 }
-if (ball.vx > 0 && rectsOverlapRaw(ball.x, ball.y, BALL_SIZE, BALL_SIZE, right.x, right.y, PADDLE_W, PADDLE_H)) {
+if (ball.vx > 0 && paddleIntersectsBall(ball, right, -1, activePaddleProfile(right))) {
 hitPaddle(right, -1);
 }
 if (ball.x + BALL_SIZE < 0) {
@@ -4702,6 +5122,37 @@ ctx.textBaseline = "bottom";
 ctx.fillText(localizeText(`${label} ${value}/${maxValue}`), x, y - 4);
 ctx.restore();
 }
+function drawPaddleShape(paddle, direction, profile, fillStyle = "#fff") {
+const values = profile.offsets;
+ctx.save();
+ctx.fillStyle = fillStyle;
+ctx.shadowColor = fillStyle;
+ctx.shadowBlur = mode === 4 && paddle === right ? 12 : 4;
+ctx.beginPath();
+if (direction > 0) {
+ctx.moveTo(Math.round(paddle.x), Math.round(paddle.y));
+for (let i = 0; i < values.length; i++) {
+const y = paddle.y + (i / (values.length - 1)) * PADDLE_H;
+ctx.lineTo(Math.round(paddle.x + PADDLE_W + values[i]), Math.round(y));
+}
+ctx.lineTo(Math.round(paddle.x), Math.round(paddle.y + PADDLE_H));
+} else {
+ctx.moveTo(Math.round(paddle.x + PADDLE_W), Math.round(paddle.y));
+for (let i = 0; i < values.length; i++) {
+const y = paddle.y + (i / (values.length - 1)) * PADDLE_H;
+ctx.lineTo(Math.round(paddle.x - values[i]), Math.round(y));
+}
+ctx.lineTo(Math.round(paddle.x + PADDLE_W), Math.round(paddle.y + PADDLE_H));
+}
+ctx.closePath();
+ctx.fill();
+ctx.shadowBlur = 0;
+ctx.globalAlpha = 0.72;
+ctx.strokeStyle = fillStyle;
+ctx.lineWidth = 1;
+ctx.stroke();
+ctx.restore();
+}
 function drawBossHud() {
 drawHealthBar(34, 34, 204, 12, bossPlayerHealth, BOSS_PLAYER_MAX_HEALTH, "PLAYER", "#ffffff");
 drawHealthBar(W - 238, 34, 204, 12, bossEnemyHealth, BOSS_ENEMY_MAX_HEALTH, "BOSS", currentCampaign().accent);
@@ -4732,17 +5183,19 @@ case "zh": return `先到 ${goal} 分获胜`;
 default: return `First to ${goal} wins`;
 }
 }
-function campaignCourseText() {
-return `Campaign Level ${String(absoluteLevelNumber()).padStart(2, "0")}/${TOTAL_LEVELS} - ${currentCampaign().name}: ${currentLevel().name}`;
+function playInfoCourseText() {
+const levelNumber = String(absoluteLevelNumber()).padStart(2, "0");
+const prefix = mode === 3 ? "Custom Level" : mode === 2 ? "Two Player Level" : "Campaign Level";
+return `${prefix} ${levelNumber}/${TOTAL_LEVELS} - ${currentCampaign().name}: ${currentLevel().name}`;
 }
 function drawCampaignPlayInfo() {
 if (!playInfoVisible) return;
-if (mode !== 1 || bossIntroActive || creditsActive) return;
+if (mode === 4 || bossIntroActive || creditsActive) return;
 if (gameOver || levelCleared || campaignCleared) return;
-const boxW = Math.min(320, W - 170);
+const boxW = Math.min(340, W - 170);
 const boxH = 36;
 const x = W / 2 - boxW / 2;
-const y = 100;
+const y = menusVisible ? H - 82 : 100;
 ctx.save();
 ctx.fillStyle = "rgba(0, 0, 0, 0.42)";
 ctx.fillRect(x, y, boxW, boxH);
@@ -4751,7 +5204,7 @@ ctx.strokeRect(x + 0.5, y + 0.5, boxW - 1, boxH - 1);
 ctx.fillStyle = "#fff";
 drawText(firstToWinsText(currentLevel().goal), W / 2, y + 12, 13);
 ctx.fillStyle = "rgba(255, 255, 255, 0.68)";
-drawText(campaignCourseText(), W / 2, y + 27, 10);
+drawText(playInfoCourseText(), W / 2, y + 27, 10);
 ctx.restore();
 }
 function drawOverlay() {
@@ -4780,8 +5233,13 @@ drawText(title, W / 2, H / 2 - 36, mode === 4 ? 21 : 24);
 drawText(endMessage, W / 2, H / 2 + 2, 14);
 drawText(mode === 4 ? "SPACE/R: rematch" : mode === 3 ? "SPACE/R: replay - menus: choose another level" : "SPACE or R: retry", W / 2, H / 2 + 38, 14);
 } else if (waitingForServe) {
+if (mode === 3 && customPreviewActive) {
+drawText("CUSTOM COURSE PREVIEW", W / 2, H / 2 - 20, 20);
+drawText("SPACE / TAP / A OR PLAY SELECTED TO START", W / 2, H / 2 + 18, 12);
+} else {
 drawText(mode === 4 ? "THE HIDDEN WALL WAITS" : "SPACE TO SERVE", W / 2, H / 2 - 14, mode === 4 ? 20 : 22);
-drawText(mode === 4 ? "Multiple balls are live. Break the boss health bar before yours empties." : mode === 3 ? "Custom match: beat the CPU using your chosen settings" : "Reach the goal before the CPU to clear the level", W / 2, H / 2 + 22, 13);
+drawText(mode === 4 ? "Multiple balls are live. Break the boss health bar before yours empties." : mode === 3 ? "Custom match: beat the CPU using your chosen settings" : mode === 2 ? "Reach the goal before the Other Player to win the round" : "Reach the goal before the CPU to clear the level", W / 2, H / 2 + 22, 13);
+}
 }
 }
 function draw() {
@@ -4811,8 +5269,15 @@ drawScore(right.score, W / 2 + 72, 34);
 drawCampaignPlayInfo();
 }
 ctx.fillStyle = "#fff";
-drawRect(left.x, left.y, PADDLE_W, PADDLE_H);
-drawRect(right.x, right.y, PADDLE_W, PADDLE_H);
+drawPaddleShape(left, 1, activePaddleProfile(left), "#ffffff");
+drawPaddleShape(
+right,
+-1,
+activePaddleProfile(right),
+// The hero/player remains white. CPU enemies and the secret boss use the
+// current course color so the opposing side is immediately recognizable.
+(mode === 1 || mode === 3 || mode === 4) ? currentCampaign().accent : "#ffffff"
+);
 if (mode === 4) {
 drawBossBalls();
 } else {
@@ -4857,6 +5322,25 @@ draw();
 }
 requestAnimationFrame(loop);
 }
+function requestExitGame() {
+// The HTML owns the button; the Windows WebView2 wrapper owns the actual app window.
+// A WebView2 host should close the window when it receives the string "kingpong:exit".
+try {
+if (window.chrome && window.chrome.webview && typeof window.chrome.webview.postMessage === "function") {
+window.chrome.webview.postMessage("kingpong:exit");
+}
+} catch (err) {}
+// Also request a normal window close. In a regular browser this may be blocked,
+// but WebView2 hosts can support it through their WindowCloseRequested handler.
+try {
+window.close();
+} catch (err) {}
+window.setTimeout(() => {
+if (document.visibilityState !== "hidden" && titleMessage) {
+titleMessage.textContent = "Exit Game will close King Pong when this HTML is running inside the Windows EXE.";
+}
+}, 200);
+}
 saveSlotButtons.forEach((button) => {
 button.addEventListener("click", () => {
 loadSaveSlot(button.dataset.saveSlot);
@@ -4877,6 +5361,9 @@ startLanTwoPlayerSetup(true);
 });
 titleBossButton.addEventListener("click", () => {
 startBossFromTitle();
+});
+exitGameButton.addEventListener("click", () => {
+requestExitGame();
 });
 titleJumpButton.addEventListener("click", () => {
 showTitleScreen();
@@ -4951,18 +5438,18 @@ customMaxMoveSlider.addEventListener("input", () => {
 setCustomCpuMaxMove(customMaxMoveSlider.value);
 });
 customStartButton.addEventListener("click", () => {
+if (customLevelSelect.disabled) return;
 if (mode === 2) {
 startTwoPlayerMode(true, false);
-} else {
-startCustomMode(true);
-}
 autoHideMenusForGameplay();
+return;
+}
+launchSelectedCustomLevel();
 });
 musicButton.addEventListener("click", () => {
 toggleMusic();
 });
 musicVolumeSlider.addEventListener("input", () => {
-setPlayInfoVisible(true);
 setMusicVolume(musicVolumeSlider.value);
 });
 menuToggle.addEventListener("click", () => {
