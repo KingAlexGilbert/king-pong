@@ -60,7 +60,7 @@ Save data note: If you already have King Pong installed and want to keep your sa
 
 ### Windows
 
-Download one of the Windows versions from [latest GitHub release](https://github.com/KingAlexGilbert/king-pong/releases/latest:
+Download one of the Windows versions from [latest GitHub release](https://github.com/KingAlexGilbert/king-pong/releases/latest)
 
 - `KingPongSetup.v1.1.0.exe` - recommended Windows installer
 - `KingPong-WebView2-Portable.v1.1.0.zip` - portable Windows version
@@ -75,7 +75,7 @@ If you trust this official GitHub release, choose **More info → Run anyway** i
 
 ### Linux
 
-Download one of the Linux versions from [latest GitHub release](https://github.com/KingAlexGilbert/king-pong/releases/latest:
+Download one of the Linux versions from [latest GitHub release](https://github.com/KingAlexGilbert/king-pong/releases/latest)
 
 - `King-Pong-Linux-v1.1.0-all.deb` — recommended for Linux Mint, Ubuntu, Debian, and other Debian-based distributions
 - `King-Pong-Linux-v1.1.0-thin-x86_64.AppImage` — thin x86-64 version that uses the system WebKitGTK runtime
