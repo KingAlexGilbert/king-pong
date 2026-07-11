@@ -1,4 +1,4 @@
-King Pong is a Pong-inspired Android and Windows arcade campaign game that I made in my free time.
+King Pong is a Pong-inspired arcade campaign game for Android, Linux, and Windows that I made in my free time.
 
 It features campaign progression, language detection, controller support, touch controls, local two-player mode, LAN play, saves, battery and clock indicators, and a secret ending.
 
@@ -49,21 +49,59 @@ Save data note: If you already have King Pong installed and want to keep your sa
 Download one of the Windows versions from Releases:
 
 - `KingPongSetup.v1.1.0.exe` - recommended Windows installer
-- `King.Pong.v1.1.0.Portable.zip` - portable Windows version
+- `KingPong-WebView2-Portable.v1.1.0.zip` - portable Windows version
 
-For the portable version, extract the zip folder first, then run the King Pong EXE inside it.
+For the portable version, extract the ZIP folder first, then run the King Pong EXE inside it.
+
+#### Windows Note
+
+The Windows installer is currently unsigned, so Windows may show an unknown publisher or SmartScreen warning. This is normal for unsigned indie releases.
+
+If you trust this official GitHub release, choose **More info → Run anyway** if SmartScreen appears.
+
+### Linux:
+
+Download one of the Linux versions from Releases:
+
+- `King-Pong-Linux-v1.1.0-all.deb` — recommended for Linux Mint, Ubuntu, Debian, and other Debian-based distributions
+- `King-Pong-Linux-v1.1.0-thin-x86_64.AppImage` — thin x86-64 version that uses the system WebKitGTK runtime
+
+#### Install the Debian Package
+
+Download the `.deb` file, open it with your distribution's software installer, or install it from a terminal:
+
+```bash
+sudo apt install ./King-Pong-Linux-v1.1.0-all.deb
+```
+
+The package manager will automatically install the required GTK and WebKitGTK dependencies.
+
+#### Run the Thin AppImage
+
+The thin AppImage does not bundle an entire browser engine. The system must already have Python GObject, GTK 3, and WebKitGTK installed.
+
+On Linux Mint 22 or Ubuntu 24.04:
+
+```bash
+sudo apt install python3 python3-gi gir1.2-gtk-3.0 gir1.2-webkit2-4.1
+```
+
+On an older Debian-based distribution that does not provide WebKitGTK 4.1, install `gir1.2-webkit2-4.0` instead.
+
+Make the AppImage executable and run it:
+
+```bash
+chmod +x King-Pong-Linux-v1.1.0-thin-x86_64.AppImage
+./King-Pong-Linux-v1.1.0-thin-x86_64.AppImage
+```
+
+The thin AppImage is much smaller than a fully self-contained AppImage because it uses the WebKitGTK libraries already installed on the computer.
 
 ### Itch.io
 
 You can also download King Pong on itch.io:
 
 https://king-alex-gilbert.itch.io/king-pong
-
-## Windows Note
-
-The Windows installer is currently unsigned, so Windows may show an unknown publisher or SmartScreen warning. This is normal for unsigned indie releases.
-
-If you trust this official GitHub release, choose More info → Run anyway if SmartScreen appears.
 
 ## Build From Source
 
@@ -93,6 +131,25 @@ To build the Windows installer:
 3. Run `build-installer.bat`.
 4. The installer should appear in the `Output` folder.
 
+### Linux:
+
+If you want to build the Linux version yourself:
+
+1. Download or clone this repository.
+2. Go to the `Linux/webkitgtk` folder.
+3. Install the Debian package build tools using: `sudo apt install dpkg-dev`
+4. Run `./build-deb.sh`.
+5. The generated `.deb` package should appear in the `dist` folder.
+
+To build the thin Linux AppImage:
+
+1. Download the x86-64 version of `appimagetool`.
+2. Make it executable using: `chmod +x appimagetool-x86_64.AppImage`
+3. Go to the `Linux/webkitgtk` folder.
+4. Run: `APPIMAGETOOL="/path/to/appimagetool-x86_64.AppImage" ./build-appimage.sh`
+5. The generated AppImage should appear in the `dist` folder.
+
+
 ## Source Code
 
 The main game code is located at:
@@ -110,6 +167,20 @@ The Windows WebView2 version is located at:
 The Windows installer project is located at:
 
 `windows/installer exe/`
+
+The Linux WebKitGTK version is located at:
+
+`Linux/webkitgtk/`
+
+The Linux launcher is located at:
+
+`Linux/webkitgtk/src/king-pong.py`
+
+The Linux `.deb` and thin AppImage build scripts are located at:
+
+`Linux/webkitgtk/build-deb.sh`
+
+`Linux/webkitgtk/build-appimage.sh`
 
 ## Documentation & History
 
