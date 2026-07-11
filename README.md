@@ -1,12 +1,26 @@
-King Pong is a Pong-inspired arcade campaign game for Android, Linux, and Windows that I made in my free time.
+# King Pong
 
-It features campaign progression, language detection, controller support, touch controls, local two-player mode, LAN play, saves, battery and clock indicators, and a secret ending.
+King Pong is a retro arcade Pong game featuring an 18-level campaign, custom games, local and LAN multiplayer, progressive paddle shapes, save slots, multiple languages, and a secret ending.
+
+Play directly in your browser or download King Pong for Windows, Linux, and Android.
 
 The project was developed with AI-assisted coding and packaging help, then manually tested, debugged, and polished to give it that human touch.
 
 Feel free to test it out, play around with it, and modify it. Hope you enjoy it!
 
 Made by: King Alex Gilbert
+
+## Play King Pong
+
+King Pong can now be played directly in your web browser with no installation required!
+
+### Browser Version
+
+[Play King Pong on GitHub Pages](https://kingalexgilbert.github.io/king-pong/demo/)
+
+The browser version supports keyboard, controller, and touch controls. For the best mobile experience, use landscape mode.
+
+Browser save data is stored locally and is separate from the Android, Windows, and Linux versions.
 
 ## Gameplay Demo
 
@@ -36,17 +50,17 @@ Watch the official King Pong gameplay demo:
 
 ## Downloads
 
-### Android:
+### Android
 
-Download the Android APK from Releases and install it on your Android device.
+Download the Android APK from the [latest GitHub release](https://github.com/KingAlexGilbert/king-pong/releases/latest) and install it on your Android device.
 
 You may need to allow installation from unknown sources depending on your device settings.
 
 Save data note: If you already have King Pong installed and want to keep your save data, update over the existing app. Do not uninstall first, because uninstalling may remove local save data.
 
-### Windows:
+### Windows
 
-Download one of the Windows versions from Releases:
+Download one of the Windows versions from [latest GitHub release](https://github.com/KingAlexGilbert/king-pong/releases/latest)
 
 - `KingPongSetup.v1.1.0.exe` - recommended Windows installer
 - `KingPong-WebView2-Portable.v1.1.0.zip` - portable Windows version
@@ -59,9 +73,9 @@ The Windows installer is currently unsigned, so Windows may show an unknown publ
 
 If you trust this official GitHub release, choose **More info → Run anyway** if SmartScreen appears.
 
-### Linux:
+### Linux
 
-Download one of the Linux versions from Releases:
+Download one of the Linux versions from [latest GitHub release](https://github.com/KingAlexGilbert/king-pong/releases/latest)
 
 - `King-Pong-Linux-v1.1.0-all.deb` — recommended for Linux Mint, Ubuntu, Debian, and other Debian-based distributions
 - `King-Pong-Linux-v1.1.0-thin-x86_64.AppImage` — thin x86-64 version that uses the system WebKitGTK runtime
@@ -99,13 +113,13 @@ The thin AppImage is much smaller than a fully self-contained AppImage because i
 
 ### Itch.io
 
-You can also download King Pong on itch.io:
+You can also play King Pong in your browser or download the desktop and Android versions from itch.io:
 
-https://king-alex-gilbert.itch.io/king-pong
+[Play or download King Pong on itch.io](https://king-alex-gilbert.itch.io/king-pong)
 
 ## Build From Source
 
-### Android:
+### Android
 
 If you want to build King Pong yourself:
 
@@ -115,7 +129,7 @@ If you want to build King Pong yourself:
 4. Build the APK using: `Build → Generate App Bundles or APKs → Build APK(s)`
 5. The generated APK should appear in: `android/app/build/outputs/apk/debug/`
 
-### Windows:
+### Windows
 
 If you want to build the Windows version yourself:
 
@@ -131,7 +145,7 @@ To build the Windows installer:
 3. Run `build-installer.bat`.
 4. The installer should appear in the `Output` folder.
 
-### Linux:
+### Linux
 
 If you want to build the Linux version yourself:
 
@@ -182,6 +196,14 @@ The Linux `.deb` and thin AppImage build scripts are located at:
 
 `Linux/webkitgtk/build-appimage.sh`
 
+The GitHub Pages website is located at:
+
+`docs/index.html`
+
+The browser demo is located at:
+
+`docs/demo/index.html`
+
 ## Documentation & History
 
 This repository includes additional documentation for people who want to explore how King Pong was built and how the project evolved.
@@ -191,10 +213,10 @@ This repository includes additional documentation for people who want to explore
 
 These files are not required to play or build the current version of King Pong. They are included for transparency, project history, and documentation.
 
-## License 
+## License
 
 This project is released under the GNU General Public License v3.0.
 
-Modified versions that are distributed should remain open-source under the same license.
+Distributed modified versions must follow the terms of the GPLv3. See the `LICENSE` file for the complete license terms.
 
 Copyright (C) 2026 King Alex Gilbert
