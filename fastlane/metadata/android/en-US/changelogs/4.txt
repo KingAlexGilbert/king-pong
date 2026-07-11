@@ -1,0 +1,1 @@
+Added progressive paddle shapes and late-game rebalancing, along with the latest gameplay fixes and menu polish.

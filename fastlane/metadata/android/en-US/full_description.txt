@@ -1,0 +1,13 @@
+King Pong is a retro arcade Pong game with an 18-level campaign, custom games, local and LAN multiplayer, progressive paddle shapes, save slots, multiple languages, touch controls, controller support, and a secret ending.
+
+Features:
+* 18 campaign levels across three leagues
+* Custom games and local two-player mode
+* Optional LAN multiplayer
+* Progressive paddle shapes and changing arenas
+* Touch, keyboard, and controller support
+* Multiple languages and three local save slots
+* Original programmatically generated music and sound
+* Secret boss battle and ending
+
+King Pong works offline and contains no advertising, analytics, accounts, tracking, or in-app purchases.
