@@ -16,3 +16,8 @@ local.properties
 /android/build/reports
 /android/.idea
 /android/build
+android/build/reports/problems/problems-report.html
+android/build/reports/problems/problems-report.html
+/android/build
+/android/build/reports
+/android/build/reports/problems

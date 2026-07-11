@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Loading King Pong Browser Demo</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: monospace;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: #000;
+      color: #fff;
+    }
+
+    body {
+      display: grid;
+      place-items: center;
+    }
+
+    .loader {
+      width: min(86vw, 520px);
+      padding: 24px;
+      box-sizing: border-box;
+      text-align: center;
+      background: rgba(0, 0, 0, 0.92);
+      border: 2px solid #60d8ff;
+      box-shadow: 0 0 24px rgba(96, 216, 255, 0.35);
+    }
+
+    h1 {
+      margin: 0 0 12px;
+      letter-spacing: 2px;
+      text-shadow: 0 0 12px #60d8ff;
+    }
+
+    p {
+      margin: 8px 0;
+      color: #bbb;
+      line-height: 1.5;
+    }
+
+    .error {
+      color: #ffb3b3;
+    }
+
+    button {
+      margin-top: 14px;
+      padding: 10px 16px;
+      border: 1px solid #60d8ff;
+      background: #000;
+      color: #fff;
+      font: inherit;
+      cursor: pointer;
+    }
+
+    button:hover,
+    button:focus-visible {
+      box-shadow: 0 0 12px rgba(96, 216, 255, 0.6);
+      outline: none;
+    }
+  </style>
+</head>
+<body>
+  <main class="loader" id="loader" role="status" aria-live="polite">
+    <h1>KING PONG</h1>
+    <p id="statusText">Loading the browser demo...</p>
+  </main>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const sources = [
+        "https://raw.githubusercontent.com/KingAlexGilbert/king-pong/main/windows/webview-2/index.html",
+        "https://cdn.jsdelivr.net/gh/KingAlexGilbert/king-pong@main/windows/webview-2/index.html"
+      ];
+
+      const statusText = document.getElementById("statusText");
+      const loader = document.getElementById("loader");
+
+      function prepareBrowserVersion(sourceHtml) {
+        const browserOverrides = `
+          <style id="king-pong-browser-demo-overrides">
+            #exitGameButton { display: none !important; }
+          </style>
+        `;
+
+        let html = sourceHtml.replace(
+          /<title>[^<]*<\/title>/i,
+          "<title>King Pong Browser Demo</title>"
+        );
+
+        if (/<\/head>/i.test(html)) {
+          html = html.replace(/<\/head>/i, `${browserOverrides}</head>`);
+        } else {
+          html = browserOverrides + html;
+        }
+
+        return html;
+      }
+
+      async function fetchGameHtml() {
+        const errors = [];
+
+        for (const source of sources) {
+          try {
+            const response = await fetch(source, { cache: "no-store" });
+            if (!response.ok) {
+              throw new Error(`HTTP ${response.status}`);
+            }
+
+            const html = await response.text();
+            if (!html.includes("<canvas") || !html.includes("KING PONG")) {
+              throw new Error("The downloaded file was not recognized as King Pong.");
+            }
+
+            return prepareBrowserVersion(html);
+          } catch (error) {
+            errors.push(`${source}: ${error.message || error}`);
+          }
+        }
+
+        throw new Error(errors.join("\n"));
+      }
+
+      function showError(error) {
+        statusText.className = "error";
+        statusText.textContent = "The browser demo could not be loaded. Check your internet connection and try again.";
+
+        const retryButton = document.createElement("button");
+        retryButton.type = "button";
+        retryButton.textContent = "Retry";
+        retryButton.addEventListener("click", () => window.location.reload());
+        loader.appendChild(retryButton);
+
+        console.error("King Pong demo loader error:", error);
+      }
+
+      fetchGameHtml()
+        .then((gameHtml) => {
+          document.open();
+          document.write(gameHtml);
+          document.close();
+        })
+        .catch(showError);
+    })();
+  </script>
+</body>
+</html>
