@@ -12,7 +12,7 @@ Made by: King Alex Gilbert
 
 ## Play King Pong
 
-King Pong can now be played directly in your web browser—no installation required.
+King Pong can now be played directly in your web browser with no installation required!
 
 ### Browser Version
 
