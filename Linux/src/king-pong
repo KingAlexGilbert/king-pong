@@ -1,0 +1,61 @@
+#!/bin/sh
+# Visible, logged launcher for King Pong.
+set -u
+
+STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
+LOG_DIR="$STATE_HOME/king-pong"
+LOG_FILE="$LOG_DIR/launcher.log"
+PY_LAUNCHER="${KING_PONG_LAUNCHER:-/usr/lib/king-pong/king-pong.py}"
+mkdir -p "$LOG_DIR" 2>/dev/null || true
+export PYTHONDONTWRITEBYTECODE=1
+
+show_error() {
+    message="$1"
+    if command -v zenity >/dev/null 2>&1 && [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]; then
+        zenity --error --title="King Pong could not start" --width=560 \
+          --text="$message\n\nDiagnostic log:\n$LOG_FILE" >/dev/null 2>&1 || true
+    elif command -v xmessage >/dev/null 2>&1 && [ -n "${DISPLAY:-}" ]; then
+        xmessage -center "King Pong could not start\n\n$message\n\nDiagnostic log: $LOG_FILE" >/dev/null 2>&1 || true
+    else
+        printf '%s\nDiagnostic log: %s\n' "$message" "$LOG_FILE" >&2
+    fi
+}
+
+if [ "${1:-}" = "--diagnose" ]; then
+    TMP_LOG="$LOG_FILE.tmp.$$"
+    {
+        echo "King Pong diagnostics"
+        echo "Date: $(date -Is 2>/dev/null || date)"
+        echo "Desktop: ${XDG_CURRENT_DESKTOP:-unknown}"
+        echo "Session: ${XDG_SESSION_TYPE:-unknown}"
+        echo "Display: ${DISPLAY:-none}"
+        echo "Wayland display: ${WAYLAND_DISPLAY:-none}"
+        echo "Python: $(python3 --version 2>&1 || true)"
+        echo "Launcher: $PY_LAUNCHER"
+        echo "Game HTML: ${KING_PONG_GAME_PATH:-/usr/share/king-pong/index.html}"
+        echo
+    } > "$TMP_LOG"
+    python3 "$PY_LAUNCHER" --probe >> "$TMP_LOG" 2>&1
+    status=$?
+    cat "$TMP_LOG" | tee "$LOG_FILE"
+    rm -f "$TMP_LOG"
+    exit "$status"
+fi
+
+: > "$LOG_FILE" 2>/dev/null || true
+{
+    echo "King Pong launch log"
+    echo "Date: $(date -Is 2>/dev/null || date)"
+    echo "Desktop: ${XDG_CURRENT_DESKTOP:-unknown}"
+    echo "Session: ${XDG_SESSION_TYPE:-unknown}"
+    echo "Python: $(python3 --version 2>&1 || true)"
+    echo
+} >> "$LOG_FILE"
+
+python3 "$PY_LAUNCHER" "$@" >> "$LOG_FILE" 2>&1
+status=$?
+if [ "$status" -ne 0 ]; then
+    tail_text=$(tail -n 14 "$LOG_FILE" 2>/dev/null || true)
+    show_error "The Linux launcher exited with code $status.\n\n$tail_text"
+fi
+exit "$status"

@@ -1,0 +1,15 @@
+Package: king-pong
+Version: 1.1.0-7
+Section: games
+Priority: optional
+Architecture: all
+Maintainer: King Alex Gilbert
+Depends: python3 (>= 3.8), python3-gi, gir1.2-gtk-3.0, gir1.2-webkit2-4.1 | gir1.2-webkit2-4.0
+Recommends: zenity, gstreamer1.0-plugins-good
+Description: King Pong arcade campaign game
+ King Pong is a retro Pong-inspired arcade campaign with save slots,
+ custom games, local and LAN two-player modes, original music,
+ controller support, and a secret boss.
+ .
+ This compact package uses the distribution-provided WebKitGTK runtime,
+ enables GPU rendering, and preserves the original high-DPI game canvas.

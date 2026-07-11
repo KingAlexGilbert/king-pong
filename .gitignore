@@ -13,3 +13,6 @@
 .externalNativeBuild
 .cxx
 local.properties
+/android/build/reports
+/android/.idea
+/android/build
