@@ -8,6 +8,7 @@
 - Fixed Custom Game issues where “Play Selected” could launch the wrong level or fail to start properly.
 - Added live level previews to Custom Game.
 - Added an “Exit Game” button to the Windows desktop version.
+- Added Linux support with a .deb package and a thin x86-64 AppImage.
 
 ## v1.0.3 - Optimizations
 
