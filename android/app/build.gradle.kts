@@ -10,8 +10,8 @@ android {
         applicationId = "com.kingalex.kingpong"
         minSdk = 24
         targetSdk = 36
-        versionCode = 5
-        versionName = "1.1.1"
+        versionCode = 4
+        versionName = "1.1.0"
 
         // The game handles its own localization inside assets/index.html.
         resourceConfigurations += listOf("en")
