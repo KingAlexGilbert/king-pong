@@ -89,15 +89,15 @@ If you trust this official GitHub release, choose **More info → Run anyway** i
 
 Download one of the Linux versions from the [latest GitHub release](https://github.com/KingAlexGilbert/king-pong/releases/latest).
 
-- `King-Pong-Linux-v1.1.0-all.deb` — recommended for Linux Mint, Ubuntu, Debian, and other Debian-based distributions
-- `King-Pong-Linux-v1.1.0-thin-x86_64.AppImage` — thin x86-64 version that uses the system WebKitGTK runtime
+- `King-Pong-Linux-v1.1.1-all.deb` — recommended for Linux Mint, Ubuntu, Debian, and other Debian-based distributions
+- `King-Pong-Linux-v1.1.1-thin-x86_64.AppImage` — thin x86-64 version that uses the system WebKitGTK runtime
 
 #### Install the Debian Package
 
 Download the `.deb` file, open it with your distribution's software installer, or install it from a terminal:
 
 ```bash
-sudo apt install ./King-Pong-Linux-v1.1.0-all.deb
+sudo apt install ./King-Pong-Linux-v1.1.1-all.deb
 ```
 
 The package manager will automatically install the required GTK and WebKitGTK dependencies.
@@ -117,8 +117,8 @@ On an older Debian-based distribution that does not provide WebKitGTK 4.1, insta
 Make the AppImage executable and run it:
 
 ```bash
-chmod +x King-Pong-Linux-v1.1.0-thin-x86_64.AppImage
-./King-Pong-Linux-v1.1.0-thin-x86_64.AppImage
+chmod +x King-Pong-Linux-v1.1.1-thin-x86_64.AppImage
+./King-Pong-Linux-v1.1.1-thin-x86_64.AppImage
 ```
 
 The thin AppImage is much smaller than a fully self-contained AppImage because it uses the WebKitGTK libraries already installed on the computer.
@@ -159,7 +159,23 @@ To build the Windows installer:
 
 ### Linux
 
-If you want to build the Linux version yourself:
+#### Important Linux Build Notes
+
+Build King Pong from a native Linux filesystem, preferably somewhere inside your home folder, such as:
+
+`~/Projects/king-pong`
+
+Building directly from an NTFS, exFAT, or other Windows-mounted drive may fail. These filesystems may not preserve Linux executable permissions correctly and may be mounted with restrictions that prevent build tools or AppImages from running.
+
+If the repository is stored on a Windows drive, copy the entire repository to your Linux home folder before running the build scripts.
+
+Fully extract the repository before building. Do not run the scripts from inside a ZIP archive.
+
+Run the following commands from the `Linux/webkitgtk` directory. The scripts use relative paths and may report “No such file or directory” if run from a different folder.
+
+Linux paths are case-sensitive, so use the exact capitalization shown in the instructions.
+
+#### Build the Debian Package
 
 1. Download or clone this repository.
 2. Go to the `Linux/webkitgtk` folder.
@@ -167,7 +183,7 @@ If you want to build the Linux version yourself:
 4. Run `./build-deb.sh`.
 5. The generated `.deb` package should appear in the `dist` folder.
 
-To build the thin Linux AppImage:
+#### Build the Thin Linux AppImage
 
 1. Download the x86-64 version of `appimagetool`.
 2. Make it executable using: `chmod +x appimagetool-x86_64.AppImage`
