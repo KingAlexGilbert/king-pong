@@ -457,6 +457,12 @@ const BALL_HALF = BALL_SIZE / 2;
 const BASE_BALL_SPEED = 4.2;
 const RALLY_PLAYER_SPAWN_DISTANCE = 236;
 const RALLY_PLAYER_SPAWN_MIN_DISTANCE = 180;
+// Automatic CPU-mode respawns preserve infinite rally, but begin gently
+// so the receiving player has a clear reaction window.
+const RALLY_LAUNCH_RAMP_FRAMES = 60;
+const RALLY_LAUNCH_START_SPEED_SCALE = 0.20;
+const RALLY_SPAWN_PULSE_START_RADIUS = 10;
+const RALLY_SPAWN_PULSE_END_RADIUS = 38;
 const RALLY_PLAYER_SPAWN_Y_JITTER = 32;
 const SPAWN_HAZARD_PADDING = 14;
 const TOTAL_LEVELS = 18;
@@ -621,6 +627,11 @@ makePaddleProfile("Adaptive Saw Up", [0, 5, 1, 7, 2, 8, 3, 6, 1], 0.80, 2.15, 0,
 makePaddleProfile("Adaptive Saw Down", [1, 6, 3, 8, 2, 7, 1, 5, 0], 0.80, 2.15, 0, 0, 0.24)
 ];
 let bossAdaptiveProfile = BOSS_ADAPTIVE_PROFILES[0];
+let nextCpuModeServeDirection = -1;
+let rallyLaunchFramesRemaining = 0;
+let rallyLaunchTargetSpeed = 0;
+let rallySpawnPulseX = W / 2;
+let rallySpawnPulseY = H / 2;
 let bossAdaptiveBallId = null;
 let bossAdaptiveDecisionFrame = -999;
 let hazards = [];
@@ -2769,7 +2780,7 @@ bossBalls = [];
 endMessage = "";
 resetPaddles();
 cloneHazards();
-resetBall(Math.random() < 0.5 ? -1 : 1, true, false);
+resetBall(1, true, false);
 setAccent();
 customLevelSelect.value = String(selectedIndex);
 const data = levelByAbsoluteIndex(selectedIndex);
@@ -3137,6 +3148,41 @@ applySpawnEscapeAngle(speed, level);
 normalizeBallVelocity(speed * 0.92, level.maxSpeed || 10);
 applySpawnEscapeAngle(speed, level);
 }
+function clearRallyLaunchRamp() {
+rallyLaunchFramesRemaining = 0;
+rallyLaunchTargetSpeed = 0;
+}
+function beginRallyLaunchRamp() {
+rallyLaunchTargetSpeed = Math.max(0.001, Math.hypot(ball.vx, ball.vy));
+rallyLaunchFramesRemaining = RALLY_LAUNCH_RAMP_FRAMES;
+rallySpawnPulseX = ball.x + BALL_HALF;
+rallySpawnPulseY = ball.y + BALL_HALF;
+ball.vx *= RALLY_LAUNCH_START_SPEED_SCALE;
+ball.vy *= RALLY_LAUNCH_START_SPEED_SCALE;
+}
+function updateRallyLaunchRamp() {
+if (rallyLaunchFramesRemaining <= 0 || rallyLaunchTargetSpeed <= 0) return;
+const elapsed = RALLY_LAUNCH_RAMP_FRAMES - rallyLaunchFramesRemaining + 1;
+const progress = clamp(elapsed / RALLY_LAUNCH_RAMP_FRAMES, 0, 1);
+const eased = progress * progress * (3 - 2 * progress);
+const desiredSpeed = rallyLaunchTargetSpeed * lerp(RALLY_LAUNCH_START_SPEED_SCALE, 1, eased);
+const currentSpeed = Math.hypot(ball.vx, ball.vy);
+if (currentSpeed > 0.001) {
+const scale = desiredSpeed / currentSpeed;
+ball.vx *= scale;
+ball.vy *= scale;
+}
+rallyLaunchFramesRemaining--;
+if (rallyLaunchFramesRemaining <= 0) {
+const finalSpeed = Math.hypot(ball.vx, ball.vy);
+if (finalSpeed > 0.001) {
+const finalScale = rallyLaunchTargetSpeed / finalSpeed;
+ball.vx *= finalScale;
+ball.vy *= finalScale;
+}
+clearRallyLaunchRamp();
+}
+}
 function resetBall(direction = 1, waitForServe = true, spawnNearPlayer = false) {
 const level = currentLevel();
 const speed = level.ballSpeed || BASE_BALL_SPEED;
@@ -3149,11 +3195,21 @@ ball.y = spawn.y;
 ball.prevX = ball.x;
 ball.prevY = ball.y;
 setRallyBallVelocity(direction, speed, level, useReceiverSideSpawn);
+if (useReceiverSideSpawn && !waitForServe) {
+beginRallyLaunchRamp();
+} else {
+clearRallyLaunchRamp();
+}
 chooseCpuError();
 waitingForServe = waitForServe;
 }
 function shouldAutoServeAfterPoint() {
 return mode === 1 || mode === 3;
+}
+function nextCpuModeRallyDirection() {
+const direction = nextCpuModeServeDirection;
+nextCpuModeServeDirection *= -1;
+return direction;
 }
 function startLevel() {
 customPreviewActive = false;
@@ -3172,7 +3228,9 @@ endMessage = "";
 resetMusicPhrase();
 resetPaddles();
 cloneHazards();
-resetBall(Math.random() < 0.5 ? -1 : 1);
+// CPU modes always open toward the right-side CPU, then alternate each later rally.
+nextCpuModeServeDirection = -1;
+resetBall(mode === 1 || mode === 3 ? 1 : (Math.random() < 0.5 ? -1 : 1));
 setAccent();
 if (mode === 1) {
 setPlayInfoVisible(true);
@@ -3371,7 +3429,7 @@ return Math.min(BOSS_MAX_BALLS, BOSS_STARTING_BALLS + 1);
 function resetBossBalls() {
 bossBalls = [];
 for (let i = 0; i < desiredBossBallCount(); i++) {
-bossBalls.push(createBossBall(i));
+bossBalls.push(createBossBall(i, 1));
 }
 }
 function findBossReceiverSideRallySpawn(index, direction) {
@@ -3686,7 +3744,7 @@ function updateBossBalls() {
 if (waitingForServe || gameOver || bossIntroActive) return;
 bossRallyFrames++;
 while (bossBalls.length < desiredBossBallCount()) {
-bossBalls.push(createBossBall(bossBalls.length));
+bossBalls.push(createBossBall(bossBalls.length, 1));
 }
 for (let i = 0; i < bossBalls.length; i++) {
 const bossBall = bossBalls[i];
@@ -3710,7 +3768,7 @@ respawnBossBall(i, 1);
 } else if (bossBall.x > W) {
 damageBoss();
 if (!gameOver) {
-respawnBossBall(i, -1);
+respawnBossBall(i, 1);
 }
 }
 }
@@ -4132,7 +4190,7 @@ waitingForServe = true;
 endMessage = "Left player wins the practice round. Tap to play again.";
 }
 } else {
-resetBall(1, !shouldAutoServeAfterPoint(), shouldAutoServeAfterPoint());
+resetBall(shouldAutoServeAfterPoint() ? nextCpuModeRallyDirection() : 1, !shouldAutoServeAfterPoint(), shouldAutoServeAfterPoint());
 }
 updateHud();
 }
@@ -4154,12 +4212,14 @@ endMessage = mode === 1
 ? `Custom Level ${String(absoluteLevelNumber()).padStart(2, "0")} lost. Tap to retry, or pick another level.`
 : "Right player wins the practice round. Tap to play again.";
 } else {
-resetBall(-1, !shouldAutoServeAfterPoint(), shouldAutoServeAfterPoint());
+// After each non-winning point in CPU modes, alternate rally direction.
+resetBall(shouldAutoServeAfterPoint() ? nextCpuModeRallyDirection() : -1, !shouldAutoServeAfterPoint(), shouldAutoServeAfterPoint());
 }
 updateHud();
 }
 function updateBall() {
 if (waitingForServe || gameOver || levelCleared || campaignCleared) return;
+updateRallyLaunchRamp();
 ball.prevX = ball.x;
 ball.prevY = ball.y;
 ball.x += ball.vx;
@@ -4572,6 +4632,27 @@ drawText(mode === 4 ? "Multiple balls are live. Break the boss health bar before
 }
 }
 }
+function drawRallySpawnPulse() {
+if (rallyLaunchFramesRemaining <= 0 || mode === 4) return;
+const progress = 1 - rallyLaunchFramesRemaining / RALLY_LAUNCH_RAMP_FRAMES;
+const radius = lerp(RALLY_SPAWN_PULSE_START_RADIUS, RALLY_SPAWN_PULSE_END_RADIUS, progress);
+const alpha = (1 - progress) * 0.82;
+ctx.save();
+ctx.globalAlpha = alpha;
+ctx.strokeStyle = currentCampaign().accent;
+ctx.lineWidth = 2;
+ctx.shadowColor = currentCampaign().accent;
+ctx.shadowBlur = 14;
+ctx.beginPath();
+ctx.arc(rallySpawnPulseX, rallySpawnPulseY, radius, 0, Math.PI * 2);
+ctx.stroke();
+ctx.globalAlpha = alpha * 0.42;
+ctx.lineWidth = 1;
+ctx.beginPath();
+ctx.arc(rallySpawnPulseX, rallySpawnPulseY, radius * 0.58, 0, Math.PI * 2);
+ctx.stroke();
+ctx.restore();
+}
 function draw() {
 ctx.setTransform(renderScale, 0, 0, renderScale, 0, 0);
 ctx.imageSmoothingEnabled = false;
@@ -4604,6 +4685,7 @@ activePaddleProfile(right),
 if (mode === 4) {
 drawBossBalls();
 } else {
+drawRallySpawnPulse();
 ctx.fillStyle = currentCampaign().accent;
 ctx.shadowColor = currentCampaign().accent;
 ctx.shadowBlur = 14;

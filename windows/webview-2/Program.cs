@@ -207,7 +207,7 @@ namespace KingPongWebView2
 
         private void RequestExitFromGame()
         {
-            // The page sends both a WebMessage and window.close(). Only close once.
+            // The page may send both a WebMessage and window.close(). Exit only once.
             if (exitRequested || IsDisposed || Disposing)
             {
                 return;
@@ -215,13 +215,27 @@ namespace KingPongWebView2
 
             exitRequested = true;
 
+            Action exitApplication = () =>
+            {
+                try
+                {
+                    Close();
+                }
+                finally
+                {
+                    // Close the WinForms message loop as well, so no hidden WebView2
+                    // process or window keeps the packaged EXE running.
+                    Application.Exit();
+                }
+            };
+
             if (InvokeRequired)
             {
-                BeginInvoke(new Action(Close));
+                BeginInvoke(exitApplication);
             }
             else
             {
-                Close();
+                exitApplication();
             }
         }
 
