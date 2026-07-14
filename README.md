@@ -52,18 +52,30 @@ Watch the official King Pong gameplay demo:
 
 ### Android
 
-Download the Android APK from the [latest GitHub release](https://github.com/KingAlexGilbert/king-pong/releases/latest) and install it on your Android device.
+#### F-Droid — Recommended
+
+[<img src="https://f-droid.org/badge/get-it-on.png"
+    alt="Get it on F-Droid"
+    height="80">](https://f-droid.org/packages/com.kingalex.kingpong/)
+
+Install King Pong from the official F-Droid repository. Installing through the F-Droid app provides update notifications when new versions become available.
+
+#### Direct APK
+
+Download the developer-signed Android APK from the [latest GitHub release](https://github.com/KingAlexGilbert/king-pong/releases/latest) and install it on your Android device.
 
 You may need to allow installation from unknown sources depending on your device settings.
 
-Save data note: If you already have King Pong installed and want to keep your save data, update over the existing app. Do not uninstall first, because uninstalling may remove local save data.
+**Save data note:** To preserve your save data, install updates over the existing app from the same source. Do not uninstall first, because uninstalling may remove local save data.
+
+**Important:** The F-Droid edition and the GitHub/itch.io APK are signed with different keys. Android cannot update one edition over the other. Switching editions requires uninstalling the currently installed version first, which may erase local save data.
 
 ### Windows
 
-Download one of the Windows versions from [latest GitHub release](https://github.com/KingAlexGilbert/king-pong/releases/latest)
+Download one of the Windows versions from the [latest GitHub release](https://github.com/KingAlexGilbert/king-pong/releases/latest).
 
-- `KingPongSetup.v1.1.0.exe` - recommended Windows installer
-- `KingPong-WebView2-Portable.v1.1.0.zip` - portable Windows version
+- `KingPongSetup.exe` - recommended Windows installer
+- `KingPong-WebView2-Portable.zip` - portable Windows version
 
 For the portable version, extract the ZIP folder first, then run the King Pong EXE inside it.
 
@@ -75,7 +87,7 @@ If you trust this official GitHub release, choose **More info → Run anyway** i
 
 ### Linux
 
-Download one of the Linux versions from [latest GitHub release](https://github.com/KingAlexGilbert/king-pong/releases/latest)
+Download one of the Linux versions from the [latest GitHub release](https://github.com/KingAlexGilbert/king-pong/releases/latest).
 
 - `King-Pong-Linux-v1.1.0-all.deb` — recommended for Linux Mint, Ubuntu, Debian, and other Debian-based distributions
 - `King-Pong-Linux-v1.1.0-thin-x86_64.AppImage` — thin x86-64 version that uses the system WebKitGTK runtime
@@ -162,7 +174,6 @@ To build the thin Linux AppImage:
 3. Go to the `Linux/webkitgtk` folder.
 4. Run: `APPIMAGETOOL="/path/to/appimagetool-x86_64.AppImage" ./build-appimage.sh`
 5. The generated AppImage should appear in the `dist` folder.
-
 
 ## Source Code
 
