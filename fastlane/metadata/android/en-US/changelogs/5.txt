@@ -1,0 +1,3 @@
+* Added a brief flash and slow-motion delay at the start of each rally.
+* The first rally now serves toward the CPU.
+* Later rallies alternate between the player and CPU.
