@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>Loading King Pong Browser Demo</title>
+  <title>Loading King Pong v1.1.1 Browser Demo</title>
   <style>
     :root {
       color-scheme: dark;
@@ -71,16 +71,20 @@
 <body>
   <main class="loader" id="loader" role="status" aria-live="polite">
     <h1>KING PONG</h1>
-    <p id="statusText">Loading the browser demo...</p>
+    <p id="statusText">Loading the King Pong v1.1.1 browser demo...</p>
   </main>
 
   <script>
     (() => {
       "use strict";
 
+      const demoVersion = "v1.1.1";
+      const gamePath = "windows/webview-2/index.html";
       const sources = [
-        "https://raw.githubusercontent.com/KingAlexGilbert/king-pong/main/windows/webview-2/index.html",
-        "https://cdn.jsdelivr.net/gh/KingAlexGilbert/king-pong@main/windows/webview-2/index.html"
+        `https://raw.githubusercontent.com/KingAlexGilbert/king-pong/${demoVersion}/${gamePath}`,
+        `https://cdn.jsdelivr.net/gh/KingAlexGilbert/king-pong@${demoVersion}/${gamePath}`,
+        `https://raw.githubusercontent.com/KingAlexGilbert/king-pong/main/${gamePath}?version=${demoVersion}`,
+        `https://cdn.jsdelivr.net/gh/KingAlexGilbert/king-pong@main/${gamePath}?version=${demoVersion}`
       ];
 
       const statusText = document.getElementById("statusText");
@@ -95,7 +99,7 @@
 
         let html = sourceHtml.replace(
           /<title>[^<]*<\/title>/i,
-          "<title>King Pong Browser Demo</title>"
+          `<title>King Pong ${demoVersion} Browser Demo</title>`
         );
 
         if (/<\/head>/i.test(html)) {
