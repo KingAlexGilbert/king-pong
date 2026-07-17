@@ -1,4 +1,8 @@
-# King Pong
+<p align="center">
+  <img src="docs/images/app-icon.png" width="128" alt="King Pong app icon">
+</p>
+
+<h1 align="center">King Pong</h1>
 
 King Pong is a retro arcade Pong game featuring an 18-level campaign, custom games, local and LAN multiplayer, progressive paddle shapes, save slots, multiple languages, and a secret ending.
 
