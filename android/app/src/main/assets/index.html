@@ -588,12 +588,12 @@ makePaddleProfile("Rising Steps", [0, 1, 1, 2, 2, 3, 3, 4, 4], 0.97, 0.96, 0, 0.
 makePaddleProfile("Falling Steps", [4, 4, 3, 3, 2, 2, 1, 1, 0], 0.96, 1.00, 0, 0.006),
 makePaddleProfile("Hourglass", [4, 3, 1, 0, 0, 0, 1, 3, 4], 0.95, 1.04, 0, 0.008),
 makePaddleProfile("Diamond", [0, 1, 3, 5, 7, 5, 3, 1, 0], 0.94, 1.08, 0, 0.010),
-makePaddleProfile("Upper Notch", [2, 4, 5, 2, 0, 1, 2, 3, 2], 0.93, 1.12, 0, 0.012),
-makePaddleProfile("Lower Notch", [2, 3, 2, 1, 0, 2, 5, 4, 2], 0.92, 1.16, 0, 0.014),
-makePaddleProfile("Split Zigzag", [0, 3, 1, 5, 2, 6, 3, 5, 1], 0.91, 1.20, 0, 0.016),
-makePaddleProfile("Reverse Zigzag", [2, 5, 1, 4, 0, 5, 1, 4, 0], 0.90, 1.24, 0, 0.018),
-makePaddleProfile("Broken Crown", [1, 5, 2, 6, 1, 4, 0, 3, 1], 0.88, 1.28, 0, 0.020),
-makePaddleProfile("Final Ridge", [0, 5, 1, 6, 2, 7, 1, 5, 0], 0.86, 1.32, 0, 0.022)
+makePaddleProfile("Gentle Crown", [0, 1, 2, 3, 4, 3, 2, 1, 0], 0.95, 0.90, 0, 0.004),
+makePaddleProfile("Shallow Cup II", [3, 2, 1, 0, 0, 0, 1, 2, 3], 0.94, 0.94, 0, 0.005),
+makePaddleProfile("Rising Ramp II", [0, 0, 1, 1, 2, 2, 3, 3, 4], 0.93, 0.98, 0, 0.006),
+makePaddleProfile("Falling Ramp II", [4, 3, 3, 2, 2, 1, 1, 0, 0], 0.92, 1.02, 0, 0.007),
+makePaddleProfile("Late Diamond", [0, 1, 2, 4, 5, 4, 2, 1, 0], 0.91, 1.06, 0, 0.008),
+makePaddleProfile("Final Ridge", [0, 2, 1, 3, 2, 4, 2, 3, 0], 0.90, 1.10, 0, 0.009)
 ];
 const ENEMY_PADDLE_PROFILES = [
 DEFAULT_PADDLE_PROFILE,
@@ -608,12 +608,12 @@ makePaddleProfile("Rising Ramp", [0, 1, 2, 3, 4, 5, 6, 7, 8], 1.11, 1.00, 0.16),
 makePaddleProfile("Falling Ramp", [8, 7, 6, 5, 4, 3, 2, 1, 0], 1.12, 1.04, 0.18),
 makePaddleProfile("Top Flare", [0, 3, 6, 7, 5, 3, 2, 1, 0], 1.13, 1.08, 0.20),
 makePaddleProfile("Bottom Flare", [0, 1, 2, 3, 5, 7, 6, 3, 0], 1.14, 1.12, 0.22),
-makePaddleProfile("Precision Diamond", [0, 2, 4, 6, 8, 6, 4, 2, 0], 1.15, 1.16, 0.24),
-makePaddleProfile("Precision Cup", [6, 4, 2, 1, 0, 1, 2, 4, 6], 1.16, 1.20, 0.26),
-makePaddleProfile("Triple Facet", [1, 5, 2, 6, 1, 6, 2, 5, 1], 1.17, 1.24, 0.28),
-makePaddleProfile("Control Wave", [2, 6, 3, 1, 4, 7, 4, 1, 2], 1.18, 1.28, 0.30),
-makePaddleProfile("Precision Ridge", [0, 3, 7, 4, 1, 5, 8, 4, 0], 1.19, 1.32, 0.32),
-makePaddleProfile("King Crown", [1, 5, 8, 4, 1, 4, 8, 5, 1], 1.20, 1.36, 0.34)
+makePaddleProfile("Precision Diamond", [0, 2, 4, 6, 8, 6, 4, 2, 0], 1.12, 1.08, 0.22),
+makePaddleProfile("Precision Cup", [6, 4, 2, 1, 0, 1, 2, 4, 6], 1.13, 1.11, 0.23),
+makePaddleProfile("Triple Facet", [1, 4, 2, 5, 1, 5, 2, 4, 1], 1.14, 1.14, 0.24),
+makePaddleProfile("Control Wave", [2, 5, 3, 1, 4, 6, 4, 1, 2], 1.15, 1.17, 0.25),
+makePaddleProfile("Precision Ridge", [0, 3, 6, 4, 1, 5, 7, 4, 0], 1.16, 1.20, 0.26),
+makePaddleProfile("King Crown", [1, 4, 7, 4, 1, 4, 7, 4, 1], 1.17, 1.23, 0.27)
 ];
 const BOSS_ADAPTIVE_PROFILES = [
 makePaddleProfile("Adaptive Flat", [0, 0, 0, 0, 0, 0, 0, 0, 0], 0.88, 1.25),
@@ -788,86 +788,57 @@ hazards: [
 ]
 },
 {
+// v1.1.1 late-game balance pass: readable hazards plus steady CPU/speed progression.
 id: "chaos",
 name: "Chaos Cup",
 shortName: "Chaos",
 accent: "#ff66cc",
 levels: [
 {
-name: "Sweepers",
-goal: 5,
-ballSpeed: 5.6,
-maxSpeed: 12.0,
+name: "Sweepers", goal: 5, ballSpeed: 5.25, maxSpeed: 11.15,
 hazards: [
-{ type: "rect", x: 214, y: 104, w: 86, h: 10, vx: 1.8, minX: 176, maxX: 350, bounce: 0.35 },
-{ type: "rect", x: 340, y: 366, w: 86, h: 10, vx: -1.8, minX: 214, maxX: 388, bounce: 0.35 },
-{ type: "circle", x: W / 2, y: H / 2, r: 15, boost: 0.45 }
+{ type: "rect", x: 238, y: 116, w: 58, h: 9, vx: 0.28, minX: 210, maxX: 342, bounce: 0.20 },
+{ type: "rect", x: 344, y: 355, w: 58, h: 9, vx: -0.28, minX: 238, maxX: 370, bounce: 0.20 }
 ]
 },
 {
-name: "Fortress",
-goal: 5,
-ballSpeed: 5.75,
-maxSpeed: 12.3,
+name: "Fortress", goal: 5, ballSpeed: 5.35, maxSpeed: 11.35,
 hazards: [
-{ type: "rect", x: 214, y: 86, w: 14, h: 130, bounce: 0.28 },
-{ type: "rect", x: 412, y: 86, w: 14, h: 130, bounce: 0.28 },
-{ type: "rect", x: 214, y: 266, w: 14, h: 130, bounce: 0.28 },
-{ type: "rect", x: 412, y: 266, w: 14, h: 130, bounce: 0.28 },
-{ type: "rect", x: 280, y: H / 2 - 8, w: 80, h: 16, vx: 1.4, minX: 252, maxX: 308, bounce: 0.3 }
+{ type: "rect", x: 282, y: 126, w: 10, h: 40, bounce: 0.17 },
+{ type: "rect", x: 348, y: 314, w: 10, h: 40, bounce: 0.17 }
 ]
 },
 {
-name: "Side Shuffle",
-goal: 6,
-ballSpeed: 5.9,
-maxSpeed: 12.6,
+name: "Side Shuffle", goal: 5, ballSpeed: 5.45, maxSpeed: 11.55,
 hazards: [
-{ type: "circle", x: 126, y: 122, r: 16, vy: 1.8, minY: 94, maxY: 386, boost: 0.4 },
-{ type: "circle", x: W - 126, y: 358, r: 16, vy: -1.8, minY: 94, maxY: 386, boost: 0.4 },
-{ type: "rect", x: W / 2 - 8, y: 82, w: 16, h: 108, bounce: 0.28 },
-{ type: "rect", x: W / 2 - 8, y: 290, w: 16, h: 108, bounce: 0.28 }
+{ type: "circle", x: 170, y: 150, r: 11, vy: 0.36, minY: 124, maxY: 356, boost: 0.25 },
+{ type: "circle", x: W - 170, y: 330, r: 11, vy: -0.36, minY: 124, maxY: 356, boost: 0.25 }
 ]
 },
 {
-// Late-game balance pass: still chaotic, but less punishing and less drawn out.
-name: "Vortex",
-goal: 5,
-ballSpeed: 5.8,
-maxSpeed: 12.2,
+name: "Vortex", goal: 5, ballSpeed: 5.55, maxSpeed: 11.75,
 hazards: [
-{ type: "circle", x: 260, y: 172, r: 16, vx: 1.1, vy: 0.95, minX: 216, maxX: 330, minY: 126, maxY: 236, boost: 0.46 },
-{ type: "circle", x: 380, y: 308, r: 16, vx: -1.1, vy: -0.95, minX: 310, maxX: 424, minY: 244, maxY: 354, boost: 0.46 },
-{ type: "rect", x: 108, y: 92, w: 12, h: 116, vy: 1.35, minY: 68, maxY: 284, bounce: 0.24 },
-{ type: "rect", x: W - 120, y: 272, w: 12, h: 116, vy: -1.35, minY: 76, maxY: 292, bounce: 0.24 }
+{ type: "circle", x: 274, y: 184, r: 11, vx: 0.30, vy: 0.24, minX: 238, maxX: 324, minY: 148, maxY: 224, boost: 0.25 },
+{ type: "circle", x: 366, y: 296, r: 11, vx: -0.30, vy: -0.24, minX: 316, maxX: 402, minY: 256, maxY: 332, boost: 0.25 }
 ]
 },
 {
-name: "Diamond Trap",
-goal: 5,
-ballSpeed: 5.95,
-maxSpeed: 12.5,
+name: "Diamond Trap", goal: 5, ballSpeed: 5.65, maxSpeed: 11.95,
 hazards: [
-{ type: "circle", x: W / 2, y: H / 2 - 86, r: 15, boost: 0.43 },
-{ type: "circle", x: W / 2 - 86, y: H / 2, r: 15, boost: 0.43 },
-{ type: "circle", x: W / 2 + 86, y: H / 2, r: 15, boost: 0.43 },
-{ type: "circle", x: W / 2, y: H / 2 + 86, r: 15, boost: 0.43 },
-{ type: "rect", x: W / 2 - 46, y: H / 2 - 6, w: 92, h: 12, vx: 1.4, minX: 256, maxX: 292, bounce: 0.3 }
+{ type: "circle", x: W / 2, y: H / 2 - 72, r: 10, boost: 0.26 },
+{ type: "circle", x: W / 2 - 72, y: H / 2 + 28, r: 10, boost: 0.26 },
+{ type: "circle", x: W / 2 + 72, y: H / 2 + 28, r: 10, boost: 0.26 },
+{ type: "circle", x: W / 2, y: H / 2 + 82, r: 10, boost: 0.27 }
 ]
 },
 {
-name: "Final Firewall",
-goal: 6,
-ballSpeed: 5.95,
-maxSpeed: 12.7,
+name: "Final Firewall", goal: 6, ballSpeed: 5.75, maxSpeed: 12.15,
 hazards: [
-{ type: "rect", x: W / 2 - 10, y: 54, w: 20, h: 88, vy: 1.45, minY: 44, maxY: 168, bounce: 0.31 },
-{ type: "rect", x: W / 2 - 10, y: 196, w: 20, h: 88, vy: -1.45, minY: 164, maxY: 252, bounce: 0.31 },
-{ type: "rect", x: W / 2 - 10, y: 338, w: 20, h: 88, vy: 1.45, minY: 312, maxY: 392, bounce: 0.31 },
-{ type: "circle", x: 202, y: 144, r: 16, vx: 1.1, minX: 160, maxX: 286, boost: 0.46 },
-{ type: "circle", x: 438, y: 336, r: 16, vx: -1.1, minX: 354, maxX: 480, boost: 0.46 },
-{ type: "rect", x: 98, y: H / 2 - 60, w: 12, h: 120, bounce: 0.28 },
-{ type: "rect", x: W - 110, y: H / 2 - 60, w: 12, h: 120, bounce: 0.28 }
+{ type: "rect", x: W / 2 - 7, y: 82, w: 14, h: 48, vy: 0.32, minY: 70, maxY: 150, bounce: 0.21 },
+{ type: "rect", x: W / 2 - 7, y: 218, w: 14, h: 48, vy: -0.32, minY: 198, maxY: 234, bounce: 0.21 },
+{ type: "rect", x: W / 2 - 7, y: 354, w: 14, h: 48, vy: 0.32, minY: 330, maxY: 376, bounce: 0.21 },
+{ type: "circle", x: 214, y: 158, r: 10, vx: 0.24, minX: 182, maxX: 272, boost: 0.28 },
+{ type: "circle", x: 426, y: 322, r: 10, vx: -0.24, minX: 368, maxX: 458, boost: 0.28 }
 ]
 }
 ]
@@ -2079,7 +2050,11 @@ x: Math.round(ball.x * 100) / 100,
 y: Math.round(ball.y * 100) / 100,
 vx: Math.round(ball.vx * 100) / 100,
 vy: Math.round(ball.vy * 100) / 100,
-lastScored: ball.lastScored
+lastScored: ball.lastScored,
+rallyLaunchFramesRemaining,
+rallyLaunchTargetSpeed,
+rallySpawnPulseX,
+rallySpawnPulseY
 },
 hazards: serializeLanHazards(),
 paused,
@@ -2115,6 +2090,10 @@ ball.y = clamp(Number(state.ball.y) || ball.y, visiblePlayfieldBounds().top, vis
 ball.vx = clamp(Number(state.ball.vx) || 0, -20, 20);
 ball.vy = clamp(Number(state.ball.vy) || 0, -20, 20);
 ball.lastScored = clamp(Math.round(Number(state.ball.lastScored) || 0), -1, 1);
+rallyLaunchFramesRemaining = clamp(Math.round(Number(state.ball.rallyLaunchFramesRemaining) || 0), 0, RALLY_LAUNCH_RAMP_FRAMES);
+rallyLaunchTargetSpeed = clamp(Number(state.ball.rallyLaunchTargetSpeed) || 0, 0, 20);
+rallySpawnPulseX = clamp(Number(state.ball.rallySpawnPulseX) || ball.x + BALL_HALF, 0, W);
+rallySpawnPulseY = clamp(Number(state.ball.rallySpawnPulseY) || ball.y + BALL_HALF, 0, H);
 }
 if (Array.isArray(state.hazards)) {
 state.hazards.forEach((source) => {
@@ -2301,37 +2280,29 @@ horizon: 145,
 label: 46
 };
 }
-if (levelNumber === 16) {
+if (levelNumber >= 13 && levelNumber <= 18) {
+const lateGameCpu = [
+{ reaction: 0.144, maxMove: 6.20, prediction: 0.79, error: 19.5, deadZone: 5.7, horizon: 210, label: 76 },
+{ reaction: 0.1385, maxMove: 5.92, prediction: 0.715, error: 28.0, deadZone: 7.8, horizon: 197, label: 78 },
+{ reaction: 0.145, maxMove: 6.25, prediction: 0.80, error: 20.0, deadZone: 5.6, horizon: 212, label: 80 },
+{ reaction: 0.143, maxMove: 6.15, prediction: 0.77, error: 23.0, deadZone: 6.4, horizon: 208, label: 82 },
+{ reaction: 0.147, maxMove: 6.35, prediction: 0.82, error: 19.0, deadZone: 5.2, horizon: 216, label: 84 },
+{ reaction: 0.155, maxMove: 6.70, prediction: 0.90, error: 11.0, deadZone: 3.0, horizon: 232, label: 86 }
+];
+const base = lateGameCpu[levelNumber - 13];
+// Campaign-only comeback pressure relief. It activates only while the CPU leads,
+// helping a struggling player recover without weakening Custom Game or Two Player.
+const deficit = mode === 1 ? Math.max(0, right.score - left.score) : 0;
+const assist = clamp(deficit / 2, 0, 1);
+if (assist <= 0) return base;
 return {
-reaction: 0.145,
-maxMove: 6.35,
-prediction: 0.78,
-error: 18,
-deadZone: 5.5,
-horizon: 205,
-label: 82
-};
-}
-if (levelNumber === 17) {
-return {
-reaction: 0.143,
-maxMove: 6.2,
-prediction: 0.76,
-error: 20,
-deadZone: 5.8,
-horizon: 202,
-label: 81
-};
-}
-if (levelNumber === 18) {
-return {
-reaction: 0.153,
-maxMove: 6.6,
-prediction: 0.84,
-error: 14,
-deadZone: 4.3,
-horizon: 220,
-label: 88
+reaction: base.reaction * lerp(1, 0.62, assist),
+maxMove: base.maxMove * lerp(1, 0.65, assist),
+prediction: base.prediction * lerp(1, 0.55, assist),
+error: base.error + 30 * assist,
+deadZone: base.deadZone + 7 * assist,
+horizon: Math.round(base.horizon * lerp(1, 0.90, assist)),
+label: base.label
 };
 }
 return {
@@ -3316,6 +3287,11 @@ retryLevel(true);
 return;
 }
 autoHideMenusForGameplay();
+// Manual serves use the same flash and one-second gentle launch as Campaign.
+// This covers local and LAN Two Player on Android as well.
+if (waitingForServe && mode === 2) {
+beginRallyLaunchRamp();
+}
 waitingForServe = false;
 beep(440, 0.04);
 }
@@ -3478,6 +3454,42 @@ const vxSign = bossBall.vx < 0 ? -1 : 1;
 bossBall.vx = vxSign * Math.sqrt(Math.max(0.5, currentSpeed * currentSpeed - bossBall.vy * bossBall.vy));
 return bossBall;
 }
+function beginBossBallLaunchRamp(bossBall) {
+const targetSpeed = Math.max(0.001, Math.hypot(bossBall.vx, bossBall.vy));
+bossBall.rallyLaunchTargetSpeed = targetSpeed;
+bossBall.rallyLaunchFramesRemaining = RALLY_LAUNCH_RAMP_FRAMES;
+bossBall.rallySpawnPulseX = bossBall.x + BALL_HALF;
+bossBall.rallySpawnPulseY = bossBall.y + BALL_HALF;
+bossBall.vx *= RALLY_LAUNCH_START_SPEED_SCALE;
+bossBall.vy *= RALLY_LAUNCH_START_SPEED_SCALE;
+return bossBall;
+}
+function updateBossBallLaunchRamp(bossBall) {
+const framesRemaining = Number(bossBall.rallyLaunchFramesRemaining) || 0;
+const targetSpeed = Number(bossBall.rallyLaunchTargetSpeed) || 0;
+if (framesRemaining <= 0 || targetSpeed <= 0) return;
+const elapsed = RALLY_LAUNCH_RAMP_FRAMES - framesRemaining + 1;
+const progress = clamp(elapsed / RALLY_LAUNCH_RAMP_FRAMES, 0, 1);
+const eased = progress * progress * (3 - 2 * progress);
+const desiredSpeed = targetSpeed * lerp(RALLY_LAUNCH_START_SPEED_SCALE, 1, eased);
+const currentSpeed = Math.hypot(bossBall.vx, bossBall.vy);
+if (currentSpeed > 0.001) {
+const scale = desiredSpeed / currentSpeed;
+bossBall.vx *= scale;
+bossBall.vy *= scale;
+}
+bossBall.rallyLaunchFramesRemaining = framesRemaining - 1;
+if (bossBall.rallyLaunchFramesRemaining <= 0) {
+const finalSpeed = Math.hypot(bossBall.vx, bossBall.vy);
+if (finalSpeed > 0.001) {
+const finalScale = targetSpeed / finalSpeed;
+bossBall.vx *= finalScale;
+bossBall.vy *= finalScale;
+}
+bossBall.rallyLaunchFramesRemaining = 0;
+bossBall.rallyLaunchTargetSpeed = 0;
+}
+}
 function createBossBall(index = 0, direction = null, useReceiverSideSpawn = false) {
 const bounds = visiblePlayfieldBounds();
 const speed = BOSS_LEVEL.ballSpeed + index * 0.18;
@@ -3516,9 +3528,14 @@ prevX: spawn.x,
 prevY: spawn.y,
 vx,
 vy,
-id: Date.now() + Math.random() + index
+id: Date.now() + Math.random() + index,
+rallyLaunchFramesRemaining: 0,
+rallyLaunchTargetSpeed: 0,
+rallySpawnPulseX: spawn.x + BALL_HALF,
+rallySpawnPulseY: spawn.y + BALL_HALF
 };
-return applyBossSpawnEscapeAngle(bossBall, speed, BOSS_LEVEL);
+applyBossSpawnEscapeAngle(bossBall, speed, BOSS_LEVEL);
+return beginBossBallLaunchRamp(bossBall);
 }
 function bossBallRect(bossBall) {
 return { x: bossBall.x, y: bossBall.y, w: BALL_SIZE, h: BALL_SIZE };
@@ -3748,6 +3765,7 @@ bossBalls.push(createBossBall(bossBalls.length, 1));
 }
 for (let i = 0; i < bossBalls.length; i++) {
 const bossBall = bossBalls[i];
+updateBossBallLaunchRamp(bossBall);
 bossBall.prevX = bossBall.x;
 bossBall.prevY = bossBall.y;
 bossBall.x += bossBall.vx;
@@ -4553,7 +4571,32 @@ drawHealthBar(W - 238, 34, 204, 12, bossEnemyHealth, BOSS_ENEMY_MAX_HEALTH, "BOS
 ctx.fillStyle = "rgba(255, 255, 255, 0.72)";
 drawText(`SECRET BOSS - ${BOSS_LEVEL.name}`, W / 2, 62, 12);
 }
+function drawBossRallySpawnPulses() {
+ctx.save();
+for (const bossBall of bossBalls) {
+const framesRemaining = Number(bossBall.rallyLaunchFramesRemaining) || 0;
+if (framesRemaining <= 0) continue;
+const progress = 1 - framesRemaining / RALLY_LAUNCH_RAMP_FRAMES;
+const radius = lerp(RALLY_SPAWN_PULSE_START_RADIUS, RALLY_SPAWN_PULSE_END_RADIUS, progress);
+const alpha = (1 - progress) * 0.82;
+ctx.globalAlpha = alpha;
+ctx.strokeStyle = currentCampaign().accent;
+ctx.lineWidth = 2;
+ctx.shadowColor = currentCampaign().accent;
+ctx.shadowBlur = 14;
+ctx.beginPath();
+ctx.arc(bossBall.rallySpawnPulseX, bossBall.rallySpawnPulseY, radius, 0, Math.PI * 2);
+ctx.stroke();
+ctx.globalAlpha = alpha * 0.42;
+ctx.lineWidth = 1;
+ctx.beginPath();
+ctx.arc(bossBall.rallySpawnPulseX, bossBall.rallySpawnPulseY, radius * 0.58, 0, Math.PI * 2);
+ctx.stroke();
+}
+ctx.restore();
+}
 function drawBossBalls() {
+drawBossRallySpawnPulses();
 ctx.save();
 ctx.fillStyle = currentCampaign().accent;
 ctx.shadowColor = currentCampaign().accent;
