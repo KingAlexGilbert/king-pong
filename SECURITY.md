@@ -9,7 +9,7 @@ When reporting a security issue, please include:
 - A clear description of the issue
 - Steps to reproduce it
 - What version of King Pong you tested
-- Whether the issue affects Android, Windows, web, or LAN play
+- Whether the issue affects Android, Windows, Linux, web, or LAN play
 
 ## LAN Play Note
 
