@@ -10,7 +10,7 @@ You can contribute by:
 
 - Reporting bugs
 - Suggesting improvements
-- Testing the Android or Windows versions
+- Testing the Android, Linux, or Windows versions
 - Improving documentation
 - Forking the project and experimenting with changes
 - Submitting pull requests for focused fixes or improvements
@@ -21,7 +21,7 @@ Please keep King Pong's core identity in mind:
 
 - Retro Pong-inspired arcade campaign gameplay
 - Simple, playable, lightweight design
-- Android and Windows support
+- Android, Windows, and Linux support
 - Save slots and progression
 - Controller, touch, and keyboard support where possible
 
@@ -35,14 +35,14 @@ When submitting a pull request:
 2. Explain why the change is useful.
 3. Keep changes focused when possible.
 4. Test the game before submitting.
-5. Mention whether the change affects Android, Windows, web, or multiple versions.
+5. Mention whether the change affects Android, Windows, Linux, web, or multiple versions.
 
 ## Bug Reports
 
 When reporting a bug, please include:
 
 - The version of King Pong you used
-- Whether you tested Android, Windows installer, Windows portable, or web
+- Whether you tested Android, Windows installer, Linux Appiamge, Linux .deb, Windows portable, or web
 - Steps to reproduce the issue
 - What you expected to happen
 - What actually happened
