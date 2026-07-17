@@ -981,7 +981,14 @@ window.visualViewport.addEventListener("resize", handleViewportChange);
 }
 const PADDLE_W = 8;
 const PADDLE_H = 64;
-const PADDLE_SPEED = 6;
+// Human paddles are 20% faster so keyboard, controller, and LAN input feel less sluggish.
+const PADDLE_SPEED = 7.2;
+// Touch drags gain a small amount of extra travel while preserving direct paddle control.
+const TOUCH_DRAG_GAIN = 1.18;
+const TWO_FINGER_TAP_MAX_START_GAP_MS = 180;
+const TWO_FINGER_TAP_MAX_DURATION_MS = 360;
+const TWO_FINGER_TAP_MAX_MOVEMENT_PX = 24;
+const RESUME_COUNTDOWN_MS = 3000;
 const PADDLE_MARGIN = 32;
 const BALL_SIZE = 8;
 const BALL_HALF = BALL_SIZE / 2;
@@ -1028,6 +1035,9 @@ let gamepadSignature = "";
 let gamepadButtonState = new Map();
 let touchInputActive = false;
 let recentTwoFingerPauseAt = 0;
+let twoFingerTapCandidate = null;
+let resumeCountdownEndAt = 0;
+let lastResumeCountdownNumber = 0;
 const activeTouchPointers = new Map();
 const touchPaddleTargets = { left: null, right: null };
 const LAN_SIGNAL_VERSION = 1;
@@ -2089,14 +2099,57 @@ const dpad = (gamepadButtonPressed(pad, GAMEPAD_BUTTONS.DPAD_DOWN) ? 1 : 0)
 - (gamepadButtonPressed(pad, GAMEPAD_BUTTONS.DPAD_UP) ? 1 : 0);
 return clamp(stick + dpad, -1, 1);
 }
+function resumeCountdownRemainingMs() {
+if (!paused || resumeCountdownEndAt <= 0) return 0;
+return Math.max(0, resumeCountdownEndAt - performance.now());
+}
+function hasResumeCountdown() {
+return paused && resumeCountdownEndAt > 0;
+}
+function updateResumeCountdown() {
+if (!hasResumeCountdown()) {
+lastResumeCountdownNumber = 0;
+return false;
+}
+const remainingMs = resumeCountdownRemainingMs();
+if (remainingMs > 0) {
+const countdownNumber = Math.max(1, Math.ceil(remainingMs / 1000));
+if (countdownNumber !== lastResumeCountdownNumber) {
+lastResumeCountdownNumber = countdownNumber;
+// Short arcade ticks match the visible 3-2-1 countdown.
+beep(countdownNumber === 1 ? 720 : 600, 0.085, 0.06);
+}
+return true;
+}
+resumeCountdownEndAt = 0;
+lastResumeCountdownNumber = 0;
+paused = false;
+// A brighter tone confirms that play has resumed.
+beep(1040, 0.12, 0.065);
+autoHideMenusForGameplay();
+return false;
+}
 function togglePause() {
 if (creditsActive) return;
-paused = !paused;
-if (paused) {
+if (hasResumeCountdown()) {
+// A second pause command during the countdown cancels the auto-resume.
+resumeCountdownEndAt = 0;
+lastResumeCountdownNumber = 0;
+paused = true;
 setMenusVisible(true);
-} else {
-autoHideMenusForGameplay();
+return;
 }
+if (paused) {
+// Keep the entire match, including both paddles, frozen during the resume countdown.
+lastResumeCountdownNumber = 0;
+resumeCountdownEndAt = performance.now() + RESUME_COUNTDOWN_MS;
+autoHideMenusForGameplay();
+return;
+}
+resumeCountdownEndAt = 0;
+lastResumeCountdownNumber = 0;
+paused = true;
+setMenusVisible(true);
 }
 function setTouchInputActive() {
 if (!touchInputActive) {
@@ -2128,12 +2181,88 @@ return "left";
 function paddleForTouchSide(side) {
 return side === "right" ? right : left;
 }
+function touchTravelDistance(touch) {
+return Math.hypot(
+(touch.endClientX ?? touch.startClientX) - touch.startClientX,
+(touch.endClientY ?? touch.startClientY) - touch.startClientY
+);
+}
+function beginTwoFingerTapCandidate() {
+if (activeTouchPointers.size > 2) {
+if (twoFingerTapCandidate) twoFingerTapCandidate.valid = false;
+return;
+}
+if (activeTouchPointers.size !== 2) return;
+const touches = Array.from(activeTouchPointers.entries());
+const startGap = Math.abs(touches[0][1].startTime - touches[1][1].startTime);
+const bothStationary = touches.every(([, touch]) => touchTravelDistance(touch) <= TWO_FINGER_TAP_MAX_MOVEMENT_PX);
+if (startGap > TWO_FINGER_TAP_MAX_START_GAP_MS || !bothStationary) {
+twoFingerTapCandidate = null;
+return;
+}
+twoFingerTapCandidate = {
+startedAt: Math.max(touches[0][1].startTime, touches[1][1].startTime),
+valid: true,
+released: new Set(),
+pointers: new Map(touches.map(([pointerId, touch]) => [pointerId, {
+startClientX: touch.startClientX,
+startClientY: touch.startClientY,
+endClientX: touch.endClientX,
+endClientY: touch.endClientY
+}]))
+};
+}
+function updateTwoFingerTapCandidate(pointerId, clientX, clientY) {
+if (!twoFingerTapCandidate || !twoFingerTapCandidate.pointers.has(pointerId)) return;
+const pointer = twoFingerTapCandidate.pointers.get(pointerId);
+pointer.endClientX = clientX;
+pointer.endClientY = clientY;
+const distance = Math.hypot(clientX - pointer.startClientX, clientY - pointer.startClientY);
+if (distance > TWO_FINGER_TAP_MAX_MOVEMENT_PX) {
+twoFingerTapCandidate.valid = false;
+}
+}
+function finishTwoFingerTapPointer(pointerId, clientX, clientY) {
+if (!twoFingerTapCandidate || !twoFingerTapCandidate.pointers.has(pointerId)) return false;
+updateTwoFingerTapCandidate(pointerId, clientX, clientY);
+twoFingerTapCandidate.released.add(pointerId);
+if (twoFingerTapCandidate.released.size === twoFingerTapCandidate.pointers.size) {
+const now = performance.now();
+const shouldToggle = twoFingerTapCandidate.valid
+&& now - twoFingerTapCandidate.startedAt <= TWO_FINGER_TAP_MAX_DURATION_MS
+&& now - recentTwoFingerPauseAt > 550;
+twoFingerTapCandidate = null;
+if (shouldToggle) {
+recentTwoFingerPauseAt = now;
+requestTogglePause();
+}
+}
+return true;
+}
+function cancelTwoFingerTapPointer(pointerId) {
+if (!twoFingerTapCandidate || !twoFingerTapCandidate.pointers.has(pointerId)) return;
+twoFingerTapCandidate.valid = false;
+twoFingerTapCandidate.released.add(pointerId);
+if (twoFingerTapCandidate.released.size === twoFingerTapCandidate.pointers.size) {
+twoFingerTapCandidate = null;
+}
+}
 function refreshTouchPaddleTargets() {
 touchPaddleTargets.left = null;
 touchPaddleTargets.right = null;
+if (paused) {
+// Rebase active touches while frozen so movement made during the pause or
+// resume countdown cannot be queued into an instant paddle jump at "GO".
+for (const touch of activeTouchPointers.values()) {
+const paddle = paddleForTouchSide(touch.side);
+touch.startGameY = touch.y;
+touch.startPaddleY = paddle ? paddle.y : touch.y - PADDLE_H / 2;
+}
+return;
+}
 for (const touch of activeTouchPointers.values()) {
 const deltaY = touch.y - touch.startGameY;
-const targetY = touch.startPaddleY + deltaY;
+const targetY = touch.startPaddleY + deltaY * TOUCH_DRAG_GAIN;
 touchPaddleTargets[touch.side] = clamp(targetY, 0, H - PADDLE_H);
 }
 }
@@ -2166,13 +2295,9 @@ endClientX: e.clientX,
 endClientY: e.clientY,
 startTime: performance.now()
 });
-if (activeTouchPointers.size >= 2) {
-const now = performance.now();
-if (now - recentTwoFingerPauseAt > 550) {
-recentTwoFingerPauseAt = now;
-requestTogglePause();
-}
-}
+// Only a completed, mostly stationary two-finger tap pauses. A fast drag plus
+// an incidental second contact no longer opens the pause/menu overlay.
+beginTwoFingerTapCandidate();
 refreshTouchPaddleTargets();
 try {
 canvas.setPointerCapture(e.pointerId);
@@ -2191,6 +2316,7 @@ touch.x = point.x;
 touch.y = point.y;
 touch.endClientX = e.clientX;
 touch.endClientY = e.clientY;
+updateTwoFingerTapCandidate(e.pointerId, e.clientX, e.clientY);
 refreshTouchPaddleTargets();
 }
 function handleCanvasPointerUp(e) {
@@ -2201,9 +2327,10 @@ e.preventDefault();
 const touch = activeTouchPointers.get(e.pointerId);
 touch.endClientX = e.clientX;
 touch.endClientY = e.clientY;
+const consumedByTwoFingerTap = finishTwoFingerTapPointer(e.pointerId, e.clientX, e.clientY);
 activeTouchPointers.delete(e.pointerId);
 refreshTouchPaddleTargets();
-if (shouldServeFromTouchTap(touch)) {
+if (!consumedByTwoFingerTap && shouldServeFromTouchTap(touch)) {
 requestServeOrContinue();
 }
 }
@@ -2211,6 +2338,7 @@ function handleCanvasPointerCancel(e) {
 if (!activeTouchPointers.has(e.pointerId)) {
 return;
 }
+cancelTwoFingerTapPointer(e.pointerId);
 activeTouchPointers.delete(e.pointerId);
 refreshTouchPaddleTargets();
 }
@@ -2681,6 +2809,7 @@ rallySpawnPulseY
 },
 hazards: serializeLanHazards(),
 paused,
+resumeCountdownMs: Math.round(resumeCountdownRemainingMs()),
 waitingForServe,
 gameOver,
 levelCleared,
@@ -2728,6 +2857,10 @@ hazard.hitFlash = clamp(Math.round(Number(source.hitFlash) || 0), 0, 20);
 });
 }
 paused = Boolean(state.paused);
+const syncedResumeCountdownMs = clamp(Number(state.resumeCountdownMs) || 0, 0, RESUME_COUNTDOWN_MS);
+resumeCountdownEndAt = paused && syncedResumeCountdownMs > 0
+? performance.now() + syncedResumeCountdownMs
+: 0;
 waitingForServe = Boolean(state.waitingForServe);
 gameOver = Boolean(state.gameOver);
 levelCleared = Boolean(state.levelCleared);
@@ -5117,6 +5250,16 @@ sendLanInput(gamepads);
 clampGamePiecesToVisiblePlayfield();
 return;
 }
+const resumeCountdownPending = hasResumeCountdown();
+if (resumeCountdownPending) {
+// Freeze every paddle input source during 3-2-1 and discard queued LAN targets.
+lanRemoteInput.axis = 0;
+lanRemoteInput.targetY = null;
+if (updateResumeCountdown()) {
+sendLanState(false);
+return;
+}
+}
 if (paused) {
 sendLanState(false);
 return;
@@ -5529,7 +5672,12 @@ drawText(mode === 4 ? `Health ${bossPlayerHealth}/${BOSS_PLAYER_MAX_HEALTH} vs $
 if (paused) {
 drawOverlay();
 ctx.fillStyle = "#fff";
+if (hasResumeCountdown()) {
+const countdownNumber = Math.max(1, Math.ceil(resumeCountdownRemainingMs() / 1000));
+drawText(String(countdownNumber), W / 2, H / 2 - 58, 64);
+} else {
 drawText("PAUSED", W / 2, H / 2 - 100, 24);
+}
 } else if (waitingForServe || gameOver || levelCleared || campaignCleared) {
 drawOverlay();
 }
