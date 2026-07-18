@@ -9,6 +9,7 @@
 - Prevented paddles from moving during the pause countdown.
 - Blocked keyboard, controller, touch, and LAN movement until the countdown ends.
 - Rebalanced the end game levels to be easier.
+- Increased player paddle speed by 20%
 
 ## King Pong v1.1.1 - Rally System Improvements
 
