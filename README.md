@@ -93,15 +93,15 @@ If you trust this official GitHub release, choose **More info → Run anyway** i
 
 Download one of the Linux versions from the [latest GitHub release](https://github.com/KingAlexGilbert/king-pong/releases/latest).
 
-- `King-Pong-Linux-v1.1.1-all.deb` — recommended for Linux Mint, Ubuntu, Debian, and other Debian-based distributions
-- `King-Pong-Linux-v1.1.1-thin-x86_64.AppImage` — thin x86-64 version that uses the system WebKitGTK runtime
+- `King-Pong-Linux-v1.1.2-all.deb` — recommended for Linux Mint, Ubuntu, Debian, and other Debian-based distributions
+- `King-Pong-Linux-v1.1.2-thin-x86_64.AppImage` — thin x86-64 version that uses the system WebKitGTK runtime
 
 #### Install the Debian Package
 
 Download the `.deb` file, open it with your distribution's software installer, or install it from a terminal:
 
 ```bash
-sudo apt install ./King-Pong-Linux-v1.1.1-all.deb
+sudo apt install ./King-Pong-Linux-v1.1.2-all.deb
 ```
 
 The package manager will automatically install the required GTK and WebKitGTK dependencies.
@@ -121,8 +121,8 @@ On an older Debian-based distribution that does not provide WebKitGTK 4.1, insta
 Make the AppImage executable and run it:
 
 ```bash
-chmod +x King-Pong-Linux-v1.1.1-thin-x86_64.AppImage
-./King-Pong-Linux-v1.1.1-thin-x86_64.AppImage
+chmod +x King-Pong-Linux-v1.1.2-thin-x86_64.AppImage
+./King-Pong-Linux-v1.1.2-thin-x86_64.AppImage
 ```
 
 The thin AppImage is much smaller than a fully self-contained AppImage because it uses the WebKitGTK libraries already installed on the computer.

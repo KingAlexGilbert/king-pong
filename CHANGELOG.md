@@ -1,5 +1,23 @@
 # Changelog
 
+## King Pong v1.1.2 - Faster Paddles and Pause Changes
+
+- Added a countdown when resuming a paused game.
+- Made pause detecting on touch screen more sophisticated
+- Added sound effects to the 3-2-1 countdown after unpausing.
+- Added a higher-pitched tone when gameplay resumes.
+- Prevented paddles from moving during the pause countdown.
+- Blocked keyboard, controller, touch, and LAN movement until the countdown ends.
+- Rebalanced the end game levels to be easier.
+- Increased player paddle speed by 20%
+
+## King Pong v1.1.1 - Rally System Improvements
+
+- Each rally now begins with a flash, and the ball moves at 20% speed for approximately one second.
+- The first rally of each round is served toward the CPU.
+- Each subsequent rally alternates between the player and the CPU.
+- Fixed the Windows “Exit Game” button.
+
 ## v1.1.0 - Progressive Paddle Shapes and Late-Game Rebalance
 
 - Added progressive paddle shapes and altered ball rebound trajectories for levels 3–18.
