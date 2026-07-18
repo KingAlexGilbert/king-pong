@@ -1,0 +1,6 @@
+- Added sound effects to the 3-2-1 countdown after unpausing.
+- Added a higher-pitched tone when gameplay resumes.
+- Prevented paddles from moving during the pause countdown.
+- Blocked keyboard, controller, touch, and LAN movement until the countdown ends.
+- Applied the changes to both the Android and Windows versions.
+- Rebalanced the end game levels to be easier.
