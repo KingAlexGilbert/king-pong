@@ -1,0 +1,60 @@
+name: Android Build
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "android/**"
+      - ".github/workflows/android-build.yml"
+
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "android/**"
+      - ".github/workflows/android-build.yml"
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build Android Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
+
+      - name: Make Gradle wrapper executable
+        working-directory: android
+        run: chmod +x gradlew
+
+      - name: Build release APK
+        working-directory: android
+        run: ./gradlew --no-daemon clean assembleRelease
+
+      - name: Upload built APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: king-pong-unsigned-release
+          path: android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error

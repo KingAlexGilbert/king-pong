@@ -12,9 +12,11 @@ android {
         targetSdk = 36
         versionCode = 6
         versionName = "1.1.2"
+    }
 
-        // The game handles its own localization inside assets/index.html.
-        resourceConfigurations += listOf("en")
+    // The game handles its own localization inside assets/index.html.
+    androidResources {
+        localeFilters += listOf("en")
     }
 
     buildFeatures {
@@ -22,7 +24,6 @@ android {
         buildConfig = false
         compose = false
         prefab = false
-        renderScript = false
         resValues = false
         shaders = false
         viewBinding = false
@@ -32,10 +33,12 @@ android {
         debug {
             isDebuggable = true
         }
+
         release {
             isDebuggable = false
             isMinifyEnabled = true
             isShrinkResources = true
+
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -54,6 +57,7 @@ android {
                 "META-INF/NOTICE*"
             )
         }
+
         jniLibs {
             useLegacyPackaging = false
         }
