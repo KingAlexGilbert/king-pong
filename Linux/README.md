@@ -1,6 +1,6 @@
 # King Pong Linux WebKitGTK source
 
-This folder builds the compact Linux editions of King Pong v1.1.0.
+This folder builds the compact Linux editions of King Pong v1.1.2.
 
 - The Debian package uses the distribution-provided WebKitGTK runtime.
 - The thin AppImage uses the same host WebKitGTK/Python GI dependencies; it is
@@ -16,7 +16,7 @@ sudo apt install dpkg-dev
 ./build-deb.sh
 ```
 
-Output: `dist/King-Pong-Linux-v1.1.0-all.deb`
+Output: `dist/King-Pong-Linux-v1.1.2-all.deb`
 
 ## Build the thin AppImage
 
@@ -26,7 +26,7 @@ Install or download `appimagetool`, then run:
 APPIMAGETOOL=/path/to/appimagetool ./build-appimage.sh
 ```
 
-Output: `dist/King-Pong-Linux-v1.1.0-thin-x86_64.AppImage`
+Output: `dist/King-Pong-Linux-v1.1.2-thin-x86_64.AppImage`
 
 ## Runtime dependencies
 
