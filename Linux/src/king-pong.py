@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-"""GTK 3 / WebKitGTK launcher for King Pong 1.1.0."""
+"""GTK 3 / WebKitGTK launcher for King Pong 1.1.2."""
 
 import os
 import sys
