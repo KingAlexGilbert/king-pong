@@ -2,6 +2,7 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net48</TargetFramework>
+    <Version>1.1.2</Version>
     <UseWindowsForms>true</UseWindowsForms>
     <AssemblyName>KingPong-Desktop-HD-WebView2</AssemblyName>
     <RootNamespace>KingPongWebView2</RootNamespace>
@@ -15,8 +16,9 @@
     <Authors>King Alex Gilbert</Authors>
     <Description>King Pong Desktop HD WebView2 fullscreen build</Description>
     <Copyright>King Alex Gilbert</Copyright>
-    <AssemblyVersion>1.0.0.0</AssemblyVersion>
-    <FileVersion>1.0.0.0</FileVersion>
+    <AssemblyVersion>1.1.2.0</AssemblyVersion>
+    <FileVersion>1.1.2.0</FileVersion>
+    <InformationalVersion>1.1.2</InformationalVersion>
     <ApplicationIcon>king_pong.ico</ApplicationIcon>
   </PropertyGroup>
 

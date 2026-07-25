@@ -5,7 +5,8 @@ ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 BUILD_DIR="$ROOT_DIR/build-appimage"
 APPDIR="$BUILD_DIR/KingPong.AppDir"
 OUTPUT_DIR="$ROOT_DIR/dist"
-OUTPUT_FILE="$OUTPUT_DIR/King-Pong-Linux-v1.1.0-thin-x86_64.AppImage"
+VERSION=$(awk '/^Version:/ {print $2}' "$ROOT_DIR/debian/control")
+OUTPUT_FILE="$OUTPUT_DIR/King-Pong-Linux-v${VERSION%-*}-thin-x86_64.AppImage"
 APPIMAGETOOL=${APPIMAGETOOL:-appimagetool}
 RUNTIME_FILE=${RUNTIME_FILE:-}
 
