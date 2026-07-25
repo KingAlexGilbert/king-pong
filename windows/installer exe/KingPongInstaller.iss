@@ -2,7 +2,7 @@
 ; Build with Inno Setup 6: https://jrsoftware.org/isinfo.php
 
 #define MyAppName "King Pong"
-#define MyAppVersion "1.0.0"
+#define MyAppVersion "1.1.2"
 #define MyAppPublisher "King Alex Gilbert"
 #define MyAppExeName "KingPong-Desktop-HD-WebView2.exe"
 #define MyAppFolder "KingPong-WebView2-Portable"
