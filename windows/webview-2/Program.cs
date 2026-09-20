@@ -3,6 +3,7 @@ using System.Drawing;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
+using System.Threading;
 using System.Windows.Forms;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
@@ -21,7 +22,13 @@ namespace KingPongWebView2
 
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new KingPongForm());
+            // Presence marker for Setup/Uninstall, not a single-instance lock.
+            // Multiple game windows (including local LAN testing) still work.
+            using (var running = new Mutex(false, @"Local\KingPong.DesktopHD.Running"))
+            using (var form = new KingPongForm())
+            {
+                Application.Run(form);
+            }
         }
 
         private static void EnableHighDpiMode()
@@ -58,22 +65,29 @@ namespace KingPongWebView2
         }
 
         [DllImport("user32.dll")]
+        [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
         private static extern bool SetProcessDpiAwarenessContext(IntPtr dpiContext);
 
         [DllImport("shcore.dll")]
+        [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
         private static extern int SetProcessDpiAwareness(PROCESS_DPI_AWARENESS awareness);
     }
 
     public sealed class KingPongForm : Form
     {
         private readonly WebView2 webView;
+        private readonly Uri gameUri;
+        private Icon ownedIcon;
         private Rectangle windowedBounds;
         private FormBorderStyle windowedBorderStyle;
         private bool isFullscreen;
         private bool exitRequested;
+        private bool isClosing;
+        private bool failureShown;
 
         public KingPongForm()
         {
+            gameUri = new Uri(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "index.html"));
             Text = "King Pong Desktop HD";
             BackColor = Color.Black;
             KeyPreview = true;
@@ -81,7 +95,13 @@ namespace KingPongWebView2
             StartPosition = FormStartPosition.Manual;
             WindowState = FormWindowState.Normal;
             ShowInTaskbar = true;
-            MinimumSize = new Size(960, 720);
+            // Keep the initial window within the work area on small/scaled displays.
+            Rectangle workArea = Screen.PrimaryScreen.WorkingArea;
+            MinimumSize = new Size(Math.Min(960, workArea.Width), Math.Min(720, workArea.Height));
+            Size initialSize = new Size(Math.Min(1280, workArea.Width), Math.Min(960, workArea.Height));
+            Bounds = new Rectangle(workArea.Left + (workArea.Width - initialSize.Width) / 2,
+                workArea.Top + (workArea.Height - initialSize.Height) / 2,
+                initialSize.Width, initialSize.Height);
 
             webView = new WebView2
             {
@@ -90,9 +110,14 @@ namespace KingPongWebView2
             };
             Controls.Add(webView);
 
+            // Drives document.visibilitychange in the unchanged HTML when minimized.
+            // Its existing code pauses rendering/audio; do not suspend LAN connections.
+            Resize += (sender, args) =>
+            {
+                if (!isClosing) webView.Visible = WindowState != FormWindowState.Minimized;
+            };
             Load += async (sender, args) => await InitializeWebViewAsync();
             Shown += (sender, args) => ApplyFullscreen();
-            FormClosing += (sender, args) => DisposeWebView();
         }
 
 
@@ -100,11 +125,8 @@ namespace KingPongWebView2
         {
             try
             {
-                string iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "king_pong.ico");
-                if (File.Exists(iconPath))
-                {
-                    Icon = new Icon(iconPath);
-                }
+                ownedIcon = System.Drawing.Icon.ExtractAssociatedIcon(Application.ExecutablePath);
+                Icon = ownedIcon;
             }
             catch
             {
@@ -125,68 +147,137 @@ namespace KingPongWebView2
 
         private async Task InitializeWebViewAsync()
         {
-            string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-            string htmlPath = Path.Combine(baseDir, "index.html");
-
-            if (!File.Exists(htmlPath))
+            try
             {
-                MessageBox.Show(
-                    "index.html was not found next to the EXE. Keep the whole WebView2 app folder together.",
-                    "King Pong Desktop HD",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error);
-                Close();
+                if (!File.Exists(gameUri.LocalPath))
+                {
+                    ShowStartupError("index.html was not found next to the EXE. Keep the whole portable folder together or reinstall King Pong.");
+                    return;
+                }
+
+                // Keep both this path and the file:// page origin unchanged for saves.
+                string profileDir = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "KingPong", "WebView2Profile");
+                Directory.CreateDirectory(profileDir);
+
+                // Retain music autoplay; avoid unrelated/undocumented feature overrides.
+                var options = new CoreWebView2EnvironmentOptions("--autoplay-policy=no-user-gesture-required");
+                var environment = await CoreWebView2Environment.CreateAsync(null, profileDir, options);
+                if (isClosing || IsDisposed) return;
+                await webView.EnsureCoreWebView2Async(environment);
+                if (isClosing || IsDisposed) return;
+
+                webView.ZoomFactor = 1.0;
+                CoreWebView2 core = webView.CoreWebView2;
+                CoreWebView2Settings settings = core.Settings;
+                settings.AreDefaultContextMenusEnabled = false;
+                settings.AreDevToolsEnabled = false;
+                settings.IsStatusBarEnabled = false;
+                settings.AreBrowserAcceleratorKeysEnabled = false;
+                settings.IsZoomControlEnabled = false;
+                settings.IsPinchZoomEnabled = false;
+                settings.IsSwipeNavigationEnabled = false;
+                settings.AreHostObjectsAllowed = false;
+                settings.IsGeneralAutofillEnabled = false;
+                settings.IsPasswordAutosaveEnabled = false;
+                settings.IsWebMessageEnabled = true;
+                // Leave script dialogs enabled: Erase Save uses confirm().
+
+                // Install restrictions BEFORE navigating to any game content.
+                core.NavigationStarting += (sender, args) =>
+                    args.Cancel = !GamePagePolicy.IsAllowed(args.Uri, gameUri);
+                core.FrameNavigationStarting += (sender, args) => args.Cancel = true;
+                core.NewWindowRequested += (sender, args) => args.Handled = true;
+                core.DownloadStarting += (sender, args) => args.Cancel = true;
+                core.PermissionRequested += HandlePermissionRequested;
+                core.WebMessageReceived += HandleWebMessageReceived;
+                core.WindowCloseRequested += (sender, args) =>
+                {
+                    if (GamePagePolicy.IsAllowed(core.Source, gameUri)) RequestExitFromGame();
+                };
+                core.ProcessFailed += (sender, args) =>
+                {
+                    // GPU/utility subprocesses can recover without losing the game.
+                    if (args.ProcessFailedKind == CoreWebView2ProcessFailedKind.BrowserProcessExited ||
+                        args.ProcessFailedKind == CoreWebView2ProcessFailedKind.RenderProcessExited ||
+                        args.ProcessFailedKind == CoreWebView2ProcessFailedKind.RenderProcessUnresponsive)
+                    {
+                        ShowRuntimeError();
+                    }
+                };
+                core.NavigationCompleted += (sender, args) =>
+                {
+                    if (isClosing || IsDisposed) return;
+                    if (args.IsSuccess)
+                    {
+                        if (Form.ActiveForm == this) webView.Focus();
+                    }
+                    else if (args.WebErrorStatus != CoreWebView2WebErrorStatus.OperationCanceled)
+                        ShowRuntimeError();
+                };
+                core.Navigate(gameUri.AbsoluteUri);
+            }
+            catch (WebView2RuntimeNotFoundException)
+            {
+                ShowStartupError("Microsoft Edge WebView2 Runtime is missing. Install the Evergreen Runtime from https://developer.microsoft.com/microsoft-edge/webview2/ and then reopen King Pong.");
+            }
+            catch (Exception error)
+            {
+                // Includes profile permission failures, loader errors and async startup races.
+                ShowStartupError("King Pong could not start its web view. Update/reinstall the Evergreen WebView2 Runtime and check that the app folder is complete.\n\n" + error.Message);
+            }
+        }
+
+        private void HandlePermissionRequested(object sender, CoreWebView2PermissionRequestedEventArgs args)
+        {
+            if (!GamePagePolicy.IsAllowed(args.Uri, gameUri))
+            {
+                args.State = CoreWebView2PermissionState.Deny;
                 return;
             }
 
-            string profileDir = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "KingPong",
-                "WebView2Profile");
-            Directory.CreateDirectory(profileDir);
-
-            string browserArgs = string.Join(" ", new[]
+            // Deny unused sensitive capabilities. Keep other permissions at Default
+            // so clipboard-write/user gestures and future LAN prompts are not broken.
+            switch (args.PermissionKind)
             {
-                "--autoplay-policy=no-user-gesture-required",
-                "--disable-features=msWebOOUI,msPdfOOUI",
-                "--disable-pinch"
-            });
+                case CoreWebView2PermissionKind.Microphone:
+                case CoreWebView2PermissionKind.Camera:
+                case CoreWebView2PermissionKind.Geolocation:
+                case CoreWebView2PermissionKind.Notifications:
+                case CoreWebView2PermissionKind.OtherSensors:
+                case CoreWebView2PermissionKind.ClipboardRead:
+                case CoreWebView2PermissionKind.FileReadWrite:
+                case CoreWebView2PermissionKind.MultipleAutomaticDownloads:
+                    args.State = CoreWebView2PermissionState.Deny;
+                    break;
+            }
+        }
 
-            CoreWebView2EnvironmentOptions options = new CoreWebView2EnvironmentOptions(browserArgs);
-            CoreWebView2Environment environment = await CoreWebView2Environment.CreateAsync(null, profileDir, options);
-            await webView.EnsureCoreWebView2Async(environment);
-            webView.ZoomFactor = 1.0;
+        private void ShowStartupError(string message)
+        {
+            if (isClosing || IsDisposed) return;
+            MessageBox.Show(this, message, Text, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            // Queue shutdown outside any active WebView2 callback.
+            RequestExitFromGame();
+        }
 
-            CoreWebView2Settings settings = webView.CoreWebView2.Settings;
-            settings.AreDefaultContextMenusEnabled = false;
-            settings.AreDevToolsEnabled = false;
-            settings.IsStatusBarEnabled = false;
-            settings.AreBrowserAcceleratorKeysEnabled = false;
-            settings.IsZoomControlEnabled = false;
-            settings.IsWebMessageEnabled = true;
-
-            // The HTML Exit Game button posts the string "kingpong:exit".
-            // Listen for that message and close the native WinForms window.
-            webView.CoreWebView2.WebMessageReceived += HandleWebMessageReceived;
-
-            // window.close() in the HTML reaches this event in WebView2.
-            // Supporting both paths keeps the Exit Game button reliable.
-            webView.CoreWebView2.WindowCloseRequested += (sender, args) => RequestExitFromGame();
-
-            webView.CoreWebView2.ProcessFailed += (sender, args) =>
+        private void ShowRuntimeError()
+        {
+            if (isClosing || IsDisposed || failureShown) return;
+            failureShown = true;
+            // Modal UI inside a WebView2 event causes unsupported reentrancy.
+            BeginInvoke(new Action(() =>
             {
-                MessageBox.Show(
-                    "WebView2 stopped responding. Restart King Pong.",
-                    "King Pong Desktop HD",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Warning);
-            };
-
-            webView.CoreWebView2.Navigate(new Uri(htmlPath).AbsoluteUri);
+                if (!isClosing && !IsDisposed)
+                    MessageBox.Show(this, "WebView2 stopped responding. Close and reopen King Pong. Your saved progress has not been deleted.",
+                        Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }));
         }
 
         private void HandleWebMessageReceived(object sender, CoreWebView2WebMessageReceivedEventArgs args)
         {
+            if (isClosing || !GamePagePolicy.IsAllowed(args.Source, gameUri)) return;
             string message;
 
             try
@@ -215,27 +306,10 @@ namespace KingPongWebView2
 
             exitRequested = true;
 
-            Action exitApplication = () =>
+            // Defer Close/Dispose until WebView2 has returned from its callback.
+            if (IsHandleCreated)
             {
-                try
-                {
-                    Close();
-                }
-                finally
-                {
-                    // Close the WinForms message loop as well, so no hidden WebView2
-                    // process or window keeps the packaged EXE running.
-                    Application.Exit();
-                }
-            };
-
-            if (InvokeRequired)
-            {
-                BeginInvoke(exitApplication);
-            }
-            else
-            {
-                exitApplication();
+                BeginInvoke(new Action(() => { if (!IsDisposed) Close(); }));
             }
         }
 
@@ -287,19 +361,23 @@ namespace KingPongWebView2
             }
         }
 
-        private void DisposeWebView()
+        protected override void OnFormClosing(FormClosingEventArgs args)
         {
-            try
+            base.OnFormClosing(args);
+            if (!args.Cancel) isClosing = true;
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
             {
-                if (webView != null)
-                {
-                    webView.Dispose();
-                }
+                isClosing = true;
+                // Controls are disposed by Form; do not dispose the web view twice.
+                Icon = null;
+                if (ownedIcon != null) ownedIcon.Dispose();
+                ownedIcon = null;
             }
-            catch
-            {
-                // Closing should not be blocked by disposal issues.
-            }
+            base.Dispose(disposing);
         }
     }
 }

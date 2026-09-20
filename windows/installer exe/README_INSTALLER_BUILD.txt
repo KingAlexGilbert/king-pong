@@ -1,24 +1,35 @@
 King Pong Installer Project
 ===========================
 
-This folder builds a Windows installer EXE for King Pong using Inno Setup 6.
+1. Extract the WHOLE windows folder, or copy both complete subfolders:
+   installer exe and webview-2, including webview-2\build-tools.
+   Keep the subfolders beside each other. There is no shared build.bat.
+2. Install a supported .NET SDK, .NET Framework 4.8 Developer Pack, and a current
+   Inno Setup 6 (6.3 or later). See ..\README_WINDOWS.md for download links.
+3. Double-click build-installer.bat. It builds the portable app, validates the
+   x64 files, and compiles the installer; no manual folder copying is needed.
+4. Output: Output\KingPongSetup.exe
+   Portable output: ..\webview-2\dist\KingPong-WebView2-Portable
+5. Run that newly built setup EXE to update the installed game and its version
+   in Windows. Building alone does not update the installed copy.
 
-What this installer does:
-- Installs King Pong to Program Files\King Pong by default
-- Shows the install folder page so users can see/change where it installs
-- Shows the Start Menu folder page so users can choose or skip Start Menu shortcuts
-- Creates a Desktop shortcut by default, with a checkbox to turn it off
-- Uses the King Pong icon for the installer, app, taskbar, and shortcuts
-- Adds a normal Windows uninstaller
-- Keeps game saves separate under %LOCALAPPDATA%\KingPong
-- Does not include a WebView2 runtime check
+If you see "Usage: --package SOURCE PUBLISH STAGE", an older build checker is
+being run. Extract both complete folders from the updated ZIP, including
+webview-2\build-tools\BuildChecks.cs. The new scripts rebuild the checker into
+a fresh temporary folder and verify compatibility before compiling the game.
 
-How to build:
-1. Install Inno Setup 6 from: https://jrsoftware.org/isinfo.php
-2. Double-click build-installer.bat
-3. The installer will be created here:
-   Output\KingPongSetup.exe
+Each launcher has its own build commands and does not call another .bat file.
+For a path-only check, use: build-installer.bat --check-layout --no-pause
 
-Note about UAC and SmartScreen:
-This installer is not code-signed unless you sign it locally with your own trusted code-signing certificate.
-Because it is unsigned, Windows UAC will show Publisher: Unknown and SmartScreen may warn some users.
+The install folder, Start Menu, desktop shortcut, and launch options are kept.
+Setup checks for .NET Framework 4.8 and WebView2, without bundling large runtimes
+or silently downloading/executing prerequisites. Missing prerequisites display
+Microsoft's download URLs and must be installed before continuing.
+
+App version comes from the C# project; the original upgrade AppId is unchanged.
+Installer numeric version fields read the EXE's binary file version, so a Git
+commit suffix in its text ProductVersion cannot cause a VersionInfoVersion error.
+The installer is unsigned unless you sign it with your own trusted certificate.
+This work does not remove Windows UAC or SmartScreen warnings.
+
+Read ..\README_WINDOWS.md and ..\WINDOWS_CHANGES.md before distribution.

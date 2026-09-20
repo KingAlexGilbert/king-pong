@@ -21,3 +21,10 @@ android/build/reports/problems/problems-report.html
 /android/build
 /android/build/reports
 /android/build/reports/problems
+/windows/webview-2/bin
+/windows/webview-2/dist
+/windows/webview-2/obj
+/windows/webview-2/build-tools/obj
+/windows/webview-2/build-tools/bin
+/windows/installer exe/KingPong-WebView2-Portable
+/windows/installer exe/Output
