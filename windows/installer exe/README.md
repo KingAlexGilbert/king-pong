@@ -26,10 +26,5 @@ Setup checks for .NET Framework 4.8 and WebView2, without bundling large runtime
 or silently downloading/executing prerequisites. Missing prerequisites display
 Microsoft's download URLs and must be installed before continuing.
 
-App version comes from the C# project; the original upgrade AppId is unchanged.
-Installer numeric version fields read the EXE's binary file version, so a Git
-commit suffix in its text ProductVersion cannot cause a VersionInfoVersion error.
 The installer is unsigned unless you sign it with your own trusted certificate.
 This work does not remove Windows UAC or SmartScreen warnings.
-
-Read ..\README_WINDOWS.md and ..\WINDOWS_CHANGES.md before distribution.
