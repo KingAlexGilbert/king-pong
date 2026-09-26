@@ -10,7 +10,9 @@ import android.net.Uri;
 import android.os.BatteryManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
@@ -33,7 +35,6 @@ public final class MainActivity extends Activity {
 
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         getWindow().setStatusBarColor(Color.BLACK);
         getWindow().setNavigationBarColor(Color.BLACK);
         allowDisplayCutoutInLandscape();
@@ -49,7 +50,6 @@ public final class MainActivity extends Activity {
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
-        settings.setDatabaseEnabled(true);
         settings.setMediaPlaybackRequiresUserGesture(false);
         settings.setUseWideViewPort(true);
         settings.setLoadWithOverviewMode(true);
@@ -57,18 +57,18 @@ public final class MainActivity extends Activity {
         settings.setSupportZoom(false);
         settings.setBuiltInZoomControls(false);
         settings.setDisplayZoomControls(false);
-        settings.setAllowFileAccess(true);
+        // Packaged android_asset files still work with filesystem access disabled.
+        settings.setAllowFileAccess(false);
         settings.setAllowContentAccess(false);
         settings.setAllowFileAccessFromFileURLs(false);
         settings.setAllowUniversalAccessFromFileURLs(false);
+        settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             settings.setSafeBrowsingEnabled(true);
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-            WebView.setWebContentsDebuggingEnabled(false);
-        }
+        WebView.setWebContentsDebuggingEnabled(false);
 
         webView.addJavascriptInterface(new BatteryBridge(getApplicationContext()), "KingPongBattery");
         webView.setWebChromeClient(new WebChromeClient());
@@ -104,6 +104,10 @@ public final class MainActivity extends Activity {
     protected void onDestroy() {
         if (webView != null) {
             webView.stopLoading();
+            webView.removeJavascriptInterface("KingPongBattery");
+            if (webView.getParent() instanceof ViewGroup) {
+                ((ViewGroup) webView.getParent()).removeView(webView);
+            }
             webView.setWebChromeClient(null);
             webView.setWebViewClient(null);
             webView.destroy();
@@ -163,13 +167,26 @@ public final class MainActivity extends Activity {
         @Override
         public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
             Uri uri = request.getUrl();
-            String scheme = uri == null ? "" : uri.getScheme();
-            return !("file".equals(scheme) || "about".equals(scheme) || "data".equals(scheme));
+            // Keep the native bridge on the bundled game, including fragment links.
+            return !request.isForMainFrame() || !isGameUrl(uri);
+        }
+
+        @Override
+        public boolean shouldOverrideUrlLoading(WebView view, String url) {
+            return !isGameUrl(url == null ? null : Uri.parse(url));
+        }
+
+        private static boolean isGameUrl(Uri uri) {
+            return uri != null
+                    && GAME_URL.equals(uri.buildUpon().fragment(null).build().toString());
         }
     }
 
     public static final class BatteryBridge {
         private final Context appContext;
+        private final IntentFilter batteryFilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
+        private Intent cachedBatteryIntent;
+        private long lastBatteryRead = -1;
 
         BatteryBridge(Context context) {
             appContext = context.getApplicationContext();
@@ -200,8 +217,14 @@ public final class MainActivity extends Activity {
                     || status == BatteryManager.BATTERY_STATUS_FULL;
         }
 
-        private Intent getBatteryIntent() {
-            return appContext.registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+        private synchronized Intent getBatteryIntent() {
+            // HTML asks for level and charging consecutively. Share one OS snapshot.
+            long now = SystemClock.elapsedRealtime();
+            if (lastBatteryRead < 0 || now - lastBatteryRead >= 1000) {
+                cachedBatteryIntent = appContext.registerReceiver(null, batteryFilter);
+                lastBatteryRead = now;
+            }
+            return cachedBatteryIntent;
         }
     }
 }
