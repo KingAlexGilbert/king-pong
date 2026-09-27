@@ -10,7 +10,6 @@
 - Use native battery-change notifications on Android, Windows, and Linux, with no app battery polling timer.
 - Hide the battery icon when the OS confirms no battery is present; keep unknown readings distinct from absence.
 - Added Linux UPower battery support and automatic handling of power-service restarts.
-- Aligned Android, Windows, and Linux package versions to 1.1.3.
 - Improved chiptune timing across Android, Windows, and Linux by scheduling music on the Web Audio clock with adaptive look-ahead.
 - Added a Linux WebKitGTK-only inaudible audio keep-alive so chiptune playback stays continuous between notes without changing Windows or Android behavior.
 
