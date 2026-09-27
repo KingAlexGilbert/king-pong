@@ -5,7 +5,7 @@ King Pong Installer Project
    installer exe and webview-2, including webview-2\build-tools.
    Keep the subfolders beside each other. There is no shared build.bat.
 2. Install a supported .NET SDK, .NET Framework 4.8 Developer Pack, and a current
-   Inno Setup 6 (6.3 or later). See ..\README_WINDOWS.md for download links.
+   Inno Setup 6 (6.3 or later).
 3. Double-click build-installer.bat. It builds the portable app, validates the
    x64 files, and compiles the installer; no manual folder copying is needed.
 4. Output: Output\KingPongSetup.exe
