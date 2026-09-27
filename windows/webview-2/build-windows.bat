@@ -20,7 +20,7 @@ set "SOURCE_DIR=%CD%"
 set "OUT_DIR=%SOURCE_DIR%\dist\KingPong-WebView2-Portable"
 
 rem Detect incomplete copies before checking the installed build tools.
-for %%F in (KingPongWebView2.csproj Program.cs GamePagePolicy.cs App.config app.manifest index.html king_pong.ico README.txt build-tools\KingPong.BuildChecks.csproj build-tools\BuildChecks.cs) do (
+for %%F in (KingPongWebView2.csproj Program.cs GamePagePolicy.cs BatteryStatus.cs App.config app.manifest index.html king_pong.ico README.txt build-tools\KingPong.BuildChecks.csproj build-tools\BuildChecks.cs) do (
   if not exist "%SOURCE_DIR%\%%F" (
     echo ERROR: Required source file is missing: "%SOURCE_DIR%\%%F"
     echo Extract or copy the COMPLETE webview-2 folder, including build-tools.

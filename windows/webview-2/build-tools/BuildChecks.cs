@@ -20,6 +20,7 @@ internal static class BuildChecks
                 return 0;
             TestPolicy();
             TestVersionChecks();
+            TestBatteryStatus();
             if (args.Length == 5 && args[0] == "--package")
                 Package(args[1], args[2], args[3], args[4]);
             else if (args.Length == 3 && args[0] == "--measure")
@@ -33,6 +34,22 @@ internal static class BuildChecks
             Console.Error.WriteLine("BUILD CHECK FAILED: " + error.Message);
             return 1;
         }
+    }
+
+    private static void TestBatteryStatus()
+    {
+        var cases = new[] {
+            new { Ok = true, Flags = (byte)128, Level = (byte)100, AC = (byte)1, Expected = "update(-1,false,false);" },
+            new { Ok = true, Flags = (byte)255, Level = (byte)255, AC = (byte)255, Expected = "update(-1,false,null);" },
+            new { Ok = false, Flags = (byte)0, Level = (byte)0, AC = (byte)0, Expected = "update(-1,false,null);" },
+            new { Ok = true, Flags = (byte)0, Level = (byte)0, AC = (byte)0, Expected = "update(0,false,true);" },
+            new { Ok = true, Flags = (byte)8, Level = (byte)65, AC = (byte)1, Expected = "update(65,true,true);" },
+            new { Ok = true, Flags = (byte)1, Level = (byte)100, AC = (byte)1, Expected = "update(100,true,true);" },
+            new { Ok = true, Flags = (byte)1, Level = (byte)100, AC = (byte)0, Expected = "update(100,false,true);" }
+        };
+        foreach (var sample in cases)
+            if (!BatteryStatus.UpdateScript(sample.Ok, sample.Flags, sample.Level, sample.AC).EndsWith(sample.Expected, StringComparison.Ordinal))
+                throw new InvalidOperationException("Battery presence/status regression.");
     }
 
     private static void TestPolicy()

@@ -26,6 +26,10 @@ The browser version supports keyboard, controller, and touch controls. For the b
 
 Browser save data is stored locally and is separate from the Android, Windows, and Linux versions.
 
+### Save Backups
+
+Builds made from this source include **Export Saves** and **Import Saves** beside **Erase Selected Slot** on the Android, Windows, and Linux title screens. A backup includes all three save slots and works across those versions. Import asks before replacing all three slots. See [Save import and export](SAVE_BACKUP.md) for usage and implementation notes.
+
 ## Gameplay Demo
 
 [![King Pong Gameplay Demo](Screenshots/king-pong-thumbnail.png)](https://youtu.be/2Z1foE1dnKw)
@@ -93,15 +97,15 @@ If you trust this official GitHub release, choose **More info → Run anyway** i
 
 Download one of the Linux versions from the [latest GitHub release](https://github.com/KingAlexGilbert/king-pong/releases/latest).
 
-- `King-Pong-Linux-v1.1.2-all.deb` — recommended for Linux Mint, Ubuntu, Debian, and other Debian-based distributions
-- `King-Pong-Linux-v1.1.2-thin-x86_64.AppImage` — thin x86-64 version that uses the system WebKitGTK runtime
+- `King-Pong-Linux-v1.1.3-all.deb` — recommended for Linux Mint, Ubuntu, Debian, and other Debian-based distributions
+- `King-Pong-Linux-v1.1.3-thin-x86_64.AppImage` — thin x86-64 version that uses the system WebKitGTK runtime
 
 #### Install the Debian Package
 
 Download the `.deb` file, open it with your distribution's software installer, or install it from a terminal:
 
 ```bash
-sudo apt install ./King-Pong-Linux-v1.1.2-all.deb
+sudo apt install ./King-Pong-Linux-v1.1.3-all.deb
 ```
 
 The package manager will automatically install the required GTK and WebKitGTK dependencies.
@@ -121,8 +125,8 @@ On an older Debian-based distribution that does not provide WebKitGTK 4.1, insta
 Make the AppImage executable and run it:
 
 ```bash
-chmod +x King-Pong-Linux-v1.1.2-thin-x86_64.AppImage
-./King-Pong-Linux-v1.1.2-thin-x86_64.AppImage
+chmod +x King-Pong-Linux-v1.1.3-thin-x86_64.AppImage
+./King-Pong-Linux-v1.1.3-thin-x86_64.AppImage
 ```
 
 The thin AppImage is much smaller than a fully self-contained AppImage because it uses the WebKitGTK libraries already installed on the computer.
@@ -175,14 +179,14 @@ If the repository is stored on a Windows drive, copy the entire repository to yo
 
 Fully extract the repository before building. Do not run the scripts from inside a ZIP archive.
 
-Run the following commands from the `Linux/webkitgtk` directory. The scripts use relative paths and may report “No such file or directory” if run from a different folder.
+Run the following commands from the `Linux` directory. The scripts use relative paths and may report “No such file or directory” if run from a different folder.
 
 Linux paths are case-sensitive, so use the exact capitalization shown in the instructions.
 
 #### Build the Debian Package
 
 1. Download or clone this repository.
-2. Go to the `Linux/webkitgtk` folder.
+2. Go to the `Linux` folder.
 3. Install the Debian package build tools using: `sudo apt install dpkg-dev`
 4. Run `./build-deb.sh`.
 5. The generated `.deb` package should appear in the `dist` folder.
@@ -191,7 +195,7 @@ Linux paths are case-sensitive, so use the exact capitalization shown in the ins
 
 1. Download the x86-64 version of `appimagetool`.
 2. Make it executable using: `chmod +x appimagetool-x86_64.AppImage`
-3. Go to the `Linux/webkitgtk` folder.
+3. Go to the `Linux` folder.
 4. Run: `APPIMAGETOOL="/path/to/appimagetool-x86_64.AppImage" ./build-appimage.sh`
 5. The generated AppImage should appear in the `dist` folder.
 
@@ -215,17 +219,17 @@ The Windows installer project is located at:
 
 The Linux WebKitGTK version is located at:
 
-`Linux/webkitgtk/`
+`Linux/`
 
 The Linux launcher is located at:
 
-`Linux/webkitgtk/src/king-pong.py`
+`Linux/src/king-pong.py`
 
 The Linux `.deb` and thin AppImage build scripts are located at:
 
-`Linux/webkitgtk/build-deb.sh`
+`Linux/build-deb.sh`
 
-`Linux/webkitgtk/build-appimage.sh`
+`Linux/build-appimage.sh`
 
 The GitHub Pages website is located at:
 
@@ -251,3 +255,19 @@ This project is released under the GNU General Public License v3.0.
 Distributed modified versions must follow the terms of the GPLv3. See the `LICENSE` file for the complete license terms.
 
 Copyright (C) 2026 King Alex Gilbert
+
+### Battery status in 1.1.3
+
+All three wrappers send the initial battery state to the HTML indicator, then
+listen for OS changes: Android battery broadcasts, Windows power notifications,
+and Linux UPower signals. There is no app-owned battery polling timer. Repeated
+identical readings do not update the indicator. Android stops its listener while
+the activity is paused and refreshes it when resumed.
+
+The indicator hides only when the OS confirms no battery is present. A full
+battery stays visible; unavailable readings keep the unavailable indicator.
+Standalone HTML uses browser battery events where supported, but the browser
+API cannot reliably distinguish a desktop without a battery.
+
+Linux packages require UPower; see [Linux build instructions](Linux/README.md).
+Rebuild each app from this source to use the wrapper changes.

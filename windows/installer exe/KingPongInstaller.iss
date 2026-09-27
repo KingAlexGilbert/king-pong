@@ -9,8 +9,8 @@
 #if !FileExists(MyAppFolder + "\" + MyAppExeName)
   #error Build the portable app first, or use build-installer.bat to build both.
 #endif
-; Numeric PE version, e.g. 1.1.2.0. ProductVersion is text and may contain a
-; .NET/Git suffix such as 1.1.2+abc123, which Inno's binary fields reject.
+; Use the numeric PE version for Inno's binary version fields; ProductVersion
+; remains the display version and may contain build metadata.
 #define MyAppNumericVersion GetVersionNumbersString(MyAppFolder + "\" + MyAppExeName)
 #ifndef MyAppVersion
   #define MyAppVersion GetStringFileInfo(MyAppFolder + "\" + MyAppExeName, "ProductVersion")

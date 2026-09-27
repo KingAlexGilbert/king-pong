@@ -28,3 +28,4 @@ android/build/reports/problems/problems-report.html
 /windows/webview-2/build-tools/bin
 /windows/installer exe/KingPong-WebView2-Portable
 /windows/installer exe/Output
+/Linux/dist

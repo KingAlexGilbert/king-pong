@@ -1,5 +1,5 @@
 # No third-party libraries are used in the optimized wrapper.
-# Keep only the tiny JavaScript bridge methods that the HTML polls for battery state.
--keepclassmembers class com.kingalex.kingpong.MainActivity$BatteryBridge {
+# Keep the JavaScript entry points for save-file pickers.
+-keepclassmembers class com.kingalex.kingpong.MainActivity$SaveFileBridge {
     @android.webkit.JavascriptInterface <methods>;
 }

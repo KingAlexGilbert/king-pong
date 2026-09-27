@@ -11,5 +11,6 @@
   <ItemGroup>
     <Compile Include="BuildChecks.cs" />
     <Compile Include="..\GamePagePolicy.cs" Link="GamePagePolicy.cs" />
+    <Compile Include="..\BatteryStatus.cs" Link="BatteryStatus.cs" />
   </ItemGroup>
 </Project>

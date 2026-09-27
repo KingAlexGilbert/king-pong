@@ -1,6 +1,8 @@
 using System;
 using System.Drawing;
 using System.IO;
+using System.Globalization;
+using System.Text;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Threading;
@@ -43,7 +45,7 @@ namespace KingPongWebView2
             }
             catch
             {
-                // Fall through to the older API below.
+                // Use the Windows 8.1+ per-monitor DPI API when this call is unavailable.
             }
 
             try
@@ -84,6 +86,87 @@ namespace KingPongWebView2
         private bool exitRequested;
         private bool isClosing;
         private bool failureShown;
+        private bool saveFileDialogBusy;
+        private const int SaveFileLimit = 64 * 1024;
+        private bool batteryPageReady;
+        private bool batteryUpdateQueued;
+        private string lastBatteryScript;
+        private IntPtr batteryLevelNotification;
+        private IntPtr powerSourceNotification;
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct SystemPowerStatus
+        {
+            public byte ACLineStatus, BatteryFlag, BatteryLifePercent, SystemStatusFlag;
+            public uint BatteryLifeTime, BatteryFullLifeTime;
+        }
+
+        [DllImport("kernel32.dll")]
+        [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool GetSystemPowerStatus(out SystemPowerStatus status);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+        private static extern IntPtr RegisterPowerSettingNotification(IntPtr recipient, ref Guid setting, uint flags);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool UnregisterPowerSettingNotification(IntPtr handle);
+
+        protected override void OnHandleCreated(EventArgs args)
+        {
+            base.OnHandleCreated(args);
+            Guid level = new Guid("A7AD8041-B45A-4CAE-87A3-EECBB468A9E1");
+            Guid source = new Guid("5D3E9A59-E9D5-4B00-A6BD-FF34FF516548");
+            batteryLevelNotification = RegisterPowerSettingNotification(Handle, ref level, 0);
+            powerSourceNotification = RegisterPowerSettingNotification(Handle, ref source, 0);
+        }
+
+        protected override void OnHandleDestroyed(EventArgs args)
+        {
+            if (batteryLevelNotification != IntPtr.Zero) UnregisterPowerSettingNotification(batteryLevelNotification);
+            if (powerSourceNotification != IntPtr.Zero) UnregisterPowerSettingNotification(powerSourceNotification);
+            batteryLevelNotification = powerSourceNotification = IntPtr.Zero;
+            batteryUpdateQueued = false;
+            base.OnHandleDestroyed(args);
+        }
+
+        protected override void WndProc(ref Message message)
+        {
+            base.WndProc(ref message);
+            if (message.Msg != 0x0218) return; // WM_POWERBROADCAST
+            long powerEvent = message.WParam.ToInt64();
+            // Power settings, status changes and resume; no periodic timer.
+            if (powerEvent == 0x8013 || powerEvent == 0x000A || powerEvent == 0x0012 || powerEvent == 0x0007)
+                QueueBatteryUpdate();
+        }
+
+        private void QueueBatteryUpdate()
+        {
+            if (!batteryPageReady || batteryUpdateQueued || isClosing || IsDisposed || !IsHandleCreated) return;
+            // Power notifications can arrive in bursts; defer and combine them into one status read.
+            batteryUpdateQueued = true;
+            BeginInvoke(new Action(async () =>
+            {
+                batteryUpdateQueued = false;
+                await SendBatteryStateAsync();
+            }));
+        }
+
+        private async Task SendBatteryStateAsync()
+        {
+            if (!batteryPageReady || isClosing || IsDisposed || webView == null || webView.CoreWebView2 == null ||
+                !GamePagePolicy.IsAllowed(webView.CoreWebView2.Source, gameUri)) return;
+            SystemPowerStatus status;
+            bool succeeded = GetSystemPowerStatus(out status);
+            string script = BatteryStatus.UpdateScript(succeeded, status.BatteryFlag, status.BatteryLifePercent, status.ACLineStatus);
+            if (script == lastBatteryScript) return;
+            lastBatteryScript = script;
+            try { await webView.CoreWebView2.ExecuteScriptAsync(script); }
+            catch (Exception) { lastBatteryScript = null; }
+        }
 
         public KingPongForm()
         {
@@ -182,11 +265,14 @@ namespace KingPongWebView2
                 settings.IsGeneralAutofillEnabled = false;
                 settings.IsPasswordAutosaveEnabled = false;
                 settings.IsWebMessageEnabled = true;
-                // Leave script dialogs enabled: Erase Save uses confirm().
+                // Save confirmations are rendered inside the game page.
 
                 // Install restrictions BEFORE navigating to any game content.
                 core.NavigationStarting += (sender, args) =>
+                {
                     args.Cancel = !GamePagePolicy.IsAllowed(args.Uri, gameUri);
+                    if (!args.Cancel) { batteryPageReady = false; lastBatteryScript = null; }
+                };
                 core.FrameNavigationStarting += (sender, args) => args.Cancel = true;
                 core.NewWindowRequested += (sender, args) => args.Handled = true;
                 core.DownloadStarting += (sender, args) => args.Cancel = true;
@@ -211,6 +297,8 @@ namespace KingPongWebView2
                     if (isClosing || IsDisposed) return;
                     if (args.IsSuccess)
                     {
+                        batteryPageReady = true;
+                        QueueBatteryUpdate();
                         if (Form.ActiveForm == this) webView.Focus();
                     }
                     else if (args.WebErrorStatus != CoreWebView2WebErrorStatus.OperationCanceled)
@@ -237,8 +325,8 @@ namespace KingPongWebView2
                 return;
             }
 
-            // Deny unused sensitive capabilities. Keep other permissions at Default
-            // so clipboard-write/user gestures and future LAN prompts are not broken.
+            // Deny unused sensitive capabilities while leaving other permissions at Default
+            // for clipboard writes, user-initiated features, and future LAN prompts.
             switch (args.PermissionKind)
             {
                 case CoreWebView2PermissionKind.Microphone:
@@ -293,6 +381,111 @@ namespace KingPongWebView2
             if (string.Equals(message, "kingpong:exit", StringComparison.Ordinal))
             {
                 RequestExitFromGame();
+            }
+            else if (message != null && message.Length <= SaveFileLimit + 64 &&
+                message.StartsWith("kingpong:save:", StringComparison.Ordinal))
+            {
+                // A modal picker must run after the WebView2 event has returned.
+                BeginInvoke(new Action(async () => await HandleSaveFileRequestAsync(message)));
+            }
+        }
+
+        private async Task HandleSaveFileRequestAsync(string message)
+        {
+            if (isClosing || IsDisposed || webView.CoreWebView2 == null ||
+                !GamePagePolicy.IsAllowed(webView.CoreWebView2.Source, gameUri)) return;
+            string[] parts = message.Split(new[] { ':' }, 5);
+            int id;
+            if (parts.Length < 4 || !int.TryParse(parts[3], NumberStyles.None, CultureInfo.InvariantCulture, out id) || id <= 0) return;
+            bool exporting = parts[2] == "export";
+            if (saveFileDialogBusy || (!exporting && parts[2] != "import") || parts.Length != (exporting ? 5 : 4))
+            {
+                await SendSaveFileResultAsync(id, "error", "");
+                return;
+            }
+            saveFileDialogBusy = true;
+            try
+            {
+                string imported = "";
+                if (exporting)
+                {
+                    string text = parts[4];
+                    if (Encoding.UTF8.GetByteCount(text) > SaveFileLimit) throw new IOException("Backup too large");
+                    using (var dialog = new SaveFileDialog
+                    {
+                        Title = "Export King Pong saves", FileName = "KingPong-saves.json",
+                        Filter = "King Pong saves (*.json)|*.json", DefaultExt = "json",
+                        AddExtension = true, OverwritePrompt = true, RestoreDirectory = true
+                    })
+                    {
+                        if (dialog.ShowDialog(this) != DialogResult.OK)
+                        {
+                            await SendSaveFileResultAsync(id, "cancel", "");
+                            return;
+                        }
+                        string path = dialog.FileName;
+                        await Task.Run(() => File.WriteAllText(path, text, new UTF8Encoding(false)));
+                    }
+                }
+                else
+                {
+                    using (var dialog = new OpenFileDialog
+                    {
+                        Title = "Import King Pong saves", Filter = "King Pong saves (*.json)|*.json|All files (*.*)|*.*",
+                        CheckFileExists = true, Multiselect = false, RestoreDirectory = true
+                    })
+                    {
+                        if (dialog.ShowDialog(this) != DialogResult.OK)
+                        {
+                            await SendSaveFileResultAsync(id, "cancel", "");
+                            return;
+                        }
+                        string path = dialog.FileName;
+                        imported = await Task.Run(() => ReadSaveBackup(path));
+                    }
+                }
+                await SendSaveFileResultAsync(id, "ok", imported);
+            }
+            catch (Exception)
+            {
+                await SendSaveFileResultAsync(id, "error", "");
+            }
+            finally
+            {
+                saveFileDialogBusy = false;
+                if (!isClosing && !IsDisposed) webView.Focus();
+            }
+        }
+
+        private static string ReadSaveBackup(string path)
+        {
+            using (var input = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read))
+            {
+                // The extra byte detects oversized backups without loading an arbitrary file into memory.
+                byte[] bytes = new byte[SaveFileLimit + 1];
+                int length = 0;
+                int count;
+                while (length < bytes.Length && (count = input.Read(bytes, length, bytes.Length - length)) > 0)
+                    length += count;
+                if (length > SaveFileLimit) throw new IOException("Backup too large");
+                return new UTF8Encoding(false, true).GetString(bytes, 0, length);
+            }
+        }
+
+        private async Task SendSaveFileResultAsync(int id, string status, string text)
+        {
+            if (isClosing || IsDisposed || webView.CoreWebView2 == null ||
+                !GamePagePolicy.IsAllowed(webView.CoreWebView2.Source, gameUri)) return;
+            string encoded = Convert.ToBase64String(Encoding.UTF8.GetBytes(text));
+            string script = "window.KingPongSaveTransfer && window.KingPongSaveTransfer.receive("
+                + id.ToString(CultureInfo.InvariantCulture) + ",'" + status + "','" + encoded + "');";
+            try
+            {
+                await webView.CoreWebView2.ExecuteScriptAsync(script);
+            }
+            catch (Exception)
+            {
+                // The user may close the window while a picker or file read is pending.
             }
         }
 
