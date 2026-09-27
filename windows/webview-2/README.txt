@@ -15,6 +15,5 @@ the app. Saved games/settings remain under %LOCALAPPDATA%\KingPong\WebView2Profi
 Do not delete this profile if you want to keep saves. For best compatibility,
 update an existing installation in the same location and close it before setup.
 
-For a source build, see ..\README_WINDOWS.md and run build-windows.bat.
 This launcher has its own build commands; no parent build.bat is needed.
 Copy this entire source folder, including build-tools, when updating a project.
