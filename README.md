@@ -28,7 +28,7 @@ Browser save data is stored locally and is separate from the Android, Windows, a
 
 ### Save Backups
 
-Builds made from this source include **Export Saves** and **Import Saves** beside **Erase Selected Slot** on the Android, Windows, and Linux title screens. A backup includes all three save slots and works across those versions. Import asks before replacing all three slots. See [Save import and export](SAVE_BACKUP.md) for usage and implementation notes.
+Builds made from this source include **Export Saves** and **Import Saves** beside **Erase Selected Slot** on the Android, Windows, and Linux title screens. A backup includes all three save slots and works across those versions. Import asks before replacing all three slots.
 
 ## Gameplay Demo
 
@@ -255,19 +255,3 @@ This project is released under the GNU General Public License v3.0.
 Distributed modified versions must follow the terms of the GPLv3. See the `LICENSE` file for the complete license terms.
 
 Copyright (C) 2026 King Alex Gilbert
-
-### Battery status in 1.1.3
-
-All three wrappers send the initial battery state to the HTML indicator, then
-listen for OS changes: Android battery broadcasts, Windows power notifications,
-and Linux UPower signals. There is no app-owned battery polling timer. Repeated
-identical readings do not update the indicator. Android stops its listener while
-the activity is paused and refreshes it when resumed.
-
-The indicator hides only when the OS confirms no battery is present. A full
-battery stays visible; unavailable readings keep the unavailable indicator.
-Standalone HTML uses browser battery events where supported, but the browser
-API cannot reliably distinguish a desktop without a battery.
-
-Linux packages require UPower; see [Linux build instructions](Linux/README.md).
-Rebuild each app from this source to use the wrapper changes.
