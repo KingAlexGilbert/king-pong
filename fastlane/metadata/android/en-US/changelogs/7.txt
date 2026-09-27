@@ -1,6 +1,7 @@
-- Added Import Saves and Export Saves on the title screen.
-- Back up all three save slots, including progress and settings, and transfer them between Android, Windows, and Linux.
-- Added clean in-game confirmation dialogs for importing and erasing saves.
-- Validate backups and recover previous saves if an import is interrupted.
-- Preserve music settings when loading or switching save slots.
-- Use battery-change notifications and hide the icon on devices without a battery.
+Import and Export Saves and Optimization Update
+
+- Added Import Saves and Export Saves beside Erase Selected Slot
+- Added a shared backup format for all three save slots, including progress and settings.
+- Added system file pickers, backup validation, and recovery from interrupted imports.
+- Use native battery-change notifications with no app battery polling timer.
+- Improved chiptune timing by scheduling music on the Web Audio clock with adaptive look-ahead.
