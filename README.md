@@ -112,12 +112,12 @@ The package manager will automatically install the required GTK and WebKitGTK de
 
 #### Run the Thin AppImage
 
-The thin AppImage does not bundle an entire browser engine. The system must already have Python GObject, GTK 3, and WebKitGTK installed.
+The thin AppImage does not bundle an entire browser engine. The system must already have Python GObject, GTK 3, upower, and WebKitGTK installed.
 
 On Linux Mint 22 or Ubuntu 24.04:
 
 ```bash
-sudo apt install python3 python3-gi gir1.2-gtk-3.0 gir1.2-webkit2-4.1
+sudo apt install python3 python3-gi gir1.2-gtk-3.0 gir1.2-webkit2-4.1 upower
 ```
 
 On an older Debian-based distribution that does not provide WebKitGTK 4.1, install `gir1.2-webkit2-4.0` instead.
