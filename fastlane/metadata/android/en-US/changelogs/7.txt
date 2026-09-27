@@ -1,4 +1,4 @@
-Import and Export Saves and Optimization Update
+King Pong v1.1.3 - Save Backups and Optimization
 
 - Added Import Saves and Export Saves beside Erase Selected Slot
 - Added a shared backup format for all three save slots, including progress and settings.
