@@ -7,11 +7,19 @@
 - Added system file pickers, backup validation, and recovery from interrupted imports.
 - Replaced browser confirmation popups with clean in-game import and erase dialogs.
 - Preserved each slot's music settings when loading or switching saves.
-- Use native battery-change notifications on Android, Windows, and Linux, with no app battery polling timer.
-- Hide the battery icon when the OS confirms no battery is present; keep unknown readings distinct from absence.
-- Added Linux UPower battery support and automatic handling of power-service restarts.
-- Improved chiptune timing across Android, Windows, and Linux by scheduling music on the Web Audio clock with adaptive look-ahead.
-- Added a Linux WebKitGTK-only inaudible audio keep-alive so chiptune playback stays continuous between notes without changing Windows or Android behavior.
+- Improved battery detection and updates across Android, Windows, and Linux while reducing unnecessary background activity.
+- Hide the battery icon when the OS confirms no battery is present.
+- Replaced global DOM modifications with explicit translation helpers.
+- Improved LAN validation and reject outdated packets.
+- Made gameplay speed consistent across display refresh rates.
+- Fixed 0% volume and CPU intelligence settings resetting after restarting.
+- Optimized the wrappers and installers for King Pong on each platform.
+
+## Important Android Update Notice
+
+The Android signing key has changed. If you installed King Pong directly from GitHub, you will need to **uninstall the existing version and reinstall it** before updating to this release.
+
+F-Droid installations are unaffected by this.
 
 ## King Pong v1.1.2 - Faster Paddles and Pause Changes
 
