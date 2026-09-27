@@ -1,7 +1,12 @@
 King Pong v1.1.3 - Save Backups and Optimization
 
-- Added Import Saves and Export Saves beside Erase Selected Slot
+- Added Import Saves and Export Saves beside Erase Selected Slot.
 - Added a shared backup format for all three save slots, including progress and settings.
 - Added system file pickers, backup validation, and recovery from interrupted imports.
-- Use native battery-change notifications with no app battery polling timer.
-- Improved chiptune timing by scheduling music on the Web Audio clock with adaptive look-ahead.
+- Replaced browser confirmation popups with clean in-game import and erase dialogs.
+- Preserved each slot's music settings when loading or switching saves.
+- Improved battery detection and updates while reducing unnecessary background activity.
+- Replaced global DOM modifications with explicit translation helpers.
+- Improved LAN validation and reject outdated packets.
+- Made gameplay speed consistent across display refresh rates.
+- Fixed 0% volume and CPU intelligence settings resetting after restarting.
