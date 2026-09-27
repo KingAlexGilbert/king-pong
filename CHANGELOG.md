@@ -1,6 +1,6 @@
 # Changelog
 
-## King Pong v1.1.3 - Save Backups
+## King Pong v1.1.3 - Save Backups and Optimization
 
 - Added Import Saves and Export Saves beside Erase Selected Slot on Android, Windows, and Linux.
 - Added a shared backup format for all three save slots, including progress and settings.
