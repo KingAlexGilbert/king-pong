@@ -1,0 +1,26 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "king-pong-signaling",
+  "main": "src/worker.js",
+  "compatibility_date": "2025-09-06",
+  "workers_dev": true,
+  "vars": {
+    "ALLOWED_ORIGINS": "https://kingalexgilbert.github.io"
+  },
+  "durable_objects": {
+    "bindings": [
+      { "name": "ROOMS", "class_name": "PongRoom" },
+      { "name": "TURN_CREDENTIALS", "class_name": "MeteredTurn" }
+    ]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["PongRoom"] },
+    { "tag": "v2", "new_sqlite_classes": ["MeteredTurn"] }
+  ],
+  "ratelimits": [{
+    "name": "ROOM_LIMITER",
+    "namespace_id": "702601",
+    "simple": { "limit": 20, "period": 60 }
+  }],
+  "observability": { "enabled": false }
+}

@@ -1,0 +1,17 @@
+{
+  "name": "king-pong-signaling",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "node --test test/*.test.mjs",
+    "check": "wrangler deploy --dry-run",
+    "test:browser": "node test/browser.mjs"
+  },
+  "devDependencies": {
+    "miniflare": "5.20261001.0-alpha",
+    "playwright": "1.55.1",
+    "wrangler": "4.147.0"
+  }
+}
