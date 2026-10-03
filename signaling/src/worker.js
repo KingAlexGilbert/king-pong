@@ -1,3 +1,5 @@
+export { MeteredTurn } from './metered-turn.js';
+
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const CODE = /^[A-HJ-NP-Z2-9]{5}$/;
 const STUN = [{ urls: 'stun:stun.cloudflare.com:3478' }];
@@ -24,6 +26,16 @@ function socketError(code) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    if (request.method === 'GET' && url.pathname === '/v1/turn/ready' && !url.search) {
+      if (!(await env.ROOM_LIMITER.limit({ key: request.headers.get('CF-Connecting-IP') || 'local' })).success) {
+        return Response.json({ ready: false }, { status: 429, headers: { 'Cache-Control': 'no-store' } });
+      }
+      try {
+        return await env.TURN_CREDENTIALS.get(env.TURN_CREDENTIALS.idFromName('metered')).fetch('https://turn/ready');
+      } catch {
+        return Response.json({ ready: false }, { status: 503, headers: { 'Cache-Control': 'no-store' } });
+      }
+    }
     if (request.method !== 'GET' || request.headers.get('Upgrade')?.toLowerCase() !== 'websocket') {
       return new Response('King Pong signaling', { status: 426 });
     }
@@ -121,10 +133,10 @@ export class PongRoom {
       await this.ctx.storage.put('room', room);
       try {
         const sockets = this.sockets();
-        const credentials = await Promise.all(sockets.map(() => this.turnServers()));
+        const iceServers = await this.turnServers();
         const current = await this.ctx.storage.get('room');
         if (!current || !sockets.every(s => this.sockets().includes(s))) return;
-        sockets.forEach((s, i) => send(s, { type: 'start', attempt: 1, iceServers: credentials[i] }));
+        sockets.forEach(s => send(s, { type: 'start', attempt: 1, iceServers }));
       } catch { await this.end('relay_unavailable'); }
       return;
     }
@@ -162,24 +174,9 @@ export class PongRoom {
   }
 
   async turnServers() {
-    if (!this.env.TURN_KEY_ID || !this.env.TURN_API_TOKEN) throw new Error('TURN not configured');
-    const response = await fetch(`https://rtc.live.cloudflare.com/v1/turn/keys/${encodeURIComponent(this.env.TURN_KEY_ID)}/credentials/generate-ice-servers`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${this.env.TURN_API_TOKEN}`, 'Content-Type': 'application/json' },
-      // Credentials outlive the maximum room duration and are never written to storage.
-      body: JSON.stringify({ ttl: SESSION_MS / 1000 + 300 }),
-      signal: AbortSignal.timeout(8000)
-    });
+    const response = await this.env.TURN_CREDENTIALS.get(this.env.TURN_CREDENTIALS.idFromName('metered')).fetch('https://turn/ice');
     if (!response.ok) throw new Error('TURN unavailable');
-    const result = await response.json();
-    const servers = (Array.isArray(result.iceServers) ? result.iceServers : []).flatMap(server => {
-      const urls = (Array.isArray(server.urls) ? server.urls : [server.urls]).filter(url =>
-        typeof url === 'string' && /^turns?:/.test(url) && !/:53(?:\?|$)/.test(url));
-      if (!urls.length || typeof server.username !== 'string' || typeof server.credential !== 'string') return [];
-      return [{ urls, username: server.username, credential: server.credential }];
-    });
-    if (!servers.length) throw new Error('TURN unavailable');
-    return servers;
+    return response.json();
   }
 
   async end(code) {

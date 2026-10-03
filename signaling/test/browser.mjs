@@ -20,19 +20,35 @@ const server = createServer(async (request, response) => {
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 const origin = `http://127.0.0.1:${server.address().port}`;
 const mf = new Miniflare(convertV4MiniflareOptions({
-  modules: true,
-  scriptPath: fileURLToPath(new URL('../src/worker.js', import.meta.url)),
+  modules: ['./worker-fixture.mjs', '../src/worker.js', '../src/metered-turn.js'].map(path => ({
+    type: 'ESModule', path: fileURLToPath(new URL(path, import.meta.url))
+  })),
+  modulesRoot: fileURLToPath(new URL('../', import.meta.url)),
   compatibilityDate: '2025-09-06',
-  durableObjects: { ROOMS: { className: 'PongRoom', useSQLite: true } },
-  bindings: { ALLOWED_ORIGINS: origin, TURN_KEY_ID: 'local-test', TURN_API_TOKEN: 'local-test' },
-  outboundService: async () => forceRelay ? Response.json({ iceServers: [{
-    urls: process.env.KING_PONG_TEST_TURN_URL,
-    username: process.env.KING_PONG_TEST_TURN_USERNAME,
-    credential: process.env.KING_PONG_TEST_TURN_PASSWORD
-  }] }) : new Response('', { status: 503 }),
+  durableObjects: {
+    ROOMS: { className: 'PongRoom', useSQLite: true },
+    TURN_CREDENTIALS: { className: 'MeteredTurn', useSQLite: true }
+  },
+  bindings: { ALLOWED_ORIGINS: origin, METERED_APP_NAME: 'king-pong-test', METERED_SECRET_KEY: 'local-test' },
+  outboundService: async request => {
+    if (!forceRelay) return new Response('', { status: 503 });
+    if (request.method === 'POST') return Response.json({ apiKey: 'expiring-test-key', expiryInSeconds: 172800 });
+    return Response.json([{
+      urls: process.env.KING_PONG_TEST_TURN_URL,
+      username: process.env.KING_PONG_TEST_TURN_USERNAME,
+      credential: process.env.KING_PONG_TEST_TURN_PASSWORD
+    }]);
+  },
   ratelimits: { ROOM_LIMITER: { namespace_id: '2', simple: { limit: 100, period: 60 } } }
 }));
 const signaling = (await mf.ready).origin;
+if (forceRelay) {
+  const response = await mf.dispatchFetch(signaling + '/v1/turn/ready');
+  assert.equal(response.status, 503);
+  const namespace = await mf.getDurableObjectNamespace('TURN_CREDENTIALS');
+  const ready = await namespace.get(namespace.idFromName('metered')).fetch('https://turn/test-propagated');
+  assert.equal(ready.status, 200);
+}
 const browser = await chromium.launch({ headless: true, args: ['--no-sandbox', '--disable-background-timer-throttling', '--disable-renderer-backgrounding'] });
 const errors = [];
 async function page(locale = 'en-US') {

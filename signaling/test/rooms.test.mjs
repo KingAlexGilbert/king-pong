@@ -7,22 +7,36 @@ const origin = 'https://kingalexgilbert.github.io';
 let credentialCalls = 0;
 let turnFails = false;
 const mf = new Miniflare(convertV4MiniflareOptions({
-  modules: true,
-  scriptPath: fileURLToPath(new URL('../src/worker.js', import.meta.url)),
+  modules: ['./worker-fixture.mjs', '../src/worker.js', '../src/metered-turn.js'].map(path => ({
+    type: 'ESModule', path: fileURLToPath(new URL(path, import.meta.url))
+  })),
+  modulesRoot: fileURLToPath(new URL('../', import.meta.url)),
   compatibilityDate: '2025-09-06',
-  durableObjects: { ROOMS: { className: 'PongRoom', useSQLite: true } },
-  bindings: { ALLOWED_ORIGINS: origin, TURN_KEY_ID: 'test-key', TURN_API_TOKEN: 'server-only-test-secret' },
+  durableObjects: {
+    ROOMS: { className: 'PongRoom', useSQLite: true },
+    TURN_CREDENTIALS: { className: 'MeteredTurn', useSQLite: true }
+  },
+  bindings: { ALLOWED_ORIGINS: origin, METERED_APP_NAME: 'king-pong-test', METERED_SECRET_KEY: 'server-only-test-secret' },
   ratelimits: { ROOM_LIMITER: { namespace_id: '1', simple: { limit: 20, period: 60 } } },
   outboundService: async request => {
-    assert.equal(new URL(request.url).hostname, 'rtc.live.cloudflare.com');
-    assert.equal(request.headers.get('Authorization'), 'Bearer server-only-test-secret');
-    assert.deepEqual(await request.json(), { ttl: 7500 });
+    const url = new URL(request.url);
+    assert.equal(url.hostname, 'king-pong-test.metered.live');
     credentialCalls++;
     if (turnFails) return new Response('', { status: 503 });
-    return Response.json({ iceServers: [{
-      urls: ['turn:turn.cloudflare.com:3478?transport=udp', 'turns:turn.cloudflare.com:443?transport=tcp', 'turn:turn.cloudflare.com:53'],
-      username: `temporary-${credentialCalls}`, credential: 'temporary-test-credential'
-    }] });
+    if (request.method === 'POST') {
+      assert.equal(url.pathname, '/api/v1/turn/credential');
+      assert.equal(url.searchParams.get('secretKey'), 'server-only-test-secret');
+      assert.deepEqual(await request.json(), { expiryInSeconds: 172800, label: 'king-pong-rotating' });
+      return Response.json({ apiKey: 'expiring-test-key', expiryInSeconds: 172800 });
+    }
+    assert.equal(url.pathname, '/api/v1/turn/credentials');
+    assert.equal(url.searchParams.get('apiKey'), 'expiring-test-key');
+    assert.equal(url.searchParams.get('region'), 'standard');
+    assert.equal(url.searchParams.has('secretKey'), false);
+    return Response.json([{ urls: 'stun:standard.relay.metered.ca:80' }, {
+      urls: ['turn:standard.relay.metered.ca:80', 'turn:standard.relay.metered.ca:80?transport=tcp', 'turns:standard.relay.metered.ca:443?transport=tcp', 'turn:standard.relay.metered.ca:53'],
+      username: 'temporary-user', credential: 'temporary-test-credential', apiKey: 'must-not-forward'
+    }]);
   }
 }));
 after(() => mf.dispose());
@@ -99,7 +113,23 @@ test('simultaneous guests cannot exceed room capacity', async () => {
   host.close(); guests.forEach(g => g.close());
 });
 
-test('TURN is issued only to the paired room, once per peer; stale ICE is ignored', async () => {
+test('TURN reuses the pre-propagated Metered credential only for paired rooms; stale ICE is ignored', async () => {
+  const warming = await mf.dispatchFetch('https://signaling.test/v1/turn/ready');
+  assert.equal(warming.status, 503);
+  assert.deepEqual(await warming.json(), { ready: false });
+  const namespace = await mf.getDurableObjectNamespace('TURN_CREDENTIALS');
+  const cache = namespace.get(namespace.idFromName('metered'));
+  const prepared = await cache.fetch('https://turn/test-propagated');
+  assert.equal(prepared.status, 200);
+  assert.deepEqual(await prepared.json(), { ready: true });
+  const status = await mf.dispatchFetch('https://signaling.test/v1/turn/ready');
+  assert.equal(status.status, 200);
+  assert.deepEqual(await status.json(), { ready: true });
+  for (const path of ['/v1/turn/ice', '/test-propagated', '/test-reset', '/v1/turn/ready?extra=1']) {
+    const response = await mf.dispatchFetch('https://signaling.test' + path);
+    assert.equal(response.status, 426);
+    assert.equal(await response.text(), 'King Pong signaling');
+  }
   const { host, guest } = await pair();
   const before = credentialCalls;
   host.send({ type: 'relay' });
@@ -107,10 +137,13 @@ test('TURN is issued only to the paired room, once per peer; stale ICE is ignore
   const messages = await Promise.all([host.next(), guest.next()]);
   for (const m of messages) {
     assert.equal(m.attempt, 1);
-    assert.equal(m.iceServers[0].urls.length, 2);
+    assert.equal(m.iceServers[0].urls.length, 3);
     assert.ok(!JSON.stringify(m).includes('server-only-test-secret'));
+    assert.ok(!JSON.stringify(m).includes('expiring-test-key'));
+    assert.ok(!JSON.stringify(m).includes('must-not-forward'));
   }
-  assert.equal(credentialCalls - before, 2);
+  assert.deepEqual(messages[0].iceServers, messages[1].iceServers);
+  assert.equal(credentialCalls, before);
   host.send({ type: 'candidate', attempt: 0, candidate: { candidate: 'old', sdpMid: '0', sdpMLineIndex: 0 } });
   host.send({ type: 'description', attempt: 1, description: { type: 'offer', sdp: 'new' } });
   assert.equal((await guest.next()).description.sdp, 'new');
@@ -120,8 +153,13 @@ test('TURN is issued only to the paired room, once per peer; stale ICE is ignore
 });
 
 test('credential failure is a friendly error to both players', async () => {
+  const namespace = await mf.getDurableObjectNamespace('TURN_CREDENTIALS');
+  await namespace.get(namespace.idFromName('metered')).fetch('https://turn/test-reset');
   const { host, guest } = await pair();
   turnFails = true;
+  const response = await mf.dispatchFetch('https://signaling.test/v1/turn/ready');
+  assert.equal(response.status, 503);
+  assert.deepEqual(await response.json(), { ready: false });
   host.send({ type: 'relay' });
   for (const client of [host, guest]) assert.equal((await client.next()).code, 'relay_unavailable');
   turnFails = false;
