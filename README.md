@@ -26,6 +26,11 @@ The browser version supports keyboard, controller, and touch controls. For the b
 
 Browser save data is stored locally and is separate from the Android, Windows, and Linux versions.
 
+The browser source includes **Online Multiplayer → Create Room / Join Room** with
+five-character room codes. Hosting it requires the small Cloudflare signaling
+service and TURN secrets described in [the online multiplayer setup guide](signaling/README.md).
+Gameplay stays on WebRTC; the native apps retain their existing LAN pairing.
+
 ### Save Backups
 
 Builds made from this source include **Export Saves** and **Import Saves** beside **Erase Selected Slot** on the Android, Windows, and Linux title screens. A backup includes all three save slots and works across those versions. Import asks before replacing all three slots.

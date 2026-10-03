@@ -40,3 +40,31 @@ jobs:
 
       - name: Run Python tests
         run: python -B -m unittest discover -s tests -p 'test_*.py'
+
+  online:
+    name: Browser Multiplayer and Signaling
+    runs-on: ubuntu-latest
+    env:
+      WRANGLER_SEND_METRICS: "false"
+    defaults:
+      run:
+        working-directory: signaling
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: signaling/package-lock.json
+      - name: Install development tools
+        run: npm ci
+      - name: Test signaling and room cleanup
+        run: npm test
+      - name: Validate Worker deployment bundle
+        run: npm run check
+      - name: Install test browser
+        run: npx playwright install --with-deps chromium
+      - name: Test real browser peers and existing gameplay
+        run: npm run test:browser

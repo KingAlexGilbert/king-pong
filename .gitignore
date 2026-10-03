@@ -29,3 +29,7 @@ android/build/reports/problems/problems-report.html
 /windows/installer exe/KingPong-WebView2-Portable
 /windows/installer exe/Output
 /Linux/dist
+/signaling/node_modules/
+/signaling/.wrangler/
+/signaling/.dev.vars*
+/signaling/.env*
