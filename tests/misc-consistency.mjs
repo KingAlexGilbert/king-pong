@@ -64,7 +64,8 @@ for (const platform of ['Windows', 'Linux']) {
 for (const platform of ['Windows', 'Linux', 'BrowserDemo']) {
   test(`${platform}: editable menu fields keep native keyboard focus`, () => {
     const html = sources[platform];
-    assert.match(html, /const nativeForm=control instanceof HTMLSelectElement\|\|control instanceof HTMLInputElement\|\|control instanceof HTMLTextAreaElement;if\(nativeForm\)\{control\.removeAttribute\("data-keyboard-menu-disabled"\);return;\}/);
+    assert.match(html, /function makeMenuControlsMouseAndTouchOnly\(\)\{prepareAccessibleMenuControls\(\);\}/);
+    assert.doesNotMatch(html, /control\.tabIndex=-1/);
     assert.match(html, /const targetIsNativeFormControl=e\.target instanceof HTMLInputElement\|\|e\.target instanceof HTMLSelectElement\|\|e\.target instanceof HTMLTextAreaElement;if\(targetIsNativeFormControl\)return;/);
   });
 }

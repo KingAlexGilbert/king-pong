@@ -287,6 +287,8 @@ arenaCatalog.push({ id: TOTAL_LEVELS, level: BOSS_LEVEL, campaign: BOSS_CAMPAIGN
 const bossPracticeArena = Object.freeze({ ...BOSS_LEVEL, goal: 6 });
 let matchArenaId = 0;
 let matchPaddles = { left: 'classic', right: 'classic' };
+// Multiplayer preferences live only in this session; Campaign keeps its own saved choice.
+let multiplayerPaddleChoices = { left: null, right: null };
 let selectionSequence = 0;
 let remoteSelectionSequence = -1;
 let selectionReturnFocus = null;
@@ -303,6 +305,16 @@ function paddleUnlocked(entry) {
   if (entry.family === 'boss') return isBossUnlocked();
   return entry.family === 'enemy' ? isCustomLevelUnlocked(entry.level) : isCampaignLevelUnlocked(entry.level);
 }
+function paddleAvailable(entry) {
+  return mode === 2 && !document.body.classList.contains('title-active') || paddleUnlocked(entry);
+}
+function resetMultiplayerPaddleChoices() {
+  multiplayerPaddleChoices = { left: null, right: null };
+}
+function galleryPaddleId(side) {
+  if (mode === 2 && !document.body.classList.contains('title-active')) return matchPaddles[lanRole === 'guest' ? 'right' : side];
+  return savedPaddle(side === 'right');
+}
 function arenaUnlocked(id) { return id === TOTAL_LEVELS ? isBossUnlocked() : mode === 2 || isCustomLevelUnlocked(id); }
 function savedPaddle(second = false) {
   const id = saveData && saveData[second ? 'royalPaddle2' : 'royalPaddle'];
@@ -314,8 +326,8 @@ function selectedPaddleProfile(paddle) {
   return (paddleCatalog.find(p => p.id === id) || paddleCatalog[0]).profile;
 }
 function initializeMatchSelections() {
-  matchPaddles = { left: savedPaddle(), right: savedPaddle(true) };
-  if (lanRole === 'guest') matchPaddles.right = savedPaddle();
+  matchPaddles = { left: multiplayerPaddleChoices.left || savedPaddle(), right: multiplayerPaddleChoices.right || savedPaddle(true) };
+  if (lanRole === 'guest') matchPaddles.right = multiplayerPaddleChoices.left || savedPaddle();
   const arena = saveData && saveData.royalArena;
   matchArenaId = validArenaId(arena) && arenaUnlocked(arena) ? arena : firstAvailableLevelInCurrentPicker();
   if (!validArenaId(matchArenaId)) matchArenaId = 0;
@@ -333,7 +345,7 @@ function applySelectionState(value) {
 }
 function sendPaddleSelection() {
   if (!isLanGuestActive()) return;
-  lanSend({ v: LAN_SIGNAL_VERSION, type: 'selection', room: lanRoomCode, seq: ++selectionSequence, paddle: savedPaddle() });
+  lanSend({ v: LAN_SIGNAL_VERSION, type: 'selection', room: lanRoomCode, seq: ++selectionSequence, paddle: matchPaddles.right });
 }
 function receivePaddleSelection(message) {
   if (!Number.isSafeInteger(message.seq) || message.seq <= remoteSelectionSequence || !validPaddleId(message.paddle)) return;
@@ -397,8 +409,8 @@ function openRoyalGallery(kind, side = 'left') {
   const entries = kind === 'arena' ? arenaCatalog : paddleCatalog;
   for (const entry of entries) {
     const button = document.createElement('button'); button.type = 'button'; button.className = 'royal-choice';
-    const unlocked = kind === 'arena' ? arenaUnlocked(entry.id) : paddleUnlocked(entry);
-    const selected = kind === 'arena' ? entry.id === matchArenaId : entry.id === (side === 'right' && !isLanActive() ? savedPaddle(true) : savedPaddle());
+    const unlocked = kind === 'arena' ? arenaUnlocked(entry.id) : paddleAvailable(entry);
+    const selected = kind === 'arena' ? entry.id === matchArenaId : entry.id === galleryPaddleId(side);
     button.disabled = !unlocked;
     button.setAttribute('aria-pressed', String(selected)); button.dataset.choiceId = String(entry.id);
     button.append(kind === 'arena' ? arenaThumbnail(entry) : paddleThumbnail(entry));
@@ -410,16 +422,22 @@ function openRoyalGallery(kind, side = 'left') {
         saveData.royalArena = entry.id; matchArenaId = entry.id; saveProgressNow();
         applyCustomLevelPickerChoice(entry.id);
       } else {
-        const second = side === 'right' && !isLanActive();
-        saveData[second ? 'royalPaddle2' : 'royalPaddle'] = entry.id;
+        if (!paddleAvailable(entry)) return;
+        if (mode === 2 && !document.body.classList.contains('title-active')) {
+          multiplayerPaddleChoices[lanRole === 'guest' ? 'left' : side] = entry.id;
+        } else {
+          saveData[side === 'right' ? 'royalPaddle2' : 'royalPaddle'] = entry.id;
+          saveProgressNow();
+        }
         matchPaddles[lanRole === 'guest' ? 'right' : side] = entry.id;
-        saveProgressNow(); sendPaddleSelection(); if (isLanHostActive()) sendLanState(true);
+        sendPaddleSelection(); if (isLanHostActive()) sendLanState(true);
       }
       closeRoyalGallery(); updateRoyalSelectionLabels();
     });
     list.append(button);
   }
   panel.hidden = false;
+  if (typeof syncRoyalUi === 'function') syncRoyalUi();
   (list.querySelector('[aria-pressed="true"]:not(:disabled)') || list.querySelector('button:not(:disabled)') || byId('royalGalleryClose')).focus();
 }
 function closeRoyalGallery() {
@@ -428,9 +446,11 @@ function closeRoyalGallery() {
   galleryKind = null;
   if (byId('royalGallery')) byId('royalGallery').hidden = true;
   if (byId('royalGalleryList')) byId('royalGalleryList').replaceChildren();
+  if (typeof syncRoyalUi === 'function') syncRoyalUi();
   if (selectionReturnFocus && selectionReturnFocus.isConnected) selectionReturnFocus.focus();
 }
 function updateRoyalSelectionLabels() {
+  if (typeof syncRoyalUi === 'function' && byId('matchSetup')) { syncRoyalUi(); return; }
   if (!byId('choosePaddleButton')) return;
   setLocalizedText(byId('choosePaddleButton'), 'Choose your paddle');
   byId('choosePaddle2Button').hidden = mode !== 2 || isLanActive();
@@ -451,6 +471,7 @@ function handleRoyalMenuKey(event) {
     } else if (event.key === 'Enter' || event.key === ' ') document.activeElement.click();
     event.preventDefault(); event.stopImmediatePropagation(); return true;
   }
+  if (typeof handleRoyalUiKey === 'function' && handleRoyalUiKey(event)) return true;
   if (event.target.closest && event.target.closest('.title-screen,.royal-selection-row')) {
     if (event.key === 'Enter' || event.key === ' ') {
       if (['BUTTON', 'SUMMARY'].includes(event.target.tagName)) event.target.click();
@@ -462,6 +483,7 @@ function handleRoyalMenuKey(event) {
 }
 
 function pollRoyalGalleryGamepad(now) {
+  if (!galleryKind && typeof pollRoyalUiGamepad === 'function') { pollRoyalUiGamepad(now); return; }
   if (!galleryKind || now - galleryGamepadAt < 30) return;
   galleryGamepadAt = now;
   const pad = getConnectedGamepads()[0];
@@ -484,7 +506,7 @@ function initRoyalMenus() {
   const actions = document.querySelector('.title-actions');
   const local = document.createElement('button'); local.id = 'titleLocalButton'; local.type = 'button'; setLocalizedText(local, 'Local Play'); local.addEventListener('click', showLocalPlay);
   local.setAttribute('aria-expanded', 'false'); local.setAttribute('aria-controls', 'localPlayChoices');
-  actions.append(local);
+  actions.append(local, byId('titleBossButton'));
   const localChoices = document.createElement('div'); localChoices.id = 'localPlayChoices'; localChoices.hidden = true;
   localChoices.append(titleTwoPlayerButton);
   if (browserOnline) {
@@ -524,4 +546,5 @@ function initRoyalMenus() {
   for (const b of document.querySelectorAll('.title-screen button,.royal-selection-row button')) { b.tabIndex = 0; b.removeAttribute('data-keyboard-menu-disabled'); }
   if (typeof preventMenuKeyboardActivation === 'undefined') window.addEventListener('keydown', handleRoyalMenuKey, true);
   updateRoyalSelectionLabels();
+  initRoyalUi();
 }

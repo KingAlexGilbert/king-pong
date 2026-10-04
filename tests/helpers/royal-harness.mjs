@@ -38,6 +38,7 @@ export function harness(platform = 'Browser') {
     let drawn=[],sent=[],applied=[];
     function draw(view){drawn.push(view.ball.x)}
     function update(){frame++;updateRoyalPowerups();updateBall()}
+    function firstAvailableLevelInCurrentPicker(){return 0}
     function finiteNumber(x,fallback){return Number.isFinite(Number(x))?Number(x):fallback}
     function isLanGuestActive(){return lanRole==='guest'}
     function isLanHostActive(){return lanRole==='host'}

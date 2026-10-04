@@ -60,12 +60,14 @@ try {
     await screenshot(p, platform + '-landing');
     await p.locator('#titleLocalButton').click();
     await p.locator('#titleTwoPlayerButton').click();
+    await p.locator('#chooseArenaButton').click();
     assert.equal(await p.locator('.royal-choice').count(), 19);
     assert.equal(await p.locator('.royal-choice:disabled').count(), 1);
     await p.locator('[data-choice-id="4"]').click();
     assert.equal(await p.evaluate(() => currentLevel() === CAMPAIGNS[0].levels[4]), true);
     assert.equal(await p.evaluate(() => saveData.royalArena), 4);
     await p.evaluate(() => { showTitleScreen(); startTwoPlayerFromTitle(); });
+    await p.locator('#chooseArenaButton').click();
     assert.equal(await p.locator('[data-choice-id="4"]').getAttribute('aria-pressed'), 'true');
     await p.locator('#royalGalleryClose').click();
     pass(platform + ': primary online action, compact saves, Local Play, arena persistence and boss lock');
@@ -88,7 +90,7 @@ try {
     for(const id of ids) {
       await p.evaluate(() => openRoyalGallery('paddle'));
       await p.locator(`[data-choice-id="${id}"]`).click();
-      assert.equal(await p.evaluate(() => activePaddleProfile(left) === paddleCatalog.find(p=>p.id===saveData.royalPaddle).profile),true);
+      assert.equal(await p.evaluate(() => activePaddleProfile(left) === paddleCatalog.find(p=>p.id===matchPaddles.left).profile),true);
     }
     await p.evaluate(() => openRoyalGallery('paddle')); await assertGalleryLayout(p); await screenshot(p,platform+'-paddles');
     await p.keyboard.press('Home'); await p.keyboard.press('ArrowLeft'); await p.keyboard.press('Enter');
@@ -102,13 +104,15 @@ try {
     assert.equal(await p.locator('#royalGallery').isVisible(),false);
     await p.evaluate(() => openRoyalGallery('paddle','right'));
     await p.locator('[data-choice-id="enemy-2"]').click();
-    assert.equal(await p.evaluate(() => activePaddleProfile(right) === ENEMY_PADDLE_PROFILES[2] && saveData.royalPaddle2 === 'enemy-2'),true);
+    assert.equal(await p.evaluate(() => activePaddleProfile(right) === ENEMY_PADDLE_PROFILES[2] && multiplayerPaddleChoices.right === 'enemy-2' && saveData.royalPaddle2 !== 'enemy-2'),true);
     pass(platform + ': all 42 existing paddle profiles, keyboard and controller selection');
 
-    await p.evaluate(() => { setMusicVolume(37);setMusicEnabled(false);saveData.royalPaddle='player-2';saveData.royalArena=18;saveProgressNow();loadSaveSlot(1);setMusicVolume(0);setMusicEnabled(false);loadSaveSlot(0); });
+    // Existing saved preferences from older builds must still survive backups and reloads.
+    await p.evaluate(() => { setMusicVolume(37);setMusicEnabled(false);saveData.royalPaddle='player-2';saveData.royalPaddle2='enemy-2';saveData.royalArena=18;saveProgressNow();loadSaveSlot(1);setMusicVolume(0);setMusicEnabled(false);loadSaveSlot(0); });
     await p.reload();
     assert.deepEqual(await p.evaluate(() => [musicEnabled,musicVolumeLevel,saveData.royalPaddle,saveData.royalArena,saveData.highestUnlockedLevel]),[false,.37,'player-2',18,17]);
     await p.locator('#titleCustomButton').click();
+    await p.locator('#chooseArenaButton').click();
     await p.locator('[data-choice-id="18"]').click();
     await p.evaluate(() => launchSelectedCustomLevel());
     assert.deepEqual(await p.evaluate(() => [mode,selectedAbsoluteLevelIndex(),currentLevel().goal]),[3,18,6]);
@@ -174,7 +178,7 @@ try {
     hideTitleScreen();startTwoPlayerMode(true,false);lanRole='guest';lanConnected=true;
     lanRoomCode='ABCDE';lanChannel={readyState:'open',bufferedAmount:0,send:s=>(window.outbound||=[]).push(s)};
     onlineControlChannel=lanChannel;onlineSession={close(){}};onlineGameBlocked=false;gameWindowFocused=true;
-    saveData.highestUnlockedLevel=17;saveData.royalPaddle='player-3';hideFirstStartControls();sendPaddleSelection();
+    saveData.highestUnlockedLevel=17;matchPaddles.right='player-3';hideFirstStartControls();sendPaddleSelection();
   });
   const drain=async(from,to)=>{const packets=await from.evaluate(()=>{const q=window.outbound||[];window.outbound=[];return q});for(const p of packets)await to.evaluate(p=>handleLanMessage(p),p);return packets};
   await drain(guest,host);

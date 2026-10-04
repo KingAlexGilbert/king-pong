@@ -70,3 +70,5 @@ jobs:
         run: npm run test:browser
       - name: Test gameplay, selections, saves and touch layouts in every HTML build
         run: npm run test:gameplay
+      - name: Test contextual UI, accessibility and phone rotation
+        run: npm run test:ui

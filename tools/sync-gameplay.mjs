@@ -1,7 +1,8 @@
 import { readFileSync, writeFileSync } from 'node:fs';
+import { integrateRoyalUi } from '../game/ui-integration.mjs';
 const root = new URL('../', import.meta.url);
 const files = ['docs/demo/index.html', 'windows/webview-2/index.html', 'Linux/assets/index.html', 'android/app/src/main/assets/index.html'];
-const script = readFileSync(new URL('game/royal-gameplay.js', root), 'utf8');
+const script = ['royal-gameplay.js', 'royal-ui.js'].map(file => readFileSync(new URL('game/' + file, root), 'utf8')).join('\n');
 const css = readFileSync(new URL('game/royal-menu.css', root), 'utf8');
 const localization = readFileSync(new URL('game/royal-localization.js', root), 'utf8');
 const begin = '// BEGIN SHARED ROYAL GAMEPLAY';
@@ -19,6 +20,7 @@ for (const file of files) {
   updated = updated.includes('<script id="royal-localization">') ? updated.replace(/<script id="royal-localization">[\s\S]*?<\/script>/, phrases) : updated.replace('<script>const LOCALIZATION=', phrases + '\n<script>const LOCALIZATION=');
   const merge = 'Object.entries(window.KING_PONG_ROYAL_TRANSLATIONS||{}).forEach(([code,phrases])=>{if(phraseTranslations[code])Object.assign(phraseTranslations[code],phrases);});';
   if (!updated.includes(merge)) updated = updated.replace('const lang=detectLanguage();', merge + 'const lang=detectLanguage();');
+  updated = integrateRoyalUi(updated);
   if (process.argv.includes('--check')) {
     if (updated !== html) throw new Error(`${file}: run node tools/sync-gameplay.mjs`);
   } else writeFileSync(path, updated);
