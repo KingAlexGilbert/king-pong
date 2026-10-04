@@ -235,6 +235,10 @@ function setOnlineControls(busy, joining = false) {
 }
 
 function closeLanConnection(showMessage = true) {
+  resetMatchConnectionState();
+  remoteSelectionSequence = -1;
+  onlineLastSentAxis = null;
+  onlineAppliedInputSeq = -1;
   const session = onlineSession;
   onlineSession = null;
   if (session) session.close();
@@ -322,7 +326,7 @@ function openOnlineRoom(role, code = '') {
       updateModeControls();
       setMenusVisible(false);
       if (role === 'host') sendLanState(true);
-      else sendLanInput(null, true);
+      else { sendPaddleSelection(); sendLanInput(null, true); }
     },
     error: code => {
       if (onlineSession !== session) return;
@@ -347,6 +351,9 @@ function onlineInput(input, seq) {
   }
   return input;
 }
+
+let onlineLastSentAxis = null;
+let onlineAppliedInputSeq = -1;
 
 function onlinePaddleState(state, levelChanged) {
   const authoritative = finiteNumber(state.rightY, right.y);

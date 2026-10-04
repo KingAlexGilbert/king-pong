@@ -68,3 +68,5 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Test real browser peers and existing gameplay
         run: npm run test:browser
+      - name: Test gameplay, selections, saves and touch layouts in every HTML build
+        run: npm run test:gameplay

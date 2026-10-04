@@ -184,7 +184,11 @@ try {
   assert.equal(await host.evaluate(() => activeSaveSlot), 1);
   assert.equal(await host.evaluate(() => saveData.completedLevels[0]), true);
   assert.equal(await host.evaluate(() => saveData.highestUnlockedLevel), 1);
+  assert.equal(await host.evaluate(() => musicVolumeLevel), 0.37);
+  assert.equal(await host.evaluate(() => musicEnabled), false);
+  await host.locator('#titleLocalButton').click();
   await host.locator('#titleTwoPlayerButton').click();
+  await host.locator('#royalGalleryClose').click();
   assert.equal(await host.evaluate(() => mode === 2 && !onlineGameBlocked && !isLanActive()), true);
   await host.evaluate(() => { paused = false; gameWindowFocused = true; keys.add('w'); keys.add('ArrowDown'); });
   await waitFor(host, 'left.y < right.y');

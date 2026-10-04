@@ -1,0 +1,41 @@
+/* Compact retro landing and reusable selectors. */
+[hidden] { display: none !important; }
+.title-card { width: min(92vw, 740px); max-height: 90dvh; overflow: auto; padding: clamp(14px, 3vh, 28px); }
+.title-card h1 { margin: 0 0 10px; font-size: clamp(28px, 6vw, 52px); }
+.title-subtitle { max-width: 530px; margin: 0 auto 18px; color: #ded9cf; font-size: 13px; line-height: 1.6; }
+.primary-online { display: block; width: 100%; border: 2px solid #ffd469; color: #ffd469; padding: 18px; font-weight: bold; font-size: clamp(20px, 4vw, 28px); letter-spacing: 3px; box-shadow: 5px 5px 0 #745323; margin: 0 0 18px; }
+.title-actions { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.title-actions button { font-size: 13px; min-height: 42px; padding: 9px; }
+.title-paddle { margin-top: 12px; padding: 8px 12px; color: #ddd; }
+#localPlayChoices { margin-top: 12px; display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; align-items: center; }
+#localPlayChoices button { padding: 10px; }
+#localPlayChoices span,.royal-help { font-size: 11px; line-height: 1.5; color: #aca9bf; }
+.compact-saves { border-top: 1px solid #45404a; margin-top: 16px; padding-top: 10px; font-size: 12px; }
+.compact-saves summary { cursor: pointer; color: #b8b4c7; padding: 4px; }
+.compact-saves .save-slot-list { grid-template-columns: repeat(3,1fr); margin-top: 8px; }
+.compact-saves .save-slot { padding: 8px; min-height: 70px; }
+.compact-saves .slot-progress { font-size: 10px; }
+.title-message { margin-top: 12px; font-size: 11px; }
+.royal-selection-row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; background: #090912e8; padding: 6px; pointer-events: auto; }
+.royal-selection-row button { padding: 7px 10px; }
+.royal-selection-row .royal-help { width: 100%; margin: 0; text-align: center; }
+.royal-gallery { position: fixed; inset: 0; z-index: 85; display: grid; place-items: center; background: #000d; padding: 12px; touch-action: pan-y; }
+.royal-gallery-card { background: #080910; border: 2px solid #ffd469; box-shadow: 6px 6px 0 #745323; width: min(920px, 94vw); max-height: 90dvh; display: flex; flex-direction: column; padding: 12px; box-sizing: border-box; }
+.royal-gallery-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; }
+.royal-gallery-header h2 { color: #ffd469; font-size: 18px; margin: 0; }
+.royal-gallery-header button { padding: 8px 14px; }
+#royalGalleryList { display: grid; grid-template-columns: repeat(auto-fill,minmax(140px,1fr)); grid-auto-rows: minmax(min-content,max-content); align-content: start; gap: 10px; overflow: auto; overscroll-behavior: contain; touch-action: pan-y; }
+.royal-choice { display: block; padding: 8px; border: 1px solid #44434f; color: #dedbe9; min-height: 160px; }
+.royal-choice canvas { display: block; width: 100%; height: 100px; margin-bottom: 5px; border: 0; box-shadow: none; object-fit: contain; pointer-events: none; }
+.royal-choice span,.royal-choice small { display: block; }
+.royal-choice small { margin-top: 5px; }
+.royal-choice[aria-pressed="true"] { border: 2px solid #ffd469; background: #262012; color: #ffd469; }
+.royal-choice:focus-visible { outline: 2px solid #fff; outline-offset: -4px; }
+.royal-choice:disabled { opacity: 0.65; color: #b5b2c0; }
+.royal-choice small { color: #ffd469; min-height: 13px; }
+.royal-gallery button,.title-screen button { -webkit-tap-highlight-color: transparent; }
+#onlineBrowserNotice input { width: 95%; color: #fff; background: #111; padding: 8px; user-select: text; }
+@media (max-height: 520px) {
+  .title-card { padding: 12px; } .title-card h1 { font-size: 28px; margin-bottom: 4px; }
+  .title-subtitle { margin-bottom: 8px; } .primary-online { padding: 10px; margin-bottom: 12px; }
+}
