@@ -26,18 +26,6 @@ The browser version supports keyboard, controller, and touch controls. For the b
 
 Browser save data is stored locally and is separate from the Android, Windows, and Linux versions.
 
-The browser source includes **PLAY ONLINE → Create Room / Join Room** with
-five-character room codes. Hosting it requires the small Cloudflare signaling
-service and TURN secrets described in [the online multiplayer setup guide](signaling/README.md).
-Gameplay stays on WebRTC; the native apps retain their existing LAN pairing.
-
-The current source adds display-rate rendering over the fixed 60 Hz simulation,
-buffered guest visuals, galleries for the existing 42 paddle profiles and 19 arenas,
-and Royal Split, Crown Rush, and Castle Guard. Two Player and native LAN are under
-**Local Play**; save controls are under **Save slots**. See the
-[gameplay update and validation report](docs/GAMEPLAY-UPDATE.md) for behavior,
-compatibility, test results, and the remaining real-device checks.
-
 ### Save Backups
 
 Builds made from this source include **Export Saves** and **Import Saves** beside **Erase Selected Slot** on the Android, Windows, and Linux title screens. A backup includes all three save slots and works across those versions. Import asks before replacing all three slots.
