@@ -4,7 +4,7 @@ import { source, root, functionSource, constantSource } from './game-source.mjs'
 
 export function harness(platform = 'Browser') {
   const html = source(platform);
-  const shared = readFileSync(new URL('game/royal-gameplay.js', root), 'utf8');
+  const shared = ['royal-gameplay.js', 'royal-rules.js'].map(file => readFileSync(new URL('game/' + file, root), 'utf8')).join('\n');
   const core = ['clamp','lerp','makePaddleProfile','currentCampaign','currentLevel','absoluteLevelNumber','selectedAbsoluteLevelIndex',
     'completedLevelCount','isBossUnlocked','isCampaignLevelUnlocked','isCustomLevelUnlocked','activePaddleProfile',
     'paddleRelativeContact','paddleProfileOffset','paddleProfileSlopeAngle','paddleSurfaceX','paddleIntersectsBall',

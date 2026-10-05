@@ -24,7 +24,7 @@ function fixture(levels, volume, enabled) {
     highestUnlockedLevel: Math.min(levels, 17),
     completedLevels: Array.from({ length: 18 }, (_, i) => i < levels),
     customCpuIntel: 28, customCpuMaxMove: 5.6,
-    musicVolumePercent: volume, musicEnabled: enabled,
+    musicVolumePercent: volume, musicEnabled: enabled, muteAll: levels === 4, soundEffectsEnabled: levels !== 18,
     bossUnlocked: levels === 18, bossCleared: levels === 18,
   };
 }
@@ -89,6 +89,7 @@ function harness(platform, initial = slots, bridge = true) {
     },
     setTimeout(fn) { fn(); }, clearTimeout() {},
     document: {
+      getElementById: byId,
       get activeElement() { return focused; },
       body: { children: [background, overlay], appendChild() {} },
       createElement(tag) { const el = element(); el.tag = tag; created.push(el); return el; },
@@ -122,12 +123,14 @@ function harness(platform, initial = slots, bridge = true) {
   run(`
     const TOTAL_LEVELS = 18, SAVE_SLOT_COUNT = 3, SAVE_STORAGE_PREFIX = '${prefix.slice(0, -1)}', ACTIVE_SAVE_SLOT_KEY = '${'pongCampaignActiveSaveSlotV1'}';
     let activeSaveSlot = 0, saveData = null, loadingSaveSlot = false, saveImportRecoveryBlocked = false;
+    let audioCtx = null;
     let customCpuIntel = 50, customCpuMaxMove = 4.4, musicVolumeLevel = .75, musicEnabled = true, musicTimer = null;
     function stopActiveMusicTones() {}
     function stopMusicAudioKeepAlive() {}
     const eraseSaveButton = byId('eraseSaveButton');
     const customIntelSlider = {}, customIntelValue = {}, customMaxMoveSlider = {}, customMaxMoveValue = {};
     const musicVolumeSlider = {}, musicVolumeValue = {};
+    ${readFileSync(new URL('../game/royal-audio.js', import.meta.url), 'utf8')}
     ${sharedCode(html)}
     ${saveFunctions}
     ${functionSource('eraseActiveSaveSlot')}

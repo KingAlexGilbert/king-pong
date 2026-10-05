@@ -168,12 +168,12 @@ test('royal state round trips and rejects malformed or unbounded values', () => 
 
 test('guest protocol rejects stale/out-of-order and invalid selection/powerup snapshots before applying state', () => {
   const h=harness();
-  h.run(`handleLanGuestMessage({type:'state',seq:2});handleLanGuestMessage({type:'state',seq:1});
-    handleLanGuestMessage({type:'state',seq:3,selection:{arena:19,left:'classic',right:'classic'}});
-    handleLanGuestMessage({type:'state',seq:4,royal:{}});
-    handleLanGuestMessage({type:'state',seq:5,tick:-1});
-    handleLanGuestMessage({type:'state',seq:6,tick:100});
-    handleLanGuestMessage({type:'state',seq:7,tick:99});`);
+  h.run(`handleLanGuestMessage({rules:matchRulePayload(),leftScore:0,rightScore:0,type:'state',seq:2});handleLanGuestMessage({rules:matchRulePayload(),leftScore:0,rightScore:0,type:'state',seq:1});
+    handleLanGuestMessage({rules:matchRulePayload(),leftScore:0,rightScore:0,type:'state',seq:3,selection:{arena:19,left:'classic',right:'classic'}});
+    handleLanGuestMessage({rules:matchRulePayload(),leftScore:0,rightScore:0,type:'state',seq:4,royal:{}});
+    handleLanGuestMessage({rules:matchRulePayload(),leftScore:0,rightScore:0,type:'state',seq:5,tick:-1});
+    handleLanGuestMessage({rules:matchRulePayload(),leftScore:0,rightScore:0,type:'state',seq:6,tick:100});
+    handleLanGuestMessage({rules:matchRulePayload(),leftScore:0,rightScore:0,type:'state',seq:7,tick:99});`);
   assert.deepEqual(h.json('applied'),[2,6]);
 });
 
@@ -187,7 +187,8 @@ for (const platform of Object.keys(builds)) test(`${platform}: legacy saves and 
   run(`const TOTAL_LEVELS=18,SAVE_SLOT_COUNT=3,SAVE_STORAGE_PREFIX='save',ACTIVE_SAVE_SLOT_KEY='active';
     let activeSaveSlot=0,saveData=null,loadingSaveSlot=false,saveImportRecoveryBlocked=false,saveConfirmation=null;
     let customCpuIntel=50,customCpuMaxMove=4.4,musicVolumeLevel=.75,musicEnabled=true,musicTimer=null,musicNextStepTime=0;
-    const document={hidden:true},customIntelSlider={},customIntelValue={},customMaxMoveSlider={},customMaxMoveValue={},musicVolumeSlider={},musicVolumeValue={};
+    let audioCtx=null; const document={hidden:true,getElementById:()=>null},customIntelSlider={},customIntelValue={},customMaxMoveSlider={},customMaxMoveValue={},musicVolumeSlider={},musicVolumeValue={};
+    ${readFileSync(new URL('game/royal-audio.js', root), 'utf8')}
     ${fns.map(n=>functionSource(html,n)).join('\n')}`);
   for(const [slot,volume,enabled] of [[0,0,false],[1,37,false],[2,100,true]]) {
     run(`writeSaveSlot(${slot},{...createDefaultSaveData(),musicVolumePercent:${volume},musicEnabled:${enabled},royalPaddle:'classic',royalArena:4});`);

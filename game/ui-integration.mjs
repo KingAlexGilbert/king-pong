@@ -1,6 +1,6 @@
 // Small, reproducible hooks into the existing platform shells. UI implementation stays
 // in royal-ui.js; no platform transport or gameplay implementation is replaced.
-function functionRange(source, name) {
+export function functionRange(source, name) {
   const start = source.indexOf('function ' + name + '(');
   if (start < 0) throw new Error('Missing UI integration point: ' + name);
   let cursor = source.indexOf('{', start) + 1, depth = 1, quote = '', comment = '';

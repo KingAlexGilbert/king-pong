@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
+import { harness as gameHarness } from './helpers/royal-harness.mjs';
 
 const source = readFileSync(new URL('../docs/demo/online.js', import.meta.url), 'utf8');
 const transport = source.slice(0, source.indexOf('let onlineSession = null;'));
@@ -130,16 +131,11 @@ test('negotiation rejection exposes no raw error, and cancellation prevents late
 });
 
 test('authoritative state and input reject duplicate/out-of-order packets', () => {
-  const html = readFileSync(new URL('../docs/demo/index.html', import.meta.url), 'utf8');
-  const get = name => { const start = html.indexOf('function ' + name + '('); return html.slice(start, html.indexOf('function ', start + 10)); };
-  const context = vm.createContext({ performance: { now: () => 1000 }, Set });
-  vm.runInContext(`let lanLastStateSeq=-1,lanLastInputSeq=-1,lanLastActionAt=-Infinity,lanRemoteInput=null;
-    let received=[]; const LAN_ALLOWED_ACTIONS=new Set(['serve','pause','retry']); const PADDLE_H=70;
-    function clamp(x,a,b){return Math.max(a,Math.min(b,x));} function visiblePlayfieldBounds(){return {top:0,bottom:480};}
-    function applyLanHostState(state){received.push(state.seq);}
-    ${get('handleLanHostMessage')}${get('handleLanGuestMessage')}
-    handleLanGuestMessage({type:'state',seq:12});handleLanGuestMessage({type:'state',seq:11});handleLanGuestMessage({type:'state',seq:12});
-    handleLanHostMessage({type:'input',seq:12,axis:1,targetY:200});handleLanHostMessage({type:'input',seq:11,axis:-1,targetY:100});`, context);
-  assert.equal(vm.runInContext('received.join()', context), '12');
-  assert.equal(vm.runInContext('lanRemoteInput.targetY', context), 200);
+  const h = gameHarness();
+  h.run(`
+    const snapshot=seq=>({type:'state',seq,rules:matchRulePayload(),leftScore:0,rightScore:0});
+    handleLanGuestMessage(snapshot(12));handleLanGuestMessage(snapshot(11));handleLanGuestMessage(snapshot(12));
+    handleLanHostMessage({type:'input',seq:12,axis:1,targetY:200});handleLanHostMessage({type:'input',seq:11,axis:-1,targetY:100});`);
+  assert.deepEqual(h.json('applied'), [12]);
+  assert.equal(h.run('lanRemoteInput.targetY'), 200);
 });

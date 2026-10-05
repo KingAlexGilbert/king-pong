@@ -44,7 +44,7 @@ function queueGuestSnapshot(state) {
   const last = guestSnapshots[guestSnapshots.length - 1];
   if (last && time < last.time) return;
   const view = captureVisualState();
-  // The solid paddle shares the ball's host timeline; local input has a separate outline.
+  // The solid paddle shares the ball's host timeline; local input has a separate, faint position marker.
   view.right.y = clamp(finiteNumber(state.rightY, right.y), 0, H - PADDLE_H);
   if (!last || last.view.key !== view.key || last.view.epoch !== view.epoch) {
     guestSnapshots.length = 0;
@@ -86,6 +86,10 @@ let royalRallyTick = 0;
 let royalPickupIndex = 0;
 let royalRallyId = 0;
 let royalScored = false;
+const ROYAL_SPLIT_SPEED_SCALE = 0.7;
+const ROYAL_COLLECTION_RADIUS = 24;
+const ROYAL_SPAWN_MARGIN = 32;
+const ROYAL_SPAWN_X_MARGIN = 112;
 const ROYAL_TYPES = ['split', 'rush', 'guard'];
 const ROYAL_COLORS = { split: '#bd7aff', rush: '#ff604d', guard: '#59baff' };
 
@@ -110,10 +114,45 @@ function updateRoyalPowerups() {
   for (const side of ['left', 'right']) royalGuards[side] = Math.max(0, royalGuards[side] - 1);
   if (royalPickup && --royalPickup.ttl <= 0) royalPickup = null;
   if (!royalPickup && royalRallyTick % 480 === 180) {
-    const positions = [[320, 240], [240, 200], [400, 280], [220, 320], [420, 160]];
-    const spot = positions.find(([x, y]) => !ballSpawnOverlapsHazard(x - BALL_HALF, y - BALL_HALF));
-    if (spot) royalPickup = { type: ROYAL_TYPES[royalPickupIndex++ % 3], x: spot[0], y: spot[1], ttl: 480 };
+    const spot = findRoyalPickupSpot();
+    const type = ROYAL_TYPES[royalPickupIndex++ % ROYAL_TYPES.length];
+    if (spot) royalPickup = { type, ...spot, ttl: 480 };
   }
+}
+
+// The host picks from a bounded deterministic sequence, then transmits the actual spot.
+// A half-second hazard sweep leaves room around moving geometry as well as static walls.
+function royalPickupSpotSafe(x, y) {
+  const bounds = visiblePlayfieldBounds(), margin = ROYAL_SPAWN_MARGIN;
+  if (!Number.isFinite(x) || !Number.isFinite(y) || x < ROYAL_SPAWN_X_MARGIN || x > W - ROYAL_SPAWN_X_MARGIN ||
+      y < Math.max(0, bounds.top) + margin || y > Math.min(H, bounds.bottom) - margin) return false;
+  return hazards.every(h => {
+    const travelX = (h.vx || 0) * 30, travelY = (h.vy || 0) * 30;
+    const radius = h.type === 'circle' ? h.r : 0;
+    const x1 = h.x - radius + Math.min(0, travelX), y1 = h.y - radius + Math.min(0, travelY);
+    const x2 = h.x + (radius || h.w) + Math.max(0, travelX), y2 = h.y + (radius || h.h) + Math.max(0, travelY);
+    if (h.type === 'circle' && !travelX && !travelY) return Math.hypot(x - h.x, y - h.y) >= h.r + margin;
+    return Math.hypot(x - clamp(x, x1, x2), y - clamp(y, y1, y2)) >= margin;
+  });
+}
+function findRoyalPickupSpot() {
+  if (isLanGuestActive()) return null;
+  let seed = (Math.imul(royalRallyId + 1, 1664525) ^ Math.imul(royalPickupIndex + 1, 1013904223) ^ Math.imul(matchArenaId + 1, 2246822519) ^ royalRallyTick) >>> 0;
+  const random = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; };
+  const bounds = visiblePlayfieldBounds();
+  const top = Math.max(0, bounds.top) + ROYAL_SPAWN_MARGIN, bottom = Math.min(H, bounds.bottom) - ROYAL_SPAWN_MARGIN;
+  if (bottom <= top) return null;
+  for (let attempt = 0; attempt < 64; attempt++) {
+    const x = Math.round(ROYAL_SPAWN_X_MARGIN + random() * (W - ROYAL_SPAWN_X_MARGIN * 2));
+    const y = Math.round(top + random() * (bottom - top));
+    if (royalPickupSpotSafe(x, y)) return { x, y };
+  }
+  return null; // A crowded arena may safely miss a spawn instead of placing an unreachable orb.
+}
+function royalBallSpeedScale() { return ball.id === 'royal-split' ? ROYAL_SPLIT_SPEED_SCALE : 1; }
+function royalPaddleReturnSpeed(level) {
+  if (ball.id === 'royal-split') return Math.min(ballSpeed() + (0.32 + absoluteLevelNumber() * 0.01) * ROYAL_SPLIT_SPEED_SCALE, level.maxSpeed * ROYAL_SPLIT_SPEED_SCALE);
+  return Math.min(ballSpeed() + 0.32 + absoluteLevelNumber() * 0.01, level.maxSpeed);
 }
 
 function awardRoyalPowerup(type, target = ball) {
@@ -121,7 +160,7 @@ function awardRoyalPowerup(type, target = ball) {
   if (type === 'split' && !royalSplitBall) {
     const speed = Math.hypot(target.vx, target.vy);
     const vy = Math.abs(target.vy) < 0.5 ? 1 : -target.vy;
-    const factor = speed / Math.hypot(target.vx, vy);
+    const factor = speed * ROYAL_SPLIT_SPEED_SCALE / Math.hypot(target.vx, vy);
     royalSplitBall = { ...target, id: 'royal-split', vx: target.vx * factor, vy: vy * factor, prevX: target.x, prevY: target.y, trap: null };
   }
   if (type === 'rush' && !target.rush) {
@@ -137,7 +176,7 @@ function collectRoyalPickup() {
   if (!royalPickup || !ball.lastHit) return;
   const dx = ball.x - ball.prevX, dy = ball.y - ball.prevY;
   const t = clamp(((royalPickup.x - ball.prevX - BALL_HALF) * dx + (royalPickup.y - ball.prevY - BALL_HALF) * dy) / (dx * dx + dy * dy || 1), 0, 1);
-  if (Math.hypot(ball.prevX + BALL_HALF + dx * t - royalPickup.x, ball.prevY + BALL_HALF + dy * t - royalPickup.y) <= 14) {
+  if (Math.hypot(ball.prevX + BALL_HALF + dx * t - royalPickup.x, ball.prevY + BALL_HALF + dy * t - royalPickup.y) <= ROYAL_COLLECTION_RADIUS) {
     if (awardRoyalPowerup(royalPickup.type)) { royalPickup = null; beep(660, 0.04); }
   }
 }
@@ -206,7 +245,7 @@ function validRoyalState(value) {
   if (!value || !Number.isSafeInteger(value.rally) || value.rally < 0 || typeof value.rush !== 'boolean') return false;
   if (!value.guards || !['left', 'right'].every(k => Number.isInteger(value.guards[k]) && bounded(value.guards[k], 0, 600))) return false;
   if (value.split !== null && (!value.split || !bounded(value.split.x, -32, W + 32) || !bounded(value.split.y, 0, H) || !bounded(value.split.vx, -32, 32) || !bounded(value.split.vy, -32, 32) || typeof value.split.rush !== 'boolean')) return false;
-  return value.pickup === null || (value.pickup && ROYAL_TYPES.includes(value.pickup.type) && bounded(value.pickup.x, 0, W) && bounded(value.pickup.y, 0, H) && Number.isInteger(value.pickup.ttl) && bounded(value.pickup.ttl, 0, 480));
+  return value.pickup === null || (value.pickup && ROYAL_TYPES.includes(value.pickup.type) && bounded(value.pickup.x, ROYAL_SPAWN_X_MARGIN, W - ROYAL_SPAWN_X_MARGIN) && bounded(value.pickup.y, ROYAL_SPAWN_MARGIN, H - ROYAL_SPAWN_MARGIN) && Number.isInteger(value.pickup.ttl) && bounded(value.pickup.ttl, 0, 480));
 }
 
 function applyRoyalState(value) {
@@ -267,10 +306,13 @@ function drawRoyalEffects(view) {
 function drawGuestInputPreview(view) {
   if (typeof onlineSession === 'undefined' || !onlineSession || !isLanGuestActive() || Math.abs(right.y - view.right.y) < 2) return;
   ctx.save();
-  ctx.globalAlpha = 0.7;
-  ctx.strokeStyle = '#ffd469';
-  ctx.setLineDash([3, 3]);
-  ctx.strokeRect(W - 13, right.y, 7, PADDLE_H);
+  ctx.shadowBlur = 0;
+  ctx.globalAlpha = 0.3;
+  ctx.fillStyle = '#b6b0d0';
+  // A short pixel cursor at the input's center cannot be mistaken for a collision paddle.
+  const center = right.y + PADDLE_H / 2;
+  ctx.fillRect(W - 16, center - 1, 7, 2);
+  ctx.fillRect(W - 12, center - 4, 2, 8);
   ctx.restore();
 }
 
@@ -357,6 +399,7 @@ function receivePaddleSelection(message) {
 }
 
 function resetMatchConnectionState() {
+  resetMatchRuleConnection();
   resetVisualHistory();
   guestSnapshotSequence = -1;
   guestSnapshotTick = -1;
@@ -364,7 +407,7 @@ function resetMatchConnectionState() {
 }
 
 function compatibleGameplay(message) {
-  if (message.gameplay === 'royal') return true;
+  if (message.gameplay === 'royal' && message.matchRules === 'presets') return true;
   closeLanConnection(false);
   paused = true;
   if (typeof onlineGameBlocked !== 'undefined') onlineGameBlocked = true;
@@ -540,7 +583,7 @@ function initRoyalMenus() {
   document.body.append(gallery); setLocalizedText(byId('royalGalleryClose'), 'Close'); byId('royalGalleryClose').addEventListener('click', closeRoyalGallery);
   gallery.addEventListener('click', e => { if (e.target === gallery) closeRoyalGallery(); });
   if (browserOnline) {
-    const help = document.createElement('p'); help.className = 'royal-help'; setLocalizedText(help, 'Solid paddle: host confirmed. Gold outline: your input.'); lanPanel.append(help);
+    const help = document.createElement('p'); help.className = 'royal-help'; setLocalizedText(help, 'Solid paddle: host confirmed. Faint cursor: your input.'); lanPanel.append(help);
   }
   const powers = document.createElement('p'); powers.className = 'royal-help'; setLocalizedText(powers, 'Royal Split: two scoring balls. Crown Rush: 30% faster until paddle hit. Castle Guard: 10-second wall.'); row.append(powers);
   for (const b of document.querySelectorAll('.title-screen button,.royal-selection-row button')) { b.tabIndex = 0; b.removeAttribute('data-keyboard-menu-disabled'); }

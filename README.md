@@ -26,6 +26,11 @@ The browser version supports keyboard, controller, and touch controls. For the b
 
 Browser save data is stored locally and is separate from the Android, Windows, and Linux versions.
 
+In this source, **Menu → Settings → Audio** includes Mute All, Music, Sound Effects,
+and Music volume. Local and online multiplayer setup offers Quick, Classic,
+Win by Two, and Endless rules. See the [gameplay polish review](docs/GAMEPLAY-POLISH.md)
+for behavior, validation results, and device checks.
+
 ### Save Backups
 
 Builds made from this source include **Export Saves** and **Import Saves** beside **Erase Selected Slot** on the Android, Windows, and Linux title screens. A backup includes all three save slots and works across those versions. Import asks before replacing all three slots.

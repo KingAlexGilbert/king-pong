@@ -100,7 +100,7 @@ function initRoyalUi() {
   setupActions.append(royalButton('matchServe', 'Start match', royalContinue, 'match-primary'), royalButton('setupMenuButton', 'Menu (M)', () => { royalMenuRequested = true; setMenusVisible(true); }));
   setup.append(setupActions);
   const setupBody = document.createElement('div'); setupBody.id = 'matchSetupBody';
-  setupBody.append(lanPanel, document.querySelector('.royal-selection-row'), custom, setupHint);
+  setupBody.append(lanPanel, document.querySelector('.royal-selection-row'), createMatchRulesUi(), custom, setupHint);
   setup.insertBefore(setupBody, setupActions);
 
   const menu = royalDialog('matchMenu', 'Match menu');
@@ -113,16 +113,35 @@ function initRoyalUi() {
   menu.append(configure);
   const modes = royalDisclosure('Change mode', 'matchModes');
   const modeGrid = document.createElement('div'); modeGrid.className = 'match-mode-grid controls';
-  modeGrid.append(...campaignButtons, customModeButton, twoPlayerModeButton, lanModeButton,
+  const campaignGroup = document.createElement('section'); campaignGroup.className = 'campaign-mode-group';
+  campaignGroup.setAttribute('aria-label', localizeText('Campaign'));
+  const campaignEntry = royalButton('menuCampaign', 'Campaign', startCampaignFromSave);
+  const chapters = document.createElement('div'); chapters.className = 'campaign-chapters';
+  const chapterLabel = document.createElement('span'); chapterLabel.className = 'match-eyebrow'; setLocalizedText(chapterLabel, 'Chapters');
+  chapters.append(chapterLabel, ...campaignButtons); campaignGroup.append(campaignEntry, chapters);
+  royalText(twoPlayerModeButton, 'Local Two Player');
+  modeGrid.append(campaignGroup, customModeButton, twoPlayerModeButton, lanModeButton,
     royalButton('menuBoss', 'Secret Boss', startBossFromTitle, 'secret-boss-button'));
   modes.append(modeGrid); menu.append(modes);
   const settings = royalDisclosure('Settings', 'matchSettings');
-  const settingsRow = document.createElement('div'); settingsRow.className = 'match-settings-row';
-  settingsRow.append(musicButton, document.querySelector('.music-volume-control'), playInfoToggle); settings.append(settingsRow); menu.append(settings);
+  const audio = royalHelpSection('audioSettings', 'Audio'); audio.classList.add('audio-settings');
+  const audioRows = document.createElement('div'); audioRows.className = 'audio-rows';
+  for (const [label, button] of [
+    ['Mute All', royalButton('muteAllButton', 'OFF', () => setGameMuteAll(!saveData.muteAll))],
+    ['Music', musicButton],
+    ['Sound Effects', royalButton('soundEffectsButton', 'ON', () => setSoundEffectsEnabled(saveData.soundEffectsEnabled === false))]
+  ]) {
+    const row = document.createElement('div'); row.className = 'audio-row';
+    const caption = document.createElement('span'); caption.id = button.id + 'Label'; setLocalizedText(caption, label);
+    button.setAttribute('aria-labelledby', caption.id + ' ' + button.id); row.append(caption, button); audioRows.append(row);
+  }
+  const volume = document.querySelector('.music-volume-control'); volume.classList.add('audio-volume');
+  setLocalizedText(volume.querySelector('span'), 'Music volume');
+  audio.append(audioRows, volume); settings.append(audio);
+  const display = royalHelpSection('displaySettings', 'Display'); display.append(playInfoToggle); settings.append(display); menu.append(settings);
   const help = royalDisclosure('Controls & royal powerups', 'matchHelp');
-  const controls = document.createElement('p'); controls.id = 'fullControlHelp'; controls.className = 'match-note';
-  const powers = document.querySelector('.royal-selection-row .royal-help');
-  help.append(controls, powers);
+  document.querySelector('.royal-selection-row .royal-help')?.remove();
+  help.append(createRoyalHelp());
   const onlineHelp = lanPanel.querySelector('.royal-help'); if (onlineHelp) { onlineHelp.id = 'onlinePaddleHelp'; help.append(onlineHelp); }
   menu.append(help);
   const close = royalButton('matchMenuClose', 'Close menu', () => setMenusVisible(false)); close.className = 'match-close'; menu.append(close);
@@ -151,6 +170,46 @@ function initRoyalUi() {
   handleViewportChange();
   syncRoyalUi(true);
 }
+function royalHelpSection(id, label) {
+  const section = document.createElement('section'); section.id = id; section.className = 'match-section';
+  const heading = document.createElement('h3'); heading.id = id + 'Title'; setLocalizedText(heading, label);
+  section.setAttribute('aria-labelledby', heading.id); section.append(heading); return section;
+}
+function createRoyalHelp() {
+  const content = document.createElement('div'); content.id = 'fullControlHelp'; content.className = 'help-grid';
+  for (const [id, title, rows] of [
+    ['helpKeyboard', 'Keyboard', [['W / S', 'Move (Player 1 in local play)'], ['↑ / ↓', 'Move (Player 2 in local play)'], ['Space', 'Serve / continue'], ['P', 'Pause / resume'], ['R', 'Restart match'], ['M', 'Menu'], ['G', 'Goal info'], ['N', 'Music'], ['0 / Esc', 'Title Screen']]],
+    ['helpController', 'Controller', [['Stick / D-pad', 'Move'], ['A', 'Serve / continue'], ['Start', 'Pause / resume'], ['B', 'Restart match'], ['Select', 'Menu'], ['P1 / P2', 'One controller per local player']]],
+    ['helpTouch', 'Mobile / Touch', [['Drag', 'Move'], ['Left / right side', 'Player 1 / Player 2 in local play'], ['Tap', 'Serve / continue'], ['Two fingers', 'Pause / resume']]],
+    ['helpPowerups', 'Royal Powerups', [['Royal Split', 'Both balls score. The duplicate starts at 70% speed.'], ['Crown Rush', '30% faster until the next paddle hit.'], ['Castle Guard', 'A defensive wall for 10 seconds.']]]
+  ]) {
+    const section = royalHelpSection(id, title), list = document.createElement('dl');
+    for (const [key, description] of rows) {
+      const term = document.createElement('dt'), definition = document.createElement('dd');
+      setLocalizedText(term, key); setLocalizedText(definition, description); list.append(term, definition);
+    }
+    section.append(list); content.append(section);
+  }
+  return content;
+}
+function createMatchRulesUi() {
+  const section = royalHelpSection('matchRules', 'Match rules');
+  const options = document.createElement('div'); options.className = 'match-rule-options'; options.setAttribute('role', 'group'); options.setAttribute('aria-labelledby', 'matchRulesTitle');
+  for (const [id, rule] of Object.entries(MATCH_RULES)) options.append(royalButton('matchRule-' + id, rule.label, () => setMatchRule(id)));
+  const summary = document.createElement('p'); summary.id = 'matchRulesSummary'; summary.className = 'match-note';
+  section.append(options, summary); return section;
+}
+function syncMatchRulesUi() {
+  byId('matchRules').hidden = mode !== 2;
+  const guest = lanRole === 'guest';
+  byId('matchRules').querySelector('.match-rule-options').hidden = guest;
+  for (const id of Object.keys(MATCH_RULES)) {
+    const button = byId('matchRule-' + id);
+    button.disabled = !canChooseMatchRules(); button.setAttribute('aria-pressed', String(matchRuleId === id));
+  }
+  byId('matchRulesSummary').hidden = !guest;
+  royalText(byId('matchRulesSummary'), localizeText(matchRule().label) + ' · ' + localizeText('The host chooses the match rules.'));
+}
 function royalContinue() {
   if (royalNeedsSetup() && royalMenuRequested) { setMenusVisible(false); return; }
   if (!paused && !waitingForServe && !gameOver && !levelCleared && !campaignCleared) { setMenusVisible(false); return; }
@@ -174,7 +233,8 @@ function paintRoyalChoice(button, number, label, entry, kind) {
   const step = document.createElement('b'); step.textContent = number;
   const text = document.createElement('span'); setLocalizedText(text, label); caption.append(step, text);
   const name = document.createElement('strong'); setLocalizedText(name, kind === 'arena' ? entry.level.name : entry.profile.name);
-  button.append(caption, kind === 'arena' ? arenaThumbnail(entry) : paddleThumbnail(entry), name);
+  const affordance = document.createElement('span'); affordance.className = 'setup-change'; setLocalizedText(affordance, 'CHANGE');
+  button.append(caption, kind === 'arena' ? arenaThumbnail(entry) : paddleThumbnail(entry), name, affordance);
 }
 function syncRoyalUi(force = false) {
   if (!byId('matchSetup')) return;
@@ -184,7 +244,7 @@ function syncRoyalUi(force = false) {
   const menu = !title && !bossIntroActive && !creditsActive && menusVisible && (!setup || royalMenuRequested);
   const signature = [title, online, setup, menu, galleryKind, bossIntroActive, creditsActive, mode, activeCampaign, levelIndex, waitingForServe, paused, gameOver,
     levelCleared, campaignCleared, lanRole, lanConnected, lanLastStatus, matchArenaId, matchPaddles.left, matchPaddles.right,
-    saveData?.royalPaddle, activeSaveSlot, playInfoVisible, isBossUnlocked(), touchInputActive, gamepadConnected].join('|');
+    saveData?.royalPaddle, activeSaveSlot, playInfoVisible, matchRuleId, matchRuleRevision, isBossUnlocked(), touchInputActive, gamepadConnected].join('|');
   if (!force && signature === royalUiSignature) return;
   royalUiSignature = signature;
   byId('matchSetup').hidden = !setup || menu || Boolean(galleryKind);
@@ -192,17 +252,20 @@ function syncRoyalUi(force = false) {
   byId('matchBar').hidden = title || creditsActive || bossIntroActive;
   document.body.classList.toggle('royal-panel-open', setup || menu || Boolean(galleryKind));
   // One source of truth for active states, including setup before any peer exists.
-  for (const button of [...campaignButtons, customModeButton, twoPlayerModeButton, lanModeButton, byId('menuBoss')]) {
+  for (const button of [...campaignButtons, byId('menuCampaign'), customModeButton, twoPlayerModeButton, lanModeButton, byId('menuBoss')]) {
     const active = !title && (button.dataset.campaign !== undefined ? mode === 1 && Number(button.dataset.campaign) === activeCampaign :
-      button === customModeButton ? mode === 3 : button === twoPlayerModeButton ? mode === 2 && !online : button === lanModeButton ? online : mode === 4);
-    button.classList.toggle('active', active); button.setAttribute('aria-pressed', String(active));
+      button === byId('menuCampaign') ? mode === 1 : button === customModeButton ? mode === 3 : button === twoPlayerModeButton ? mode === 2 && !online : button === lanModeButton ? online : mode === 4);
+    button.classList.toggle('active', active && button.dataset.campaign === undefined);
+    button.classList.toggle('chapter-active', active && button.dataset.campaign !== undefined);
+    button.setAttribute('aria-pressed', String(active));
   }
   byId('menuBoss').hidden = !isBossUnlocked();
   royalText(byId('matchMode'), royalModeName());
   royalText(byId('matchContext'), online && !lanConnected ? lanLastStatus : mode === 4 ? BOSS_LEVEL.name :
-    (online && lanConnected ? localizeText('Connected!') + ' · ' : mode === 1 ? localizeText(CAMPAIGNS[activeCampaign].name) + ' · ' : '') + localizeText(currentLevel().name) + (playInfoVisible ? ' · ' + localizeText('Goal') + ' ' + currentLevel().goal : ''));
+    (online && lanConnected ? localizeText('Connected!') + ' · ' : mode === 1 ? localizeText(CAMPAIGNS[activeCampaign].name) + ' · ' : '') + localizeText(currentLevel().name) + (playInfoVisible ? ' · ' + (mode === 2 ? localizeText(matchRule().label) : localizeText('Goal') + ' ' + currentLevel().goal) : ''));
   royalText(byId('matchSetupTitle'), royalModeName());
   royalText(byId('matchMenuTitle'), paused ? 'Paused' : 'Match menu');
+  royalText(twoPlayerModeButton, 'Local Two Player');
   royalText(menuToggle, 'Menu (M)'); menuToggle.setAttribute('aria-expanded', String(menu));
   menuToggle.setAttribute('aria-pressed', String(menu)); setLocalizedTitle(menuToggle, 'Menu (M)');
   byId('matchConnection').hidden = !online;
@@ -232,12 +295,13 @@ function syncRoyalUi(force = false) {
   byId('matchPause').hidden = setup || menu || !canServe;
   royalText(byId('matchContinue'), gameOver ? 'Retry' : levelCleared || campaignCleared ? 'Continue' : 'Serve');
   royalText(byId('matchPause'), paused ? 'Resume' : 'Pause');
-  royalText(byId('matchResume'), setup ? 'Back to setup' : paused ? 'Resume' : waitingForServe ? 'Serve' : 'Back to match');
+  royalText(byId('matchResume'), setup ? 'Back to setup' : gameOver ? 'Retry' : paused ? 'Resume' : waitingForServe ? 'Serve' : 'Back to match');
   royalText(byId('matchSetupHint'), online ? lanRole === 'guest' ? 'Choose your paddle. The host chooses the arena.' : lanConnected ? 'Both players can choose a paddle before serving.' : 'Create a room or join a friend with their room code.' : mode === 3 ? 'Choose your paddle and arena, then start the match.' : 'Choose your paddles and arena, then start the match.');
   byId('menuPaddle').hidden = mode === 4 || online && !waitingForServe;
   byId('menuPaddle2').hidden = mode !== 2 || online;
   byId('menuArena').hidden = mode !== 2 && mode !== 3 || lanRole === 'guest' || online && !waitingForServe;
   restartButton.disabled = online && !lanConnected;
+  syncMatchRulesUi();
   updateRoyalControlHint();
   syncRoyalOrientation();
   syncRoyalFocus();
@@ -249,7 +313,9 @@ function updateRoyalControlHint() {
   const move = gamepadConnected ? 'Stick / D-pad: move' : touch ? mode === 2 && !online ? 'Drag each side to move' : 'Drag to move' : mode === 2 && !online ? 'P1 W/S · P2 ↑/↓' : 'W/S or ↑/↓: move';
   const action = gamepadConnected ? waitingForServe ? 'A: serve' : 'Start: pause' : touch ? waitingForServe ? 'Tap: serve' : 'Two fingers: pause' : waitingForServe ? 'Space: serve' : 'P: pause';
   royalText(controlHint, online && !lanConnected ? 'Menu (M)' : move + ' · ' + action);
-  if (byId('fullControlHelp')) royalText(byId('fullControlHelp'), gamepadConnected ? mode === 2 ? GAMEPAD_HINT_TWO_PLAYER : GAMEPAD_HINT_SINGLE : touch ? mode === 2 && !online ? TOUCH_HINT_TWO_PLAYER : TOUCH_HINT_SINGLE : mode === 2 && online ? KEYBOARD_HINT_LAN : KEYBOARD_HINT);
+  for (const [id, current] of [['helpKeyboard', !gamepadConnected && !touch], ['helpController', gamepadConnected], ['helpTouch', touch && !gamepadConnected]]) {
+    if (byId(id)) byId(id).classList.toggle('current-input', current);
+  }
 }
 function royalPhoneViewport() {
   return (navigator.maxTouchPoints > 0 || window.matchMedia('(pointer: coarse)').matches) && Math.min(window.innerWidth, window.innerHeight) <= 600;

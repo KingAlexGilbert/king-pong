@@ -32,7 +32,7 @@ for (const [platform, html] of Object.entries(sources)) {
     assert.match(html, /new AudioContextCtor\(\{latencyHint:"interactive"\}\)/);
     assert.match(html, /const MUSIC_SCHEDULER_LOOKAHEAD_SECONDS=0\.1;const MUSIC_SCHEDULER_MIN_DELAY_MS=20;/);
     assert.match(html, /function playMusicStep\(startTime=null\)[\s\S]*?Number\.isFinite\(startTime\)\?Math\.max\(startTime,activeAudio\.currentTime\+0\.005\)/);
-    assert.match(html, /function scheduleMusicLoop\(\)\{musicTimer=null;if\(!musicEnabled\|\|musicVolumeLevel<=0\|\|document\.hidden\)\{musicNextStepTime=0;return;\}[\s\S]*?const scheduleUntil=activeAudio\.currentTime\+MUSIC_SCHEDULER_LOOKAHEAD_SECONDS;[\s\S]*?playMusicStep\(stepTime\);[\s\S]*?delayUntilNextWindow[\s\S]*?Math\.max\(MUSIC_SCHEDULER_MIN_DELAY_MS,delayUntilNextWindow\)/);
+    assert.match(html, /function scheduleMusicLoop\(\)\{musicTimer=null;[\s\S]*?if\(!musicEnabled\|\|musicVolumeLevel<=0\|\|document\.hidden\)\{musicNextStepTime=0;return;\}[\s\S]*?const scheduleUntil=activeAudio\.currentTime\+MUSIC_SCHEDULER_LOOKAHEAD_SECONDS;[\s\S]*?playMusicStep\(stepTime\);[\s\S]*?delayUntilNextWindow[\s\S]*?Math\.max\(MUSIC_SCHEDULER_MIN_DELAY_MS,delayUntilNextWindow\)/);
     assert.doesNotMatch(html, /setTimeout\(scheduleMusicLoop,currentMusicIntervalMs\(\)\)/);
     assert.match(html, /function playMusicTone\([\s\S]*?if\(!musicEnabled\|\|musicVolumeLevel<=0\|\|volume<=0\)return;/);
     assert.match(html, /function stopActiveMusicTones\(\)[\s\S]*?activeMusicOscillators\.clear\(\)/);
