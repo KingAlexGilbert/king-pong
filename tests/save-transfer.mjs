@@ -180,10 +180,10 @@ test('all production scripts parse and share exactly the same transfer implement
     for (const id of ['exportSavesButton', 'importSavesButton', 'eraseSaveButton', 'saveTransferStatus', 'saveConfirmOverlay', 'saveConfirmTitle', 'saveConfirmMessage', 'saveConfirmCancel', 'saveConfirmAccept']) {
       assert.equal([...html.matchAll(new RegExp(`id="${id}"`, 'g'))].length, 1);
     }
-    assert.match(html, /recoverInterruptedSaveImport\(\);loadSaveSlot\(rememberedSaveSlot\(\)\);/);
+    assert.match(html, /recoverInterruptedSaveImport\(\);\s*loadSaveSlot\(rememberedSaveSlot\(\)\);/);
     assert.match(html, /class="save-actions"[\s\S]*?id="exportSavesButton"[\s\S]*?id="importSavesButton"[\s\S]*?id="eraseSaveButton"[\s\S]*?<\/div>/);
     assert.doesNotMatch(html, /window\.confirm\(/);
-    assert.match(html, /role="alertdialog" aria-modal="true" aria-labelledby="saveConfirmTitle" aria-describedby="saveConfirmMessage"/);
+    assert.match(html, /role="alertdialog"\s+aria-modal="true"\s+aria-labelledby="saveConfirmTitle"\s+aria-describedby="saveConfirmMessage"/);
   }
 });
 

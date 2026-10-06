@@ -1,4 +1,6 @@
-import { readFileSync } from 'node:fs';
+import {
+  readFileSync
+} from 'node:fs';
 
 export const builds = {
   Browser: 'docs/demo/index.html',
@@ -14,18 +16,28 @@ export function functionSource(html, name) {
   const start = html.indexOf('function ' + name + '(');
   if (start < 0) throw new Error('Missing function: ' + name);
   let cursor = html.indexOf('{', start) + 1;
-  let depth = 1, quote = '', comment = '';
+  let depth = 1,
+    quote = '',
+    comment = '';
   while (depth && cursor < html.length) {
-    const c = html[cursor], next = html[cursor + 1];
+    const c = html[cursor],
+      next = html[cursor + 1];
     if (comment) {
       if (comment === 'line' && c === '\n') comment = '';
-      else if (comment === 'block' && c === '*' && next === '/') { comment = ''; cursor++; }
+      else if (comment === 'block' && c === '*' && next === '/') {
+        comment = '';
+        cursor++;
+      }
     } else if (quote) {
       if (c === '\\') cursor++;
       else if (c === quote) quote = '';
-    } else if (c === '/' && next === '/') { comment = 'line'; cursor++; }
-    else if (c === '/' && next === '*') { comment = 'block'; cursor++; }
-    else if (c === '"' || c === "'" || c === '`') quote = c;
+    } else if (c === '/' && next === '/') {
+      comment = 'line';
+      cursor++;
+    } else if (c === '/' && next === '*') {
+      comment = 'block';
+      cursor++;
+    } else if (c === '"' || c === "'" || c === '`') quote = c;
     else if (c === '{') depth++;
     else if (c === '}') depth--;
     cursor++;
@@ -35,7 +47,8 @@ export function functionSource(html, name) {
 }
 
 export function constantSource(html, name) {
-  const start = html.indexOf('const ' + name + '=');
-  if (start < 0) throw new Error('Missing constant: ' + name);
+  const match = new RegExp('\\bconst\\s+' + name + '\\s*=').exec(html);
+  if (!match) throw new Error('Missing constant: ' + name);
+  const start = match.index;
   return html.slice(start, html.indexOf(';', start) + 1);
 }

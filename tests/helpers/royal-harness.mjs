@@ -1,22 +1,53 @@
 import vm from 'node:vm';
-import { readFileSync } from 'node:fs';
-import { source, root, functionSource, constantSource } from './game-source.mjs';
+import {
+  readFileSync
+} from 'node:fs';
+import {
+  source,
+  root,
+  functionSource,
+  constantSource
+} from './game-source.mjs';
 
 export function harness(platform = 'Browser') {
   const html = source(platform);
-  const shared = ['royal-gameplay.js', 'royal-rules.js'].map(file => readFileSync(new URL('game/' + file, root), 'utf8')).join('\n');
-  const core = ['clamp','lerp','makePaddleProfile','currentCampaign','currentLevel','absoluteLevelNumber','selectedAbsoluteLevelIndex',
-    'completedLevelCount','isBossUnlocked','isCampaignLevelUnlocked','isCustomLevelUnlocked','activePaddleProfile',
-    'paddleRelativeContact','paddleProfileOffset','paddleProfileSlopeAngle','paddleSurfaceX','paddleIntersectsBall',
-    'calculatePaddleBounceAngle','cpuReturnTargetAngle','ballSpeed','normalizeBallVelocity','hitPaddle','ballRect','rectsOverlap',
-    'resolveRectCollision','resolveCircleCollision','resolveHazardCollisions','reflectYForBounds','resetHazardTrapGuard',
-    'registerRectHazardHit','forceBallOutOfHazardLoop','updateRallyLaunchRamp','clearRallyLaunchRamp','updateSingleBall',
-    'ballSpawnOverlapsHazard','pointForPlayer','pointForCpu','shouldAutoServeAfterPoint','nextCpuModeRallyDirection',
-    'loop','resetFrameClock','handleLanHostMessage','handleLanGuestMessage','serializeLanHazards','sendLanState'];
-  const definitions = ['DEFAULT_PADDLE_PROFILE','PLAYER_PADDLE_PROFILES','ENEMY_PADDLE_PROFILES','BOSS_ADAPTIVE_PROFILES',
-    'CAMPAIGNS','BOSS_LEVEL','BOSS_CAMPAIGN'].map(n => constantSource(html, n)).join('\n');
-  const context = vm.createContext({ console, performance: { now: () => 1000 },
-    document: { hidden: false, body: { classList: { contains: () => false } } }, requestAnimationFrame() {} });
+  const shared = ['royal-gameplay.js', 'royal-rules.js'].map(file => readFileSync(new URL('game/' + file, root),
+    'utf8')).join('\n');
+  const core = ['clamp', 'lerp', 'makePaddleProfile', 'currentCampaign', 'currentLevel', 'absoluteLevelNumber',
+    'selectedAbsoluteLevelIndex',
+    'completedLevelCount', 'isBossUnlocked', 'isCampaignLevelUnlocked', 'isCustomLevelUnlocked',
+    'activePaddleProfile',
+    'paddleRelativeContact', 'paddleProfileOffset', 'paddleProfileSlopeAngle', 'paddleSurfaceX',
+    'paddleIntersectsBall',
+    'calculatePaddleBounceAngle', 'cpuReturnTargetAngle', 'ballSpeed', 'normalizeBallVelocity', 'hitPaddle',
+    'ballRect', 'rectsOverlap',
+    'resolveRectCollision', 'resolveCircleCollision', 'resolveHazardCollisions', 'reflectYForBounds',
+    'resetHazardTrapGuard',
+    'registerRectHazardHit', 'forceBallOutOfHazardLoop', 'updateRallyLaunchRamp', 'clearRallyLaunchRamp',
+    'updateSingleBall',
+    'ballSpawnOverlapsHazard', 'pointForPlayer', 'pointForCpu', 'shouldAutoServeAfterPoint',
+    'nextCpuModeRallyDirection',
+    'loop', 'resetFrameClock', 'handleLanHostMessage', 'handleLanGuestMessage', 'serializeLanHazards', 'sendLanState'
+  ];
+  const definitions = ['DEFAULT_PADDLE_PROFILE', 'PLAYER_PADDLE_PROFILES', 'ENEMY_PADDLE_PROFILES',
+    'BOSS_ADAPTIVE_PROFILES',
+    'CAMPAIGNS', 'BOSS_LEVEL', 'BOSS_CAMPAIGN'
+  ].map(n => constantSource(html, n)).join('\n');
+  const context = vm.createContext({
+    console,
+    performance: {
+      now: () => 1000
+    },
+    document: {
+      hidden: false,
+      body: {
+        classList: {
+          contains: () => false
+        }
+      }
+    },
+    requestAnimationFrame() {}
+  });
   const run = code => vm.runInContext(code, context);
   run(`
     const W=640,H=480,PADDLE_W=8,PADDLE_H=64,PADDLE_SPEED=7.2,PADDLE_MARGIN=32,BALL_SIZE=8,BALL_HALF=4;
@@ -55,5 +86,9 @@ export function harness(platform = 'Browser') {
     ${definitions}
     ${shared}
   `);
-  return { run, context, json: code => JSON.parse(JSON.stringify(run(code))) };
+  return {
+    run,
+    context,
+    json: code => JSON.parse(JSON.stringify(run(code)))
+  };
 }

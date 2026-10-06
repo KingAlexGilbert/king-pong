@@ -9,7 +9,8 @@
     "check": "wrangler deploy --dry-run",
     "test:browser": "node test/browser.mjs",
     "test:gameplay": "node test/gameplay-browser.mjs",
-    "test:ui": "node test/ui-browser.mjs"
+    "test:ui": "node test/ui-browser.mjs",
+    "test:engineering": "node test/engineering-browser.mjs"
   },
   "devDependencies": {
     "miniflare": "5.20261001.0-alpha",

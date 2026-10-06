@@ -72,3 +72,5 @@ jobs:
         run: npm run test:gameplay
       - name: Test contextual UI, accessibility and phone rotation
         run: npm run test:ui
+      - name: Test desktop centering and high-refresh rally transitions
+        run: npm run test:engineering

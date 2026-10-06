@@ -918,7 +918,19 @@ Object.entries({
     "Right player wins the match. Space to play again.": "右侧玩家获胜。空格键再玩一次。"
   }
 }).forEach(([code, phrases]) => Object.assign(window.KING_PONG_ROYAL_TRANSLATIONS[code], phrases));
-Object.entries({es:'PARTIDA TERMINADA',fr:'MATCH TERMINÉ',de:'MATCH BEENDET',pt:'FIM DE PARTIDA',it:'PARTITA FINITA',nl:'WEDSTRIJD AFGELOPEN',ja:'試合終了',ko:'경기 종료',zh:'比赛结束'}).forEach(([code, text]) => { window.KING_PONG_ROYAL_TRANSLATIONS[code]['MATCH OVER'] = text; });
+Object.entries({
+  es: 'PARTIDA TERMINADA',
+  fr: 'MATCH TERMINÉ',
+  de: 'MATCH BEENDET',
+  pt: 'FIM DE PARTIDA',
+  it: 'PARTITA FINITA',
+  nl: 'WEDSTRIJD AFGELOPEN',
+  ja: '試合終了',
+  ko: '경기 종료',
+  zh: '比赛结束'
+}).forEach(([code, text]) => {
+  window.KING_PONG_ROYAL_TRANSLATIONS[code]['MATCH OVER'] = text;
+});
 // Short labels used by the structured audio and keyboard sections.
 Object.entries({
   es: ['Música', 'Espacio', 'Pantalla de título'],
@@ -930,4 +942,6 @@ Object.entries({
   ja: ['音楽', 'スペース', 'タイトル画面'],
   ko: ['음악', '스페이스', '타이틀 화면'],
   zh: ['音乐', '空格', '标题画面']
-}).forEach(([code, values]) => ['Music', 'Space', 'Title Screen'].forEach((key, index) => { window.KING_PONG_ROYAL_TRANSLATIONS[code][key] = values[index]; }));
+}).forEach(([code, values]) => ['Music', 'Space', 'Title Screen'].forEach((key, index) => {
+  window.KING_PONG_ROYAL_TRANSLATIONS[code][key] = values[index];
+}));
