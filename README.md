@@ -26,10 +26,6 @@ The browser version supports keyboard, controller, and touch controls. For the b
 
 Browser save data is stored locally and is separate from the Android, Windows, and Linux versions.
 
-### Save Backups
-
-Builds made from this source include **Export Saves** and **Import Saves** beside **Erase Selected Slot** on the Android, Windows, and Linux title screens. A backup includes all three save slots and works across those versions. Import asks before replacing all three slots.
-
 ## Gameplay Demo
 
 [![King Pong Gameplay Demo](Screenshots/king-pong-thumbnail.png)](https://youtu.be/2Z1foE1dnKw)
