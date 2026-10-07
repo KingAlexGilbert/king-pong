@@ -11178,53 +11178,120 @@ const ROYAL_COLORS = {
   guard: '#59baff'
 };
 const ROYAL_PICKUP_SIZE = 24; // Artwork diameter; collection keeps its existing 24-unit radius.
+const ROYAL_PICKUP_ART_SYMBOLS = '123456789ABCDEF';
+// Visual-only 24 x 24 pixel sprites. Physics, spawn rules, and collection radius are unchanged.
+const ROYAL_PICKUP_ART = {
+  split: {
+    palette: ['#000000', '#480c64', '#7c43a5', '#cc5dc8', '#c13cbb', '#f4fbfe', '#dda0e7', '#9c18a5', '#8415a8', '#660c85', '#7b96e7', '#bfd2f7', '#230836', '#170028', '#5b0076'],
+    pixels: [
+      '........................',
+      '........................',
+      '..........11111.........',
+      '........123445321.......',
+      '......1246789A9852......',
+      '......27679BCB2D25A.....',
+      '.....D4549B66632DD5D....',
+      '....188AA2C66CB22A291...',
+      '....D52452BCBBB25729D...',
+      '...18AE8582BC42853D2A1..',
+      '...E5A3284A565A48DD23E..',
+      '...E8F52F8479748F2529E..',
+      '...E9D2A976AD967A9829E..',
+      '...E92A47749294773FF91..',
+      '....29366CA2223666392...',
+      '....DAB6CB3F5FB66BBAD...',
+      '.....23BBBA8782CBB32....',
+      '.....EA332D282D233AE....',
+      '......EA9F2DD22A9AE.....',
+      '.......12989998821......',
+      '.........1E2A2E1........',
+      '........................',
+      '........................',
+      '........................',
+    ]
+  },
+  rush: {
+    palette: ['#000000', '#440c02', '#915b19', '#d6832b', '#df6f10', '#9b3e0b', '#6a3805', '#f8e48e', '#c83e0a', '#a31704', '#d25415', '#e7bc51', '#4d0001', '#e29f3a', '#592007'],
+    pixels: [
+      '........................',
+      '........................',
+      '..........1111..........',
+      '.......1234456721.......',
+      '......248859AA6B31......',
+      '.....2C884AAADDD652.....',
+      '....14E5ABAA552F2631....',
+      '....7BA99B4C833D7667....',
+      '...1B9A636488387F2D61...',
+      '...F9DAAF37C78836F33F...',
+      '..1BBBE83CCF48BE73E76...',
+      '...B4EC8C3CC8CB9EE3F6...',
+      '..1AAA9E8359CBA6597D6...',
+      '...6A795C36AEEA5A62A7...',
+      '...29FABEC35CCE55B291...',
+      '...1654EC8C337F2F7A61...',
+      '....2BDDA5CE9AD22FB2....',
+      '.....35AAAAADC7DA57.....',
+      '.....1759DDDDAA957......',
+      '.......2659999B62.......',
+      '.........1F77F1.........',
+      '........................',
+      '........................',
+      '........................',
+    ]
+  },
+  guard: {
+    palette: ['#000000', '#082f4a', '#021543', '#316296', '#5f88b5', '#5ad5f6', '#3caaed', '#0c81c8', '#d4eef8', '#03549f', '#a9bad8', '#033394', '#214d86', '#000054', '#040000'],
+    pixels: [
+      '........................',
+      '........................',
+      '..........12231.........',
+      '.......1245678421.......',
+      '......359968AAAA821.....',
+      '.....37997A4B3C228D.....',
+      '....15684DD9953D2382....',
+      '....27AD9BB99B4B53AA1...',
+      '...18A4D99B554574AB82...',
+      '...28CA4555BB554DDACA1..',
+      '..1486A99B997A45BD2283..',
+      '..1AAAAB699978CEBDAE83..',
+      '..FA876566997ACCB46783..',
+      '..1AA794B7667CE8556A83..',
+      '...2AC8AB7768CCBD8ACA1..',
+      '...18C484987AC75D6482...',
+      '....2876C598C5B2A78AF...',
+      '....1A7AA2B97B2CCC83....',
+      '.....388CC35B2EC882.....',
+      '......1D888C2A8883......',
+      '........1DA788D21.......',
+      '..........1131..........',
+      '........................',
+      '........................',
+    ]
+  }
+};
 const royalPickupSprites = new Map();
-
 function royalPickupSprite(type) {
   if (royalPickupSprites.has(type)) return royalPickupSprites.get(type);
   const sprite = document.createElement('canvas');
   sprite.width = sprite.height = ROYAL_PICKUP_SIZE;
   const c = sprite.getContext('2d');
-  // Stepped dark silhouette, bright rim, and a dark inset keep symbols readable on every arena.
-  c.fillStyle = '#080510';
-  c.fillRect(4, 0, 16, 24);
-  c.fillRect(0, 4, 24, 16);
-  c.fillRect(2, 2, 20, 20);
-  c.fillStyle = ROYAL_COLORS[type];
-  c.fillRect(5, 2, 14, 20);
-  c.fillRect(2, 5, 20, 14);
-  c.fillRect(3, 3, 18, 18);
-  c.fillStyle = '#171020';
-  c.fillRect(5, 5, 14, 14);
-  c.fillStyle = '#fff7df';
-  if (type === 'split') {
-    // One ball enters a fork; two separate balls leave it.
-    c.fillRect(5, 10, 4, 4);
-    c.fillRect(9, 11, 3, 2);
-    c.fillRect(11, 8, 2, 3);
-    c.fillRect(11, 13, 2, 3);
-    c.fillRect(13, 7, 2, 2);
-    c.fillRect(13, 15, 2, 2);
-    c.fillRect(15, 5, 5, 5);
-    c.fillRect(15, 14, 5, 5);
-  } else if (type === 'rush') {
-    // A broad three-point crown with thick trailing speed marks.
-    c.fillRect(8, 7, 3, 8);
-    c.fillRect(12, 4, 3, 11);
-    c.fillRect(17, 7, 3, 8);
-    c.fillRect(10, 10, 8, 5);
-    c.fillRect(9, 17, 10, 2);
-    c.fillRect(3, 8, 3, 2);
-    c.fillRect(3, 13, 4, 2);
+  const art = ROYAL_PICKUP_ART[type];
+  if (art) {
+    for (let y = 0; y < ROYAL_PICKUP_SIZE; y++) {
+      const row = art.pixels[y];
+      for (let x = 0; x < ROYAL_PICKUP_SIZE; x++) {
+        const symbol = row[x];
+        if (symbol === '.') continue;
+        const paletteIndex = ROYAL_PICKUP_ART_SYMBOLS.indexOf(symbol);
+        if (paletteIndex < 0) continue;
+        c.fillStyle = art.palette[paletteIndex];
+        c.fillRect(x, y, 1, 1);
+      }
+    }
   } else {
-    // A thick shield outline with a wide top and a pointed base.
-    c.fillRect(5, 5, 14, 8);
-    c.fillRect(7, 13, 10, 3);
-    c.fillRect(9, 16, 6, 2);
-    c.fillRect(11, 18, 2, 2);
-    c.fillStyle = '#171020';
-    c.fillRect(8, 8, 8, 4);
-    c.fillRect(10, 12, 4, 3);
+    // Defensive fallback for an unknown type; normal gameplay only uses ROYAL_TYPES.
+    c.fillStyle = ROYAL_COLORS[type] || '#fff7df';
+    c.fillRect(2, 2, ROYAL_PICKUP_SIZE - 4, ROYAL_PICKUP_SIZE - 4);
   }
   royalPickupSprites.set(type, sprite);
   return sprite;
