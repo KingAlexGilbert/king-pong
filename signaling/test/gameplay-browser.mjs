@@ -316,6 +316,104 @@ try {
   await localized.close();
   pass('Spanish localization includes new landing and gallery text');
 
+  for (const viewport of [{width: 1280, height: 800}, {width: 844, height: 390}, {width: 390, height: 844}]) {
+    const roomHost = await page('Browser', {viewport});
+    const roomGuest = await page('Browser', {viewport});
+    for (const peer of [roomHost, roomGuest]) {
+      await peer.evaluate(() => {
+        // Only transport establishment is stubbed here. Real WebRTC stays in browser.mjs.
+        KingPongRoom.prototype.open = function(role) {
+          this.role = role;
+          this.hooks.welcome('ABCDE');
+          this.hooks.status('Waiting for Player 2...');
+        };
+      });
+      await peer.locator('#titleLanButton').click();
+    }
+    assert.equal(await roomHost.evaluate(() => lanRole), 'none');
+    assert.equal(await roomHost.evaluate(() => onlineSession), null);
+    await roomHost.locator('#chooseArenaButton').click();
+    assert.equal(await roomHost.locator('.royal-choice').count(), 19);
+    await roomHost.locator('[data-choice-id="4"]').click();
+    assert.equal(await roomHost.evaluate(() => matchArenaId), 4);
+    await screenshot(roomHost, `pre-room-arena-${viewport.width}`);
+    await roomHost.locator('#lanHostButton').click();
+    assert.deepEqual(await roomHost.evaluate(() => [lanRole, matchArenaId, selectedAbsoluteLevelIndex()]),
+      ['host', 4, 4]);
+    assert.equal(await roomHost.locator('#onlineRoomCode').innerText(), 'ABCDE');
+    await roomGuest.evaluate(() => { saveData.royalArena = 12; });
+    await roomGuest.locator('#lanJoinButton').click();
+    assert.equal(await roomGuest.locator('#chooseArenaButton').isVisible(), false);
+    await roomGuest.locator('#lanRoomCodeInput').fill('ABCDE');
+    await roomGuest.locator('#onlineJoinSubmit').click();
+    for (const peer of [roomHost, roomGuest]) await peer.evaluate(() => {
+      const channel = {readyState: 'open', bufferedAmount: 0,
+        send: data => (window.roomPackets ||= []).push(data)};
+      onlineSession.hooks.channel(channel, false);
+      onlineSession.hooks.channel(channel, true);
+      onlineSession.hooks.connected();
+    });
+    const deliver = async (from, to) => {
+      const packets = await from.evaluate(() => {
+        const result = window.roomPackets || [];
+        window.roomPackets = [];
+        return result;
+      });
+      for (const packet of packets) await to.evaluate(packet => handleLanMessage(packet), packet);
+    };
+    await deliver(roomGuest, roomHost);
+    await roomHost.evaluate(() => sendLanState(true));
+    await deliver(roomHost, roomGuest);
+    assert.equal(await roomGuest.evaluate(() => onlineHasState), true);
+    assert.deepEqual(await roomGuest.evaluate(() => [matchArenaId, selectedAbsoluteLevelIndex(), saveData.royalArena]),
+      [4, 4, 12], 'host setup overrides the guest match, not the guest save');
+    assert.equal(await roomGuest.locator('#chooseArenaButton').isVisible(), false);
+    await roomGuest.evaluate(() => openRoyalGallery('arena'));
+    assert.equal(await roomGuest.locator('#royalGallery').isVisible(), false);
+    assert.deepEqual(await roomGuest.evaluate(() => serializeLanHazards()),
+      await roomHost.evaluate(() => serializeLanHazards()));
+    await roomHost.evaluate(() => {
+      handleLanMessage(JSON.stringify({v: LAN_SIGNAL_VERSION, gameplay: 'royal', matchRules: 'presets',
+        room: lanRoomCode, type: 'selection', seq: 100, paddle: 'classic', arena: 17}));
+      handleLanMessage(JSON.stringify({v: LAN_SIGNAL_VERSION, gameplay: 'royal', matchRules: 'presets',
+        room: lanRoomCode, type: 'state', seq: 101, selection: {arena: 17, left: 'classic', right: 'classic'}}));
+    });
+    assert.equal(await roomHost.evaluate(() => matchArenaId), 4, 'guest cannot change the host arena');
+    for (const action of ['score', 'rematch']) {
+      await roomHost.evaluate(action => {
+        if (action === 'score') pointForPlayer();
+        else retryLevel();
+        frame += 3;
+        sendLanState(true);
+      }, action);
+      await deliver(roomHost, roomGuest);
+      for (const peer of [roomHost, roomGuest]) assert.deepEqual(
+        await peer.evaluate(() => [matchArenaId, selectedAbsoluteLevelIndex()]), [4, 4]);
+    }
+    await roomHost.evaluate(() => {
+      waitingForServe = paused = false;
+      royalGuards.left = 600;
+      ball.prevX = 20; ball.x = 17; ball.y = 70; ball.vx = -4;
+      collideCastleGuard();
+      frame += 3;
+      sendLanState(true);
+    });
+    await deliver(roomHost, roomGuest);
+    assert.deepEqual(await roomGuest.evaluate(() => royalGuardHits), await roomHost.evaluate(() => royalGuardHits));
+    await roomGuest.evaluate(() => {
+      guestRenderTime = guestSnapshots.at(-1).time;
+      window.shieldSounds = 0;
+      playImpactSound = () => window.shieldSounds++;
+      renderFrame(0, 0);
+      renderFrame(0, 1);
+    });
+    assert.equal(await roomGuest.evaluate(() => window.shieldSounds), 1);
+    await screenshot(roomGuest, `guest-shield-${viewport.width}`);
+    await roomHost.context().close();
+    await roomGuest.context().close();
+    pass(`online ${viewport.width}x${viewport.height}: pre-room arena choice, authoritative peers, rematch and shield feedback`);
+  }
+
   const host = await page(),
     guest = await page();
   // Use production JSON encoding/decoding and handlers across independent browser contexts.

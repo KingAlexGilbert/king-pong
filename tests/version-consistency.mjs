@@ -13,7 +13,7 @@ function requireMatch(text, pattern, label) {
   return match[1];
 }
 
-test('release version metadata stays consistent across Android, Windows, and Linux', () => {
+test('release version metadata stays consistent across Android, Windows, Linux, and browser', () => {
   const androidGradle = source('../android/app/build.gradle.kts');
   const expected = requireMatch(androidGradle, /versionName\s*=\s*"([0-9]+\.[0-9]+\.[0-9]+)"/, 'Android versionName');
   const numeric = `${expected}.0`;
@@ -38,6 +38,12 @@ test('release version metadata stays consistent across Android, Windows, and Lin
   const debianControl = source('../Linux/debian/control');
   assert.equal(requireMatch(debianControl, /^Version:\s*([^\s]+)$/m, 'Linux package version'), expected);
 
+  const stagedDebianControl = source('../Linux/build/king-pong/DEBIAN/control');
+  assert.equal(requireMatch(stagedDebianControl, /^Version:\s*([^\s]+)$/m, 'Linux staged package version'), expected);
+
   const linuxLauncher = source('../Linux/src/king-pong.py');
   assert.equal(requireMatch(linuxLauncher, /launcher for King Pong ([0-9]+\.[0-9]+\.[0-9]+)/, 'Linux launcher version'), expected);
+
+  const browser = source('../docs/demo/index.html');
+  assert.equal(requireMatch(browser, /<title>King Pong v([0-9]+\.[0-9]+\.[0-9]+) Browser Demo<\/title>/, 'Browser version'), expected);
 });

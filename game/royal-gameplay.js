@@ -13,6 +13,7 @@ function captureVisualState() {
   return {
     epoch: visualEpoch,
     key: [mode, selectedAbsoluteLevelIndex(), waitingForServe, paused, left.score, right.score, gameOver].join(':'),
+    shake: captureVisualShake(),
     left: {
       ...left
     },
@@ -37,11 +38,22 @@ function captureVisualState() {
     guards: {
       ...royalGuards
     },
+    guardHits: captureGuardHits(),
     launch: {
       remaining: rallyLaunchFramesRemaining,
       x: rallySpawnPulseX,
       y: rallySpawnPulseY
     }
+  };
+}
+
+function captureVisualShake() {
+  // Android keeps its existing two-unit cap, but no longer draws a new random
+  // camera position on every display frame. Desktop keeps its display-aware cap.
+  const amplitude = typeof currentShakeAmplitude === 'function' ? currentShakeAmplitude() : shakeFrames > 0 ? 2 : 0;
+  return {
+    x: Math.sin(frame * 12.9898) * amplitude,
+    y: Math.sin(frame * 78.233) * amplitude
   };
 }
 
@@ -59,10 +71,15 @@ function interpolateVisualState(a, b, alpha) {
   alpha = clamp(alpha, 0, 1);
   return {
     ...b,
+    shake: {
+      x: lerp(a.shake.x, b.shake.x, alpha),
+      y: lerp(a.shake.y, b.shake.y, alpha)
+    },
     left: mixVisualEntity(a.left, b.left, alpha),
     right: mixVisualEntity(a.right, b.right, alpha),
     ball: mixVisualEntity(a.ball, b.ball, alpha),
     split: mixVisualEntity(a.split, b.split, alpha),
+    guardHits: interpolateGuardHits(a.guardHits, b.guardHits, alpha),
     launch: a.launch.remaining > 0 && b.launch.remaining > 0 ? {
       ...b.launch,
       remaining: lerp(a.launch.remaining, b.launch.remaining, alpha)
@@ -138,6 +155,31 @@ let royalGuards = {
   left: 0,
   right: 0
 };
+let royalGuardHits = {left: null, right: null};
+let royalGuardHitSequence = 0;
+let guestGuardSoundSequence = {left: -1, right: -1};
+const ROYAL_GUARD_FLASH_TICKS = 8;
+
+function captureGuardHits() {
+  const copy = hit => hit ? {...hit} : null;
+  return {left: copy(royalGuardHits.left), right: copy(royalGuardHits.right)};
+}
+
+function interpolateGuardHits(a, b, alpha) {
+  const mix = side => {
+    const before = a?.[side], after = b?.[side];
+    if (before?.seq !== after?.seq && alpha < 1) return before;
+    return before && after && before.seq === after.seq ?
+      {...after, ttl: lerp(before.ttl, after.ttl, alpha)} : after;
+  };
+  return {left: mix('left'), right: mix('right')};
+}
+
+function royalShieldImpact(side) {
+  royalGuardHits[side] = {seq: ++royalGuardHitSequence, y: clamp(ball.y + BALL_HALF, 0, H),
+    ttl: ROYAL_GUARD_FLASH_TICKS};
+  playImpactSound(880, 0.055, 0.045, 'shield');
+}
 let royalRallyTick = 0;
 let royalPickupIndex = 0;
 let royalRallyId = 0;
@@ -220,27 +262,33 @@ function royalPickupSprite(type) {
   c.fillRect(5, 5, 14, 14);
   c.fillStyle = '#fff7df';
   if (type === 'split') {
-    // Two separated pixel balls, travelling on visibly different tracks.
-    c.fillRect(6, 6, 5, 5);
-    c.fillRect(13, 13, 5, 5);
-    c.fillRect(6, 13, 3, 2);
-    c.fillRect(15, 9, 3, 2);
+    // One ball enters a fork; two separate balls leave it.
+    c.fillRect(5, 10, 4, 4);
+    c.fillRect(9, 11, 3, 2);
+    c.fillRect(11, 8, 2, 3);
+    c.fillRect(11, 13, 2, 3);
+    c.fillRect(13, 7, 2, 2);
+    c.fillRect(13, 15, 2, 2);
+    c.fillRect(15, 5, 5, 5);
+    c.fillRect(15, 14, 5, 5);
   } else if (type === 'rush') {
-    // Three crown points over a pair of speed stripes.
-    c.fillRect(6, 7, 2, 7);
-    c.fillRect(11, 6, 2, 8);
-    c.fillRect(16, 7, 2, 7);
-    c.fillRect(8, 10, 8, 4);
-    c.fillRect(7, 15, 10, 2);
-    c.fillRect(5, 18, 4, 1);
-    c.fillRect(11, 18, 5, 1);
+    // A broad three-point crown with thick trailing speed marks.
+    c.fillRect(8, 7, 3, 8);
+    c.fillRect(12, 4, 3, 11);
+    c.fillRect(17, 7, 3, 8);
+    c.fillRect(10, 10, 8, 5);
+    c.fillRect(9, 17, 10, 2);
+    c.fillRect(3, 8, 3, 2);
+    c.fillRect(3, 13, 4, 2);
   } else {
-    // Broad shield with a stepped point and a dark central slit.
-    c.fillRect(6, 6, 12, 7);
-    c.fillRect(8, 13, 8, 3);
-    c.fillRect(10, 16, 4, 2);
+    // A thick shield outline with a wide top and a pointed base.
+    c.fillRect(5, 5, 14, 8);
+    c.fillRect(7, 13, 10, 3);
+    c.fillRect(9, 16, 6, 2);
+    c.fillRect(11, 18, 2, 2);
     c.fillStyle = '#171020';
-    c.fillRect(11, 8, 2, 6);
+    c.fillRect(8, 8, 8, 4);
+    c.fillRect(10, 12, 4, 3);
   }
   royalPickupSprites.set(type, sprite);
   return sprite;
@@ -248,6 +296,7 @@ function royalPickupSprite(type) {
 
 function resetRoyalRally() {
   royalSplitBall = royalPickup = null;
+  royalGuardHits = {left: null, right: null};
   royalCpuTarget = null;
   royalGuards = {
     left: 0,
@@ -269,7 +318,10 @@ function royalActive() {
 function updateRoyalPowerups() {
   if (!royalActive()) return;
   royalRallyTick++;
-  for (const side of ['left', 'right']) royalGuards[side] = Math.max(0, royalGuards[side] - 1);
+  for (const side of ['left', 'right']) {
+    royalGuards[side] = Math.max(0, royalGuards[side] - 1);
+    if (royalGuardHits[side] && --royalGuardHits[side].ttl <= 0) royalGuardHits[side] = null;
+  }
   if (royalPickup && --royalPickup.ttl <= 0) royalPickup = null;
   if (!royalPickup && royalRallyTick % 480 === 180) {
     const spot = findRoyalPickupSpot();
@@ -370,7 +422,7 @@ function collectRoyalPickup() {
     ROYAL_COLLECTION_RADIUS) {
     if (awardRoyalPowerup(royalPickup.type)) {
       royalPickup = null;
-      beep(660, 0.04);
+      playImpactSound(660, 0.04);
     }
   }
 }
@@ -382,11 +434,13 @@ function collideCastleGuard() {
     ball.x = leftWall;
     ball.vx = Math.abs(ball.vx);
     ball.lastHit = 'left';
+    royalShieldImpact('left');
   } else if (royalGuards.right > 0 && ball.vx > 0 && ball.prevX + BALL_SIZE <= rightWall && ball.x + BALL_SIZE >=
     rightWall) {
     ball.x = rightWall - BALL_SIZE;
     ball.vx = -Math.abs(ball.vx);
     ball.lastHit = 'right';
+    royalShieldImpact('right');
   }
 }
 
@@ -448,6 +502,7 @@ function updateBall() {
   }
   if (scored && !royalScored) {
     royalScored = true;
+    royalGuardHits = {left: null, right: null};
     royalSplitBall = royalPickup = null;
     royalGuards = {
       left: 0,
@@ -477,7 +532,8 @@ function packRoyalState() {
     } : null,
     guards: {
       ...royalGuards
-    }
+    },
+    guardHits: captureGuardHits()
   };
 }
 
@@ -486,6 +542,11 @@ function validRoyalState(value) {
   if (!value || !Number.isSafeInteger(value.rally) || value.rally < 0 || typeof value.rush !== 'boolean') return false;
   if (!value.guards || !['left', 'right'].every(k => Number.isInteger(value.guards[k]) && bounded(value.guards[k], 0,
       600))) return false;
+  if (value.guardHits !== undefined && (!value.guardHits || !['left', 'right'].every(side => {
+    const hit = value.guardHits[side];
+    return hit === null || hit && Number.isSafeInteger(hit.seq) && hit.seq >= 0 &&
+      bounded(hit.y, 0, H) && Number.isInteger(hit.ttl) && bounded(hit.ttl, 1, ROYAL_GUARD_FLASH_TICKS);
+  }))) return false;
   if (value.split !== null && (!value.split || !bounded(value.split.x, -32, W + 32) || !bounded(value.split.y, 0, H) ||
       !bounded(value.split.vx, -32, 32) || !bounded(value.split.vy, -32, 32) || typeof value.split.rush !== 'boolean'))
     return false;
@@ -495,6 +556,8 @@ function validRoyalState(value) {
 }
 
 function applyRoyalState(value) {
+  const copy = hit => hit ? {seq: hit.seq, y: hit.y, ttl: hit.ttl} : null;
+  royalGuardHits = {left: copy(value?.guardHits?.left), right: copy(value?.guardHits?.right)};
   if (!value) {
     royalSplitBall = royalPickup = null;
     royalGuards = {
@@ -531,6 +594,17 @@ function applyRoyalState(value) {
   };
 }
 
+// Snap only the final raster rectangle. Simulation and interpolation retain their
+// fractional positions; a fixed pixel size stops the ball's edges changing shape.
+function drawBallPixels(b) {
+  const transform = ctx.getTransform();
+  const scaleX = transform.a, scaleY = transform.d;
+  const size = Math.max(1, Math.round(BALL_SIZE * Math.min(scaleX, scaleY)));
+  ctx.fillRect((Math.round(b.x * scaleX + transform.e) - transform.e) / scaleX,
+    (Math.round(b.y * scaleY + transform.f) - transform.f) / scaleY,
+    size / scaleX, size / scaleY);
+}
+
 function drawRoyalBall(b, translucent = false) {
   if (!b) return;
   ctx.save();
@@ -546,7 +620,7 @@ function drawRoyalBall(b, translucent = false) {
     }
   }
   ctx.fillStyle = translucent ? '#d6a6ff' : currentCampaign().accent;
-  ctx.fillRect(b.x, b.y, BALL_SIZE, BALL_SIZE);
+  drawBallPixels(b);
   ctx.restore();
 }
 
@@ -558,7 +632,22 @@ function drawRoyalEffects(view) {
     ctx.fillStyle = '#59baff';
     ctx.globalAlpha = 0.8;
     for (let y = 0; y < H; y += 16) ctx.fillRect(x, y, 6, 13);
+    const hit = view.guardHits?.[side];
+    if (hit) {
+      if (isLanGuestActive() && hit.seq > guestGuardSoundSequence[side]) {
+        guestGuardSoundSequence[side] = hit.seq;
+        playImpactSound(880, 0.055, 0.045, 'shield');
+      }
+      ctx.globalAlpha = clamp(hit.ttl / ROYAL_GUARD_FLASH_TICKS, 0, 1);
+      ctx.fillStyle = '#fff7df';
+      ctx.fillRect(x - 1, clamp(hit.y - 12, 0, H - 24), 8, 24);
+      const sparkX = side === 'left' ? x + 11 : x - 8;
+      ctx.fillRect(sparkX, hit.y - 9, 3, 3);
+      ctx.fillRect(sparkX + (side === 'left' ? 4 : -4), hit.y - 1, 3, 3);
+      ctx.fillRect(sparkX, hit.y + 7, 3, 3);
+    }
     ctx.globalAlpha = 1;
+    ctx.fillStyle = '#59baff';
     drawText(Math.ceil(view.guards[side] / 60) + 's', side === 'left' ? 30 : W - 30, H - 28, 10);
   }
   if (view.pickup) {
@@ -777,6 +866,7 @@ function receivePaddleSelection(message) {
 }
 
 function resetMatchConnectionState() {
+  guestGuardSoundSequence = {left: -1, right: -1};
   resetMatchRuleConnection();
   resetVisualHistory();
   guestSnapshotSequence = -1;

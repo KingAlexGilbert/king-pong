@@ -16,6 +16,16 @@ export function audioHarness(platform, initial = new Map()) {
     oscillators = [],
     gains = [];
   let timerId = 0;
+  const parameter = value => ({
+    value,
+    events: [],
+    setValueAtTime(value, time) { this.events.push(['set', value, time]); },
+    linearRampToValueAtTime(value, time) { this.events.push(['linear', value, time]); },
+    exponentialRampToValueAtTime(value, time) { this.events.push(['exponential', value, time]); },
+    cancelScheduledValues(time) {
+      this.events = this.events.filter(event => event[2] < time);
+    }
+  });
   class AudioContext {
     state = 'running';
     currentTime = 1;
@@ -24,11 +34,7 @@ export function audioHarness(platform, initial = new Map()) {
     };
     createGain() {
       const gain = {
-        gain: {
-          value: 1,
-          setValueAtTime() {},
-          exponentialRampToValueAtTime() {}
-        },
+        gain: parameter(1),
         connect(to) {
           this.to = to;
         },
@@ -39,19 +45,18 @@ export function audioHarness(platform, initial = new Map()) {
     }
     createOscillator() {
       const osc = {
-        frequency: {
-          value: 0,
-          setValueAtTime() {}
-        },
+        frequency: parameter(0),
         connect(to) {
           this.to = to;
         },
         disconnect() {},
-        start() {
+        start(at) {
           this.started = true;
+          this.startedAt = at;
         },
         stop(at) {
           if (at === undefined) this.stopped = true;
+          this.stopAt = at;
         },
         addEventListener() {}
       };

@@ -4,7 +4,7 @@
 
 <h1 align="center">King Pong</h1>
 
-King Pong is a retro arcade Pong game featuring an 18-level campaign, custom games, local and LAN multiplayer, progressive paddle shapes, save slots, multiple languages, and a secret ending.
+King Pong is a retro arcade Pong game featuring an 18-level campaign, custom games, local, LAN, and browser online multiplayer, progressive paddle shapes, save slots, multiple languages, and a secret ending.
 
 Play directly in your browser or download King Pong for Windows, Linux, and Android.
 
@@ -93,15 +93,15 @@ If you trust this official GitHub release, choose **More info → Run anyway** i
 
 Download one of the Linux versions from the [latest GitHub release](https://github.com/KingAlexGilbert/king-pong/releases/latest).
 
-- `King-Pong-Linux-v1.1.3-all.deb` — recommended for Linux Mint, Ubuntu, Debian, and other Debian-based distributions
-- `King-Pong-Linux-v1.1.3-thin-x86_64.AppImage` — thin x86-64 version that uses the system WebKitGTK runtime
+- `King-Pong-Linux-v2.0.0-all.deb` — recommended for Linux Mint, Ubuntu, Debian, and other Debian-based distributions
+- `King-Pong-Linux-v2.0.0-thin-x86_64.AppImage` — thin x86-64 version that uses the system WebKitGTK runtime
 
 #### Install the Debian Package
 
 Download the `.deb` file, open it with your distribution's software installer, or install it from a terminal:
 
 ```bash
-sudo apt install ./King-Pong-Linux-v1.1.3-all.deb
+sudo apt install ./King-Pong-Linux-v2.0.0-all.deb
 ```
 
 The package manager will automatically install the required GTK and WebKitGTK dependencies.
@@ -121,8 +121,8 @@ On an older Debian-based distribution that does not provide WebKitGTK 4.1, insta
 Make the AppImage executable and run it:
 
 ```bash
-chmod +x King-Pong-Linux-v1.1.3-thin-x86_64.AppImage
-./King-Pong-Linux-v1.1.3-thin-x86_64.AppImage
+chmod +x King-Pong-Linux-v2.0.0-thin-x86_64.AppImage
+./King-Pong-Linux-v2.0.0-thin-x86_64.AppImage
 ```
 
 The thin AppImage is much smaller than a fully self-contained AppImage because it uses the WebKitGTK libraries already installed on the computer.
@@ -197,7 +197,15 @@ Linux paths are case-sensitive, so use the exact capitalization shown in the ins
 
 ## Source Code
 
-The main game code is located at:
+The primary shared game source is located in:
+
+`game/`
+
+Make shared gameplay, rendering, audio, and UI changes here. Run `node tools/sync-gameplay.mjs` from the repository root to copy them into the Android, Windows, Linux, and browser HTML files. Do not edit the embedded shared blocks directly; synchronization replaces them.
+
+The platform HTML files still contain the legacy engine and platform-specific code outside those shared blocks. Changes there must be applied to each affected platform. Keep `windows/webview-2/index.html` and `Linux/assets/index.html` byte-identical.
+
+The Android application and packaging files are in `android/`. Its game HTML is located at:
 
 `android/app/src/main/assets/index.html`
 
@@ -205,7 +213,7 @@ The Android WebView wrapper is located at:
 
 `android/app/src/main/java/com/kingalex/kingpong/MainActivity.java`
 
-The Windows WebView2 version is located at:
+Windows application and installer files are in `windows/`. The WebView2 version is located at:
 
 `windows/webview-2/`
 
@@ -213,7 +221,7 @@ The Windows installer project is located at:
 
 `windows/installer exe/`
 
-The Linux WebKitGTK version is located at:
+The Linux WebKitGTK launcher and packaging files are located in:
 
 `Linux/`
 
@@ -227,13 +235,22 @@ The Linux `.deb` and thin AppImage build scripts are located at:
 
 `Linux/build-appimage.sh`
 
-The GitHub Pages website is located at:
+Browser and GitHub Pages deployment files are in `docs/`. The website is located at:
 
 `docs/index.html`
 
 The browser demo is located at:
 
 `docs/demo/index.html`
+
+Online multiplayer signaling is in `signaling/`. Its `test/` folder covers signaling and browser integration. Other automated tests and regression checks are in `tests/`.
+
+Source synchronization tools are in `tools/`. After editing the game, check the generated copies and run the tests:
+
+```bash
+node tools/sync-gameplay.mjs --check
+node --test tests/*.mjs
+```
 
 ## Documentation & History
 

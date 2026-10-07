@@ -6,7 +6,7 @@ set "KINGPONG_CHECK_LAYOUT=0"
 set "KINGPONG_PUSHED=0"
 set "BUILD_STAGE="
 rem Keep this release version in sync with KingPongWebView2.csproj.
-set "KINGPONG_VERSION=1.1.3"
+set "KINGPONG_VERSION=2.0.0"
 set "KINGPONG_VERSION_ARGS=-p:Version=%KINGPONG_VERSION% -p:AssemblyVersion=%KINGPONG_VERSION%.0 -p:FileVersion=%KINGPONG_VERSION%.0 -p:InformationalVersion=%KINGPONG_VERSION% -p:IncludeSourceRevisionInInformationalVersion=false"
 for %%A in (%*) do if /i "%%~A"=="--no-pause" set "KINGPONG_NO_PAUSE=1"
 for %%A in (%*) do if /i "%%~A"=="--check-layout" set "KINGPONG_CHECK_LAYOUT=1"

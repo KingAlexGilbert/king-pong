@@ -423,6 +423,7 @@ function syncRoyalUi(force = false) {
   if (!byId('matchSetup')) return;
   const title = document.body.classList.contains('title-active');
   const online = royalOnlineMode();
+  const joining = online && byId('onlineJoinForm') && !byId('onlineJoinForm').hidden;
   const setup = !title && !bossIntroActive && !creditsActive && royalNeedsSetup();
   const menu = !title && !bossIntroActive && !creditsActive && menusVisible && (!setup || royalMenuRequested);
   const signature = [title, online, setup, menu, galleryKind, bossIntroActive, creditsActive, mode, activeCampaign,
@@ -430,7 +431,7 @@ function syncRoyalUi(force = false) {
     levelCleared, campaignCleared, lanRole, lanConnected, lanLastStatus, matchArenaId, matchPaddles.left, matchPaddles
     .right,
     saveData?.royalPaddle, activeSaveSlot, playInfoVisible, matchRuleId, matchRuleRevision, isBossUnlocked(),
-    touchInputActive, gamepadConnected
+    touchInputActive, gamepadConnected, joining
   ].join('|');
   if (!force && signature === royalUiSignature) return;
   royalUiSignature = signature;
@@ -486,7 +487,7 @@ function syncRoyalUi(force = false) {
   paintRoyalChoice(byId('chooseArenaButton'), mode === 2 && !online ? '03' : '02', 'Choose your arena', arenaCatalog[
     matchArenaId] || arenaCatalog[0], 'arena');
   byId('choosePaddle2Button').hidden = mode !== 2 || online;
-  byId('chooseArenaButton').hidden = mode !== 2 && mode !== 3 || online && lanRole !== 'host';
+  byId('chooseArenaButton').hidden = mode !== 2 && mode !== 3 || lanRole === 'guest' || joining;
   choices.dataset.online = String(online);
   customPanel.classList.toggle('hidden', mode !== 3);
   byId('matchCpuSettings').hidden = mode !== 3;
@@ -505,7 +506,7 @@ function syncRoyalUi(force = false) {
     'Choose your paddle and arena, then start the match.' : 'Choose your paddles and arena, then start the match.');
   byId('menuPaddle').hidden = mode === 4 || online && !waitingForServe;
   byId('menuPaddle2').hidden = mode !== 2 || online;
-  byId('menuArena').hidden = mode !== 2 && mode !== 3 || lanRole === 'guest' || online && !waitingForServe;
+  byId('menuArena').hidden = mode !== 2 && mode !== 3 || lanRole === 'guest' || joining || online && !waitingForServe;
   restartButton.disabled = online && !lanConnected;
   syncMatchRulesUi();
   updateRoyalControlHint();

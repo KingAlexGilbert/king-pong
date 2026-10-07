@@ -81,6 +81,164 @@ async function center(p) {
   assert.ok(b.x >= -.5 && b.y >= 0 && b.x + b.w <= b.vw + 1 && b.y + b.h <= b.vh + 1, JSON.stringify(b));
   return b;
 }
+async function presentationChecks(p, platform) {
+  for (const hz of [60, 120, 144, 165, 240, 360]) {
+    const motion = await p.evaluate(hz => {
+      hideTitleScreen();
+      startTwoPlayerMode(true, false);
+      waitingForServe = paused = false;
+      gameWindowFocused = true;
+      hazards = [];
+      clearRallyLaunchRamp();
+      ball.x = 100.125;
+      ball.y = 80.375;
+      ball.vx = 12;
+      ball.vy = 0;
+      resetFrameClock();
+      frame = 0;
+      const views = [], original = draw;
+      let time = 0;
+      draw = view => views.push({time, x: view.ball.x, y: view.ball.y});
+      try {
+        for (let i = 0; i <= hz / 4; i++) {
+          time = i * 1000 / hz;
+          loop(time);
+        }
+        if (hz % 4) { time = 250; loop(time); }
+      } finally {
+        draw = original;
+      }
+      return {views, x: ball.x, y: ball.y, steps: frame};
+    }, hz);
+    assert.equal(motion.steps, 15);
+    assert.equal(motion.x, 280.125);
+    assert.equal(motion.y, 80.375);
+    for (const view of motion.views) {
+      assert.ok(Math.abs(view.x - (100.125 + 12 * Math.max(0, view.time / (1000 / 60) - 1))) < 1e-7,
+        `${platform} ${hz} Hz: position comes from the fixed-step snapshots exactly once`);
+      assert.equal(view.y, 80.375);
+    }
+    metrics.push({platform, hz, fastBallSteps: motion.steps, fastBallFrames: motion.views.length});
+  }
+  pass(platform + ': precise fast-ball motion at 60/120/144/165/240/360 Hz with unchanged physics');
+  const camera = await p.evaluate(() => {
+    shakeFrames = 6;
+    frame = 3;
+    const a = captureVisualState();
+    frame = 4;
+    const b = captureVisualState();
+    const middle = interpolateVisualState(a, b, .25);
+    draw(middle);
+    const originalRandom = Math.random, originalTranslate = ctx.translate;
+    const translations = [];
+    let randomCalls = 0;
+    Math.random = () => { randomCalls++; return .7; };
+    ctx.translate = function(x, y) { translations.push({x, y}); originalTranslate.call(this, x, y); };
+    try { draw(middle); draw(middle); }
+    finally { Math.random = originalRandom; ctx.translate = originalTranslate; }
+    return {a: a.shake, b: b.shake, middle: middle.shake, translations, randomCalls};
+  });
+  for (const axis of ['x', 'y']) assert.ok(Math.abs(camera.middle[axis] -
+    (camera.a[axis] + (camera.b[axis] - camera.a[axis]) * .25)) < 1e-10);
+  assert.equal(camera.randomCalls, 0, 'rendering camera feedback does not consume gameplay randomness');
+  assert.deepEqual(camera.translations[0], camera.middle);
+  assert.deepEqual(camera.translations[1], camera.middle);
+  pass(platform + ': collision camera follows interpolated visual state without render-frequency randomness');
+
+  await p.bringToFront();
+  await p.waitForFunction(() => !document.hidden);
+  const audio = await p.evaluate(async () => {
+    setMusicEnabled(false);
+    // The score/serve checks above schedule delayed jingles. Invalidate those
+    // before measuring only the collision path in an offline audio context.
+    stopGameSounds();
+    const previous = audioCtx;
+    const render = async (count, shield = false) => {
+      const context = new OfflineAudioContext(1, 4800, 48000);
+      audioCtx = context;
+      for (let i = 0; i < count; i++) playImpactSound(300, .025);
+      if (shield) playImpactSound(880, .055, .045, 'shield');
+      const data = (await context.startRendering()).getChannelData(0);
+      return {peak: Math.max(...data.map(Math.abs)), energy: data.reduce((sum, v) => sum + v * v, 0)};
+    };
+    try {
+      saveData.muteAll = false;
+      saveData.soundEffectsEnabled = true;
+      const one = await render(1), burst = await render(100), shield = await render(100, true);
+      saveData.soundEffectsEnabled = false;
+      const sfxOff = await render(2, true);
+      saveData.soundEffectsEnabled = true;
+      saveData.muteAll = true;
+      const muted = await render(2, true);
+      return {one, burst, shield, sfxOff, muted};
+    } finally {
+      audioCtx = previous;
+      saveData.muteAll = false;
+      saveData.soundEffectsEnabled = true;
+      stopGameSounds();
+    }
+  });
+  assert.ok(audio.one.peak > .035 && audio.one.peak < .05, JSON.stringify(audio));
+  assert.deepEqual(audio.burst, audio.one, '100 simultaneous requests have the amplitude/energy of one impact');
+  assert.ok(audio.shield.peak < .05, JSON.stringify(audio));
+  assert.equal(audio.sfxOff.energy, 0);
+  assert.equal(audio.muted.energy, 0);
+  metrics.push({platform, audio});
+  pass(platform + ': real Web Audio samples preserve normal amplitude, cap bursts, and respect mute/SFX');
+}
+
+async function rasterChecks() {
+  for (const scenario of [
+    {width: 1280, height: 800, dpr: 1},
+    {width: 1280, height: 800, dpr: 1.25},
+    {width: 1366, height: 768, dpr: 1.5},
+    {width: 1280, height: 800, dpr: 2},
+    {width: 1280, height: 800, dpr: 3},
+    {width: 3840, height: 2160, dpr: 1},
+    {width: 390, height: 844, dpr: 3},
+    {width: 844, height: 390, dpr: 3}
+  ]) {
+    const p = await page('Browser', {viewport: {width: scenario.width, height: scenario.height},
+      deviceScaleFactor: scenario.dpr});
+    const result = await p.evaluate(() => {
+      hideTitleScreen();
+      startTwoPlayerMode(true, false);
+      handleViewportChange();
+      const samples = [];
+      for (let i = 0; i < 24; i++) {
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.setTransform(renderScale, 0, 0, canvas.height / H, 0, 0);
+        ctx.translate(.37, -.23);
+        drawRoyalBall({x: 200 + i / 11, y: 100 + i / 17});
+        const sx = canvas.width / W, sy = canvas.height / H;
+        const x = Math.floor(195 * sx), y = Math.floor(95 * sy);
+        const w = Math.ceil(25 * sx), h = Math.ceil(25 * sy);
+        const data = ctx.getImageData(x, y, w, h).data;
+        let minX = w, maxX = 0, minY = h, maxY = 0, count = 0;
+        for (let row = 0; row < h; row++) for (let col = 0; col < w; col++) {
+          if (data[(row * w + col) * 4 + 3] < 128) continue;
+          minX = Math.min(minX, col); maxX = Math.max(maxX, col);
+          minY = Math.min(minY, row); maxY = Math.max(maxY, row); count++;
+        }
+        samples.push({width: maxX - minX + 1, height: maxY - minY + 1, count});
+      }
+      return {samples, width: canvas.width, height: canvas.height, dpr: devicePixelRatio,
+        cssWidth: canvas.clientWidth, cssHeight: canvas.clientHeight};
+    });
+    assert.equal(result.width, Math.round(result.cssWidth * result.dpr));
+    assert.equal(result.height, Math.round(result.cssHeight * result.dpr));
+    for (const sample of result.samples) {
+      assert.equal(sample.width, result.samples[0].width);
+      assert.equal(sample.height, sample.width);
+      assert.equal(sample.count, sample.width * sample.height, 'a solid square at every fractional position');
+    }
+    metrics.push({scenario, raster: result});
+    await p.context().close();
+  }
+  pass('device-pixel ball squares remain stable at desktop/mobile sizes and DPR 1/1.25/1.5/2/3, including 4K');
+}
+
 try {
   for (const platform of Object.keys(builds)) {
     const p = await page(platform);
@@ -220,6 +378,7 @@ try {
       });
     }
     pass(platform + ': production score/reset/serve path at 60/120/144/165/240/360 Hz');
+    await presentationChecks(p, platform);
     await p.context().close();
   }
   for (const viewport of [{
@@ -466,6 +625,7 @@ try {
     await writeFile(`${artifacts}/timing-and-work-counts.json`, JSON.stringify(metrics, null, 2) + '\n');
   }
   await p.context().close();
+  await rasterChecks();
   assert.deepEqual(errors, []);
   pass('all checks completed without page exceptions');
   console.log(`RESULT: ${checks} engineering browser groups passed (${engine.name()})`);

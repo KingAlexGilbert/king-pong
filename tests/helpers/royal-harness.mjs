@@ -75,7 +75,8 @@ export function harness(platform = 'Browser') {
     function isLanHostActive(){return lanRole==='host'}
     function visiblePlayfieldBounds(){return {top:0,bottom:H}}
     function visiblePlayfieldCenterY(){return H/2}
-    function beep(){} function chooseCpuError(){} function addScreenShake(){} function applyHitFlash(){}
+    function currentShakeAmplitude(){return 0}
+    function beep(){} function playImpactSound(...args){beep(...args)} function chooseCpuError(){} function addScreenShake(){} function applyHitFlash(){}
     function updateHud(){} function playPlayerScoreSound(){} function playLevelFailureJingle(){}
     function resumeCountdownRemainingMs(){return 0} function hasResumeCountdown(){return false}
     function resetBall(direction,wait){resetRoyalRally();ball.x=320;ball.y=240;waitingForServe=wait}
