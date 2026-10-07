@@ -13061,6 +13061,20 @@ function royalHelpSection(id, label) {
   return section;
 }
 
+function royalPowerupHelpIcon(type) {
+  const sprite = royalPickupSprite(type);
+  const icon = document.createElement('canvas');
+  icon.width = sprite.width;
+  icon.height = sprite.height;
+  icon.setAttribute('aria-hidden', 'true');
+  icon.style.width = '24px';
+  icon.style.height = '24px';
+  icon.style.flex = '0 0 24px';
+  icon.style.imageRendering = 'pixelated';
+  icon.getContext('2d').drawImage(sprite, 0, 0);
+  return icon;
+}
+
 function createRoyalHelp() {
   const content = document.createElement('div');
   content.id = 'fullControlHelp';
@@ -13092,17 +13106,30 @@ function createRoyalHelp() {
         ['Two fingers', 'Pause / resume']
       ]],
       ['helpPowerups', 'Royal Powerups', [
-        ['Royal Split', 'Both balls score. The duplicate starts at 70% speed.'],
-        ['Crown Rush', '30% faster until the next paddle hit.'],
-        ['Castle Guard', 'A defensive wall for 10 seconds.']
+        ['Royal Split', 'Both balls score. The duplicate starts at 70% speed.', 'split'],
+        ['Crown Rush', '30% faster until the next paddle hit.', 'rush'],
+        ['Castle Guard', 'A defensive wall for 10 seconds.', 'guard']
       ]]
     ]) {
     const section = royalHelpSection(id, title),
       list = document.createElement('dl');
-    for (const [key, description] of rows) {
+    for (const [key, description, powerupType] of rows) {
       const term = document.createElement('dt'),
         definition = document.createElement('dd');
-      setLocalizedText(term, key);
+
+      if (powerupType) {
+        const label = document.createElement('span');
+        setLocalizedText(label, key);
+
+        term.style.display = 'flex';
+        term.style.alignItems = 'center';
+        term.style.gap = '8px';
+
+        term.append(royalPowerupHelpIcon(powerupType), label);
+      } else {
+        setLocalizedText(term, key);
+      }
+
       setLocalizedText(definition, description);
       list.append(term, definition);
     }
