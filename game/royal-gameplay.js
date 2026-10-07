@@ -357,6 +357,20 @@ function royalPickupSprite(type) {
     c.fillStyle = ROYAL_COLORS[type] || '#fff7df';
     c.fillRect(2, 2, ROYAL_PICKUP_SIZE - 4, ROYAL_PICKUP_SIZE - 4);
   }
+  // Keep each pickup visually distinct even without its color palette.
+  c.fillStyle = '#fff7df';
+
+  if (type === 'split') {
+    c.fillRect(3, 3, 2, 1);
+    c.fillRect(3, 5, 1, 2);
+  } else if (type === 'rush') {
+    c.fillRect(11, 2, 2, 2);
+    c.fillRect(8, 4, 2, 1);
+  } else if (type === 'guard') {
+    c.fillRect(19, 3, 2, 2);
+    c.fillRect(20, 6, 1, 2);
+  }
+
   royalPickupSprites.set(type, sprite);
   return sprite;
 }
