@@ -203,7 +203,7 @@ The primary shared game source is located in:
 
 Make shared gameplay, rendering, audio, and UI changes here. Run `node tools/sync-gameplay.mjs` from the repository root to copy them into the Android, Windows, Linux, and browser HTML files. Do not edit the embedded shared blocks directly; synchronization replaces them.
 
-The platform HTML files still contain the legacy engine and platform-specific code outside those shared blocks. Changes there must be applied to each affected platform. Keep `windows/webview-2/index.html` and `Linux/assets/index.html` byte-identical.
+The platform HTML files still contain the legacy engine and platform-specific code outside those shared blocks. `game/polish-integration.mjs` owns their shared polish hooks and the synchronized `simulateHazardStep` and `drawBackground` functions. Other changes there must be applied to each affected platform. Keep `windows/webview-2/index.html` and `Linux/assets/index.html` byte-identical.
 
 The Android application and packaging files are in `android/`. Its game HTML is located at:
 

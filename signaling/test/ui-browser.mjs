@@ -118,6 +118,31 @@ async function unlock(p) {
     updateModeControls();
   });
 }
+async function titleMenuState(p) {
+  return p.evaluate(() => JSON.stringify({
+    mode, activeCampaign, levelIndex, activeSaveSlot, saveData, matchArenaId, matchPaddles,
+    paused, waitingForServe, customPreviewActive, ball, left, right, royalOnlineSelected,
+    lanRole, lanConnected, lanRoomCode, lanPanelOpen,
+    onlineSession: typeof onlineSession === 'undefined' ? null : onlineSession,
+    storage: {...localStorage},
+    title: document.body.classList.contains('title-active'),
+    message: titleMessage.textContent,
+    localChoices: byId('localPlayChoices').hidden,
+    savesOpen: document.querySelector('.compact-saves').open,
+    scroll: document.querySelector('.title-card').scrollTop
+  }));
+}
+
+async function helpIcons(p) {
+  const icons = await p.locator('#helpPowerups canvas').evaluateAll(canvases => canvases.map(c => {
+    const style = getComputedStyle(c), bounds = c.getBoundingClientRect();
+    return {width: bounds.width, height: bounds.height, pixels: [c.width, c.height], rendering: style.imageRendering};
+  }));
+  assert.deepEqual(icons, Array(3).fill({width: 32, height: 32, pixels: [24, 24], rendering: 'pixelated'}));
+  assert.equal(await p.evaluate(() => [...byId('helpPowerups').querySelectorAll('canvas')].every((c, i) =>
+    c.toDataURL() === royalPickupSprite(ROYAL_TYPES[i]).toDataURL())), true, 'help reuses the exact gameplay sprites');
+}
+
 async function onlineStyle(p) {
   return p.locator('.primary-online').evaluate(el => {
     const s = getComputedStyle(el),
@@ -137,6 +162,41 @@ try {
   for (const platform of Object.keys(builds)) {
     const p = await page(platform);
     await active(p, []);
+    await p.locator('#titleLocalButton').click();
+    await p.locator('.compact-saves summary').click();
+    await p.locator('#titleLocalButton').focus();
+    const titleBefore = await titleMenuState(p);
+    const toggleBounds = await p.locator('#menuToggle').boundingBox();
+    await p.keyboard.press('m');
+    assert.equal(await p.locator('#matchMenu').isVisible(), true);
+    assert.equal(await p.locator('#menuToggle').getAttribute('aria-expanded'), 'true');
+    assert.equal(await p.evaluate(() => document.activeElement.id), 'matchResume');
+    assert.equal(await p.locator('#matchResume').innerText(), 'Close menu');
+    assert.equal(await p.locator('#restartButton').isVisible(), false);
+    assert.equal(await p.evaluate(() => byId('titleScreen').inert), true);
+    assert.deepEqual(await p.locator('#menuToggle').boundingBox(), toggleBounds);
+    await p.dispatchEvent('#matchResume', 'keydown', {key: 'm', repeat: true});
+    assert.equal(await p.locator('#matchMenu').isVisible(), true, 'held M does not repeatedly toggle');
+    await snap(p, platform + '-title-menu');
+    await p.keyboard.press('m');
+    assert.equal(await p.locator('#matchMenu').isVisible(), false);
+    assert.equal(await p.evaluate(() => document.activeElement.id), 'titleLocalButton');
+    assert.equal(await titleMenuState(p), titleBefore);
+    await p.locator('#menuToggle').click();
+    await p.locator('#menuToggle').click();
+    assert.equal(await p.evaluate(() => document.activeElement.id), 'menuToggle');
+    assert.equal(await titleMenuState(p), titleBefore);
+    for (const action of ['#matchResume', '#matchMenuClose', 'Escape']) {
+      await p.locator('#menuToggle').click();
+      if (action === 'Escape') await p.keyboard.press(action);
+      else await p.locator(action).click();
+      assert.equal(await p.locator('#matchMenu').isVisible(), false);
+      assert.equal(await titleMenuState(p), titleBefore);
+    }
+    await snap(p, platform + '-title-menu-return');
+    await p.locator('#titleLocalButton').click();
+    await p.locator('.compact-saves summary').click();
+    pass(platform + ': title Menu/M toggles restore state, disclosures, focus and saves without starting a match');
     const online = p.locator('.primary-online'),
       rest = await onlineStyle(p);
     await online.hover();
@@ -196,14 +256,28 @@ try {
     await p.keyboard.press('m');
     assert.equal(await p.evaluate(() => paused), true);
     assert.equal(await p.locator('#matchMenu').isVisible(), true);
+    const pausedState = await p.evaluate(() => JSON.stringify({ball, left, right, paused, waitingForServe}));
+    await p.locator('#menuToggle').click();
+    assert.equal(await p.locator('#matchMenu').isVisible(), false);
+    assert.equal(await p.evaluate(() => JSON.stringify({ball, left, right, paused, waitingForServe})), pausedState,
+      'closing the menu preserves the existing paused match');
+    await p.locator('#menuToggle').click();
+    await p.keyboard.press('m');
+    assert.equal(await p.locator('#matchMenu').isVisible(), false);
+    await p.keyboard.press('m');
     await p.locator('#matchSettings summary').click();
     await p.locator('#musicVolumeSlider').focus();
     await p.keyboard.press('ArrowLeft');
     assert.equal(await p.evaluate(() => document.activeElement.id), 'musicVolumeSlider');
     await p.locator('#matchHelp summary').click();
     assert.match(await p.locator('#matchHelp').innerText(), /Royal Split.*Crown Rush.*Castle Guard/s);
+    await helpIcons(p);
     await snap(p, platform + '-settings-help');
+    await p.locator('#helpPowerups').scrollIntoViewIfNeeded();
+    await snap(p, platform + '-powerup-help');
     await p.locator('#matchMenuClose').focus();
+    await p.keyboard.press('Tab');
+    assert.equal(await p.evaluate(() => document.activeElement.id), 'menuToggle');
     await p.keyboard.press('Tab');
     assert.equal(await p.evaluate(() => document.activeElement.id), 'matchResume');
     await p.locator('#titleJumpButton').click();
@@ -346,7 +420,8 @@ try {
     const p = await page('Browser', {
         viewport,
         hasTouch: mobile,
-        isMobile: mobile
+        isMobile: mobile,
+        deviceScaleFactor: mobile ? 3 : 1
       }),
       prefix = viewport.width + 'x' + viewport.height;
     await bounds(p, '.title-card');
@@ -360,6 +435,16 @@ try {
     assert.ok(lines.every(b => b.height <= b.line + 1), 'tagline phrases stay whole');
     if (viewport.width >= 1024) assert.equal(lines[0].top, lines[1].top, 'wide tagline is a single line');
     await snap(p, prefix + '-title');
+    const titleBefore = await titleMenuState(p);
+    await p.locator('#menuToggle').click();
+    await bounds(p, '#matchMenu .match-card');
+    await p.locator('#matchHelp summary').click();
+    await p.locator('#helpPowerups').scrollIntoViewIfNeeded();
+    await helpIcons(p);
+    await snap(p, prefix + '-title-powerup-help');
+    await p.locator('#matchHelp summary').click();
+    await p.locator('#menuToggle').click();
+    assert.equal(await titleMenuState(p), titleBefore);
     await local(p);
     await bounds(p, '#matchSetup .match-card');
     await bounds(p, '#matchServe');
@@ -405,6 +490,7 @@ try {
     await bounds(p, '#matchMenu .match-card');
     await snap(p, prefix + '-help');
     await p.locator('#helpPowerups').scrollIntoViewIfNeeded();
+    await helpIcons(p);
     await snap(p, prefix + '-powerup-help');
     await p.locator('#matchHelp summary').click();
     await p.locator('#matchModes summary').click();
@@ -671,6 +757,40 @@ try {
   assert.equal(await phone.evaluate(() => window.fullscreenAttempts), 2);
   await phone.context().close();
   pass('portrait prompt, navigation, dismissal, one lock attempt, listener lifetime and local/online rotation state');
+  const titleInput = await page();
+  const controllerTitle = await titleMenuState(titleInput);
+  await titleInput.evaluate(() => {
+    window.testPad = {index: 0, axes: [0, 0], buttons: Array.from({length: 16}, () => ({pressed: false, value: 0}))};
+    navigator.getGamepads = () => [testPad];
+    byId('titleCampaignButton').focus();
+    testPad.buttons[8].pressed = true;
+    pollRoyalUiGamepad(1000);
+  });
+  assert.equal(await titleInput.locator('#matchMenu').isVisible(), true);
+  assert.equal(await titleInput.evaluate(() => document.activeElement.id), 'matchResume');
+  await titleInput.evaluate(() => {
+    testPad.buttons[8].pressed = false;
+    pollRoyalUiGamepad(1040);
+    testPad.buttons[9].pressed = true;
+    pollRoyalUiGamepad(1080);
+  });
+  assert.equal(await titleInput.locator('#matchMenu').isVisible(), false);
+  assert.equal(await titleInput.evaluate(() => document.activeElement.id), 'titleCampaignButton');
+  assert.equal(await titleMenuState(titleInput), controllerTitle);
+  await titleInput.evaluate(() => {
+    testPad.buttons[9].pressed = false;
+    pollRoyalUiGamepad(1120);
+    testPad.buttons[8].pressed = true;
+    pollRoyalUiGamepad(1160);
+    testPad.buttons[8].pressed = false;
+    pollRoyalUiGamepad(1200);
+    testPad.buttons[1].pressed = true;
+    pollRoyalUiGamepad(1240);
+  });
+  assert.equal(await titleInput.locator('#matchMenu').isVisible(), false);
+  assert.equal(await titleMenuState(titleInput), controllerTitle);
+  await titleInput.context().close();
+  pass('controller title menu opens with Select and closes with Start/B without starting or resuming gameplay');
   const inputs = await page();
   await local(inputs);
   await inputs.evaluate(() => {

@@ -476,7 +476,14 @@ textarea:focus-visible {
   z-index: 25;
 }
 
-.match-bar button {
+body.title-active #menuToggle {
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.match-bar button,
+#titleScreen > #menuToggle,
+#matchMenu > #menuToggle {
   min-height: 42px;
   padding: 8px 12px;
   flex: none;
@@ -485,10 +492,25 @@ textarea:focus-visible {
   background: #0a0d13;
 }
 
-.match-bar #menuToggle {
+.match-bar #menuToggle,
+#titleScreen > #menuToggle,
+#matchMenu > #menuToggle {
   position: static;
   opacity: 1;
   font-size: 12px;
+}
+
+#matchMenu > #menuToggle,
+#titleScreen > #menuToggle {
+  position: fixed;
+  top: calc(4px + env(safe-area-inset-top, 0px));
+  left: max(10px, env(safe-area-inset-left, 0px));
+}
+
+#matchMenu > #menuToggle[aria-expanded="true"] {
+  border-color: #ffd469;
+  color: #ffe1a0;
+  background: #171004;
 }
 
 .match-identity {
@@ -941,7 +963,9 @@ body.royal-panel-open .match-footer #controlHint {
     gap: 8px;
   }
 
-  .match-bar button {
+  .match-bar button,
+  #titleScreen > #menuToggle,
+  #matchMenu > #menuToggle {
     padding: 8px;
   }
 
@@ -1102,7 +1126,9 @@ body.royal-panel-open .match-footer #controlHint {
 }
 
 .title-actions button,
-.match-bar button {
+.match-bar button,
+#titleScreen > #menuToggle,
+#matchMenu > #menuToggle {
   background: #050507;
   border-color: #66513a;
 }

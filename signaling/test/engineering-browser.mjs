@@ -239,6 +239,64 @@ async function rasterChecks() {
   pass('device-pixel ball squares remain stable at desktop/mobile sizes and DPR 1/1.25/1.5/2/3, including 4K');
 }
 
+async function backgroundChecks(p, platform) {
+  const result = await p.evaluate(() => {
+    const originalSize = [canvas.width, canvas.height, renderScale];
+    const originalCampaign = activeCampaign;
+    const rows = [];
+    const state = JSON.stringify([ball, royalSplitBall, hazards, frame, left, right]);
+    try {
+      // The legacy background raster, kept independent of paintRoyalBackground.
+      const reference = document.createElement('canvas');
+      for (const scale of [1, 6, 1]) for (const campaign of [0, 1, 2]) {
+        activeCampaign = campaign;
+        canvas.width = reference.width = W * scale;
+        canvas.height = reference.height = H * scale;
+        renderScale = scale;
+        invalidateStaticBackgroundCache();
+        ctx.setTransform(scale, 0, 0, scale, 0, 0);
+        ctx.imageSmoothingEnabled = false;
+        const bg = reference.getContext('2d');
+        bg.setTransform(scale, 0, 0, scale, 0, 0);
+        bg.fillStyle = '#000';
+        bg.fillRect(0, 0, W, H);
+        bg.globalAlpha = .12;
+        bg.strokeStyle = currentCampaign().accent;
+        bg.lineWidth = 1;
+        for (let x = 40; x < W; x += 40) {
+          bg.beginPath(); bg.moveTo(x, 0); bg.lineTo(x, H); bg.stroke();
+        }
+        for (let y = 40; y < H; y += 40) {
+          bg.beginPath(); bg.moveTo(0, y); bg.lineTo(W, y); bg.stroke();
+        }
+        drawBackground();
+        const firstCache = cachedStaticBackground;
+        drawBackground();
+        // Readback is test-only and never used by production drawing.
+        const actual = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+        const expected = bg.getImageData(0, 0, reference.width, reference.height).data;
+        let mismatches = 0;
+        for (let i = 0; i < actual.length; i++) if (actual[i] !== expected[i]) mismatches++;
+        rows.push({scale, campaign, mismatches, cached: Boolean(firstCache),
+          reused: firstCache === cachedStaticBackground, transform: ctx.getTransform().a});
+      }
+    } finally {
+      [canvas.width, canvas.height, renderScale] = originalSize;
+      activeCampaign = originalCampaign;
+      invalidateStaticBackgroundCache();
+    }
+    return {rows, unchanged: state === JSON.stringify([ball, royalSplitBall, hazards, frame, left, right])};
+  });
+  assert.ok(result.unchanged, 'background drawing cannot advance or modify gameplay');
+  for (const row of result.rows) {
+    assert.equal(row.mismatches, 0, JSON.stringify(row));
+    assert.equal(row.cached, row.scale === 1);
+    assert.ok(row.reused);
+    assert.equal(row.transform, row.scale);
+  }
+  pass(platform + ': large-canvas grid matches legacy pixels; resize/accent changes and small-canvas caching remain correct');
+}
+
 try {
   for (const platform of Object.keys(builds)) {
     const p = await page(platform);
@@ -379,6 +437,7 @@ try {
     }
     pass(platform + ': production score/reset/serve path at 60/120/144/165/240/360 Hz');
     await presentationChecks(p, platform);
+    await backgroundChecks(p, platform);
     await p.context().close();
   }
   for (const viewport of [{

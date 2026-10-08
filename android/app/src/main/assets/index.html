@@ -1696,7 +1696,14 @@ textarea:focus-visible {
   z-index: 25;
 }
 
-.match-bar button {
+body.title-active #menuToggle {
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.match-bar button,
+#titleScreen > #menuToggle,
+#matchMenu > #menuToggle {
   min-height: 42px;
   padding: 8px 12px;
   flex: none;
@@ -1705,10 +1712,25 @@ textarea:focus-visible {
   background: #0a0d13;
 }
 
-.match-bar #menuToggle {
+.match-bar #menuToggle,
+#titleScreen > #menuToggle,
+#matchMenu > #menuToggle {
   position: static;
   opacity: 1;
   font-size: 12px;
+}
+
+#matchMenu > #menuToggle,
+#titleScreen > #menuToggle {
+  position: fixed;
+  top: calc(4px + env(safe-area-inset-top, 0px));
+  left: max(10px, env(safe-area-inset-left, 0px));
+}
+
+#matchMenu > #menuToggle[aria-expanded="true"] {
+  border-color: #ffd469;
+  color: #ffe1a0;
+  background: #171004;
 }
 
 .match-identity {
@@ -2161,7 +2183,9 @@ body.royal-panel-open .match-footer #controlHint {
     gap: 8px;
   }
 
-  .match-bar button {
+  .match-bar button,
+  #titleScreen > #menuToggle,
+  #matchMenu > #menuToggle {
     padding: 8px;
   }
 
@@ -2322,7 +2346,9 @@ body.royal-panel-open .match-footer #controlHint {
 }
 
 .title-actions button,
-.match-bar button {
+.match-bar button,
+#titleScreen > #menuToggle,
+#matchMenu > #menuToggle {
   background: #050507;
   border-color: #66513a;
 }
@@ -10376,6 +10402,15 @@ function predictWithSimpleBounds(x, y, vx, vy, targetX) {
 }
 
 function simulateHazardStep(sim, h) {
+  // Most forecast steps miss every obstacle. Reject only definite misses before
+  // copying ball state or entering the allocation-heavy collision helpers.
+  if (h.type === "circle") {
+    const radius = h.r + BALL_HALF;
+    if (Math.abs(sim.x + BALL_HALF - h.x) >= radius ||
+        Math.abs(sim.y + BALL_HALF - h.y) >= radius) return false;
+  } else if (!rectsOverlapRaw(sim.x, sim.y, BALL_SIZE, BALL_SIZE, h.x, h.y, h.w, h.h)) {
+    return false;
+  }
   const save = {
     x: ball.x,
     y: ball.y,
@@ -10614,6 +10649,13 @@ function drawHazards(renderHazards = hazards) {
 
 function drawBackground() {
   const accent = currentCampaign().accent;
+  if (canvas.width * canvas.height > ROYAL_BACKGROUND_CACHE_MAX_PIXELS) {
+    // Avoid copying an entire large surface every frame. This paints the same
+    // grid at the existing resolution, under the existing camera transform.
+    cachedStaticBackground = null;
+    paintRoyalBackground(ctx, accent);
+    return;
+  }
   if (!cachedStaticBackground || cachedStaticBackgroundScale !== renderScale) {
     cachedStaticBackground = document.createElement("canvas");
     cachedStaticBackground.width = canvas.width;
@@ -10626,25 +10668,7 @@ function drawBackground() {
     cachedStaticBackgroundAccent = accent;
     bg.setTransform(renderScale, 0, 0, canvas.height / H, 0, 0);
     bg.imageSmoothingEnabled = false;
-    bg.fillStyle = "#000";
-    bg.fillRect(0, 0, W, H);
-    bg.save();
-    bg.globalAlpha = 0.12;
-    bg.strokeStyle = accent;
-    bg.lineWidth = 1;
-    for (let x = 40; x < W; x += 40) {
-      bg.beginPath();
-      bg.moveTo(x, 0);
-      bg.lineTo(x, H);
-      bg.stroke();
-    }
-    for (let y = 40; y < H; y += 40) {
-      bg.beginPath();
-      bg.moveTo(0, y);
-      bg.lineTo(W, y);
-      bg.stroke();
-    }
-    bg.restore();
+    paintRoyalBackground(bg, accent);
   }
   ctx.drawImage(cachedStaticBackground, 0, 0, W, H);
 }
@@ -10945,6 +10969,32 @@ let guestSnapshotSequence = -1;
 let guestSnapshotTick = -1;
 const SNAPSHOT_BUFFER_MS = 100;
 
+// Bound the extra background surface to 32 MiB: large full-canvas copies showed
+// frame-time spikes. Keep native resolution and all effects above this limit.
+const ROYAL_BACKGROUND_CACHE_MAX_PIXELS = 8 * 1024 * 1024;
+
+function paintRoyalBackground(context, accent) {
+  context.save();
+  context.fillStyle = '#000';
+  context.fillRect(0, 0, W, H);
+  context.globalAlpha = 0.12;
+  context.strokeStyle = accent;
+  context.lineWidth = 1;
+  for (let x = 40; x < W; x += 40) {
+    context.beginPath();
+    context.moveTo(x, 0);
+    context.lineTo(x, H);
+    context.stroke();
+  }
+  for (let y = 40; y < H; y += 40) {
+    context.beginPath();
+    context.moveTo(0, y);
+    context.lineTo(W, y);
+    context.stroke();
+  }
+  context.restore();
+}
+
 function captureVisualState() {
   return {
     epoch: visualEpoch,
@@ -11177,36 +11227,38 @@ const ROYAL_COLORS = {
   rush: '#ff604d',
   guard: '#59baff'
 };
-const ROYAL_PICKUP_SIZE = 24; // Artwork diameter; collection keeps its existing 24-unit radius.
+const ROYAL_PICKUP_SIZE = 24; // Source sprite resolution, shared with the help UI.
+const ROYAL_PICKUP_RENDER_SIZE = 30; // Presentation only; collection keeps its 24-unit radius.
 const ROYAL_PICKUP_ART_SYMBOLS = '123456789ABCDEF';
-// Visual-only 24 x 24 pixel sprites. Physics, spawn rules, and collection radius are unchanged.
+// Visual-only 24 x 24 pixel sprites, shared by gameplay and help.
 const ROYAL_PICKUP_ART = {
   split: {
-    palette: ['#000000', '#480c64', '#7c43a5', '#cc5dc8', '#c13cbb', '#f4fbfe', '#dda0e7', '#9c18a5', '#8415a8', '#660c85', '#7b96e7', '#bfd2f7', '#230836', '#170028', '#5b0076'],
+    // Approved reference: a large left ball forks into two smaller right balls.
+    palette: ['#11001f', '#4a006d', '#250039', '#9000dc', '#f16cff', '#fff7df', '#cf20f1', '#62079c'],
     pixels: [
       '........................',
-      '........................',
-      '..........11111.........',
-      '........123445321.......',
-      '......1246789A9852......',
-      '......27679BCB2D25A.....',
-      '.....D4549B66632DD5D....',
-      '....188AA2C66CB22A291...',
-      '....D52452BCBBB25729D...',
-      '...18AE8582BC42853D2A1..',
-      '...E5A3284A565A48DD23E..',
-      '...E8F52F8479748F2529E..',
-      '...E9D2A976AD967A9829E..',
-      '...E92A47749294773FF91..',
-      '....29366CA2223666392...',
-      '....DAB6CB3F5FB66BBAD...',
-      '.....23BBBA8782CBB32....',
-      '.....EA332D282D233AE....',
-      '......EA9F2DD22A9AE.....',
-      '.......12989998821......',
-      '.........1E2A2E1........',
-      '........................',
-      '........................',
+      '.........111111.........',
+      '......115665444411......',
+      '.....14422222222441.....',
+      '....1542333333332441....',
+      '...162233335333335551...',
+      '..15423333333333566751..',
+      '..14233333333366567451..',
+      '..52355553333366574854..',
+      '.1425566553336633555241.',
+      '.1455667745366333333241.',
+      '.1456677745663333333241.',
+      '.1456777445663333333241.',
+      '.1457774445366333333241.',
+      '.1425444453336633555241.',
+      '..42355553333366566754..',
+      '..14233333333366567451..',
+      '..15423333333333574851..',
+      '...142233334333335551...',
+      '....1542333333332441....',
+      '.....14422222222441.....',
+      '......114565444411......',
+      '.........111111.........',
       '........................',
     ]
   },
@@ -11296,10 +11348,7 @@ function royalPickupSprite(type) {
   // Keep each pickup visually distinct even without its color palette.
   c.fillStyle = '#fff7df';
 
-  if (type === 'split') {
-    c.fillRect(3, 3, 2, 1);
-    c.fillRect(3, 5, 1, 2);
-  } else if (type === 'rush') {
+  if (type === 'rush') {
     c.fillRect(11, 2, 2, 2);
     c.fillRect(8, 4, 2, 1);
   } else if (type === 'guard') {
@@ -11371,7 +11420,7 @@ function royalPickupSpotSafe(x, y) {
   });
 }
 
-function findRoyalPickupSpot() {
+function findRoyalPickupSpot(type = ROYAL_TYPES[royalPickupIndex % ROYAL_TYPES.length]) {
   if (isLanGuestActive()) return null;
   let seed = (Math.imul(royalRallyId + 1, 1664525) ^ Math.imul(royalPickupIndex + 1, 1013904223) ^ Math.imul(
     matchArenaId + 1, 2246822519) ^ royalRallyTick) >>> 0;
@@ -11383,13 +11432,33 @@ function findRoyalPickupSpot() {
   const top = Math.max(0, bounds.top) + ROYAL_SPAWN_MARGIN,
     bottom = Math.min(H, bounds.bottom) - ROYAL_SPAWN_MARGIN;
   if (bottom <= top) return null;
+  const split = type === 'split';
+  const minX = split ? Math.max(ROYAL_SPAWN_X_MARGIN, Math.ceil(W * 0.4)) : ROYAL_SPAWN_X_MARGIN;
+  const maxX = split ? Math.min(W - ROYAL_SPAWN_X_MARGIN, Math.floor(W * 0.6)) : W - ROYAL_SPAWN_X_MARGIN;
+  let firstSpot = null;
   for (let attempt = 0; attempt < 64; attempt++) {
-    const x = Math.round(ROYAL_SPAWN_X_MARGIN + random() * (W - ROYAL_SPAWN_X_MARGIN * 2));
+    const x = Math.round(minX + random() * (maxX - minX));
     const y = Math.round(top + random() * (bottom - top));
+    if (!firstSpot) firstSpot = {x, y};
     if (royalPickupSpotSafe(x, y)) return {
       x,
       y
     };
+  }
+  if (split) {
+    // A narrow safe gap can evade the random candidates. Find the nearest safe
+    // integer position to the first candidate, without ever leaving the center band.
+    let nearest = null, distance = Infinity;
+    for (let y = Math.ceil(top); y <= Math.floor(bottom); y++) {
+      for (let x = minX; x <= maxX; x++) {
+        const squared = (x - firstSpot.x) ** 2 + (y - firstSpot.y) ** 2;
+        if (squared < distance && royalPickupSpotSafe(x, y)) {
+          nearest = {x, y};
+          distance = squared;
+        }
+      }
+    }
+    return nearest;
   }
   return null; // A crowded arena may safely miss a spawn instead of placing an unreachable orb.
 }
@@ -11670,7 +11739,9 @@ function drawRoyalEffects(view) {
   if (view.pickup) {
     const p = view.pickup;
     ctx.shadowBlur = 0;
-    ctx.drawImage(royalPickupSprite(p.type), p.x - ROYAL_PICKUP_SIZE / 2, p.y - ROYAL_PICKUP_SIZE / 2);
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(royalPickupSprite(p.type), p.x - ROYAL_PICKUP_RENDER_SIZE / 2,
+      p.y - ROYAL_PICKUP_RENDER_SIZE / 2, ROYAL_PICKUP_RENDER_SIZE, ROYAL_PICKUP_RENDER_SIZE);
   }
   ctx.restore();
 }
@@ -12753,9 +12824,9 @@ function royalPowerupHelpIcon(type) {
   icon.width = sprite.width;
   icon.height = sprite.height;
   icon.setAttribute('aria-hidden', 'true');
-  icon.style.width = '24px';
-  icon.style.height = '24px';
-  icon.style.flex = '0 0 24px';
+  icon.style.width = '32px';
+  icon.style.height = '32px';
+  icon.style.flex = '0 0 32px';
   icon.style.imageRendering = 'pixelated';
   icon.getContext('2d').drawImage(sprite, 0, 0);
   return icon;
@@ -12855,6 +12926,10 @@ function syncMatchRulesUi() {
 }
 
 function royalContinue() {
+  if (document.body.classList.contains('title-active')) {
+    setMenusVisible(false);
+    return;
+  }
   if (royalNeedsSetup() && royalMenuRequested) {
     setMenusVisible(false);
     return;
@@ -12870,10 +12945,13 @@ function royalContinue() {
 }
 
 function toggleRoyalMenu() {
-  if (document.body.classList.contains('title-active')) return;
+  if (bossIntroActive || creditsActive) return;
+  const title = document.body.classList.contains('title-active');
   const open = byId('matchMenu') && !byId('matchMenu').hidden;
   royalMenuRequested = !open;
-  if (!open && !paused && !waitingForServe && !gameOver && (!royalOnlineMode() || lanConnected)) requestTogglePause();
+  if (!title && !open && !paused && !waitingForServe && !gameOver && (!royalOnlineMode() || lanConnected)) {
+    requestTogglePause();
+  }
   setMenusVisible(!open);
 }
 
@@ -12903,7 +12981,7 @@ function syncRoyalUi(force = false) {
   const online = royalOnlineMode();
   const joining = online && byId('onlineJoinForm') && !byId('onlineJoinForm').hidden;
   const setup = !title && !bossIntroActive && !creditsActive && royalNeedsSetup();
-  const menu = !title && !bossIntroActive && !creditsActive && menusVisible && (!setup || royalMenuRequested);
+  const menu = !bossIntroActive && !creditsActive && menusVisible && (!setup || royalMenuRequested);
   const signature = [title, online, setup, menu, galleryKind, bossIntroActive, creditsActive, mode, activeCampaign,
     levelIndex, waitingForServe, paused, gameOver,
     levelCleared, campaignCleared, lanRole, lanConnected, lanLastStatus, matchArenaId, matchPaddles.left, matchPaddles
@@ -12915,7 +12993,15 @@ function syncRoyalUi(force = false) {
   royalUiSignature = signature;
   byId('matchSetup').hidden = !setup || menu || Boolean(galleryKind);
   byId('matchMenu').hidden = !menu || Boolean(galleryKind);
-  byId('matchBar').hidden = title || creditsActive || bossIntroActive;
+  byId('matchBar').hidden = title || menu || creditsActive || bossIntroActive;
+  // Keep the toggle inside the modal's focus/inert boundary while it is open.
+  // Its fixed position stays at the same top-left location as the match bar.
+  if (menu && !royalLastDialog) royalReturnFocus = document.activeElement;
+  const toggleParent = byId(menu ? 'matchMenu' : title ? 'titleScreen' : 'matchBar');
+  if (menuToggle.parentElement !== toggleParent) {
+    if (menu || title) toggleParent.append(menuToggle);
+    else toggleParent.prepend(menuToggle);
+  }
   document.body.classList.toggle('royal-panel-open', setup || menu || Boolean(galleryKind));
   // One source of truth for active states, including setup before any peer exists.
   for (const button of [...campaignButtons, byId('menuCampaign'), customModeButton, twoPlayerModeButton, lanModeButton,
@@ -12936,13 +13022,13 @@ function syncRoyalUi(force = false) {
       .name) + ' · ' : '') + localizeText(currentLevel().name) + (playInfoVisible ? ' · ' + (mode === 2 ?
       localizeText(matchRule().label) : localizeText('Goal') + ' ' + currentLevel().goal) : ''));
   royalText(byId('matchSetupTitle'), royalModeName());
-  royalText(byId('matchMenuTitle'), paused ? 'Paused' : 'Match menu');
+  royalText(byId('matchMenuTitle'), title ? 'Menu' : paused ? 'Paused' : 'Match menu');
   royalText(twoPlayerModeButton, 'Local Two Player');
   royalText(menuToggle, 'Menu (M)');
   menuToggle.setAttribute('aria-expanded', String(menu));
   menuToggle.setAttribute('aria-pressed', String(menu));
   setLocalizedTitle(menuToggle, 'Menu (M)');
-  byId('matchConnection').hidden = !online;
+  byId('matchConnection').hidden = title || !online;
   const connectionParent = menu ? byId('matchConnection') : byId('matchSetupBody');
   if (lanPanel.parentElement !== connectionParent) {
     if (connectionParent.id === 'matchConnection') connectionParent.append(lanPanel);
@@ -12968,23 +13054,25 @@ function syncRoyalUi(force = false) {
   byId('chooseArenaButton').hidden = mode !== 2 && mode !== 3 || lanRole === 'guest' || joining;
   choices.dataset.online = String(online);
   customPanel.classList.toggle('hidden', mode !== 3);
-  byId('matchCpuSettings').hidden = mode !== 3;
+  byId('matchCpuSettings').hidden = title || mode !== 3;
   const canServe = !online || lanConnected;
   byId('matchServe').hidden = !canServe;
-  byId('matchContinue').hidden = setup || menu || !canServe || !(waitingForServe || gameOver || levelCleared ||
+  byId('matchContinue').hidden = title || setup || menu || !canServe || !(waitingForServe || gameOver || levelCleared ||
     campaignCleared);
-  byId('matchPause').hidden = setup || menu || !canServe;
+  byId('matchPause').hidden = title || setup || menu || !canServe;
   royalText(byId('matchContinue'), gameOver ? 'Retry' : levelCleared || campaignCleared ? 'Continue' : 'Serve');
   royalText(byId('matchPause'), paused ? 'Resume' : 'Pause');
-  royalText(byId('matchResume'), setup ? 'Back to setup' : gameOver ? 'Retry' : paused ? 'Resume' : waitingForServe ?
-    'Serve' : 'Back to match');
+  royalText(byId('matchResume'), title ? 'Close menu' : setup ? 'Back to setup' : gameOver ? 'Retry' :
+    paused ? 'Resume' : waitingForServe ? 'Serve' : 'Back to match');
   royalText(byId('matchSetupHint'), online ? lanRole === 'guest' ? 'Choose your paddle. The host chooses the arena.' :
     lanConnected ? 'Both players can choose a paddle before serving.' :
     'Create a room or join a friend with their room code.' : mode === 3 ?
     'Choose your paddle and arena, then start the match.' : 'Choose your paddles and arena, then start the match.');
-  byId('menuPaddle').hidden = mode === 4 || online && !waitingForServe;
-  byId('menuPaddle2').hidden = mode !== 2 || online;
-  byId('menuArena').hidden = mode !== 2 && mode !== 3 || lanRole === 'guest' || joining || online && !waitingForServe;
+  byId('menuPaddle').hidden = !title && (mode === 4 || online && !waitingForServe);
+  byId('menuPaddle2').hidden = title || mode !== 2 || online;
+  byId('menuArena').hidden = title || mode !== 2 && mode !== 3 || lanRole === 'guest' || joining ||
+    online && !waitingForServe;
+  restartButton.hidden = title;
   restartButton.disabled = online && !lanConnected;
   syncMatchRulesUi();
   updateRoyalControlHint();
@@ -13069,12 +13157,14 @@ function syncRoyalFocus() {
   }
   if (dialog === royalLastDialog) return;
   if (dialog) {
-    if (!royalLastDialog) royalReturnFocus = document.activeElement;
+    if (!royalLastDialog && dialog.id !== 'matchMenu') royalReturnFocus = document.activeElement;
     if (!dialog.contains(document.activeElement)) royalFocusables(dialog)[0]?.focus({
       preventScroll: true
     });
-  } else if (royalLastDialog && !document.body.classList.contains('title-active')) {
-    const target = royalReturnFocus?.isConnected && royalReturnFocus.getClientRects().length ? royalReturnFocus :
+  } else if (royalLastDialog) {
+    const target = royalReturnFocus?.isConnected && royalReturnFocus !== document.body &&
+      royalReturnFocus.getClientRects().length && getComputedStyle(royalReturnFocus).visibility !== 'hidden' &&
+      !royalReturnFocus.closest('[inert],[hidden]') ? royalReturnFocus :
       menuToggle;
     target.focus({
       preventScroll: true
@@ -13099,8 +13189,9 @@ function handleRoyalUiKey(event) {
     else showTitleScreen();
   } else if (!form && event.target.closest?.('.match-ui') && ['Enter', ' '].includes(event.key)) {
     if (event.target.tagName === 'BUTTON' || event.target.tagName === 'SUMMARY') event.target.click();
-  } else if (dialog && !form && event.key.toLowerCase() === 'm') toggleRoyalMenu();
-  else return false;
+  } else if (!form && event.key.toLowerCase() === 'm' && !bossIntroActive && !creditsActive) {
+    if (!event.repeat) toggleRoyalMenu();
+  } else return false;
   event.preventDefault();
   event.stopImmediatePropagation();
   return true;
@@ -13112,7 +13203,8 @@ function royalUiConsumesGamepad() {
 
 function pollRoyalUiGamepad(now) {
   syncRoyalUi();
-  const panel = royalActiveDialog();
+  const panel = royalActiveDialog() || (document.body.classList.contains('title-active') && !creditsActive &&
+    !bossIntroActive ? byId('titleScreen') : null);
   if (!panel || now - royalUiGamepadAt < 30) return;
   royalUiGamepadAt = now;
   const pad = getConnectedGamepads()[0];
@@ -13128,10 +13220,12 @@ function pollRoyalUiGamepad(now) {
   royalUiGamepadDirection = direction;
   if (gamepadButtonJustPressed(pad, GAMEPAD_BUTTONS.A)) document.activeElement?.click();
   if (gamepadButtonJustPressed(pad, GAMEPAD_BUTTONS.START) && panel.id === 'matchMenu') {
-    requestTogglePause();
+    if (document.body.classList.contains('title-active')) setMenusVisible(false);
+    else requestTogglePause();
     syncRoyalUi(true);
   }
-  if (gamepadButtonJustPressed(pad, GAMEPAD_BUTTONS.B) || gamepadButtonJustPressed(pad, GAMEPAD_BUTTONS.SELECT)) {
+  if ((gamepadButtonJustPressed(pad, GAMEPAD_BUTTONS.B) && panel.id !== 'titleScreen') ||
+    gamepadButtonJustPressed(pad, GAMEPAD_BUTTONS.SELECT)) {
     if (panel.id === 'rotateDevice') {
       royalRotateDismissed = true;
       syncRoyalOrientation();

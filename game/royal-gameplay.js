@@ -9,6 +9,32 @@ let guestSnapshotSequence = -1;
 let guestSnapshotTick = -1;
 const SNAPSHOT_BUFFER_MS = 100;
 
+// Bound the extra background surface to 32 MiB: large full-canvas copies showed
+// frame-time spikes. Keep native resolution and all effects above this limit.
+const ROYAL_BACKGROUND_CACHE_MAX_PIXELS = 8 * 1024 * 1024;
+
+function paintRoyalBackground(context, accent) {
+  context.save();
+  context.fillStyle = '#000';
+  context.fillRect(0, 0, W, H);
+  context.globalAlpha = 0.12;
+  context.strokeStyle = accent;
+  context.lineWidth = 1;
+  for (let x = 40; x < W; x += 40) {
+    context.beginPath();
+    context.moveTo(x, 0);
+    context.lineTo(x, H);
+    context.stroke();
+  }
+  for (let y = 40; y < H; y += 40) {
+    context.beginPath();
+    context.moveTo(0, y);
+    context.lineTo(W, y);
+    context.stroke();
+  }
+  context.restore();
+}
+
 function captureVisualState() {
   return {
     epoch: visualEpoch,
@@ -241,36 +267,38 @@ const ROYAL_COLORS = {
   rush: '#ff604d',
   guard: '#59baff'
 };
-const ROYAL_PICKUP_SIZE = 24; // Artwork diameter; collection keeps its existing 24-unit radius.
+const ROYAL_PICKUP_SIZE = 24; // Source sprite resolution, shared with the help UI.
+const ROYAL_PICKUP_RENDER_SIZE = 30; // Presentation only; collection keeps its 24-unit radius.
 const ROYAL_PICKUP_ART_SYMBOLS = '123456789ABCDEF';
-// Visual-only 24 x 24 pixel sprites. Physics, spawn rules, and collection radius are unchanged.
+// Visual-only 24 x 24 pixel sprites, shared by gameplay and help.
 const ROYAL_PICKUP_ART = {
   split: {
-    palette: ['#000000', '#480c64', '#7c43a5', '#cc5dc8', '#c13cbb', '#f4fbfe', '#dda0e7', '#9c18a5', '#8415a8', '#660c85', '#7b96e7', '#bfd2f7', '#230836', '#170028', '#5b0076'],
+    // Approved reference: a large left ball forks into two smaller right balls.
+    palette: ['#11001f', '#4a006d', '#250039', '#9000dc', '#f16cff', '#fff7df', '#cf20f1', '#62079c'],
     pixels: [
       '........................',
-      '........................',
-      '..........11111.........',
-      '........123445321.......',
-      '......1246789A9852......',
-      '......27679BCB2D25A.....',
-      '.....D4549B66632DD5D....',
-      '....188AA2C66CB22A291...',
-      '....D52452BCBBB25729D...',
-      '...18AE8582BC42853D2A1..',
-      '...E5A3284A565A48DD23E..',
-      '...E8F52F8479748F2529E..',
-      '...E9D2A976AD967A9829E..',
-      '...E92A47749294773FF91..',
-      '....29366CA2223666392...',
-      '....DAB6CB3F5FB66BBAD...',
-      '.....23BBBA8782CBB32....',
-      '.....EA332D282D233AE....',
-      '......EA9F2DD22A9AE.....',
-      '.......12989998821......',
-      '.........1E2A2E1........',
-      '........................',
-      '........................',
+      '.........111111.........',
+      '......115665444411......',
+      '.....14422222222441.....',
+      '....1542333333332441....',
+      '...162233335333335551...',
+      '..15423333333333566751..',
+      '..14233333333366567451..',
+      '..52355553333366574854..',
+      '.1425566553336633555241.',
+      '.1455667745366333333241.',
+      '.1456677745663333333241.',
+      '.1456777445663333333241.',
+      '.1457774445366333333241.',
+      '.1425444453336633555241.',
+      '..42355553333366566754..',
+      '..14233333333366567451..',
+      '..15423333333333574851..',
+      '...142233334333335551...',
+      '....1542333333332441....',
+      '.....14422222222441.....',
+      '......114565444411......',
+      '.........111111.........',
       '........................',
     ]
   },
@@ -360,10 +388,7 @@ function royalPickupSprite(type) {
   // Keep each pickup visually distinct even without its color palette.
   c.fillStyle = '#fff7df';
 
-  if (type === 'split') {
-    c.fillRect(3, 3, 2, 1);
-    c.fillRect(3, 5, 1, 2);
-  } else if (type === 'rush') {
+  if (type === 'rush') {
     c.fillRect(11, 2, 2, 2);
     c.fillRect(8, 4, 2, 1);
   } else if (type === 'guard') {
@@ -435,7 +460,7 @@ function royalPickupSpotSafe(x, y) {
   });
 }
 
-function findRoyalPickupSpot() {
+function findRoyalPickupSpot(type = ROYAL_TYPES[royalPickupIndex % ROYAL_TYPES.length]) {
   if (isLanGuestActive()) return null;
   let seed = (Math.imul(royalRallyId + 1, 1664525) ^ Math.imul(royalPickupIndex + 1, 1013904223) ^ Math.imul(
     matchArenaId + 1, 2246822519) ^ royalRallyTick) >>> 0;
@@ -447,13 +472,33 @@ function findRoyalPickupSpot() {
   const top = Math.max(0, bounds.top) + ROYAL_SPAWN_MARGIN,
     bottom = Math.min(H, bounds.bottom) - ROYAL_SPAWN_MARGIN;
   if (bottom <= top) return null;
+  const split = type === 'split';
+  const minX = split ? Math.max(ROYAL_SPAWN_X_MARGIN, Math.ceil(W * 0.4)) : ROYAL_SPAWN_X_MARGIN;
+  const maxX = split ? Math.min(W - ROYAL_SPAWN_X_MARGIN, Math.floor(W * 0.6)) : W - ROYAL_SPAWN_X_MARGIN;
+  let firstSpot = null;
   for (let attempt = 0; attempt < 64; attempt++) {
-    const x = Math.round(ROYAL_SPAWN_X_MARGIN + random() * (W - ROYAL_SPAWN_X_MARGIN * 2));
+    const x = Math.round(minX + random() * (maxX - minX));
     const y = Math.round(top + random() * (bottom - top));
+    if (!firstSpot) firstSpot = {x, y};
     if (royalPickupSpotSafe(x, y)) return {
       x,
       y
     };
+  }
+  if (split) {
+    // A narrow safe gap can evade the random candidates. Find the nearest safe
+    // integer position to the first candidate, without ever leaving the center band.
+    let nearest = null, distance = Infinity;
+    for (let y = Math.ceil(top); y <= Math.floor(bottom); y++) {
+      for (let x = minX; x <= maxX; x++) {
+        const squared = (x - firstSpot.x) ** 2 + (y - firstSpot.y) ** 2;
+        if (squared < distance && royalPickupSpotSafe(x, y)) {
+          nearest = {x, y};
+          distance = squared;
+        }
+      }
+    }
+    return nearest;
   }
   return null; // A crowded arena may safely miss a spawn instead of placing an unreachable orb.
 }
@@ -734,7 +779,9 @@ function drawRoyalEffects(view) {
   if (view.pickup) {
     const p = view.pickup;
     ctx.shadowBlur = 0;
-    ctx.drawImage(royalPickupSprite(p.type), p.x - ROYAL_PICKUP_SIZE / 2, p.y - ROYAL_PICKUP_SIZE / 2);
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(royalPickupSprite(p.type), p.x - ROYAL_PICKUP_RENDER_SIZE / 2,
+      p.y - ROYAL_PICKUP_RENDER_SIZE / 2, ROYAL_PICKUP_RENDER_SIZE, ROYAL_PICKUP_RENDER_SIZE);
   }
   ctx.restore();
 }

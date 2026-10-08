@@ -302,9 +302,9 @@ function royalPowerupHelpIcon(type) {
   icon.width = sprite.width;
   icon.height = sprite.height;
   icon.setAttribute('aria-hidden', 'true');
-  icon.style.width = '24px';
-  icon.style.height = '24px';
-  icon.style.flex = '0 0 24px';
+  icon.style.width = '32px';
+  icon.style.height = '32px';
+  icon.style.flex = '0 0 32px';
   icon.style.imageRendering = 'pixelated';
   icon.getContext('2d').drawImage(sprite, 0, 0);
   return icon;
@@ -404,6 +404,10 @@ function syncMatchRulesUi() {
 }
 
 function royalContinue() {
+  if (document.body.classList.contains('title-active')) {
+    setMenusVisible(false);
+    return;
+  }
   if (royalNeedsSetup() && royalMenuRequested) {
     setMenusVisible(false);
     return;
@@ -419,10 +423,13 @@ function royalContinue() {
 }
 
 function toggleRoyalMenu() {
-  if (document.body.classList.contains('title-active')) return;
+  if (bossIntroActive || creditsActive) return;
+  const title = document.body.classList.contains('title-active');
   const open = byId('matchMenu') && !byId('matchMenu').hidden;
   royalMenuRequested = !open;
-  if (!open && !paused && !waitingForServe && !gameOver && (!royalOnlineMode() || lanConnected)) requestTogglePause();
+  if (!title && !open && !paused && !waitingForServe && !gameOver && (!royalOnlineMode() || lanConnected)) {
+    requestTogglePause();
+  }
   setMenusVisible(!open);
 }
 
@@ -452,7 +459,7 @@ function syncRoyalUi(force = false) {
   const online = royalOnlineMode();
   const joining = online && byId('onlineJoinForm') && !byId('onlineJoinForm').hidden;
   const setup = !title && !bossIntroActive && !creditsActive && royalNeedsSetup();
-  const menu = !title && !bossIntroActive && !creditsActive && menusVisible && (!setup || royalMenuRequested);
+  const menu = !bossIntroActive && !creditsActive && menusVisible && (!setup || royalMenuRequested);
   const signature = [title, online, setup, menu, galleryKind, bossIntroActive, creditsActive, mode, activeCampaign,
     levelIndex, waitingForServe, paused, gameOver,
     levelCleared, campaignCleared, lanRole, lanConnected, lanLastStatus, matchArenaId, matchPaddles.left, matchPaddles
@@ -464,7 +471,15 @@ function syncRoyalUi(force = false) {
   royalUiSignature = signature;
   byId('matchSetup').hidden = !setup || menu || Boolean(galleryKind);
   byId('matchMenu').hidden = !menu || Boolean(galleryKind);
-  byId('matchBar').hidden = title || creditsActive || bossIntroActive;
+  byId('matchBar').hidden = title || menu || creditsActive || bossIntroActive;
+  // Keep the toggle inside the modal's focus/inert boundary while it is open.
+  // Its fixed position stays at the same top-left location as the match bar.
+  if (menu && !royalLastDialog) royalReturnFocus = document.activeElement;
+  const toggleParent = byId(menu ? 'matchMenu' : title ? 'titleScreen' : 'matchBar');
+  if (menuToggle.parentElement !== toggleParent) {
+    if (menu || title) toggleParent.append(menuToggle);
+    else toggleParent.prepend(menuToggle);
+  }
   document.body.classList.toggle('royal-panel-open', setup || menu || Boolean(galleryKind));
   // One source of truth for active states, including setup before any peer exists.
   for (const button of [...campaignButtons, byId('menuCampaign'), customModeButton, twoPlayerModeButton, lanModeButton,
@@ -485,13 +500,13 @@ function syncRoyalUi(force = false) {
       .name) + ' · ' : '') + localizeText(currentLevel().name) + (playInfoVisible ? ' · ' + (mode === 2 ?
       localizeText(matchRule().label) : localizeText('Goal') + ' ' + currentLevel().goal) : ''));
   royalText(byId('matchSetupTitle'), royalModeName());
-  royalText(byId('matchMenuTitle'), paused ? 'Paused' : 'Match menu');
+  royalText(byId('matchMenuTitle'), title ? 'Menu' : paused ? 'Paused' : 'Match menu');
   royalText(twoPlayerModeButton, 'Local Two Player');
   royalText(menuToggle, 'Menu (M)');
   menuToggle.setAttribute('aria-expanded', String(menu));
   menuToggle.setAttribute('aria-pressed', String(menu));
   setLocalizedTitle(menuToggle, 'Menu (M)');
-  byId('matchConnection').hidden = !online;
+  byId('matchConnection').hidden = title || !online;
   const connectionParent = menu ? byId('matchConnection') : byId('matchSetupBody');
   if (lanPanel.parentElement !== connectionParent) {
     if (connectionParent.id === 'matchConnection') connectionParent.append(lanPanel);
@@ -517,23 +532,25 @@ function syncRoyalUi(force = false) {
   byId('chooseArenaButton').hidden = mode !== 2 && mode !== 3 || lanRole === 'guest' || joining;
   choices.dataset.online = String(online);
   customPanel.classList.toggle('hidden', mode !== 3);
-  byId('matchCpuSettings').hidden = mode !== 3;
+  byId('matchCpuSettings').hidden = title || mode !== 3;
   const canServe = !online || lanConnected;
   byId('matchServe').hidden = !canServe;
-  byId('matchContinue').hidden = setup || menu || !canServe || !(waitingForServe || gameOver || levelCleared ||
+  byId('matchContinue').hidden = title || setup || menu || !canServe || !(waitingForServe || gameOver || levelCleared ||
     campaignCleared);
-  byId('matchPause').hidden = setup || menu || !canServe;
+  byId('matchPause').hidden = title || setup || menu || !canServe;
   royalText(byId('matchContinue'), gameOver ? 'Retry' : levelCleared || campaignCleared ? 'Continue' : 'Serve');
   royalText(byId('matchPause'), paused ? 'Resume' : 'Pause');
-  royalText(byId('matchResume'), setup ? 'Back to setup' : gameOver ? 'Retry' : paused ? 'Resume' : waitingForServe ?
-    'Serve' : 'Back to match');
+  royalText(byId('matchResume'), title ? 'Close menu' : setup ? 'Back to setup' : gameOver ? 'Retry' :
+    paused ? 'Resume' : waitingForServe ? 'Serve' : 'Back to match');
   royalText(byId('matchSetupHint'), online ? lanRole === 'guest' ? 'Choose your paddle. The host chooses the arena.' :
     lanConnected ? 'Both players can choose a paddle before serving.' :
     'Create a room or join a friend with their room code.' : mode === 3 ?
     'Choose your paddle and arena, then start the match.' : 'Choose your paddles and arena, then start the match.');
-  byId('menuPaddle').hidden = mode === 4 || online && !waitingForServe;
-  byId('menuPaddle2').hidden = mode !== 2 || online;
-  byId('menuArena').hidden = mode !== 2 && mode !== 3 || lanRole === 'guest' || joining || online && !waitingForServe;
+  byId('menuPaddle').hidden = !title && (mode === 4 || online && !waitingForServe);
+  byId('menuPaddle2').hidden = title || mode !== 2 || online;
+  byId('menuArena').hidden = title || mode !== 2 && mode !== 3 || lanRole === 'guest' || joining ||
+    online && !waitingForServe;
+  restartButton.hidden = title;
   restartButton.disabled = online && !lanConnected;
   syncMatchRulesUi();
   updateRoyalControlHint();
@@ -618,12 +635,14 @@ function syncRoyalFocus() {
   }
   if (dialog === royalLastDialog) return;
   if (dialog) {
-    if (!royalLastDialog) royalReturnFocus = document.activeElement;
+    if (!royalLastDialog && dialog.id !== 'matchMenu') royalReturnFocus = document.activeElement;
     if (!dialog.contains(document.activeElement)) royalFocusables(dialog)[0]?.focus({
       preventScroll: true
     });
-  } else if (royalLastDialog && !document.body.classList.contains('title-active')) {
-    const target = royalReturnFocus?.isConnected && royalReturnFocus.getClientRects().length ? royalReturnFocus :
+  } else if (royalLastDialog) {
+    const target = royalReturnFocus?.isConnected && royalReturnFocus !== document.body &&
+      royalReturnFocus.getClientRects().length && getComputedStyle(royalReturnFocus).visibility !== 'hidden' &&
+      !royalReturnFocus.closest('[inert],[hidden]') ? royalReturnFocus :
       menuToggle;
     target.focus({
       preventScroll: true
@@ -648,8 +667,9 @@ function handleRoyalUiKey(event) {
     else showTitleScreen();
   } else if (!form && event.target.closest?.('.match-ui') && ['Enter', ' '].includes(event.key)) {
     if (event.target.tagName === 'BUTTON' || event.target.tagName === 'SUMMARY') event.target.click();
-  } else if (dialog && !form && event.key.toLowerCase() === 'm') toggleRoyalMenu();
-  else return false;
+  } else if (!form && event.key.toLowerCase() === 'm' && !bossIntroActive && !creditsActive) {
+    if (!event.repeat) toggleRoyalMenu();
+  } else return false;
   event.preventDefault();
   event.stopImmediatePropagation();
   return true;
@@ -661,7 +681,8 @@ function royalUiConsumesGamepad() {
 
 function pollRoyalUiGamepad(now) {
   syncRoyalUi();
-  const panel = royalActiveDialog();
+  const panel = royalActiveDialog() || (document.body.classList.contains('title-active') && !creditsActive &&
+    !bossIntroActive ? byId('titleScreen') : null);
   if (!panel || now - royalUiGamepadAt < 30) return;
   royalUiGamepadAt = now;
   const pad = getConnectedGamepads()[0];
@@ -677,10 +698,12 @@ function pollRoyalUiGamepad(now) {
   royalUiGamepadDirection = direction;
   if (gamepadButtonJustPressed(pad, GAMEPAD_BUTTONS.A)) document.activeElement?.click();
   if (gamepadButtonJustPressed(pad, GAMEPAD_BUTTONS.START) && panel.id === 'matchMenu') {
-    requestTogglePause();
+    if (document.body.classList.contains('title-active')) setMenusVisible(false);
+    else requestTogglePause();
     syncRoyalUi(true);
   }
-  if (gamepadButtonJustPressed(pad, GAMEPAD_BUTTONS.B) || gamepadButtonJustPressed(pad, GAMEPAD_BUTTONS.SELECT)) {
+  if ((gamepadButtonJustPressed(pad, GAMEPAD_BUTTONS.B) && panel.id !== 'titleScreen') ||
+    gamepadButtonJustPressed(pad, GAMEPAD_BUTTONS.SELECT)) {
     if (panel.id === 'rotateDevice') {
       royalRotateDismissed = true;
       syncRoyalOrientation();
