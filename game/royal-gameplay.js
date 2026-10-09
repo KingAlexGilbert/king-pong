@@ -720,15 +720,13 @@ function applyRoyalState(value) {
   };
 }
 
-// Snap only the final raster rectangle. Simulation and interpolation retain their
-// fractional positions; a fixed pixel size stops the ball's edges changing shape.
+// Keep interpolated positions fractional for even motion between display frames.
+// Round only the physical size so the square's dimensions stay constant.
 function drawBallPixels(b) {
   const transform = ctx.getTransform();
   const scaleX = transform.a, scaleY = transform.d;
   const size = Math.max(1, Math.round(BALL_SIZE * Math.min(scaleX, scaleY)));
-  ctx.fillRect((Math.round(b.x * scaleX + transform.e) - transform.e) / scaleX,
-    (Math.round(b.y * scaleY + transform.f) - transform.f) / scaleY,
-    size / scaleX, size / scaleY);
+  ctx.fillRect(b.x, b.y, size / scaleX, size / scaleY);
 }
 
 function drawRoyalBall(b, translucent = false) {

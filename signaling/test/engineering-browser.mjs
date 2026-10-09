@@ -195,7 +195,11 @@ async function rasterChecks() {
     {width: 1280, height: 800, dpr: 2},
     {width: 1280, height: 800, dpr: 3},
     {width: 3840, height: 2160, dpr: 1},
+    {width: 390, height: 844, dpr: 1},
+    {width: 390, height: 844, dpr: 2},
     {width: 390, height: 844, dpr: 3},
+    {width: 844, height: 390, dpr: 1},
+    {width: 844, height: 390, dpr: 2},
     {width: 844, height: 390, dpr: 3}
   ]) {
     const p = await page('Browser', {viewport: {width: scenario.width, height: scenario.height},
@@ -204,39 +208,100 @@ async function rasterChecks() {
       hideTitleScreen();
       startTwoPlayerMode(true, false);
       handleViewportChange();
-      const samples = [];
-      for (let i = 0; i < 24; i++) {
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.setTransform(renderScale, 0, 0, canvas.height / H, 0, 0);
-        ctx.translate(.37, -.23);
-        drawRoyalBall({x: 200 + i / 11, y: 100 + i / 17});
-        const sx = canvas.width / W, sy = canvas.height / H;
-        const x = Math.floor(195 * sx), y = Math.floor(95 * sy);
-        const w = Math.ceil(25 * sx), h = Math.ceil(25 * sy);
-        const data = ctx.getImageData(x, y, w, h).data;
-        let minX = w, maxX = 0, minY = h, maxY = 0, count = 0;
-        for (let row = 0; row < h; row++) for (let col = 0; col < w; col++) {
-          if (data[(row * w + col) * 4 + 3] < 128) continue;
-          minX = Math.min(minX, col); maxX = Math.max(maxX, col);
-          minY = Math.min(minY, row); maxY = Math.max(maxY, row); count++;
+      const samples = [], state = JSON.stringify([ball, royalSplitBall, frame, left, right]);
+      const intervals = [.72, 1.31, .93, 1.08, 2, .55, 1.12, .87];
+      const sx = canvas.width / W, sy = canvas.height / H;
+      // alpha:false makes the cleared background opaque too. Inspect color
+      // coverage instead of alpha, allowing the intentional one-pixel edge fringe.
+      const size = Math.max(1, Math.round(BALL_SIZE * Math.min(sx, sy)));
+      for (const hz of [60, 120, 144, 165, 240]) for (const irregular of [false, true])
+        for (const split of [false, true]) for (const [vx, vy] of [[4.65, 0], [0, -.8], [9.6, 7.2]]) {
+        let time = 0, previous = null, stepError = 0, maxPositionError = 0;
+        let minMass = Infinity, maxMass = 0, maxFringe = 0;
+        for (let i = 0; i < 12; i++) {
+          const speedScale = split ? .7 : 1;
+          const b = {x: 200.137 + vx * speedScale * time * 60 / 1000,
+            y: 100.293 + vy * speedScale * time * 60 / 1000};
+          // Clear the ball's full test region, including the prior position.
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
+          ctx.clearRect(190 * sx, 80 * sy, 260 * sx, 200 * sy);
+          ctx.setTransform(sx, 0, 0, sy, 0, 0);
+          ctx.translate(.37, -.23);
+          const transform = ctx.getTransform();
+          const x = b.x * transform.a + transform.e, y = b.y * transform.d + transform.f;
+          drawRoyalBall(b, split);
+          const bx = Math.floor(x) - 2, by = Math.floor(y) - 2, extent = size + 5;
+          const data = ctx.getImageData(bx, by, extent, extent).data;
+          let peak = 0, sum = 0, mx = 0, my = 0;
+          let minX = extent, minY = extent, maxX = -1, maxY = -1;
+          for (let j = 0; j < data.length; j += 4) peak = Math.max(peak, data[j], data[j + 1], data[j + 2]);
+          for (let row = 0; row < extent; row++) for (let col = 0; col < extent; col++) {
+            const j = (row * extent + col) * 4, coverage = Math.max(data[j], data[j + 1], data[j + 2]);
+            if (!coverage) continue;
+            sum += coverage; mx += (bx + col + .5) * coverage; my += (by + row + .5) * coverage;
+            minX = Math.min(minX, col); maxX = Math.max(maxX, col);
+            minY = Math.min(minY, row); maxY = Math.max(maxY, row);
+          }
+          const center = {x: mx / sum, y: my / sum, expectedX: x + size / 2, expectedY: y + size / 2};
+          maxPositionError = Math.max(maxPositionError, Math.hypot(center.x - center.expectedX, center.y - center.expectedY));
+          if (previous) stepError += (center.x - previous.x - center.expectedX + previous.expectedX) ** 2 +
+            (center.y - previous.y - center.expectedY + previous.expectedY) ** 2;
+          minMass = Math.min(minMass, sum / peak); maxMass = Math.max(maxMass, sum / peak);
+          maxFringe = Math.max(maxFringe, maxX - minX + 1 - size, maxY - minY + 1 - size);
+          previous = center;
+          time += 1000 / hz * (irregular ? intervals[i % intervals.length] : 1);
         }
-        samples.push({width: maxX - minX + 1, height: maxY - minY + 1, count});
+        samples.push({hz, irregular, split, vx, vy, size, minMass, maxMass, maxFringe,
+          maxPositionError, stepErrorRms: Math.sqrt(stepError / 11)});
       }
-      return {samples, width: canvas.width, height: canvas.height, dpr: devicePixelRatio,
+      return {samples, unchanged: state === JSON.stringify([ball, royalSplitBall, frame, left, right]),
+        width: canvas.width, height: canvas.height, dpr: devicePixelRatio,
         cssWidth: canvas.clientWidth, cssHeight: canvas.clientHeight};
     });
     assert.equal(result.width, Math.round(result.cssWidth * result.dpr));
     assert.equal(result.height, Math.round(result.cssHeight * result.dpr));
+    assert.equal(result.unchanged, true);
     for (const sample of result.samples) {
-      assert.equal(sample.width, result.samples[0].width);
-      assert.equal(sample.height, sample.width);
-      assert.equal(sample.count, sample.width * sample.height, 'a solid square at every fractional position');
+      assert.ok(sample.maxPositionError < .03, JSON.stringify(sample));
+      assert.ok(sample.stepErrorRms < .03, 'color centroid follows fractional motion: ' + JSON.stringify(sample));
+      assert.ok(sample.maxFringe <= 1, 'no extended blur or trail: ' + JSON.stringify(sample));
+      assert.ok(Math.abs(sample.minMass / sample.size ** 2 - 1) < .005, JSON.stringify(sample));
+      assert.ok(Math.abs(sample.maxMass / sample.size ** 2 - 1) < .005, JSON.stringify(sample));
     }
     metrics.push({scenario, raster: result});
     await p.context().close();
   }
-  pass('device-pixel ball squares remain stable at desktop/mobile sizes and DPR 1/1.25/1.5/2/3, including 4K');
+  pass('fractional primary/Split color coverage: stable size and motion at 60/120/144/165/240 Hz, desktop/mobile DPR and 4K');
+
+  const p = await page();
+  const erased = await p.evaluate(() => {
+    hideTitleScreen(); startTwoPlayerMode(true, false);
+    menusVisible = paused = waitingForServe = false;
+    let view = captureVisualState();
+    view.shake = {x: 0, y: 0}; view.launch.remaining = 0;
+    view.ball = {...view.ball, x: 200.137, y: 100.293};
+    view.split = {...view.ball, id: 'royal-split', x: 430.731, y: 250.473};
+    draw(view);
+    const results = [];
+    for (const transition of ['move', 'remove-split', 'reset']) {
+      if (transition === 'move') {
+        view.ball.x += 12; view.ball.y += 7.2;
+        view.split.x -= 8.4; view.split.y -= 5.04;
+      } else if (transition === 'remove-split') view.split = null;
+      else { resetBall(1, false); view = captureVisualState(); }
+      draw(view);
+      const sequential = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      draw(view);
+      const clean = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+      results.push({transition, equal: clean.every((value, i) => value === sequential[i])});
+    }
+    return results;
+  });
+  assert.ok(erased.every(r => r.equal), JSON.stringify(erased));
+  await p.context().close();
+  pass('full scene redraw leaves no residual primary/Split pixels after movement, removal or reset');
 }
 
 async function backgroundChecks(p, platform) {

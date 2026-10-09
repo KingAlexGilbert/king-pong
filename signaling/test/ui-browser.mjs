@@ -1,3 +1,4 @@
+import {reviewBrowserChecks} from './review-browser-checks.mjs';
 import assert from 'node:assert/strict';
 import {
   createServer
@@ -986,6 +987,7 @@ try {
   await snap(reduced, 'title-secret-boss-reduced-motion');
   await reduced.context().close();
   pass('gold and purple title actions respect reduced motion');
+  await reviewBrowserChecks({page, bounds, snap, pass});
   assert.deepEqual(errors, []);
   console.log(`RESULT: ${checks} UI browser integration groups passed; no page exceptions`);
 } finally {

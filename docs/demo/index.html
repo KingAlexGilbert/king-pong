@@ -1117,6 +1117,127 @@ body.title-active .hint {
   letter-spacing: 3px;
   font-size: 18px;
 }
+
+.save-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 12px
+}
+
+.save-actions button {
+  margin-top: 0;
+  font-size: 12px;
+  padding: 8px 10px;
+  min-height: 36px
+}
+
+.save-transfer-status {
+  margin: 8px 0 0;
+  color: #ddd;
+  font-size: 12px;
+  line-height: 1.4;
+  overflow-wrap: anywhere
+}
+
+.save-transfer-status:empty {
+  display: none
+}
+
+@media(pointer:coarse) {
+  .save-actions button {
+    min-height: 44px
+  }
+}
+
+.save-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  box-sizing: border-box;
+  background: rgba(0, 0, 0, .78);
+  touch-action: pan-y
+}
+
+.save-confirm-overlay[hidden] {
+  display: none
+}
+
+.save-confirm-card {
+  width: min(100%, 480px);
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+  box-sizing: border-box;
+  padding: 24px;
+  background: #111;
+  border: 2px solid var(--accent);
+  box-shadow: 0 0 24px rgba(0, 0, 0, .6);
+  text-align: left
+}
+
+.save-confirm-card h2 {
+  margin: 0 0 14px;
+  color: #fff;
+  font-size: 22px;
+  line-height: 1.25
+}
+
+.save-confirm-card p {
+  margin: 0;
+  color: #ccc;
+  font-size: 14px;
+  line-height: 1.55;
+  overflow-wrap: anywhere
+}
+
+.save-confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 22px
+}
+
+.save-confirm-actions button {
+  min-height: 44px;
+  min-width: 100px;
+  margin: 0;
+  padding: 10px 18px;
+  border: 1px solid #777;
+  background: #171717;
+  color: #fff;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer
+}
+
+.save-confirm-actions button:hover,
+.save-confirm-actions button:focus {
+  border-color: var(--accent);
+  outline: 2px solid var(--accent);
+  outline-offset: 2px
+}
+
+.save-confirm-actions .save-confirm-accept {
+  color: var(--accent);
+  border-color: var(--accent)
+}
+
+@media(max-height:360px) {
+  .save-confirm-card {
+    padding: 16px
+  }
+
+  .save-confirm-actions {
+    margin-top: 14px
+  }
+}
+
 </style>
 
   <style id="king-pong-browser-demo-overrides">
@@ -1602,6 +1723,55 @@ textarea:focus-visible {
   align-items: center;
   gap: 12px;
   z-index: 25;
+}
+
+.match-pause-title {
+  display: none;
+}
+
+/* Reuse the match controls as a compact pause card on desktop. Touch keeps its bar. */
+.match-bar-paused {
+  top: calc(50% + 10px + (env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) / 2);
+  left: 50%;
+  right: auto;
+  transform: translate(-50%, -50%);
+  width: min(480px, calc(100vw - 32px), calc(100dvh - 84px));
+  max-height: calc(100dvh - 100px);
+  height: auto;
+  box-sizing: border-box;
+  padding: 22px;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 16px 12px;
+  overflow: auto;
+  background: #050507f2;
+  border: 2px solid var(--accent);
+}
+
+.match-bar-paused .match-pause-title {
+  display: block;
+  flex-basis: 100%;
+  order: -2;
+  margin: 0;
+  text-align: center;
+  text-transform: uppercase;
+  font-size: 22px;
+}
+
+.match-bar-paused .match-identity {
+  flex: 0 0 100%;
+  order: -1;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+}
+
+.match-bar-paused #matchContext {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.5;
 }
 
 body.title-active #menuToggle {
@@ -2616,7 +2786,10 @@ body.royal-panel-open .match-footer #controlHint {
         <button type="button" id="titleCampaignButton">Campaign</button><button type="button" id="titleCustomButton">Custom Game</button><button type="button" id="titleTwoPlayerButton">Two Player</button><button type="button" id="titleLanButton">Online Multiplayer</button><button type="button" id="titleBossButton" class="secret-boss-button" hidden>Secret Boss</button>
       </div><button type="button" class="exit-game-button" id="exitGameButton" title="Close King Pong">Exit Game</button>
       <div class="title-message" id="titleMessage">Choose a save slot, then choose a game mode.</div>
-      <button type="button" class="erase-save-button" id="eraseSaveButton">Erase Selected Slot</button>
+      <div class="save-actions" role="group" aria-label="Save management">
+        <button type="button" class="erase-save-button" id="exportSavesButton">Export Saves</button><button type="button" class="erase-save-button" id="importSavesButton">Import Saves</button><button type="button" class="erase-save-button" id="eraseSaveButton">Erase Selected Slot</button>
+      </div>
+      <div class="save-transfer-status" id="saveTransferStatus" role="status" aria-live="polite"></div>
     </div>
   </div>
   <div class="menu-stack" id="menuStack">
@@ -2667,6 +2840,14 @@ body.royal-panel-open .match-footer #controlHint {
   <script src="online-config.js"></script>
   <script src="online-localization.js"></script>
   <script src="online.js"></script>
+  <div class="save-confirm-overlay" id="saveConfirmOverlay" hidden>
+    <section class="save-confirm-card" role="alertdialog" aria-modal="true" aria-labelledby="saveConfirmTitle"
+      aria-describedby="saveConfirmMessage"><h2 id="saveConfirmTitle">Import Saves</h2><p id="saveConfirmMessage"></p>
+      <div class="save-confirm-actions">
+        <button type="button" id="saveConfirmCancel">Cancel</button><button type="button" class="save-confirm-accept" id="saveConfirmAccept">Import</button>
+      </div>
+    </section>
+  </div>
   <script id="royal-localization">
 // Merged into existing phrase tables before their translation cache is built.
 window.KING_PONG_ROYAL_TRANSLATIONS = {
@@ -4505,6 +4686,145 @@ const LOCALIZATION = (() => {
     }
     return "en";
   }
+  const saveTransferTranslations = {
+    "es": {
+      "Export Saves": "Exportar partidas",
+      "Import Saves": "Importar partidas",
+      "Save management": "Gestionar partidas",
+      "Saves exported.": "Partidas exportadas.",
+      "Saves imported.": "Partidas importadas.",
+      "Export cancelled.": "Exportaci\u00f3n cancelada.",
+      "Import cancelled.": "Importaci\u00f3n cancelada.",
+      "Replace all three save slots with this backup? Empty backup slots will also replace your current slots.": "\u00bfReemplazar las tres ranuras con esta copia? Las ranuras vac\u00edas tambi\u00e9n reemplazar\u00e1n tus partidas actuales.",
+      "Cancel": "Cancelar",
+      "Import": "Importar",
+      "Erase": "Borrar",
+      "Erase Save Slot": "Borrar partida",
+      "The save slot could not be erased.": "No se pudo borrar la partida."
+    },
+    "fr": {
+      "Export Saves": "Exporter les sauvegardes",
+      "Import Saves": "Importer les sauvegardes",
+      "Save management": "Gestion des sauvegardes",
+      "Saves exported.": "Sauvegardes export\u00e9es.",
+      "Saves imported.": "Sauvegardes import\u00e9es.",
+      "Export cancelled.": "Exportation annul\u00e9e.",
+      "Import cancelled.": "Importation annul\u00e9e.",
+      "Replace all three save slots with this backup? Empty backup slots will also replace your current slots.": "Remplacer les trois emplacements par cette sauvegarde ? Les emplacements vides remplaceront aussi vos parties actuelles.",
+      "Cancel": "Annuler",
+      "Import": "Importer",
+      "Erase": "Effacer",
+      "Erase Save Slot": "Effacer une sauvegarde",
+      "The save slot could not be erased.": "Impossible d\u2019effacer la sauvegarde."
+    },
+    "de": {
+      "Export Saves": "Spielst\u00e4nde exportieren",
+      "Import Saves": "Spielst\u00e4nde importieren",
+      "Save management": "Spielst\u00e4nde verwalten",
+      "Saves exported.": "Spielst\u00e4nde exportiert.",
+      "Saves imported.": "Spielst\u00e4nde importiert.",
+      "Export cancelled.": "Export abgebrochen.",
+      "Import cancelled.": "Import abgebrochen.",
+      "Replace all three save slots with this backup? Empty backup slots will also replace your current slots.": "Alle drei Speicherpl\u00e4tze durch dieses Backup ersetzen? Leere Pl\u00e4tze ersetzen ebenfalls deine aktuellen Spielst\u00e4nde.",
+      "Cancel": "Abbrechen",
+      "Import": "Importieren",
+      "Erase": "L\u00f6schen",
+      "Erase Save Slot": "Spielstand l\u00f6schen",
+      "The save slot could not be erased.": "Der Spielstand konnte nicht gel\u00f6scht werden."
+    },
+    "pt": {
+      "Export Saves": "Exportar jogos",
+      "Import Saves": "Importar jogos",
+      "Save management": "Gerenciar jogos",
+      "Saves exported.": "Jogos exportados.",
+      "Saves imported.": "Jogos importados.",
+      "Export cancelled.": "Exporta\u00e7\u00e3o cancelada.",
+      "Import cancelled.": "Importa\u00e7\u00e3o cancelada.",
+      "Replace all three save slots with this backup? Empty backup slots will also replace your current slots.": "Substituir os tr\u00eas espa\u00e7os por este backup? Espa\u00e7os vazios tamb\u00e9m substituir\u00e3o seus jogos atuais.",
+      "Cancel": "Cancelar",
+      "Import": "Importar",
+      "Erase": "Apagar",
+      "Erase Save Slot": "Apagar jogo salvo",
+      "The save slot could not be erased.": "N\u00e3o foi poss\u00edvel apagar o jogo salvo."
+    },
+    "it": {
+      "Export Saves": "Esporta salvataggi",
+      "Import Saves": "Importa salvataggi",
+      "Save management": "Gestisci salvataggi",
+      "Saves exported.": "Salvataggi esportati.",
+      "Saves imported.": "Salvataggi importati.",
+      "Export cancelled.": "Esportazione annullata.",
+      "Import cancelled.": "Importazione annullata.",
+      "Replace all three save slots with this backup? Empty backup slots will also replace your current slots.": "Sostituire tutti e tre gli slot con questo backup? Anche gli slot vuoti sostituiranno i salvataggi attuali.",
+      "Cancel": "Annulla",
+      "Import": "Importa",
+      "Erase": "Elimina",
+      "Erase Save Slot": "Elimina salvataggio",
+      "The save slot could not be erased.": "Impossibile eliminare il salvataggio."
+    },
+    "nl": {
+      "Export Saves": "Saves exporteren",
+      "Import Saves": "Saves importeren",
+      "Save management": "Saves beheren",
+      "Saves exported.": "Saves ge\u00ebxporteerd.",
+      "Saves imported.": "Saves ge\u00efmporteerd.",
+      "Export cancelled.": "Export geannuleerd.",
+      "Import cancelled.": "Import geannuleerd.",
+      "Replace all three save slots with this backup? Empty backup slots will also replace your current slots.": "Alle drie de slots vervangen door deze back-up? Lege slots vervangen ook je huidige saves.",
+      "Cancel": "Annuleren",
+      "Import": "Importeren",
+      "Erase": "Wissen",
+      "Erase Save Slot": "Opslagvak wissen",
+      "The save slot could not be erased.": "Het opslagvak kon niet worden gewist."
+    },
+    "ja": {
+      "Export Saves": "\u30bb\u30fc\u30d6\u3092\u30a8\u30af\u30b9\u30dd\u30fc\u30c8",
+      "Import Saves": "\u30bb\u30fc\u30d6\u3092\u30a4\u30f3\u30dd\u30fc\u30c8",
+      "Save management": "\u30bb\u30fc\u30d6\u7ba1\u7406",
+      "Saves exported.": "\u30bb\u30fc\u30d6\u3092\u30a8\u30af\u30b9\u30dd\u30fc\u30c8\u3057\u307e\u3057\u305f\u3002",
+      "Saves imported.": "\u30bb\u30fc\u30d6\u3092\u30a4\u30f3\u30dd\u30fc\u30c8\u3057\u307e\u3057\u305f\u3002",
+      "Export cancelled.": "\u30a8\u30af\u30b9\u30dd\u30fc\u30c8\u3092\u30ad\u30e3\u30f3\u30bb\u30eb\u3057\u307e\u3057\u305f\u3002",
+      "Import cancelled.": "\u30a4\u30f3\u30dd\u30fc\u30c8\u3092\u30ad\u30e3\u30f3\u30bb\u30eb\u3057\u307e\u3057\u305f\u3002",
+      "Replace all three save slots with this backup? Empty backup slots will also replace your current slots.": "3\u3064\u306e\u30bb\u30fc\u30d6\u30b9\u30ed\u30c3\u30c8\u3092\u3053\u306e\u30d0\u30c3\u30af\u30a2\u30c3\u30d7\u3067\u7f6e\u304d\u63db\u3048\u307e\u3059\u304b\uff1f\u7a7a\u306e\u30b9\u30ed\u30c3\u30c8\u3082\u73fe\u5728\u306e\u30bb\u30fc\u30d6\u3092\u4e0a\u66f8\u304d\u3057\u307e\u3059\u3002",
+      "Cancel": "\u30ad\u30e3\u30f3\u30bb\u30eb",
+      "Import": "\u30a4\u30f3\u30dd\u30fc\u30c8",
+      "Erase": "\u524a\u9664",
+      "Erase Save Slot": "\u30bb\u30fc\u30d6\u30c7\u30fc\u30bf\u3092\u524a\u9664",
+      "The save slot could not be erased.": "\u30bb\u30fc\u30d6\u30c7\u30fc\u30bf\u3092\u524a\u9664\u3067\u304d\u307e\u305b\u3093\u3067\u3057\u305f\u3002"
+    },
+    "ko": {
+      "Export Saves": "\uc800\uc7a5 \ub0b4\ubcf4\ub0b4\uae30",
+      "Import Saves": "\uc800\uc7a5 \uac00\uc838\uc624\uae30",
+      "Save management": "\uc800\uc7a5 \uad00\ub9ac",
+      "Saves exported.": "\uc800\uc7a5\uc744 \ub0b4\ubcf4\ub0c8\uc2b5\ub2c8\ub2e4.",
+      "Saves imported.": "\uc800\uc7a5\uc744 \uac00\uc838\uc654\uc2b5\ub2c8\ub2e4.",
+      "Export cancelled.": "\ub0b4\ubcf4\ub0b4\uae30\ub97c \ucde8\uc18c\ud588\uc2b5\ub2c8\ub2e4.",
+      "Import cancelled.": "\uac00\uc838\uc624\uae30\ub97c \ucde8\uc18c\ud588\uc2b5\ub2c8\ub2e4.",
+      "Replace all three save slots with this backup? Empty backup slots will also replace your current slots.": "\uc800\uc7a5 \uc2ac\ub86f 3\uac1c\ub97c \uc774 \ubc31\uc5c5\uc73c\ub85c \ubc14\uafb8\uc2dc\uaca0\uc2b5\ub2c8\uae4c? \ube48 \uc2ac\ub86f\ub3c4 \ud604\uc7ac \uc800\uc7a5\uc744 \ub36e\uc5b4\uc501\ub2c8\ub2e4.",
+      "Cancel": "\ucde8\uc18c",
+      "Import": "\uac00\uc838\uc624\uae30",
+      "Erase": "\uc0ad\uc81c",
+      "Erase Save Slot": "\uc800\uc7a5 \ub370\uc774\ud130 \uc0ad\uc81c",
+      "The save slot could not be erased.": "\uc800\uc7a5 \ub370\uc774\ud130\ub97c \uc0ad\uc81c\ud560 \uc218 \uc5c6\uc2b5\ub2c8\ub2e4."
+    },
+    "zh": {
+      "Export Saves": "\u5bfc\u51fa\u5b58\u6863",
+      "Import Saves": "\u5bfc\u5165\u5b58\u6863",
+      "Save management": "\u5b58\u6863\u7ba1\u7406",
+      "Saves exported.": "\u5b58\u6863\u5df2\u5bfc\u51fa\u3002",
+      "Saves imported.": "\u5b58\u6863\u5df2\u5bfc\u5165\u3002",
+      "Export cancelled.": "\u5df2\u53d6\u6d88\u5bfc\u51fa\u3002",
+      "Import cancelled.": "\u5df2\u53d6\u6d88\u5bfc\u5165\u3002",
+      "Replace all three save slots with this backup? Empty backup slots will also replace your current slots.": "\u8981\u7528\u6b64\u5907\u4efd\u66ff\u6362\u5168\u90e8\u4e09\u4e2a\u5b58\u6863\u69fd\u5417\uff1f\u7a7a\u69fd\u4e5f\u4f1a\u8986\u76d6\u73b0\u6709\u5b58\u6863\u3002",
+      "Cancel": "\u53d6\u6d88",
+      "Import": "\u5bfc\u5165",
+      "Erase": "\u5220\u9664",
+      "Erase Save Slot": "\u5220\u9664\u5b58\u6863",
+      "The save slot could not be erased.": "\u65e0\u6cd5\u5220\u9664\u5b58\u6863\u3002"
+    }
+  };
+  Object.keys(saveTransferTranslations).forEach(code => Object.assign(phraseTranslations[code],
+    saveTransferTranslations[code]));
   const runtimeUiTranslations = {
     "es": {
       "Battery level unavailable": "Nivel de bater\u00eda no disponible",
@@ -5017,6 +5337,7 @@ let playInfoVisible = true;
 let activeSaveSlot = 0;
 let saveData = null;
 let loadingSaveSlot = false;
+let saveImportRecoveryBlocked = false;
 let customCpuIntel = 50;
 let customCpuMaxMove = 4.4;
 let activeCampaign = 0;
@@ -6742,6 +7063,7 @@ function isFullScreenTouchControlTarget(target) {
 }
 
 function handleFullScreenPointerDown(e) {
+  if (saveConfirmation) return;
   if (e.target === canvas || isFullScreenTouchControlTarget(e.target)) {
     return;
   }
@@ -6771,6 +7093,12 @@ function handleFullScreenPointerCancel(e) {
 
 function updateGamepadInput() {
   const pads = getConnectedGamepads();
+  if (saveConfirmation) {
+    refreshGamepadConnection(pads);
+    pads.forEach(pad => pad.buttons.forEach((button, index) => gamepadButtonState.set(`${pad.index}:${index}`, Boolean(
+      button.pressed))));
+    return [];
+  }
   if (creditsActive || galleryKind || royalUiConsumesGamepad()) {
     refreshGamepadConnection(pads);
     return pads;
@@ -7418,6 +7746,402 @@ function levelLabel(absoluteIndex, campaign, level) {
   return `Level ${String(absoluteIndex+1).padStart(2,"0")} - ${campaign.name}: ${level.name}`;
 }
 
+// BEGIN KING PONG SAVE TRANSFER -- synchronized from game/save-transfer.js.
+const SAVE_BACKUP_LIMIT = 64 * 1024;
+const SAVE_IMPORT_JOURNAL = "kingPongSaveImportRecoveryV1";
+const exportSavesButton = byId("exportSavesButton");
+const importSavesButton = byId("importSavesButton");
+const saveTransferStatus = byId("saveTransferStatus");
+let saveTransferRequest = null;
+let saveTransferSequence = 0;
+const saveConfirmOverlay = byId("saveConfirmOverlay");
+const saveConfirmTitle = byId("saveConfirmTitle");
+const saveConfirmMessage = byId("saveConfirmMessage");
+const saveConfirmCancel = byId("saveConfirmCancel");
+const saveConfirmAccept = byId("saveConfirmAccept");
+let saveConfirmation = null;
+
+function showSaveConfirmation(title, message, acceptLabel, onResult) {
+  if (saveConfirmation) return;
+  const previousFocus = document.activeElement;
+  const background = Array.from(document.body.children).filter(element =>
+    element !== saveConfirmOverlay && element.tagName !== "SCRIPT" && element.tagName !== "STYLE"
+  ).map(element => ({
+    element,
+    inert: element.hasAttribute("inert"),
+    ariaHidden: element.getAttribute("aria-hidden")
+  }));
+  saveConfirmation = {
+    onResult,
+    previousFocus,
+    background
+  };
+  setLocalizedText(saveConfirmTitle, title);
+  setLocalizedText(saveConfirmMessage, message);
+  setLocalizedText(saveConfirmAccept, acceptLabel);
+  setLocalizedText(saveConfirmCancel, "Cancel");
+  setSaveTransferBusy(true);
+  clearHeldInput();
+  saveConfirmOverlay.hidden = false;
+  // Focus the non-destructive action, then make the background inaccessible.
+  saveConfirmCancel.focus({
+    preventScroll: true
+  });
+  background.forEach(({
+    element
+  }) => {
+    element.setAttribute("inert", "");
+    element.setAttribute("aria-hidden", "true");
+  });
+}
+
+function finishSaveConfirmation(confirmed) {
+  if (!saveConfirmation) return;
+  const {
+    onResult,
+    previousFocus,
+    background
+  } = saveConfirmation;
+  saveConfirmation = null;
+  saveConfirmOverlay.hidden = true;
+  background.forEach(({
+    element,
+    inert,
+    ariaHidden
+  }) => {
+    if (!inert) element.removeAttribute("inert");
+    if (ariaHidden === null) element.removeAttribute("aria-hidden");
+    else element.setAttribute("aria-hidden", ariaHidden);
+  });
+  clearHeldInput();
+  setSaveTransferBusy(Boolean(saveTransferRequest));
+  if (previousFocus && previousFocus.isConnected && typeof previousFocus.focus === "function") {
+    previousFocus.focus({
+      preventScroll: true
+    });
+  }
+  onResult(confirmed);
+}
+
+function handleSaveConfirmationKey(event) {
+  if (!saveConfirmation) return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  if (event.type !== "keydown" || event.repeat) return;
+  if (event.key === "Escape") {
+    finishSaveConfirmation(false);
+  } else if (event.key === "Tab" || event.key === "ArrowLeft" || event.key === "ArrowRight") {
+    (document.activeElement === saveConfirmCancel ? saveConfirmAccept : saveConfirmCancel).focus({
+      preventScroll: true
+    });
+  } else if (event.key === "Enter" || event.key === " ") {
+    finishSaveConfirmation(document.activeElement === saveConfirmAccept);
+  }
+}
+
+saveConfirmCancel.addEventListener("click", () => finishSaveConfirmation(false));
+saveConfirmAccept.addEventListener("click", () => finishSaveConfirmation(true));
+saveConfirmOverlay.addEventListener("click", event => {
+  event.stopPropagation();
+  if (event.target === saveConfirmOverlay) finishSaveConfirmation(false);
+});
+// Keep touches on the dialog out of the fullscreen paddle controls.
+["pointerdown", "pointermove", "pointerup", "pointercancel"].forEach(type => {
+  saveConfirmOverlay.addEventListener(type, event => event.stopPropagation());
+});
+window.addEventListener("keydown", handleSaveConfirmationKey, true);
+window.addEventListener("keyup", handleSaveConfirmationKey, true);
+window.addEventListener("focusin", event => {
+  if (saveConfirmation && !saveConfirmOverlay.contains(event.target)) saveConfirmCancel.focus({
+    preventScroll: true
+  });
+});
+
+function saveTransferMessage(message) {
+  setLocalizedText(saveTransferStatus, message);
+}
+
+function setSaveTransferBusy(busy) {
+  exportSavesButton.disabled = busy;
+  importSavesButton.disabled = busy || saveImportRecoveryBlocked;
+  eraseSaveButton.disabled = busy || saveImportRecoveryBlocked;
+}
+
+function checkedSaveSlot(slot) {
+  if (slot === null) return null;
+  if (!slot || typeof slot !== "object" || Array.isArray(slot) || slot.version !== 2) {
+    throw new Error("Invalid save slot");
+  }
+  const number = (name, min, max, integer = false) => {
+    const value = slot[name];
+    if (typeof value !== "number" || !Number.isFinite(value) || value < min || value > max || (integer && !Number
+        .isInteger(value))) {
+      throw new Error("Invalid save value");
+    }
+    return value;
+  };
+  const boolean = name => {
+    if (typeof slot[name] !== "boolean") throw new Error("Invalid save flag");
+    return slot[name];
+  };
+  if (!Array.isArray(slot.completedLevels) || slot.completedLevels.length !== TOTAL_LEVELS || slot.completedLevels.some(
+      value => typeof value !== "boolean")) {
+    throw new Error("Invalid level progress");
+  }
+  const selections = {};
+  /* ROYAL POLISH */
+  for (const key of ["muteAll", "soundEffectsEnabled"]) {
+    if (slot[key] !== undefined) selections[key] = boolean(key);
+  }
+  /* END ROYAL POLISH */
+
+  for (const key of ['royalPaddle', 'royalPaddle2']) {
+    if (slot[key] === undefined) continue;
+    if (typeof slot[key] !== 'string' || !/^(classic|(?:player|enemy)-(?:[2-9]|1[0-7])|boss-[0-8])$/.test(slot[key]))
+      throw new Error('Invalid paddle');
+    selections[key] = slot[key];
+  }
+  if (slot.royalArena !== undefined) selections.royalArena = number('royalArena', 0, TOTAL_LEVELS, true);
+  // Copy only known fields. Imported objects never become game state directly.
+  return {
+    ...selections,
+    version: 2,
+    createdAt: number("createdAt", 0, Number.MAX_SAFE_INTEGER, true),
+    updatedAt: number("updatedAt", 0, Number.MAX_SAFE_INTEGER, true),
+    highestUnlockedLevel: number("highestUnlockedLevel", 0, TOTAL_LEVELS - 1, true),
+    completedLevels: slot.completedLevels.slice(),
+    customCpuIntel: number("customCpuIntel", 0, 100, true),
+    customCpuMaxMove: number("customCpuMaxMove", 1, 12),
+    musicVolumePercent: number("musicVolumePercent", 0, 100, true),
+    musicEnabled: boolean("musicEnabled"),
+    bossUnlocked: boolean("bossUnlocked"),
+    bossCleared: boolean("bossCleared")
+  };
+}
+
+function makeSaveBackup() {
+  const slots = Array.from({
+    length: SAVE_SLOT_COUNT
+  }, (_, slot) => {
+    const raw = window.localStorage.getItem(saveSlotKey(slot));
+    if (raw === null) return null;
+    const data = JSON.parse(raw);
+    if (!data || typeof data !== "object" || Array.isArray(data)) throw new Error("Unreadable saved data");
+    return checkedSaveSlot(normalizeSaveData(data));
+  });
+  const text = JSON.stringify({
+    format: "king-pong-saves",
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    activeSlot: activeSaveSlot,
+    slots
+  }, null, 2);
+  if (text.length > SAVE_BACKUP_LIMIT) throw new Error("Backup too large");
+  return text;
+}
+
+function parseSaveBackup(text) {
+  if (typeof text !== "string" || text.length > SAVE_BACKUP_LIMIT) throw new Error("Backup too large");
+  const backup = JSON.parse(text.replace(/^\uFEFF/, ""));
+  if (!backup || backup.format !== "king-pong-saves" || backup.version !== 1 ||
+    !Array.isArray(backup.slots) || backup.slots.length !== SAVE_SLOT_COUNT ||
+    !Number.isInteger(backup.activeSlot) || backup.activeSlot < 0 || backup.activeSlot >= SAVE_SLOT_COUNT) {
+    throw new Error("Unsupported save backup");
+  }
+  return {
+    activeSlot: backup.activeSlot,
+    slots: backup.slots.map(checkedSaveSlot)
+  };
+}
+
+function restoreSaveStrings(values) {
+  values.forEach((value, slot) => {
+    if (value === null) window.localStorage.removeItem(saveSlotKey(slot));
+    else window.localStorage.setItem(saveSlotKey(slot), value);
+  });
+}
+
+function recoverInterruptedSaveImport() {
+  try {
+    const journal = window.localStorage.getItem(SAVE_IMPORT_JOURNAL);
+    if (journal === null) return true;
+    const previous = JSON.parse(journal);
+    if (!Array.isArray(previous) || previous.length !== SAVE_SLOT_COUNT || previous.some(value => value !== null &&
+        typeof value !== "string")) {
+      throw new Error("Invalid recovery data");
+    }
+    restoreSaveStrings(previous);
+    window.localStorage.removeItem(SAVE_IMPORT_JOURNAL);
+    return true;
+  } catch (error) {
+    saveImportRecoveryBlocked = true;
+    setSaveTransferBusy(false);
+    saveTransferMessage("Save recovery failed. Restart the game before changing saves.");
+    return false;
+  }
+}
+
+function importSaveBackup(text) {
+  let backup;
+  try {
+    backup = parseSaveBackup(text);
+  } catch (error) {
+    saveTransferMessage("Choose a valid King Pong save backup (64 KB maximum).");
+    return;
+  }
+  if (saveImportRecoveryBlocked || saveConfirmation) return;
+  showSaveConfirmation("Import Saves",
+    "Replace all three save slots with this backup? Empty backup slots will also replace your current slots.",
+    "Import", confirmed => {
+      if (confirmed) applyImportedSaveBackup(backup);
+      else saveTransferMessage("Import cancelled.");
+    });
+}
+
+function applyImportedSaveBackup(backup) {
+  if (saveImportRecoveryBlocked) return;
+  let journalWritten = false;
+  try {
+    const previous = Array.from({
+      length: SAVE_SLOT_COUNT
+    }, (_, slot) => window.localStorage.getItem(saveSlotKey(slot)));
+    // Abort without touching any slot if there is no room for recovery data.
+    window.localStorage.setItem(SAVE_IMPORT_JOURNAL, JSON.stringify(previous));
+    journalWritten = true;
+    restoreSaveStrings(backup.slots.map(slot => slot === null ? null : JSON.stringify(slot)));
+    window.localStorage.removeItem(SAVE_IMPORT_JOURNAL);
+  } catch (error) {
+    if (!journalWritten || recoverInterruptedSaveImport()) {
+      saveTransferMessage("Import failed. Your previous saves were kept.");
+    }
+    return;
+  }
+  closeLanConnection(false);
+  loadSaveSlot(backup.activeSlot);
+  setLevelByAbsoluteIndex(firstUnlockedCampaignIndex(), false);
+  showTitleScreen();
+  saveTransferMessage("Saves imported.");
+}
+
+function finishSaveTransfer(id, status, text = "") {
+  if (!saveTransferRequest || saveTransferRequest.id !== id) return;
+  const operation = saveTransferRequest.operation;
+  saveTransferRequest = null;
+  setSaveTransferBusy(false);
+  if (status === "cancel") {
+    saveTransferMessage(operation === "export" ? "Export cancelled." : "Import cancelled.");
+  } else if (status !== "ok") {
+    saveTransferMessage("The save file could not be opened or saved.");
+  } else if (operation === "import") {
+    importSaveBackup(text);
+  } else {
+    saveTransferMessage("Saves exported.");
+  }
+}
+
+// Native callbacks carry base64 text, never executable JavaScript from a file.
+window.KingPongSaveTransfer = Object.freeze({
+  cancelConfirmation() {
+    if (!saveConfirmation) return false;
+    finishSaveConfirmation(false);
+    return true;
+  },
+  receive(id, status, encoded = "") {
+    if (!saveTransferRequest || saveTransferRequest.id !== id) return;
+    try {
+      if (typeof encoded !== "string" || encoded.length > Math.ceil(SAVE_BACKUP_LIMIT / 3) * 4) throw new Error(
+        "Backup too large");
+      const bytes = Uint8Array.from(atob(encoded), value => value.charCodeAt(0));
+      const text = new TextDecoder("utf-8", {
+        fatal: true
+      }).decode(bytes);
+      finishSaveTransfer(id, status, text);
+    } catch (error) {
+      finishSaveTransfer(id, "error");
+    }
+  }
+});
+
+function browserSaveTransfer(id, operation, text) {
+  if (operation === "export") {
+    const url = URL.createObjectURL(new Blob([text], {
+      type: "application/json"
+    }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "KingPong-saves.json";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    finishSaveTransfer(id, "ok");
+    return;
+  }
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = ".json,application/json";
+  input.hidden = true;
+  document.body.appendChild(input);
+  const cleanup = () => input.remove();
+  input.addEventListener("cancel", () => {
+    cleanup();
+    finishSaveTransfer(id, "cancel");
+  }, {
+    once: true
+  });
+  input.addEventListener("change", () => {
+    const file = input.files && input.files[0];
+    cleanup();
+    if (!file) {
+      finishSaveTransfer(id, "cancel");
+      return;
+    }
+    if (file.size > SAVE_BACKUP_LIMIT) {
+      finishSaveTransfer(id, "error");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => finishSaveTransfer(id, "ok", String(reader.result));
+    reader.onerror = () => finishSaveTransfer(id, "error");
+    reader.onabort = () => finishSaveTransfer(id, "cancel");
+    reader.readAsText(file, "UTF-8");
+  }, {
+    once: true
+  });
+  input.click();
+}
+
+function requestSaveTransfer(operation) {
+  if (saveTransferRequest || saveImportRecoveryBlocked || saveConfirmation) return;
+  let text = "";
+  try {
+    if (operation === "export") text = makeSaveBackup();
+    const id = ++saveTransferSequence;
+    saveTransferRequest = {
+      id,
+      operation
+    };
+    setSaveTransferBusy(true);
+    saveTransferMessage("");
+    const message = "kingpong:save:" + operation + ":" + id + (operation === "export" ? ":" + text : "");
+    if (window.KingPongSaveFiles && typeof window.KingPongSaveFiles.postMessage === "function") {
+      window.KingPongSaveFiles.postMessage(message);
+    } else if (window.chrome && window.chrome.webview && typeof window.chrome.webview.postMessage === "function") {
+      window.chrome.webview.postMessage(message);
+    } else {
+      browserSaveTransfer(id, operation, text);
+    }
+  } catch (error) {
+    saveTransferRequest = null;
+    setSaveTransferBusy(false);
+    saveTransferMessage("The save file could not be opened or saved.");
+  }
+}
+
+exportSavesButton.addEventListener("click", () => requestSaveTransfer("export"));
+importSavesButton.addEventListener("click", () => requestSaveTransfer("import"));
+// END KING PONG SAVE TRANSFER
+
 function createDefaultSaveData() {
   return {
     version: 2,
@@ -7555,7 +8279,7 @@ function firstAvailableLevelInCurrentPicker() {
 }
 
 function saveProgressNow() {
-  if (!saveData || loadingSaveSlot) return;
+  if (!saveData || loadingSaveSlot || saveImportRecoveryBlocked || saveConfirmation) return;
   saveData.updatedAt = Date.now();
   saveData.customCpuIntel = customCpuIntel;
   saveData.customCpuMaxMove = customCpuMaxMove;
@@ -7904,14 +8628,20 @@ function triggerBossUnlockSequence() {
 }
 
 function eraseActiveSaveSlot() {
-  const confirmed = window.confirm(
-    `Erase Slot ${activeSaveSlot+1}? This will clear campaign progress and custom unlocks.`);
-  if (!confirmed) return;
-  try {
-    window.localStorage.removeItem(saveSlotKey(activeSaveSlot));
-  } catch {}
-  loadSaveSlot(activeSaveSlot);
-  showTitleScreen(`Slot ${activeSaveSlot+1} erased. Start Campaign to begin again.`);
+  if (saveImportRecoveryBlocked || saveTransferRequest || saveConfirmation) return;
+  const slot = activeSaveSlot;
+  showSaveConfirmation("Erase Save Slot", `Erase Slot ${slot+1}? This will clear campaign progress and custom unlocks.`,
+    "Erase", confirmed => {
+      if (!confirmed) return;
+      try {
+        window.localStorage.removeItem(saveSlotKey(slot));
+      } catch (error) {
+        saveTransferMessage("The save slot could not be erased.");
+        return;
+      }
+      loadSaveSlot(slot);
+      showTitleScreen(`Slot ${slot+1} erased. Start Campaign to begin again.`);
+    });
 }
 
 function levelPickerIsOpen() {
@@ -10200,7 +10930,7 @@ function drawCampaignPlayInfo() {
 
 function drawOverlay() {
   /* ROYAL UI */
-  if (document.body.classList.contains("royal-panel-open")) return;
+  if (document.body.classList.contains("royal-panel-open") || royalDesktopPauseVisible()) return;
   /* END ROYAL UI */
   if (waitingForServe && firstStartControlsShouldDisplay() && !levelCleared && !campaignCleared && !gameOver) {
     return;
@@ -10329,7 +11059,7 @@ function draw(view = captureVisualState()) {
       const countdownNumber = Math.max(1, Math.ceil(resumeCountdownRemainingMs() / 1000));
       drawText(String(countdownNumber), W / 2, H / 2 - 58, 64);
     } else {
-      drawText("PAUSED", W / 2, H / 2 - 100, 24);
+      if (!royalDesktopPauseVisible()) drawText("PAUSED", W / 2, H / 2 - 100, 24);
     }
   } else if (!onlineGameBlocked && (waitingForServe || gameOver || levelCleared || campaignCleared)) {
     drawOverlay();
@@ -11058,15 +11788,13 @@ function applyRoyalState(value) {
   };
 }
 
-// Snap only the final raster rectangle. Simulation and interpolation retain their
-// fractional positions; a fixed pixel size stops the ball's edges changing shape.
+// Keep interpolated positions fractional for even motion between display frames.
+// Round only the physical size so the square's dimensions stay constant.
 function drawBallPixels(b) {
   const transform = ctx.getTransform();
   const scaleX = transform.a, scaleY = transform.d;
   const size = Math.max(1, Math.round(BALL_SIZE * Math.min(scaleX, scaleY)));
-  ctx.fillRect((Math.round(b.x * scaleX + transform.e) - transform.e) / scaleX,
-    (Math.round(b.y * scaleY + transform.f) - transform.f) / scaleY,
-    size / scaleX, size / scaleY);
+  ctx.fillRect(b.x, b.y, size / scaleX, size / scaleY);
 }
 
 function drawRoyalBall(b, translucent = false) {
@@ -12026,10 +12754,13 @@ function initRoyalUi() {
   const bar = document.createElement('header');
   bar.id = 'matchBar';
   bar.className = 'match-bar match-ui';
+  const pauseTitle = document.createElement('h2');
+  pauseTitle.className = 'match-pause-title';
+  setLocalizedText(pauseTitle, 'Paused');
   const identity = document.createElement('div');
   identity.className = 'match-identity';
   identity.innerHTML = '<strong id="matchMode"></strong><span id="matchContext"></span>';
-  bar.append(menuToggle, identity, royalButton('matchContinue', 'Serve', royalContinue, 'match-primary'), royalButton(
+  bar.append(pauseTitle, menuToggle, identity, royalButton('matchContinue', 'Serve', royalContinue, 'match-primary'), royalButton(
     'matchPause', 'Pause', () => {
       requestTogglePause();
       syncRoyalUi(true);
@@ -12360,7 +13091,9 @@ function syncRoyalUi(force = false) {
   const joining = online && byId('onlineJoinForm') && !byId('onlineJoinForm').hidden;
   const setup = !title && !bossIntroActive && !creditsActive && royalNeedsSetup();
   const menu = !bossIntroActive && !creditsActive && menusVisible && (!setup || royalMenuRequested);
-  const signature = [title, online, setup, menu, galleryKind, bossIntroActive, creditsActive, mode, activeCampaign,
+  const desktopPause = paused && !waitingForServe && !gameOver && !levelCleared && !campaignCleared &&
+    !hasResumeCountdown() && window.matchMedia('(pointer: fine), (pointer: none)').matches;
+  const signature = [title, online, setup, menu, desktopPause, galleryKind, bossIntroActive, creditsActive, mode, activeCampaign,
     levelIndex, waitingForServe, paused, gameOver,
     levelCleared, campaignCleared, lanRole, lanConnected, lanLastStatus, matchArenaId, matchPaddles.left, matchPaddles
     .right,
@@ -12372,8 +13105,8 @@ function syncRoyalUi(force = false) {
   byId('matchSetup').hidden = !setup || menu || Boolean(galleryKind);
   byId('matchMenu').hidden = !menu || Boolean(galleryKind);
   byId('matchBar').hidden = title || menu || creditsActive || bossIntroActive;
-  // Keep the toggle inside the modal's focus/inert boundary while it is open.
-  // Its fixed position stays at the same top-left location as the match bar.
+  byId('matchBar').classList.toggle('match-bar-paused', desktopPause);
+  // Keep the toggle inside the current screen or modal's focus/inert boundary.
   if (menu && !royalLastDialog) royalReturnFocus = document.activeElement;
   const toggleParent = byId(menu ? 'matchMenu' : title ? 'titleScreen' : 'matchBar');
   if (menuToggle.parentElement !== toggleParent) {
@@ -12456,6 +13189,11 @@ function syncRoyalUi(force = false) {
   updateRoyalControlHint();
   syncRoyalOrientation();
   syncRoyalFocus();
+}
+
+function royalDesktopPauseVisible() {
+  const bar = byId('matchBar');
+  return bar && !bar.hidden && bar.classList.contains('match-bar-paused');
 }
 
 function updateRoyalControlHint() {
@@ -13057,6 +13795,7 @@ handleViewportChange();
 setMenusVisible(false);
 refreshGamepadConnection();
 LOCALIZATION.localizeStaticDom();
+recoverInterruptedSaveImport();
 loadSaveSlot(rememberedSaveSlot());
 setLevelByAbsoluteIndex(firstUnlockedCampaignIndex(), false);
 initRoyalMenus();

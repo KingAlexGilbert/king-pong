@@ -6,6 +6,7 @@ import { test } from 'node:test';
 import vm from 'node:vm';
 
 const builds = {
+  Browser: '../docs/demo/index.html',
   Android: '../android/app/src/main/assets/index.html',
   Windows: '../windows/webview-2/index.html',
   Linux: '../Linux/assets/index.html',

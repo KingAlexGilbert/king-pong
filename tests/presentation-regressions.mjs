@@ -130,20 +130,39 @@ for (const platform of Object.keys(builds)) {
     assert.deepEqual(h.json('interpolateVisualState(b,reset,.25).shake'), h.json('reset.shake'));
   });
 
-  test(`${platform}: subpixel ball positions draw a constant square without changing simulation data`, () => {
+  test(`${platform}: primary and Split retain fractional positions and fixed physical dimensions`, () => {
     const h = harness(platform), rectangles = [];
-    h.context.canvas = {width: 952, height: 714};
-    h.context.ctx = {getTransform: () => ({a: 952 / 640, d: 714 / 480, e: .37, f: -.23}),
-      fillRect: (...r) => rectangles.push(r)};
-    h.run('ball.x=200.123;ball.y=100.456;const before=JSON.stringify(ball);');
-    for (let i = 0; i < 120; i++) h.run(`drawBallPixels({...ball,x:200+${i}/17,y:100+${i}/23});`);
-    assert.equal(h.run('JSON.stringify(ball)===before'), true);
-    for (const [x, y, w, height] of rectangles) {
-      const sx = 952 / 640, sy = 714 / 480;
-      assert.ok(Math.abs((x * sx + .37) - Math.round(x * sx + .37)) < 1e-9);
-      assert.ok(Math.abs((y * sy - .23) - Math.round(y * sy - .23)) < 1e-9);
-      assert.equal(w * sx, 12);
-      assert.equal(height * sy, 12);
+    // Exercise each synchronized build, as well as the shared-source sync checks.
+    h.run(functionSource(source(platform), 'drawBallPixels'));
+    h.run(functionSource(source(platform), 'drawRoyalBall'));
+    h.run("ball.lastHit='left';awardRoyalPowerup('split');const before=JSON.stringify([ball,royalSplitBall,frame]);");
+    for (const [sx, sy] of [[388 / 640, 290 / 480], [1, 1], [1.25, 1.25],
+      [952 / 640, 714 / 480], [2.975, 2.975], [4.4625, 4.4625], [6, 6]]) {
+      const transform = {a: sx, d: sy, e: .37, f: -.23};
+      h.context.ctx = {save() {}, restore() {}, getTransform: () => transform,
+        fillRect(...r) { rectangles.push({r, alpha: this.globalAlpha, blur: this.shadowBlur}); }};
+      const size = Math.max(1, Math.round(8 * Math.min(sx, sy)));
+      for (const split of [false, true]) {
+        let previous;
+        for (let i = 0; i < 120; i++) {
+          const b = {x: 200 + i / 17, y: 100 - i / 23, vx: 4.65, vy: -1};
+          h.context.renderedBall = Object.freeze(b);
+          h.run(`drawRoyalBall(renderedBall, ${split});`);
+          const {r: [x, y, w, height], alpha, blur} = rectangles.at(-1);
+          assert.equal(x, b.x, 'rendering must retain the interpolated X position');
+          assert.equal(y, b.y, 'rendering must retain the interpolated Y position');
+          assert.ok(Math.abs(w * sx - size) < 1e-10);
+          assert.ok(Math.abs(height * sy - size) < 1e-10);
+          assert.equal(alpha, split ? .52 : 1);
+          assert.equal(blur, 0);
+          if (previous) {
+            assert.ok(Math.abs((x - previous.x) * sx - sx / 17) < 1e-10);
+            assert.ok(Math.abs((y - previous.y) * sy + sy / 23) < 1e-10);
+          }
+          previous = {x, y};
+        }
+      }
     }
+    assert.equal(h.run('JSON.stringify([ball,royalSplitBall,frame])===before'), true);
   });
 }

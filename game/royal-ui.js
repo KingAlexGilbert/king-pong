@@ -126,10 +126,13 @@ function initRoyalUi() {
   const bar = document.createElement('header');
   bar.id = 'matchBar';
   bar.className = 'match-bar match-ui';
+  const pauseTitle = document.createElement('h2');
+  pauseTitle.className = 'match-pause-title';
+  setLocalizedText(pauseTitle, 'Paused');
   const identity = document.createElement('div');
   identity.className = 'match-identity';
   identity.innerHTML = '<strong id="matchMode"></strong><span id="matchContext"></span>';
-  bar.append(menuToggle, identity, royalButton('matchContinue', 'Serve', royalContinue, 'match-primary'), royalButton(
+  bar.append(pauseTitle, menuToggle, identity, royalButton('matchContinue', 'Serve', royalContinue, 'match-primary'), royalButton(
     'matchPause', 'Pause', () => {
       requestTogglePause();
       syncRoyalUi(true);
@@ -460,7 +463,9 @@ function syncRoyalUi(force = false) {
   const joining = online && byId('onlineJoinForm') && !byId('onlineJoinForm').hidden;
   const setup = !title && !bossIntroActive && !creditsActive && royalNeedsSetup();
   const menu = !bossIntroActive && !creditsActive && menusVisible && (!setup || royalMenuRequested);
-  const signature = [title, online, setup, menu, galleryKind, bossIntroActive, creditsActive, mode, activeCampaign,
+  const desktopPause = paused && !waitingForServe && !gameOver && !levelCleared && !campaignCleared &&
+    !hasResumeCountdown() && window.matchMedia('(pointer: fine), (pointer: none)').matches;
+  const signature = [title, online, setup, menu, desktopPause, galleryKind, bossIntroActive, creditsActive, mode, activeCampaign,
     levelIndex, waitingForServe, paused, gameOver,
     levelCleared, campaignCleared, lanRole, lanConnected, lanLastStatus, matchArenaId, matchPaddles.left, matchPaddles
     .right,
@@ -472,8 +477,8 @@ function syncRoyalUi(force = false) {
   byId('matchSetup').hidden = !setup || menu || Boolean(galleryKind);
   byId('matchMenu').hidden = !menu || Boolean(galleryKind);
   byId('matchBar').hidden = title || menu || creditsActive || bossIntroActive;
-  // Keep the toggle inside the modal's focus/inert boundary while it is open.
-  // Its fixed position stays at the same top-left location as the match bar.
+  byId('matchBar').classList.toggle('match-bar-paused', desktopPause);
+  // Keep the toggle inside the current screen or modal's focus/inert boundary.
   if (menu && !royalLastDialog) royalReturnFocus = document.activeElement;
   const toggleParent = byId(menu ? 'matchMenu' : title ? 'titleScreen' : 'matchBar');
   if (menuToggle.parentElement !== toggleParent) {
@@ -556,6 +561,11 @@ function syncRoyalUi(force = false) {
   updateRoyalControlHint();
   syncRoyalOrientation();
   syncRoyalFocus();
+}
+
+function royalDesktopPauseVisible() {
+  const bar = byId('matchBar');
+  return bar && !bar.hidden && bar.classList.contains('match-bar-paused');
 }
 
 function updateRoyalControlHint() {

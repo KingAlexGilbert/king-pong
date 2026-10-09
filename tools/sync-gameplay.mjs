@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { integrateRoyalUi } from '../game/ui-integration.mjs';
 import { integrateRoyalPolish } from '../game/polish-integration.mjs';
+import { integrateSaveTransfer } from '../game/save-transfer-integration.mjs';
 
 const root = new URL('../', import.meta.url);
 const files = [
@@ -17,6 +18,7 @@ const script = [
 ].map(file => readFileSync(new URL('game/' + file, root), 'utf8')).join('\n');
 const css = readFileSync(new URL('game/royal-menu.css', root), 'utf8');
 const localization = readFileSync(new URL('game/royal-localization.js', root), 'utf8');
+const saveTransfer = readFileSync(new URL('game/save-transfer.js', root), 'utf8');
 
 // The checked-in HTML also owns the legacy engine and platform glue. Replace only
 // explicit shared blocks, preserving their source formatting and everything outside.
@@ -42,6 +44,7 @@ for (const file of files) {
   updated = replaceBlock(updated, '<style id="royal-menu-style">', '</style>', css);
   updated = replaceBlock(updated, '<script id="royal-localization">', '</script>', localization);
   updated = integrateRoyalUi(updated);
+  updated = integrateSaveTransfer(updated, saveTransfer);
   updated = integrateRoyalPolish(updated);
 
   if (process.argv.includes('--check')) {

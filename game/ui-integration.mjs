@@ -92,9 +92,14 @@ const hooks = {
     syncRoyalUi(true);
   `],
   drawCampaignPlayInfo: ["if (document.body.classList.contains(\"royal-ui-ready\")) return;"],
-  drawOverlay: ["if (document.body.classList.contains(\"royal-panel-open\")) return;"],
+  drawOverlay: ["if (document.body.classList.contains(\"royal-panel-open\") || royalDesktopPauseVisible()) return;"],
 };
 
 export function integrateRoyalUi(source) {
+  // The desktop DOM card owns its pause title; keep the existing canvas title on touch/countdown paths.
+  const oldTitle = '      drawText("PAUSED", W / 2, H / 2 - 100, 24);';
+  const newTitle = '      if (!royalDesktopPauseVisible()) drawText("PAUSED", W / 2, H / 2 - 100, 24);';
+  if (source.includes(oldTitle)) source = source.replace(oldTitle, newTitle);
+  else if (!source.includes(newTitle)) throw new Error('Missing canvas pause title integration point');
   return synchronizeHooks(source, "UI", hooks);
 }

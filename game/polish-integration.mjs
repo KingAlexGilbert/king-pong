@@ -127,8 +127,8 @@ export function integrateRoyalPolish(source) {
   }
   source = synchronizeHooks(source, 'POLISH', hooks);
   if (source.includes('function checkedSaveSlot(')) {
-    // Native shells load audio preferences through their existing setters.
-    return synchronizeHooks(source, 'POLISH', {
+    // Every build validates the same optional audio preferences.
+    source = synchronizeHooks(source, 'POLISH', {
       checkedSaveSlot: [`
         for (const key of ["muteAll", "soundEffectsEnabled"]) {
           if (slot[key] !== undefined) selections[key] = boolean(key);
@@ -136,6 +136,8 @@ export function integrateRoyalPolish(source) {
       `],
     });
   }
+  const [start, end] = functionRange(source, 'loadSaveSlot');
+  if (!source.slice(start, end).includes('/* ROYAL POLISH */')) return source;
   return synchronizeHooks(source, 'POLISH', {
     loadSaveSlot: [`
       stopGameSounds();

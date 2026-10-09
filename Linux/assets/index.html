@@ -1688,6 +1688,55 @@ textarea:focus-visible {
   z-index: 25;
 }
 
+.match-pause-title {
+  display: none;
+}
+
+/* Reuse the match controls as a compact pause card on desktop. Touch keeps its bar. */
+.match-bar-paused {
+  top: calc(50% + 10px + (env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) / 2);
+  left: 50%;
+  right: auto;
+  transform: translate(-50%, -50%);
+  width: min(480px, calc(100vw - 32px), calc(100dvh - 84px));
+  max-height: calc(100dvh - 100px);
+  height: auto;
+  box-sizing: border-box;
+  padding: 22px;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 16px 12px;
+  overflow: auto;
+  background: #050507f2;
+  border: 2px solid var(--accent);
+}
+
+.match-bar-paused .match-pause-title {
+  display: block;
+  flex-basis: 100%;
+  order: -2;
+  margin: 0;
+  text-align: center;
+  text-transform: uppercase;
+  font-size: 22px;
+}
+
+.match-bar-paused .match-identity {
+  flex: 0 0 100%;
+  order: -1;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+}
+
+.match-bar-paused #matchContext {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+}
+
 body.title-active #menuToggle {
   visibility: visible;
   pointer-events: auto;
@@ -7963,7 +8012,7 @@ function forEachLevel(callback) {
 function levelLabel(absoluteIndex, campaign, level) {
   return `Level ${String(absoluteIndex+1).padStart(2,"0")} - ${campaign.name}: ${level.name}`;
 }
-// BEGIN KING PONG SAVE TRANSFER -- keep identical in the three HTML builds.
+// BEGIN KING PONG SAVE TRANSFER -- synchronized from game/save-transfer.js.
 const SAVE_BACKUP_LIMIT = 64 * 1024;
 const SAVE_IMPORT_JOURNAL = "kingPongSaveImportRecoveryV1";
 const exportSavesButton = byId("exportSavesButton");
@@ -11136,7 +11185,7 @@ function drawCampaignPlayInfo() {
 
 function drawOverlay() {
   /* ROYAL UI */
-  if (document.body.classList.contains("royal-panel-open")) return;
+  if (document.body.classList.contains("royal-panel-open") || royalDesktopPauseVisible()) return;
   /* END ROYAL UI */
   if (waitingForServe && firstStartControlsShouldDisplay() && !levelCleared && !campaignCleared && !gameOver) {
     return;
@@ -11265,7 +11314,7 @@ function draw(view = captureVisualState()) {
       const countdownNumber = Math.max(1, Math.ceil(resumeCountdownRemainingMs() / 1000));
       drawText(String(countdownNumber), W / 2, H / 2 - 58, 64);
     } else {
-      drawText("PAUSED", W / 2, H / 2 - 100, 24);
+      if (!royalDesktopPauseVisible()) drawText("PAUSED", W / 2, H / 2 - 100, 24);
     }
   } else if (waitingForServe || gameOver || levelCleared || campaignCleared) {
     drawOverlay();
@@ -11994,15 +12043,13 @@ function applyRoyalState(value) {
   };
 }
 
-// Snap only the final raster rectangle. Simulation and interpolation retain their
-// fractional positions; a fixed pixel size stops the ball's edges changing shape.
+// Keep interpolated positions fractional for even motion between display frames.
+// Round only the physical size so the square's dimensions stay constant.
 function drawBallPixels(b) {
   const transform = ctx.getTransform();
   const scaleX = transform.a, scaleY = transform.d;
   const size = Math.max(1, Math.round(BALL_SIZE * Math.min(scaleX, scaleY)));
-  ctx.fillRect((Math.round(b.x * scaleX + transform.e) - transform.e) / scaleX,
-    (Math.round(b.y * scaleY + transform.f) - transform.f) / scaleY,
-    size / scaleX, size / scaleY);
+  ctx.fillRect(b.x, b.y, size / scaleX, size / scaleY);
 }
 
 function drawRoyalBall(b, translucent = false) {
@@ -12962,10 +13009,13 @@ function initRoyalUi() {
   const bar = document.createElement('header');
   bar.id = 'matchBar';
   bar.className = 'match-bar match-ui';
+  const pauseTitle = document.createElement('h2');
+  pauseTitle.className = 'match-pause-title';
+  setLocalizedText(pauseTitle, 'Paused');
   const identity = document.createElement('div');
   identity.className = 'match-identity';
   identity.innerHTML = '<strong id="matchMode"></strong><span id="matchContext"></span>';
-  bar.append(menuToggle, identity, royalButton('matchContinue', 'Serve', royalContinue, 'match-primary'), royalButton(
+  bar.append(pauseTitle, menuToggle, identity, royalButton('matchContinue', 'Serve', royalContinue, 'match-primary'), royalButton(
     'matchPause', 'Pause', () => {
       requestTogglePause();
       syncRoyalUi(true);
@@ -13296,7 +13346,9 @@ function syncRoyalUi(force = false) {
   const joining = online && byId('onlineJoinForm') && !byId('onlineJoinForm').hidden;
   const setup = !title && !bossIntroActive && !creditsActive && royalNeedsSetup();
   const menu = !bossIntroActive && !creditsActive && menusVisible && (!setup || royalMenuRequested);
-  const signature = [title, online, setup, menu, galleryKind, bossIntroActive, creditsActive, mode, activeCampaign,
+  const desktopPause = paused && !waitingForServe && !gameOver && !levelCleared && !campaignCleared &&
+    !hasResumeCountdown() && window.matchMedia('(pointer: fine), (pointer: none)').matches;
+  const signature = [title, online, setup, menu, desktopPause, galleryKind, bossIntroActive, creditsActive, mode, activeCampaign,
     levelIndex, waitingForServe, paused, gameOver,
     levelCleared, campaignCleared, lanRole, lanConnected, lanLastStatus, matchArenaId, matchPaddles.left, matchPaddles
     .right,
@@ -13308,8 +13360,8 @@ function syncRoyalUi(force = false) {
   byId('matchSetup').hidden = !setup || menu || Boolean(galleryKind);
   byId('matchMenu').hidden = !menu || Boolean(galleryKind);
   byId('matchBar').hidden = title || menu || creditsActive || bossIntroActive;
-  // Keep the toggle inside the modal's focus/inert boundary while it is open.
-  // Its fixed position stays at the same top-left location as the match bar.
+  byId('matchBar').classList.toggle('match-bar-paused', desktopPause);
+  // Keep the toggle inside the current screen or modal's focus/inert boundary.
   if (menu && !royalLastDialog) royalReturnFocus = document.activeElement;
   const toggleParent = byId(menu ? 'matchMenu' : title ? 'titleScreen' : 'matchBar');
   if (menuToggle.parentElement !== toggleParent) {
@@ -13392,6 +13444,11 @@ function syncRoyalUi(force = false) {
   updateRoyalControlHint();
   syncRoyalOrientation();
   syncRoyalFocus();
+}
+
+function royalDesktopPauseVisible() {
+  const bar = byId('matchBar');
+  return bar && !bar.hidden && bar.classList.contains('match-bar-paused');
 }
 
 function updateRoyalControlHint() {
