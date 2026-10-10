@@ -1,0 +1,245 @@
+diff --git a/docs/index.html b/docs/index.html
+--- a/docs/index.html
++++ b/docs/index.html
+@@ -67,6 +67,7 @@
+  margin: 24px auto 14px;
+  }
+  .game-demo-container {
++ display: block;
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+@@ -76,13 +77,40 @@
+  border-radius: 10px;
+  box-sizing: border-box;
+  box-shadow: 0 0 28px rgba(96, 216, 255, 0.16);
+- }
+- .game-demo-frame {
++ color: #fff;
++ text-decoration: none;
++ }
++ .game-demo-container:hover,
++ .game-demo-container:focus-visible {
++ border-color: #60d8ff;
++ }
++ .game-demo-container:focus-visible {
++ outline: 3px solid #60d8ff;
++ outline-offset: 4px;
++ }
++ .game-demo-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+- border: 0;
+- background: #000;
++ object-fit: contain;
++ image-rendering: pixelated;
++ }
++ .game-demo-label {
++ position: absolute;
++ bottom: 0;
++ left: 0;
++ right: 0;
++ padding: 14px 10px;
++ background: rgba(0, 0, 0, 0.9);
++ border-top: 1px solid #444;
++ font: bold 18px monospace;
++ }
++ .game-demo-label small {
++ display: block;
++ margin-top: 5px;
++ font-size: 13px;
++ font-weight: normal;
++ color: #ddd;
+  }
+  .demo-note {
+  margin: 14px auto 0;
+@@ -151,20 +179,17 @@
+  <h2>Play King Pong</h2>
+  <p>Play King Pong directly in your browser without downloading or installing it.</p>
+  <div class="game-demo-shell">
+- <div class="game-demo-container">
+- <iframe
+- class="game-demo-frame"
+- src="demo/"
+- title="King Pong browser demo"
+- allow="autoplay; fullscreen; gamepad; clipboard-read; clipboard-write"
+- allowfullscreen
+- loading="eager">
+- </iframe>
+- </div>
++ <a class="game-demo-container" href="demo/" target="_blank" rel="noopener noreferrer"
++ aria-label="Play King Pong — opens in a new tab">
++ <img class="game-demo-image" src="images/gameplay.png" width="2960" height="1440"
++ alt="King Pong gameplay with two paddles, a ball, and a center obstacle on the arcade court"
++ loading="lazy" decoding="async" />
++ <span class="game-demo-label">Play King Pong<small>Opens in a new tab</small></span>
++ </a>
+  </div>
+  <p class="demo-note">
+- Click inside the game window before using the keyboard or controller. Browser progress
+- is stored separately on this device and does not transfer to the installed versions.
++ Open the game in its own tab to play with keyboard, controller, or touch controls.
++ Browser progress is saved on this device.
+  </p>
+  <p>
+  <a class="button" href="demo/" target="_blank" rel="noopener noreferrer">
+diff --git a/signaling/test/homepage-browser-checks.mjs b/signaling/test/homepage-browser-checks.mjs
+new file mode 100644
+--- /dev/null
++++ b/signaling/test/homepage-browser-checks.mjs
+@@ -0,0 +1,99 @@
++import assert from 'node:assert/strict';
++import {createServer} from 'node:http';
++import {readFile, mkdir} from 'node:fs/promises';
++import {root} from '../../tests/helpers/game-source.mjs';
++
++export async function homepageBrowserChecks({browser, pass, artifacts, docsRoot = new URL('docs/', root)}) {
++  // Serve the real repository prefix, including directory index navigation.
++  const server = createServer(async (req, res) => {
++    try {
++      let path = new URL(req.url, 'http://localhost').pathname;
++      if (!path.startsWith('/king-pong/')) throw new Error('Outside site');
++      path = path.slice('/king-pong/'.length);
++      if (!path || path.endsWith('/')) path += 'index.html';
++      const file = new URL(path, docsRoot);
++      if (!file.href.startsWith(docsRoot.href)) throw new Error('Outside site');
++      res.setHeader('Content-Type', path.endsWith('.png') ? 'image/png' : path.endsWith('.js') ? 'text/javascript' : 'text/html');
++      res.end(await readFile(file));
++    } catch { res.writeHead(404).end(); }
++  });
++  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
++  const home = `http://127.0.0.1:${server.address().port}/king-pong/`;
++  const errors = [];
++  if (artifacts) await mkdir(artifacts, {recursive: true});
++  try {
++    for (const [width, height, touch] of [[390, 844, true], [844, 390, true], [1280, 720], [1366, 768], [1920, 1080], [2560, 1440]]) {
++      const context = await browser.newContext({viewport: {width, height}, hasTouch: !!touch,
++        ...(browser.browserType().name() === 'chromium' ? {isMobile: !!touch} : {})});
++      try {
++        context.on('page', p => p.on('pageerror', error => errors.push(error.message)));
++        await context.addInitScript(() => {
++          if (!location.pathname.endsWith('/king-pong/')) return;
++          window.homepageActivity = {raf: 0, audio: 0, sockets: 0};
++          const raf = window.requestAnimationFrame;
++          window.requestAnimationFrame = callback => { homepageActivity.raf++; return raf.call(window, callback); };
++          for (const [name, counter] of [['AudioContext', 'audio'], ['webkitAudioContext', 'audio'], ['WebSocket', 'sockets']]) {
++            if (window[name]) window[name] = new Proxy(window[name], {construct(target, args) {
++              homepageActivity[counter]++; return Reflect.construct(target, args);
++            }});
++          }
++        });
++        const p = await context.newPage(), requests = [];
++        p.on('request', req => requests.push(req.url()));
++        await p.goto(home);
++        const preview = p.getByRole('link', {name: 'Play King Pong — opens in a new tab', exact: true});
++        await preview.scrollIntoViewIfNeeded();
++        await p.locator('.game-demo-image').evaluate(img => img.decode());
++        const box = await preview.boundingBox();
++        assert.ok(box.width <= 900 && box.x >= 0 && box.x + box.width <= width);
++        assert.ok(Math.abs(box.width / box.height - 4 / 3) < .01);
++        assert.equal(await p.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
++        assert.equal(p.frames().length, 1);
++        assert.equal(await p.locator('iframe, canvas, script, embed, object').count(), 0);
++        assert.equal(requests.some(url => new URL(url).pathname.includes('/demo/')), false);
++        if (artifacts) await p.screenshot({path: `${artifacts}/homepage-${width}x${height}.png`, fullPage: true});
++
++        async function activate(link, method) {
++          if (method === 'keyboard') {
++            await link.focus();
++            assert.equal(await link.evaluate(el => el.matches(':focus-visible')), true);
++            assert.notEqual(await link.evaluate(el => getComputedStyle(el).outlineStyle), 'none');
++          }
++          const popupEvent = p.waitForEvent('popup');
++          if (method === 'touch') await link.tap();
++          else if (method === 'keyboard') await p.keyboard.press('Enter');
++          else await link.click();
++          const game = await popupEvent;
++          await game.waitForLoadState('load');
++          assert.equal(game.url(), home + 'demo/');
++          assert.equal(await game.evaluate(() => window.top === window.self && window.opener === null), true);
++          await game.locator('#titleScreen').waitFor({state: 'visible'});
++          assert.equal(context.pages().length, 2, 'one activation opens exactly one game tab');
++          assert.equal(game.frames().length, 1);
++          assert.equal(await game.locator('#importSavesButton, #exportSavesButton').count(), 2);
++          assert.equal(await p.evaluate(() => document.fullscreenElement), null);
++          assert.deepEqual(await p.evaluate(() => homepageActivity), {raf: 0, audio: 0, sockets: 0});
++          return game;
++        }
++
++        const game = await activate(preview, touch ? 'touch' : width === 1280 ? 'keyboard' : 'mouse');
++        await game.locator('#titleCampaignButton').click();
++        if (await game.locator('#rotateDismiss').isVisible()) await game.locator('#rotateDismiss').click();
++        await game.locator('#matchContinue').click();
++        await game.waitForFunction(() => !waitingForServe && !paused);
++        const x = await game.evaluate(() => ball.x);
++        await game.waitForFunction(x => ball.x !== x, x);
++        assert.equal(await game.evaluate(() => typeof requestRoyalLandscape), 'function');
++        await game.close();
++        assert.equal(context.pages().length, 1);
++        if (width === 1280) {
++          const dedicated = p.getByRole('link', {name: 'Open Browser Demo in a New Tab', exact: true});
++          const separate = await activate(dedicated, 'mouse');
++          await separate.close();
++        }
++      } finally { await context.close(); }
++    }
++    assert.deepEqual(errors, []);
++    pass('homepage: static preview, mouse/touch/keyboard single-tab launches, real /king-pong/ URLs and standalone gameplay at six viewport sizes');
++  } finally { await new Promise(resolve => server.close(resolve)); }
++}
+diff --git a/signaling/test/ui-browser.mjs b/signaling/test/ui-browser.mjs
+--- a/signaling/test/ui-browser.mjs
++++ b/signaling/test/ui-browser.mjs
+@@ -1,4 +1,5 @@
+ import {reviewBrowserChecks} from './review-browser-checks.mjs';
++import {homepageBrowserChecks} from './homepage-browser-checks.mjs';
+ import assert from 'node:assert/strict';
+ import {
+   createServer
+@@ -988,6 +989,7 @@
+   await reduced.context().close();
+   pass('gold and purple title actions respect reduced motion');
+   await reviewBrowserChecks({page, bounds, snap, pass});
++  await homepageBrowserChecks({browser, pass, artifacts});
+   assert.deepEqual(errors, []);
+   console.log(`RESULT: ${checks} UI browser integration groups passed; no page exceptions`);
+ } finally {
+diff --git a/tests/homepage-launch.mjs b/tests/homepage-launch.mjs
+new file mode 100644
+--- /dev/null
++++ b/tests/homepage-launch.mjs
+@@ -0,0 +1,33 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import {readFileSync} from 'node:fs';
++
++const homepage = readFileSync(new URL('../docs/index.html', import.meta.url), 'utf8');
++
++test('homepage is a static launcher with no embedded game or fullscreen handlers', () => {
++  assert.doesNotMatch(homepage, /<(?:iframe|embed|object|canvas|script)\b/i);
++  assert.doesNotMatch(homepage, /allowfullscreen|requestFullscreen|window\.open|\bon(?:click|touchstart|keydown)\s*=/i);
++});
++
++test('preview and dedicated browser link share a repository-relative standalone destination', () => {
++  const links = [...homepage.matchAll(/<a\b([^>]*)>([\s\S]*?)<\/a>/g)];
++  const preview = links.find(link => /class="game-demo-container"/.test(link[1]));
++  const dedicated = links.find(link => link[2].includes('Open Browser Demo in a New Tab'));
++  for (const link of [preview, dedicated]) {
++    assert.ok(link);
++    assert.match(link[1], /href="demo\/"/);
++    assert.match(link[1], /target="_blank"/);
++    assert.match(link[1], /rel="noopener noreferrer"/);
++  }
++  assert.match(preview[1], /aria-label="Play King Pong — opens in a new tab"/);
++  assert.match(homepage, /\.game-demo-container:focus-visible\s*\{\s*outline:/);
++});
++
++test('preview reuses the existing gameplay screenshot without changing its proportions', () => {
++  assert.match(homepage, /class="game-demo-image" src="images\/gameplay\.png"/);
++  const image = readFileSync(new URL('../docs/images/gameplay.png', import.meta.url));
++  assert.equal(image.subarray(1, 4).toString(), 'PNG');
++  assert.match(homepage, /object-fit:\s*contain/);
++  assert.match(homepage, /aspect-ratio:\s*4\s*\/\s*3/);
++  assert.match(homepage, /alt="King Pong gameplay[^\"]+"/);
++});

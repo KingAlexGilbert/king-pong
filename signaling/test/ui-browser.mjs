@@ -1,4 +1,5 @@
 import {reviewBrowserChecks} from './review-browser-checks.mjs';
+import {homepageBrowserChecks} from './homepage-browser-checks.mjs';
 import assert from 'node:assert/strict';
 import {
   createServer
@@ -988,6 +989,7 @@ try {
   await reduced.context().close();
   pass('gold and purple title actions respect reduced motion');
   await reviewBrowserChecks({page, bounds, snap, pass});
+  await homepageBrowserChecks({browser, pass, artifacts});
   assert.deepEqual(errors, []);
   console.log(`RESULT: ${checks} UI browser integration groups passed; no page exceptions`);
 } finally {
