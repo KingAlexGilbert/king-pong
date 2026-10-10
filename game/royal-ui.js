@@ -123,7 +123,7 @@ function initRoyalUi() {
     subtitle.append(span);
   }
 
-  const bar = document.createElement('header');
+  const bar = document.createElement('div');
   bar.id = 'matchBar';
   bar.className = 'match-bar match-ui';
   const identity = document.createElement('div');
