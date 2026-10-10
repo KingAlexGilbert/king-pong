@@ -126,13 +126,10 @@ function initRoyalUi() {
   const bar = document.createElement('header');
   bar.id = 'matchBar';
   bar.className = 'match-bar match-ui';
-  const pauseTitle = document.createElement('h2');
-  pauseTitle.className = 'match-pause-title';
-  setLocalizedText(pauseTitle, 'Paused');
   const identity = document.createElement('div');
   identity.className = 'match-identity';
   identity.innerHTML = '<strong id="matchMode"></strong><span id="matchContext"></span>';
-  bar.append(pauseTitle, menuToggle, identity, royalButton('matchContinue', 'Serve', royalContinue, 'match-primary'), royalButton(
+  bar.append(menuToggle, identity, royalButton('matchContinue', 'Serve', royalContinue, 'match-primary'), royalButton(
     'matchPause', 'Pause', () => {
       requestTogglePause();
       syncRoyalUi(true);

@@ -96,9 +96,9 @@ const hooks = {
 };
 
 export function integrateRoyalUi(source) {
-  // The desktop DOM card owns its pause title; keep the existing canvas title on touch/countdown paths.
-  const oldTitle = '      drawText("PAUSED", W / 2, H / 2 - 100, 24);';
-  const newTitle = '      if (!royalDesktopPauseVisible()) drawText("PAUSED", W / 2, H / 2 - 100, 24);';
+  // Controls stay above the arena; the existing canvas indicator identifies a paused match.
+  const oldTitle = '      if (!royalDesktopPauseVisible()) drawText("PAUSED", W / 2, H / 2 - 100, 24);';
+  const newTitle = '      drawText("PAUSED", W / 2, H / 2 - 100, 24);';
   if (source.includes(oldTitle)) source = source.replace(oldTitle, newTitle);
   else if (!source.includes(newTitle)) throw new Error('Missing canvas pause title integration point');
   return synchronizeHooks(source, "UI", hooks);

@@ -1696,55 +1696,6 @@ textarea:focus-visible {
   z-index: 25;
 }
 
-.match-pause-title {
-  display: none;
-}
-
-/* Reuse the match controls as a compact pause card on desktop. Touch keeps its bar. */
-.match-bar-paused {
-  top: calc(50% + 10px + (env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) / 2);
-  left: 50%;
-  right: auto;
-  transform: translate(-50%, -50%);
-  width: min(480px, calc(100vw - 32px), calc(100dvh - 84px));
-  max-height: calc(100dvh - 100px);
-  height: auto;
-  box-sizing: border-box;
-  padding: 22px;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 16px 12px;
-  overflow: auto;
-  background: #050507f2;
-  border: 2px solid var(--accent);
-}
-
-.match-bar-paused .match-pause-title {
-  display: block;
-  flex-basis: 100%;
-  order: -2;
-  margin: 0;
-  text-align: center;
-  text-transform: uppercase;
-  font-size: 22px;
-}
-
-.match-bar-paused .match-identity {
-  flex: 0 0 100%;
-  order: -1;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  text-align: center;
-}
-
-.match-bar-paused #matchContext {
-  max-width: 100%;
-  white-space: normal;
-  overflow-wrap: anywhere;
-  line-height: 1.5;
-}
-
 body.title-active #menuToggle {
   visibility: visible;
   pointer-events: auto;
@@ -1805,6 +1756,36 @@ body.title-active #menuToggle {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Desktop controls use the existing 52px header reservation in every match state.
+   Keep actions together and never anchor the paused bar to the arena's center. */
+@media (pointer: fine),
+(pointer: none) {
+  .match-bar {
+    top: env(safe-area-inset-top, 0px);
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    width: min(760px, calc(100% - 20px));
+  }
+
+  .match-bar #matchContinue,
+  .match-bar #matchPause {
+    order: 1;
+  }
+
+  .match-bar .match-identity {
+    order: 2;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    text-align: center;
+  }
+
+  .match-bar #matchContext {
+    max-width: 100%;
+  }
 }
 
 .match-footer {
@@ -11000,7 +10981,7 @@ function draw(view = captureVisualState()) {
       const countdownNumber = Math.max(1, Math.ceil(resumeCountdownRemainingMs() / 1000));
       drawText(String(countdownNumber), W / 2, H / 2 - 58, 64);
     } else {
-      if (!royalDesktopPauseVisible()) drawText("PAUSED", W / 2, H / 2 - 100, 24);
+      drawText("PAUSED", W / 2, H / 2 - 100, 24);
     }
   } else if (waitingForServe || gameOver || levelCleared || campaignCleared) {
     drawOverlay();
@@ -12695,13 +12676,10 @@ function initRoyalUi() {
   const bar = document.createElement('header');
   bar.id = 'matchBar';
   bar.className = 'match-bar match-ui';
-  const pauseTitle = document.createElement('h2');
-  pauseTitle.className = 'match-pause-title';
-  setLocalizedText(pauseTitle, 'Paused');
   const identity = document.createElement('div');
   identity.className = 'match-identity';
   identity.innerHTML = '<strong id="matchMode"></strong><span id="matchContext"></span>';
-  bar.append(pauseTitle, menuToggle, identity, royalButton('matchContinue', 'Serve', royalContinue, 'match-primary'), royalButton(
+  bar.append(menuToggle, identity, royalButton('matchContinue', 'Serve', royalContinue, 'match-primary'), royalButton(
     'matchPause', 'Pause', () => {
       requestTogglePause();
       syncRoyalUi(true);

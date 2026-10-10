@@ -7,16 +7,20 @@ export async function reviewBrowserChecks({page, bounds, snap, pass}) {
       const el = document.querySelector(selector), r = el.getBoundingClientRect();
       return {x: r.x, y: r.y, width: r.width, height: r.height};
     };
-    return {arena: box('#game'), card: box('#matchBar'), title: box('.match-pause-title'),
+    return {arena: box('#game'), bar: box('#matchBar'),
       info: box('.match-identity'), menu: box('#menuToggle'), resume: box('#matchPause')};
   });
-  const centered = ({arena, card, title, info, menu, resume}) => {
-    assert.ok(Math.abs(card.x + card.width / 2 - arena.x - arena.width / 2) < 2);
-    assert.ok(Math.abs(card.y + card.height / 2 - arena.y - arena.height / 2) < 2);
-    assert.ok(card.width <= 480 && card.width < arena.width);
-    assert.ok(title.y + title.height <= info.y && info.y + info.height <= menu.y);
+  const outsideArena = ({arena, bar, info, menu, resume}) => {
+    assert.ok(Math.abs(bar.x + bar.width / 2 - arena.x - arena.width / 2) < 2);
+    assert.ok(bar.width <= 760 && bar.height === 50, 'use the existing header space');
+    for (const control of [bar, info, menu, resume]) {
+      assert.ok(control.y >= 0 && control.y + control.height <= arena.y,
+        'visible controls and match information must be entirely above the playing field');
+    }
     assert.ok(Math.abs(menu.y - resume.y) < 2);
-    assert.ok(resume.x - menu.x - menu.width <= 24, 'pause actions stay together');
+    assert.ok(resume.x >= menu.x + menu.width && resume.x - menu.x - menu.width <= 24,
+      'Menu and Pause/Resume stay together without overlap');
+    assert.ok(info.x >= resume.x + resume.width, 'match information does not cover the actions');
   };
   const start = async p => {
     await p.locator('#titleCampaignButton').click();
@@ -38,11 +42,19 @@ export async function reviewBrowserChecks({page, bounds, snap, pass}) {
     const p = await page('Browser', {viewport: {width, height}, deviceScaleFactor, locale});
     await start(p);
     const playing = (await rects(p)).arena;
+    outsideArena(await rects(p));
     assert.ok(Math.abs(playing.x + playing.width / 2 - width / 2) < 1, 'arena is horizontally centered');
     await pause(p);
     assert.equal(await p.locator('#matchBar').evaluate(el => el.classList.contains('match-bar-paused')), true);
     const paused = await rects(p);
-    centered(paused);
+    outsideArena(paused);
+    const labels = await p.evaluate(() => {
+      const labels = [], original = drawText;
+      try { drawText = (text, ...args) => { labels.push(text); original(text, ...args); }; draw(); }
+      finally { drawText = original; }
+      return labels;
+    });
+    assert.ok(labels.includes('PAUSED'), 'the canvas pause indicator remains visible');
     assert.deepEqual(paused.arena, playing, 'pausing does not move the arena');
     for (const selector of ['#game', '#matchBar', '#matchContext', '#menuToggle', '#matchPause']) await bounds(p, selector);
     await snap(p, `pause-${width}x${height}-dpr${deviceScaleFactor}`);
@@ -50,21 +62,34 @@ export async function reviewBrowserChecks({page, bounds, snap, pass}) {
     assert.equal(await p.locator('#matchMenu').isVisible(), true);
     assert.deepEqual((await rects(p)).arena, playing, 'opening Menu does not move the arena');
     await p.keyboard.press('m');
-    centered(await rects(p));
+    outsideArena(await rects(p));
     await p.locator('#matchPause').click();
     assert.equal(await p.evaluate(() => hasResumeCountdown()), true);
     assert.equal(await p.locator('#matchBar').evaluate(el => el.classList.contains('match-bar-paused')), false);
     assert.deepEqual((await rects(p)).arena, playing, 'resuming does not move the arena');
+    outsideArena(await rects(p));
     // Advance only the presentation countdown in this RAF-controlled UI fixture.
     await p.evaluate(() => {resumeCountdownEndAt = 0; paused = false; syncRoyalUi(true);});
     await pause(p);
     await p.setViewportSize({width: 1100, height: 700});
     await p.evaluate(() => {handleViewportChange(); syncRoyalUi(true);});
-    centered(await rects(p));
+    outsideArena(await rects(p));
     await bounds(p, '#game');
+    for (const mode of ['custom', 'local']) {
+      await p.evaluate(mode => {
+        // Custom Game is locked on a fresh slot; unlock it in this isolated fixture.
+        saveData.completedLevels[0] = true;
+        mode === 'custom' ? startCustomMode() : startTwoPlayerMode();
+      }, mode);
+      await p.locator('#matchServe').click();
+      assert.equal(await p.evaluate(() => waitingForServe), false);
+      outsideArena(await rects(p));
+      await pause(p);
+      outsideArena(await rects(p));
+    }
     await p.context().close();
   }
-  pass('desktop pause card and arena stay centered at five desktop sizes, four scaling pairs and live resize');
+  pass('desktop actions remain grouped above the arena in campaign/custom/local play, pause, resume and resize at five sizes and four scaling pairs');
 
   const terminal = await page();
   await start(terminal);
@@ -98,7 +123,6 @@ export async function reviewBrowserChecks({page, bounds, snap, pass}) {
     const playing = (await rects(p)).arena;
     await pause(p);
     assert.equal(await p.locator('#matchBar').evaluate(el => el.classList.contains('match-bar-paused')), false);
-    assert.equal(await p.locator('.match-pause-title').isVisible(), false);
     assert.deepEqual((await rects(p)).arena, playing);
     for (const selector of ['#game', '#matchBar', '#menuToggle', '#matchPause']) await bounds(p, selector);
     await snap(p, `pause-mobile-${width}x${height}`);

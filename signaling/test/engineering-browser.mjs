@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {refreshBrowserChecks} from './refresh-browser-checks.mjs';
 import {
   createServer
 } from 'node:http';
@@ -750,6 +751,7 @@ try {
   }
   await p.context().close();
   await rasterChecks();
+  await refreshBrowserChecks({page, pass});
   assert.deepEqual(errors, []);
   pass('all checks completed without page exceptions');
   console.log(`RESULT: ${checks} engineering browser groups passed (${engine.name()})`);
