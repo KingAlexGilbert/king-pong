@@ -25,26 +25,7 @@ Limits include 256 queue sockets, eight sockets per temporary IP hash, 20 applic
 
 Packaged games retain their original `file://` page and save origin. A small HTTPS iframe at `/v1/native-bridge` forwards signaling over a dedicated MessageChannel. Its CSP admits only file ancestors, it accepts only its opaque-origin parent, and paths/messages are restricted. WebRTC and the game remain in the local page. Signaling continues to reject the `null` origin. Each native wrapper permits only this exact bridge URL; other remote navigation remains blocked.
 
-## Cloudflare Free plan
-
-Checked against official Cloudflare documentation on October 10, 2026. SQLite-backed Durable Objects are available on Workers Free. This addition requires no paid subscription, payment card, or new service. Keep the existing Metered account and TURN configuration; this change does not increase that provider's allowance or require a paid plan.
-
-| Free allowance | Current limit |
-| --- | --- |
-| Worker requests | 100,000/day |
-| Durable Object requests | 100,000/day |
-| Durable Object duration | 13,000 GB-seconds/day |
-| SQLite rows read | 5 million/day |
-| SQLite rows written | 100,000/day |
-| SQLite stored data | 5 GB/account |
-
-These allowances are account-wide and shared with existing rooms and other projects. Incoming WebSocket messages count at a 20:1 ratio for DO request billing; outgoing messages do not. Hibernation and automatic responses avoid idle duration charges. Alarms still consume work and a scheduled alarm counts as a row write, so usage is not unlimited. Daily Free limits reset at midnight UTC; exceeding an allowance produces errors rather than silently upgrading the account. A network interruption or quota limit may end searches. Do not enable a paid plan merely to deploy this change.
-
-Sources: [Durable Objects pricing](https://developers.cloudflare.com/durable-objects/platform/pricing/), [Workers pricing](https://developers.cloudflare.com/workers/platform/pricing/), [hibernating WebSockets](https://developers.cloudflare.com/durable-objects/best-practices/websockets/), and [Cloudflare Workers Free signup](https://www.cloudflare.com/products/workers/).
-
 ## Build and deployment
-
-No production deployment or secret update is part of this patch.
 
 1. From the repository root, run `node tools/sync-gameplay.mjs`. This updates the four HTML builds, browser online files, embedded native transport, optimized icon data, and the generated server compatibility contract.
 2. Run `node tools/sync-gameplay.mjs --check` and `node --test tests/*.mjs`.
