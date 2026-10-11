@@ -345,6 +345,7 @@ function openOnlineRoom(role, code = '', assignment = null) {
     connected: () => {
       if (onlineSession !== session) return;
       lanConnected = true;
+	  syncMatchmakingUi();
       onlineGameBlocked = false;
       if (assignment) matchmakingComplete();
       setLanStatus('Connected!');
