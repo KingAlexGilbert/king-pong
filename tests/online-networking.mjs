@@ -66,7 +66,10 @@ test('online scripts parse and all new user-facing messages have every supported
   vm.runInContext(readFileSync(new URL('../docs/demo/online-localization.js', import.meta.url), 'utf8'), context);
   const tables = context.window.KING_PONG_ONLINE_TRANSLATIONS;
   const keys = Object.keys(tables.es);
-  for (const language of ['es', 'fr', 'de', 'pt', 'it', 'nl', 'ja', 'ko', 'zh']) assert.deepEqual(Object.keys(tables[language]), keys);
+  for (const language of ['es', 'fr', 'de', 'pt', 'it', 'nl', 'ja', 'ko', 'zh']) {
+    assert.deepEqual(Object.keys(tables[language]), keys);
+    for (const key of keys) assert.ok(typeof tables[language][key] === 'string' && tables[language][key].length, `${language}: ${key}`);
+  }
   const errors = source.match(/const ONLINE_ERRORS = (\{[\s\S]*?\n\});/)[1];
   const messages = vm.runInNewContext('(' + errors + ')');
   for (const message of Object.values(messages)) for (const language of Object.keys(tables)) assert.ok(tables[language][message]);
@@ -106,11 +109,12 @@ test('direct timeout requests TURN once, recreates only the peer, rejects stale 
   assert.deepEqual(h.errors, ['timeout']);
 });
 
-test('connection is ready only after both channels; transient ICE disconnect can recover', async () => {
+test('connection is ready only after the peer and both channels; transient ICE disconnect can recover', async () => {
   const h = harness(); h.room.open('host'); await h.message(direct);
   const peer = h.peers[0];
   peer.channels[0].open(); assert.equal(h.ready, 0);
-  peer.channels[1].open(); assert.equal(h.ready, 1);
+  peer.channels[1].open(); assert.equal(h.ready, 0);
+  peer.state('connected'); assert.equal(h.ready, 1); assert.equal(h.resumed, 0);
   assert.equal(peer.channels[0].options.ordered, false);
   assert.equal(peer.channels[1].options, undefined);
   peer.state('disconnected'); assert.equal(h.interrupted, 1);
@@ -118,6 +122,23 @@ test('connection is ready only after both channels; transient ICE disconnect can
   h.fire(8000); assert.deepEqual(h.errors, []);
   peer.channels[0].close(); h.fire(250);
   assert.deepEqual(h.errors, ['guest_left']);
+});
+
+test('peer connecting first still waits for the reliable control channel', async () => {
+  const h = harness(); h.room.open('host'); await h.message(direct);
+  const peer = h.peers[0];
+  peer.state('connected'); peer.channels[0].open(); assert.equal(h.ready, 0);
+  peer.channels[1].open(); assert.equal(h.ready, 1);
+  h.room.maybeConnected(peer); assert.equal(h.ready, 1);
+  h.room.close();
+});
+
+test('closing during an interruption does not leave a late disconnect timer', async () => {
+  const h = harness(); h.room.open('host'); await h.message(direct);
+  h.room.hooks.interrupted = () => h.room.close();
+  h.peers[0].state('disconnected');
+  assert.equal(h.timers.size, 0);
+  assert.equal(h.room.closed, true);
 });
 
 test('negotiation rejection exposes no raw error, and cancellation prevents late setup', async () => {

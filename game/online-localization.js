@@ -524,3 +524,62 @@ Object.entries({
 }).forEach(([code, text]) => {
   window.KING_PONG_ONLINE_TRANSLATIONS[code]['Match failed. Press Find Match to try again.'] = text;
 });
+
+// Match setup stays localized alongside the existing online menu.
+{
+  const keys = ['First to 10', 'Your selected arena is your preference. Different choices are decided fairly.',
+    'Choose a campaign arena to find a match.', 'CONNECTING...', 'CONNECTED', 'ARE YOU READY?', 'GO!',
+    'Connection failed', 'Could not connect. Try finding another match.', "I'm ready", 'Ready!',
+    'Waiting for your opponent to be ready.', 'Your opponent is ready. Confirm when you are ready.',
+    'Both players must confirm before the countdown.', 'Classic Match · First to 10'];
+  const phrases = {
+    es: ['Primero a 10', 'La arena elegida es tu preferencia. Si son distintas, se elige de forma justa.',
+      'Elige una arena de campaña para buscar partida.', 'CONECTANDO...', 'CONECTADO', '¿ESTÁS LISTO?', '¡YA!',
+      'Error de conexión', 'No se pudo conectar. Intenta buscar otra partida.', 'Estoy listo', '¡Listo!',
+      'Esperando a que tu rival esté listo.', 'Tu rival está listo. Confirma cuando estés listo.',
+      'Ambos jugadores deben confirmar antes de la cuenta atrás.', 'Partida clásica · Primero a 10'],
+    fr: ['Premier à 10', 'Votre arène est votre préférence. Les choix différents sont départagés équitablement.',
+      'Choisissez une arène de campagne pour trouver un adversaire.', 'CONNEXION...', 'CONNECTÉ', 'ÊTES-VOUS PRÊT ?', 'PARTEZ !',
+      'Échec de connexion', 'Connexion impossible. Essayez de trouver un autre adversaire.', 'Je suis prêt', 'Prêt !',
+      'En attente de votre adversaire.', 'Votre adversaire est prêt. Confirmez quand vous êtes prêt.',
+      'Les deux joueurs doivent confirmer avant le compte à rebours.', 'Partie classique · Premier à 10'],
+    de: ['Zuerst 10 Punkte', 'Deine Arena ist dein Wunsch. Unterschiedliche Wünsche werden fair entschieden.',
+      'Wähle eine Kampagnenarena, um ein Spiel zu suchen.', 'VERBINDUNG...', 'VERBUNDEN', 'BIST DU BEREIT?', 'LOS!',
+      'Verbindung fehlgeschlagen', 'Keine Verbindung. Versuche, ein anderes Spiel zu finden.', 'Ich bin bereit', 'Bereit!',
+      'Warte, bis dein Gegner bereit ist.', 'Dein Gegner ist bereit. Bestätige, wenn du bereit bist.',
+      'Beide Spieler müssen vor dem Countdown bestätigen.', 'Klassisches Spiel · Zuerst 10 Punkte'],
+    pt: ['Primeiro a 10', 'A arena escolhida é sua preferência. Escolhas diferentes são decididas de forma justa.',
+      'Escolha uma arena da campanha para buscar uma partida.', 'CONECTANDO...', 'CONECTADO', 'ESTÁ PRONTO?', 'VAI!',
+      'Falha na conexão', 'Não foi possível conectar. Tente buscar outra partida.', 'Estou pronto', 'Pronto!',
+      'Esperando seu oponente ficar pronto.', 'Seu oponente está pronto. Confirme quando estiver pronto.',
+      'Os dois jogadores devem confirmar antes da contagem regressiva.', 'Partida clássica · Primeiro a 10'],
+    it: ['Primo a 10', 'L’arena scelta è la tua preferenza. Le scelte diverse vengono decise equamente.',
+      'Scegli un’arena della campagna per cercare una partita.', 'CONNESSIONE...', 'CONNESSO', 'SEI PRONTO?', 'VIA!',
+      'Connessione fallita', 'Impossibile connettersi. Prova a cercare un’altra partita.', 'Sono pronto', 'Pronto!',
+      'In attesa che l’avversario sia pronto.', 'L’avversario è pronto. Conferma quando sei pronto.',
+      'Entrambi i giocatori devono confermare prima del conto alla rovescia.', 'Partita classica · Primo a 10'],
+    nl: ['Eerste tot 10', 'Je gekozen arena is je voorkeur. Verschillende keuzes worden eerlijk beslist.',
+      'Kies een campagne-arena om een wedstrijd te zoeken.', 'VERBINDEN...', 'VERBONDEN', 'BEN JE KLAAR?', 'START!',
+      'Verbinding mislukt', 'Verbinding niet mogelijk. Probeer een andere wedstrijd te zoeken.', 'Ik ben klaar', 'Klaar!',
+      'Wachten tot je tegenstander klaar is.', 'Je tegenstander is klaar. Bevestig zodra je klaar bent.',
+      'Beide spelers moeten bevestigen voordat het aftellen begint.', 'Klassieke wedstrijd · Eerste tot 10'],
+    ja: ['10点先取', '選んだアリーナを希望として使います。希望が異なる場合は公平に選びます。',
+      '対戦相手を探すにはキャンペーンのアリーナを選んでください。', '接続中...', '接続完了', '準備はいいですか？', 'スタート！',
+      '接続失敗', '接続できませんでした。別の対戦相手を探してください。', '準備完了', '準備完了！',
+      '対戦相手の準備を待っています。', '対戦相手は準備完了です。準備ができたら確認してください。',
+      '両プレイヤーが確認するとカウントダウンが始まります。', 'クラシック対戦 · 10点先取'],
+    ko: ['10점 선취', '선택한 경기장이 선호 경기장입니다. 선택이 다르면 공정하게 결정합니다.',
+      '대전을 찾으려면 캠페인 경기장을 선택하세요.', '연결 중...', '연결됨', '준비되셨나요?', '시작!',
+      '연결 실패', '연결할 수 없습니다. 다른 상대를 찾아보세요.', '준비 완료', '준비 완료!',
+      '상대가 준비되기를 기다리고 있습니다.', '상대가 준비되었습니다. 준비되면 확인하세요.',
+      '두 플레이어가 모두 확인하면 카운트다운이 시작됩니다.', '클래식 대전 · 10점 선취'],
+    zh: ['先得10分', '所选竞技场即你的偏好。双方选择不同时将公平决定。',
+      '请选择战役竞技场以寻找对手。', '正在连接...', '已连接', '准备好了吗？', '开始！',
+      '连接失败', '无法连接。请尝试寻找其他对手。', '我准备好了', '已准备！',
+      '正在等待对手准备。', '对手已准备。准备好后请确认。',
+      '双方确认后才会开始倒计时。', '经典对局 · 先得10分']
+  };
+  for (const [code, values] of Object.entries(phrases)) keys.forEach((key, index) => {
+    window.KING_PONG_ONLINE_TRANSLATIONS[code][key] = values[index];
+  });
+}

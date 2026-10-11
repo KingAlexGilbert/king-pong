@@ -36,6 +36,7 @@ function resetRoyalLocalSetup() {
 }
 
 function resetRoyalUiForTitle() {
+  if (typeof onlineMatchFlowVisible === 'function' && onlineMatchFlowVisible()) closeLanConnection(false);
   if (typeof stopMatchmaking === 'function') stopMatchmaking();
   if (typeof stopRoyalPowerupSound === 'function') stopRoyalPowerupSound();
   royalOnlineSelected = royalMenuRequested = false;
@@ -60,6 +61,7 @@ function royalModeName() {
 }
 
 function royalNeedsSetup() {
+  if (typeof onlineMatchFlowVisible === 'function' && onlineMatchFlowVisible()) return false;
   if (royalOnlineMode() && !lanConnected) return true;
   return customPreviewActive || mode === 2 && waitingForServe && left.score === 0 && right.score === 0 && !gameOver;
 }
@@ -163,6 +165,7 @@ function initRoyalUi() {
   setupActions.className = 'match-actions';
   setupActions.append(royalButton('matchServe', 'Start match', royalContinue, 'match-primary'), royalButton(
     'setupMenuButton', 'Menu (M)', () => {
+      if (royalOnlineMode() && onlineTransportSelected) { showTitleScreen(); return; }
       royalMenuRequested = true;
       setMenusVisible(true);
     }));
@@ -282,6 +285,7 @@ function initRoyalUi() {
     byId(id).addEventListener('toggle', () => syncRoyalFocus());
   }
   prepareAccessibleMenuControls();
+  initOnlineMatchFlowUi();
   document.body.classList.add('royal-ui-ready');
   updateAudioControls();
   // One listener per page. Rotation only changes presentation, never match or connection state.
@@ -397,6 +401,15 @@ function createMatchRulesUi() {
 }
 
 function syncMatchRulesUi() {
+  const online = royalOnlineMode() && onlineTransportSelected;
+  const rules = byId('matchRules');
+  const parent = online ? byId('onlinePrivateRules') : byId('matchSetupBody');
+  if (rules.parentElement !== parent) {
+    if (online) parent.append(rules);
+    else parent.insertBefore(rules, byId('matchSetupHint'));
+  }
+  byId('matchRulesTitle').hidden = online;
+  royalText(byId('onlinePrivateRules').querySelector('summary'), localizeText('Match rules') + ' · ' + localizeText(matchRule().label));
   byId('matchRules').hidden = mode !== 2;
   const fixed = typeof matchmakingLocked === 'function' && matchmakingLocked();
   const guest = lanRole === 'guest' || fixed;
@@ -432,6 +445,7 @@ function royalContinue() {
 
 function toggleRoyalMenu() {
   if (bossIntroActive || creditsActive) return;
+  if (onlineMatchFlowBlocksPlay()) { showTitleScreen(); return; }
   const title = document.body.classList.contains('title-active');
   const open = byId('matchMenu') && !byId('matchMenu').hidden;
   royalMenuRequested = !open;
@@ -463,6 +477,7 @@ function paintRoyalChoice(button, number, label, entry, kind) {
 
 function syncRoyalUi(force = false) {
   if (!byId('matchSetup')) return;
+  syncOnlineMatchFlowUi();
   const title = document.body.classList.contains('title-active');
   const online = royalOnlineMode();
   const fixedMatch = typeof matchmakingLocked === 'function' && matchmakingLocked();
@@ -476,13 +491,21 @@ function syncRoyalUi(force = false) {
     levelCleared, campaignCleared, lanRole, lanConnected, lanLastStatus, matchArenaId, matchPaddles.left, matchPaddles
     .right,
     saveData?.royalPaddle, activeSaveSlot, playInfoVisible, matchRuleId, matchRuleRevision, isBossUnlocked(),
-    touchInputActive, gamepadConnected, joining
+    touchInputActive, gamepadConnected, joining, onlineMatchFlow?.phase
   ].join('|');
   if (!force && signature === royalUiSignature) return;
   royalUiSignature = signature;
   byId('matchSetup').hidden = !setup || menu || Boolean(galleryKind);
   byId('matchMenu').hidden = !menu || Boolean(galleryKind);
   byId('matchBar').hidden = title || menu || creditsActive || bossIntroActive;
+  const onlineSetup = online && onlineTransportSelected;
+  byId('matchSetup').classList.toggle('online-setup', onlineSetup);
+  const back = byId('setupMenuButton');
+  const setupCard = byId('matchSetupTitle').parentElement;
+  if (onlineSetup) {
+    if (back.parentElement !== setupCard) setupCard.prepend(back);
+  } else if (back.parentElement === setupCard) byId('matchServe').parentElement.append(back);
+  royalText(back, onlineSetup ? 'Back' : 'Menu (M)');
   byId('matchBar').classList.toggle('match-bar-paused', desktopPause);
   // Keep the toggle inside the current screen or modal's focus/inert boundary.
   if (menu && !royalLastDialog) royalReturnFocus = document.activeElement;
@@ -521,9 +544,13 @@ function syncRoyalUi(force = false) {
   setLocalizedTitle(menuToggle, 'Menu (M)');
   byId('matchConnection').hidden = title || !online;
   const connectionParent = menu ? byId('matchConnection') : byId('matchSetupBody');
-  if (lanPanel.parentElement !== connectionParent) {
-    if (connectionParent.id === 'matchConnection') connectionParent.append(lanPanel);
-    else connectionParent.insertBefore(lanPanel, document.querySelector('.royal-selection-row'));
+  if (menu) {
+    if (lanPanel.parentElement !== connectionParent) connectionParent.append(lanPanel);
+  } else {
+    const choices = document.querySelector('.royal-selection-row');
+    if (onlineSetup) {
+      if (choices.nextElementSibling !== lanPanel) choices.after(lanPanel);
+    } else if (lanPanel.nextElementSibling !== choices) choices.before(lanPanel);
   }
   lanPanel.classList.toggle('hidden', !online);
   lanPanel.hidden = !online;
@@ -546,7 +573,7 @@ function syncRoyalUi(force = false) {
   choices.dataset.online = String(online);
   customPanel.classList.toggle('hidden', mode !== 3);
   byId('matchCpuSettings').hidden = title || mode !== 3;
-  const canServe = !online || lanConnected;
+  const canServe = (!online || lanConnected) && !onlineMatchFlowBlocksPlay();
   byId('matchServe').hidden = !canServe;
   byId('matchContinue').hidden = title || setup || menu || !canServe || !(waitingForServe || gameOver || levelCleared ||
     campaignCleared);
@@ -585,7 +612,7 @@ function updateRoyalControlHint() {
     'Drag to move' : mode === 2 && !online ? 'P1 W/S · P2 ↑/↓' : 'W/S or ↑/↓: move';
   const action = gamepadConnected ? waitingForServe ? 'A: serve' : 'Start: pause' : touch ? waitingForServe ?
     'Tap: serve' : 'Two fingers: pause' : waitingForServe ? 'Space: serve' : 'P: pause';
-  royalText(controlHint, online && !lanConnected ? 'Menu (M)' : move + ' · ' + action);
+  royalText(controlHint, onlineMatchFlowBlocksPlay() ? '' : online && !lanConnected ? 'Menu (M)' : move + ' · ' + action);
   for (const [id, current] of [
       ['helpKeyboard', !gamepadConnected && !touch],
       ['helpController', gamepadConnected],
@@ -637,6 +664,7 @@ function royalActiveDialog() {
   if (galleryKind) return byId('royalGallery');
   for (const id of ['rotateDevice', 'matchMenu', 'matchSetup'])
     if (byId(id) && !byId(id).hidden) return byId(id);
+  if (onlineMatchFlowVisible() && onlineMatchFlow.phase !== 'go') return byId('onlineMatchFlow');
   return null;
 }
 
@@ -648,7 +676,7 @@ function royalFocusables(panel) {
 
 function syncRoyalFocus() {
   const dialog = royalActiveDialog();
-  for (const id of ['matchBar', 'matchSetup', 'matchMenu', 'titleScreen']) {
+  for (const id of ['matchBar', 'matchSetup', 'matchMenu', 'titleScreen', 'onlineMatchFlow']) {
     const node = byId(id);
     if (node) node.inert = Boolean(dialog && node !== dialog);
   }
@@ -685,7 +713,7 @@ function handleRoyalUiKey(event) {
     } else if (dialog.id === 'matchMenu') setMenusVisible(false);
     else showTitleScreen();
   } else if (!form && event.target.closest?.('.match-ui') && ['Enter', ' '].includes(event.key)) {
-    if (event.target.tagName === 'BUTTON' || event.target.tagName === 'SUMMARY') event.target.click();
+    if (!event.repeat && (event.target.tagName === 'BUTTON' || event.target.tagName === 'SUMMARY')) event.target.click();
   } else if (!form && event.key.toLowerCase() === 'm' && !bossIntroActive && !creditsActive) {
     if (!event.repeat) toggleRoyalMenu();
   } else return false;
@@ -726,6 +754,7 @@ function pollRoyalUiGamepad(now) {
     if (panel.id === 'rotateDevice') {
       royalRotateDismissed = true;
       syncRoyalOrientation();
-    } else toggleRoyalMenu();
+    } else if (panel.id === 'matchSetup' && onlineTransportSelected) showTitleScreen();
+    else toggleRoyalMenu();
   }
 }

@@ -27,10 +27,28 @@ function installOnlineSupport() {
   for (const name of ['update', 'requestServeOrContinue', 'requestTogglePause', 'requestRetryLevel']) {
     const original = window[name];
     window[name] = (...args) => {
+      if (name === 'update') tickOnlineMatchFlow();
+      if (name === 'requestServeOrContinue' && onlineMatchFlowBlocksPlay()) return;
       if (mode === 2 && onlineGameBlocked) return;
       return original(...args);
     };
   }
+  for (const name of ['serveOrContinue', 'togglePause', 'retryLevel', 'pointForPlayer', 'pointForCpu']) {
+    const original = window[name];
+    window[name] = (...args) => {
+      if (onlineMatchFlowBlocksPlay()) return;
+      return original(...args);
+    };
+  }
+  const receive = handleLanMessage;
+  window.handleLanMessage = raw => {
+    if (typeof raw !== 'string' || raw.length > 8192) return;
+    let message;
+    try { message = JSON.parse(raw); } catch { return; }
+    if (message?.type === 'match-setup') { receiveOnlineMatchSetup(message); return; }
+    if (onlineMatchFlowBlocksPlay() && message?.type === 'action') return;
+    receive(raw);
+  };
   const levelChoice = applyCustomLevelPickerChoice;
   window.applyCustomLevelPickerChoice = value => { if (!matchmakingLocked()) levelChoice(value); };
   const guestMessage = handleLanGuestMessage;

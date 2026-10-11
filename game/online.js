@@ -91,10 +91,12 @@ class KingPongRoom {
           clearTimeout(this.disconnectTimer);
           this.hooks.status('Connection interrupted. Reconnecting...');
           this.hooks.interrupted?.();
+          if (this.closed || this.peer !== peer) return;
           this.disconnectTimer = setTimeout(() => this.fail('connection_lost'), 8000);
         } else if (peer.connectionState === 'connected') {
           clearTimeout(this.disconnectTimer);
           if (this.connected) { this.hooks.status('Connected!'); this.hooks.resumed?.(); }
+          else this.maybeConnected(peer);
         }
       };
       if (!this.totalTimer) this.totalTimer = setTimeout(() => this.fail('timeout'), 45_000);
@@ -143,18 +145,12 @@ class KingPongRoom {
     channel.onmessage = event => {
       if (!this.closed && this.connected && this.peer === peer) this.hooks.message(event.data);
     };
-    channel.onopen = () => {
-      if (this.closed || this.peer !== peer || this.relayPending || this.connected ||
-          this.data?.readyState !== 'open' || this.control?.readyState !== 'open') return;
-      this.connected = true;
-      clearTimeout(this.directTimer);
-      clearTimeout(this.totalTimer);
-      this.totalTimer = null;
-      this.send({ type: 'connected' });
-      this.hooks.connected();
-    };
+    channel.onopen = () => this.maybeConnected(peer);
     channel.onclose = () => {
       if (this.closed || this.peer !== peer || this.relayPending) return;
+      // Freeze immediately, especially if the ready countdown is about to end.
+      this.hooks.interrupted?.();
+      if (this.closed || this.peer !== peer) return;
       // A room-expiry message may follow the peer's channel close by a few milliseconds.
       clearTimeout(this.peerLostTimer);
       this.peerLostTimer = setTimeout(() => {
@@ -162,6 +158,18 @@ class KingPongRoom {
       }, 250);
     };
     channel.onerror = () => { if (!this.closed && this.peer === peer && !this.relayPending) this.fail(this.connected ? (this.role === 'host' ? 'guest_left' : 'host_left') : 'negotiation_failed'); };
+  }
+
+  maybeConnected(peer) {
+    if (this.closed || this.peer !== peer || this.relayPending || this.connected ||
+        peer.connectionState !== 'connected' || this.data?.readyState !== 'open' ||
+        this.control?.readyState !== 'open') return;
+    this.connected = true;
+    clearTimeout(this.directTimer);
+    clearTimeout(this.totalTimer);
+    this.totalTimer = null;
+    this.send({ type: 'connected' });
+    this.hooks.connected();
   }
 
   relay() {
@@ -248,6 +256,7 @@ function setOnlineControls(busy, joining = false) {
 }
 
 function closeOnlineConnection(showMessage = true, keepQueue = false) {
+  resetOnlineMatchFlow();
   if (!keepQueue) stopMatchmaking();
   onlineMatchAssignment = null;
   if (matchmakingPreviousRules !== null) { matchRuleId = matchmakingPreviousRules; matchmakingPreviousRules = null; }
@@ -321,6 +330,7 @@ function openOnlineRoom(role, code = '', assignment = null) {
   setLanPanelOpen(true);
   setMenusVisible(true);
   setOnlineControls(true);
+  if (assignment) beginOnlineMatchFlow();
   const session = new KingPongRoom(window.KING_PONG_SIGNALING_URL, {
     status: message => { if (onlineSession === session) setLanStatus(message); },
     welcome: code => {
@@ -329,16 +339,22 @@ function openOnlineRoom(role, code = '', assignment = null) {
       byId('onlineRoomCode').textContent = code;
       byId('onlineCodeDisplay').hidden = Boolean(onlineMatchAssignment);
     },
-    peer: peer => { lanPeer = peer; lanConnected = false; onlineGameBlocked = true; },
-    channel: (channel, control) => { if (control) onlineControlChannel = channel; else lanChannel = channel; },
-    message: raw => handleLanMessage(raw),
+    peer: peer => { if (onlineSession === session) { lanPeer = peer; lanConnected = false; onlineGameBlocked = true; } },
+    channel: (channel, control) => {
+      if (onlineSession !== session) return;
+      if (control) onlineControlChannel = channel; else lanChannel = channel;
+    },
+    message: raw => { if (onlineSession === session) handleLanMessage(raw); },
     interrupted: () => {
+      if (onlineSession !== session) return;
+      if (onlineMatchFlowBlocksPlay()) { session.fail('opponent_left'); return; }
       onlineGameBlocked = true;
       paused = true;
       resumeCountdownEndAt = 0;
       lanRemoteInput = { axis: 0, targetY: null, lastAt: 0 };
     },
     resumed: () => {
+      if (onlineSession !== session) return;
       onlineGameBlocked = false;
       if (role === 'host') sendLanState(true);
     },
@@ -351,11 +367,13 @@ function openOnlineRoom(role, code = '', assignment = null) {
       setLanStatus('Connected!');
       updateModeControls();
       setMenusVisible(false);
+      if (assignment) onlineMatchTransportReady();
       if (role === 'host') sendLanState(true);
-      else { sendPaddleSelection(); sendLanInput(null, true); }
+      else if (!assignment) { sendPaddleSelection(); sendLanInput(null, true); }
     },
     error: code => {
       if (onlineSession !== session) return;
+      if (assignment) { failOnlineMatchFlow(code); return; }
       closeOnlineConnection(false);
       // Keep a disconnected guest from falling through to the local physics loop.
       onlineGameBlocked = true;

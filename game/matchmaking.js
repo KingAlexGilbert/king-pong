@@ -19,14 +19,15 @@ function syncMatchmakingUi() {
   const connecting = matchmakingState === 'connecting' || matchmakingLocked();
   byId('findMatchButton').hidden = searching || connecting || Boolean(onlineSession);
   byId('cancelSearchButton').hidden = lanConnected || !searching && !connecting;
-  byId('matchArenaPreference').disabled = searching || connecting || Boolean(onlineSession);
+  byId('chooseArenaButton')?.toggleAttribute('disabled', searching || connecting || Boolean(onlineSession));
   byId('matchmakingAvailability').hidden = connecting;
   const status = matchmakingState === 'opening' ? 'Checking queue...' : matchmakingWaiting === null ? 'Queue status unavailable. Press Find Match to retry.' :
     matchmakingWaiting - (matchmakingState === 'waiting' ? 1 : 0) > 0 ?
       'Opponent available — Find Match!' : searching ?
       "No opponents waiting. You'll be matched when someone joins." : '0 players waiting — Be the first to search!';
   royalText(byId('matchmakingAvailability'), status);
-  byId('onlinePrivateRooms').hidden = searching || connecting || Boolean(onlineSession);
+  byId('onlinePrivateRooms').hidden = searching || connecting;
+  byId('matchmakingPanel').hidden = Boolean(onlineSession && !onlineMatchAssignment);
 }
 
 function stopMatchmaking() {
@@ -51,6 +52,7 @@ function matchmakingError(code) {
 }
 
 function matchmakingFailed(code) {
+  if (onlineMatchFlowVisible()) { failOnlineMatchFlow(code); return; }
   const connecting = matchmakingLocked() && !lanConnected;
   stopMatchmaking();
   if (connecting) closeLanConnection(false);
@@ -117,14 +119,17 @@ function observeMatchmaking() {
 
 function sendMatchSearch() {
   if (!matchmakingRequested || matchmakingSocket?.readyState !== 1) return;
-  const value = byId('matchArenaPreference').value;
   matchmakingSocket.send(JSON.stringify({ type: 'search', protocol: KING_PONG_MATCHMAKING.protocol,
-    arena: value === 'any' ? null : Number(value) }));
+    arena: matchArenaId }));
 }
 
 function findOnlineMatch() {
   if (onlineSession || matchmakingRequested || matchmakingState === 'waiting') return;
   if (!isLanSupported()) { setLanStatus('This browser cannot play online. Try an updated browser.'); return; }
+  if (!KING_PONG_MATCHMAKING.arenas.includes(matchArenaId)) {
+    setLanStatus('Choose a campaign arena to find a match.');
+    return;
+  }
   onlineTransportSelected = true;
   onlineGameBlocked = true;
   matchmakingRequested = true;
@@ -139,6 +144,7 @@ function findOnlineMatch() {
 }
 
 function cancelMatchSearch() {
+  if (onlineMatchFlowVisible()) { leaveOnlineMatchFlow(); return; }
   closeLanConnection(false);
   onlineTransportSelected = true;
   onlineGameBlocked = true;
@@ -168,6 +174,9 @@ function validMatchmakingState(message) {
     return false;
   }
   if (message.type !== 'state') return true;
+  // The reliable GO message owns the start. An unordered gameplay packet may
+  // arrive before it, but cannot start the guest's presentation prematurely.
+  if (onlineMatchFlowBlocksPlay() && (!message.waitingForServe || !message.paused)) return false;
   if (message.rules?.id === match.rules && message.selection?.arena === match.arena &&
       message.activeCampaign === Math.floor(match.arena / 6) && message.levelIndex === match.arena % 6) return true;
   onlineSession?.fail('incompatible');
@@ -179,25 +188,17 @@ function initMatchmakingUi() {
   panel.id = 'matchmakingPanel';
   const title = document.createElement('h3');
   setLocalizedText(title, 'Find Match');
-  const note = document.createElement('p');
-  setLocalizedText(note, 'Automatically connect to another player.');
-  const label = document.createElement('label');
-  label.htmlFor = 'matchArenaPreference';
-  setLocalizedText(label, 'Arena preference');
-  const select = document.createElement('select');
-  select.id = 'matchArenaPreference';
-  for (const [value, text] of [['any', 'Any Arena'], ...arenaCatalog.filter(a => KING_PONG_MATCHMAKING.arenas.includes(a.id))
-      .map(a => [a.id, a.level.name])]) {
-    const option = document.createElement('option');
-    option.value = String(value);
-    setLocalizedText(option, text);
-    select.append(option);
-  }
+  const rules = document.createElement('span');
+  rules.className = 'matchmaking-rules';
+  setLocalizedText(rules, 'First to 10');
+  title.append(rules);
+  const arenaNote = document.createElement('p');
+  setLocalizedText(arenaNote, 'Your selected arena is your preference. Different choices are decided fairly.');
   const status = document.createElement('p');
   status.id = 'matchmakingAvailability';
   status.setAttribute('role', 'status');
   status.setAttribute('aria-live', 'polite');
-  panel.append(title, note, label, select, status,
+  panel.append(title, arenaNote, status,
     royalButton('findMatchButton', 'Find Match', findOnlineMatch, 'match-primary'),
     royalButton('cancelSearchButton', 'Cancel Search', cancelMatchSearch));
   const privateRooms = document.createElement('section');
@@ -207,6 +208,8 @@ function initMatchmakingUi() {
   const privateNote = document.createElement('p');
   setLocalizedText(privateNote, 'Play with friends using a room code.');
   privateRooms.append(privateTitle, privateNote);
+  const privateRules = royalDisclosure('Match rules', 'onlinePrivateRules');
+  privateRooms.append(privateRules);
   const root = document.createElement('div');
   root.id = 'onlineUiRoot';
   if (onlineNativeTransport) {
@@ -262,6 +265,7 @@ function syncOnlineTransportUi() {
 }
 
 function stopBackgroundMatchmaking() {
+  if (onlineMatchFlowBlocksPlay()) { failOnlineMatchFlow('opponent_left'); return; }
   if (!matchmakingSocket) return;
   const wasSearching = matchmakingRequested || matchmakingState === 'waiting' || matchmakingLocked();
   if (matchmakingLocked() && !lanConnected) closeLanConnection(false);

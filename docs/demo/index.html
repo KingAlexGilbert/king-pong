@@ -2695,11 +2695,11 @@ body.royal-panel-open .match-footer #controlHint {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
-  margin: 16px 0 20px;
+  margin: 12px 0 16px;
 }
 .title-card .title-primary-modes button {
   width: 100%;
-  min-height: 112px;
+  min-height: 104px;
   padding: 15px 12px;
   margin: 0;
   letter-spacing: 1px;
@@ -2707,23 +2707,49 @@ body.royal-panel-open .match-footer #controlHint {
   animation: none;
   border: 2px solid var(--mode-color);
   color: var(--mode-color);
-  box-shadow: 4px 4px 0 var(--mode-shadow);
+  box-shadow: 0 0 14px var(--mode-glow), inset 0 0 12px var(--mode-glow);
   transition: background-color 100ms, transform 100ms, box-shadow 100ms;
 }
-.title-primary-modes .primary-online { --mode-color: #71caff; --mode-shadow: #244564; --mode-fill: #142638; --mode-hover: #244564; }
-.title-primary-modes .primary-campaign { --mode-color: #ffd469; --mode-shadow: #745323; --mode-fill: #2d2515; --mode-hover: #554120; }
+.title-primary-modes .primary-online { --mode-color: #71caff; --mode-glow: #71caff14; --mode-fill: #142638; --mode-hover: #244564; }
+.title-primary-modes .primary-campaign { --mode-color: #ffd469; --mode-glow: #ffd46914; --mode-fill: #2d2515; --mode-hover: #554120; }
 .title-primary-modes strong { display: block; font-size: clamp(16px, 2.5vw, 23px); }
 .title-primary-modes span { display: block; color: #e0e4ed; font-size: 11px; line-height: 1.65; letter-spacing: 0; margin-top: 10px; }
 .title-card .title-primary-modes button:focus-visible { outline: 2px solid #fff; outline-offset: 4px; color: #fff; background: linear-gradient(var(--mode-hover), #202433); }
 @media (hover: hover) and (pointer: fine) {
   .title-card .title-primary-modes button:hover { color: #fff; background: linear-gradient(var(--mode-hover), #202433); }
 }
-.title-card .title-primary-modes button:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 var(--mode-shadow); }
+.title-card .title-primary-modes button:active { transform: translateY(1px); }
+.title-card .title-actions { width: min(100%, 460px); grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.title-card .title-actions .secret-boss-button { width: min(100%, 300px); justify-self: center; }
 #matchmakingPanel { padding: 4px 0 16px; }
 #matchmakingPanel h3, #onlinePrivateRooms h3 { margin: 10px 0; font-size: 14px; color: #71caff; }
 #matchmakingPanel p, #onlinePrivateRooms p { font-size: 11px; line-height: 1.6; margin: 10px 0; }
 #matchmakingPanel label { display: block; font-size: 11px; margin: 12px 0 8px; }
-#matchArenaPreference { width: 100%; min-height: 40px; padding: 8px; background: #111421; color: #eee; border: 1px solid #576174; font: inherit; font-size: 12px; }
+.matchmaking-rules { display: inline-block; margin-left: 12px; padding: 4px 6px; font-size: 10px; font-weight: normal; color: #ded3b4; border: 1px solid #66513a; }
+.online-setup #setupMenuButton { align-self: flex-start; margin: 0 0 12px; }
+.online-setup .match-eyebrow { display: none; }
+.online-setup #matchSetupTitle { margin-bottom: 14px; }
+.online-setup #matchSetupHint, .online-setup .match-actions:has(#matchServe[hidden]) { display: none; }
+#onlinePrivateRules { margin: 6px 0 10px; border-top: 0; padding-top: 0; }
+#onlinePrivateRules summary { font-size: 11px; line-height: 1.5; }
+#onlinePrivateRules #matchRules { padding-top: 0; }
+#onlinePrivateRules .match-rule-options button { margin: 0; padding: 6px 8px; font-size: 10px; }
+@media (min-width: 900px) and (min-height: 650px) {
+  .online-setup .royal-selection-row canvas { height: 64px; }
+  .online-setup #matchmakingPanel { padding-bottom: 10px; }
+  .online-setup #matchmakingPanel p, .online-setup #onlinePrivateRooms p { margin: 6px 0; }
+  .online-setup #matchmakingPanel h3, .online-setup #onlinePrivateRooms h3 { margin: 6px 0; }
+  .online-setup #lanStatus { font-size: 12px; margin: 4px 0; }
+}
+.online-match-flow { position: fixed; inset: calc(52px + env(safe-area-inset-top, 0px)) 0 calc(32px + env(safe-area-inset-bottom, 0px)); display: grid; place-items: center; z-index: 39; padding: 12px; box-sizing: border-box; background: #02010455; }
+.online-flow-card { width: min(100%, 450px); text-align: center; padding: 20px; box-sizing: border-box; background: #080b12ed; border: 2px solid #71caff; box-shadow: 0 0 24px #71caff20; }
+#onlineFlowTitle { color: #ffd469; margin: 0 0 14px; font-size: clamp(18px, 4vw, 28px); }
+#onlineFlowNote { font-size: 11px; line-height: 1.7; color: #d5dfeb; }
+.online-flow-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+.online-flow-actions button { min-height: 44px; padding: 10px; font-size: 12px; }
+.online-match-flow[data-phase="go"] { pointer-events: none; background: none; }
+.online-match-flow[data-phase="go"] .online-flow-card { border: 0; background: transparent; box-shadow: none; }
+.online-match-flow[data-phase="countdown"] #onlineFlowTitle, .online-match-flow[data-phase="go"] #onlineFlowTitle { font-size: 56px; }
 #onlinePrivateRooms { border-top: 1px solid #45404a; padding-top: 6px; }
 #onlinePrivateRooms button { margin: 4px 8px 4px 0; }
 #onlineRoomCode { margin-left: 10px; }
@@ -11997,6 +12023,9 @@ function paddleThumbnail(entry) {
 }
 
 function openRoyalGallery(kind, side = 'left') {
+  if (typeof onlineMatchFlowVisible === 'function' && onlineMatchFlowVisible()) return;
+  if (kind === 'arena' && typeof matchmakingRequested !== 'undefined' &&
+      (matchmakingRequested || matchmakingState === 'waiting')) return;
   if (kind === 'arena' && typeof matchmakingLocked === 'function' && matchmakingLocked()) return;
   if (kind === 'arena' && lanRole === 'guest') return;
   if (isLanActive() && !waitingForServe) return;
@@ -12638,6 +12667,7 @@ function resetRoyalLocalSetup() {
 }
 
 function resetRoyalUiForTitle() {
+  if (typeof onlineMatchFlowVisible === 'function' && onlineMatchFlowVisible()) closeLanConnection(false);
   if (typeof stopMatchmaking === 'function') stopMatchmaking();
   if (typeof stopRoyalPowerupSound === 'function') stopRoyalPowerupSound();
   royalOnlineSelected = royalMenuRequested = false;
@@ -12662,6 +12692,7 @@ function royalModeName() {
 }
 
 function royalNeedsSetup() {
+  if (typeof onlineMatchFlowVisible === 'function' && onlineMatchFlowVisible()) return false;
   if (royalOnlineMode() && !lanConnected) return true;
   return customPreviewActive || mode === 2 && waitingForServe && left.score === 0 && right.score === 0 && !gameOver;
 }
@@ -12765,6 +12796,7 @@ function initRoyalUi() {
   setupActions.className = 'match-actions';
   setupActions.append(royalButton('matchServe', 'Start match', royalContinue, 'match-primary'), royalButton(
     'setupMenuButton', 'Menu (M)', () => {
+      if (royalOnlineMode() && onlineTransportSelected) { showTitleScreen(); return; }
       royalMenuRequested = true;
       setMenusVisible(true);
     }));
@@ -12884,6 +12916,7 @@ function initRoyalUi() {
     byId(id).addEventListener('toggle', () => syncRoyalFocus());
   }
   prepareAccessibleMenuControls();
+  initOnlineMatchFlowUi();
   document.body.classList.add('royal-ui-ready');
   updateAudioControls();
   // One listener per page. Rotation only changes presentation, never match or connection state.
@@ -12999,6 +13032,15 @@ function createMatchRulesUi() {
 }
 
 function syncMatchRulesUi() {
+  const online = royalOnlineMode() && onlineTransportSelected;
+  const rules = byId('matchRules');
+  const parent = online ? byId('onlinePrivateRules') : byId('matchSetupBody');
+  if (rules.parentElement !== parent) {
+    if (online) parent.append(rules);
+    else parent.insertBefore(rules, byId('matchSetupHint'));
+  }
+  byId('matchRulesTitle').hidden = online;
+  royalText(byId('onlinePrivateRules').querySelector('summary'), localizeText('Match rules') + ' · ' + localizeText(matchRule().label));
   byId('matchRules').hidden = mode !== 2;
   const fixed = typeof matchmakingLocked === 'function' && matchmakingLocked();
   const guest = lanRole === 'guest' || fixed;
@@ -13034,6 +13076,7 @@ function royalContinue() {
 
 function toggleRoyalMenu() {
   if (bossIntroActive || creditsActive) return;
+  if (onlineMatchFlowBlocksPlay()) { showTitleScreen(); return; }
   const title = document.body.classList.contains('title-active');
   const open = byId('matchMenu') && !byId('matchMenu').hidden;
   royalMenuRequested = !open;
@@ -13065,6 +13108,7 @@ function paintRoyalChoice(button, number, label, entry, kind) {
 
 function syncRoyalUi(force = false) {
   if (!byId('matchSetup')) return;
+  syncOnlineMatchFlowUi();
   const title = document.body.classList.contains('title-active');
   const online = royalOnlineMode();
   const fixedMatch = typeof matchmakingLocked === 'function' && matchmakingLocked();
@@ -13078,13 +13122,21 @@ function syncRoyalUi(force = false) {
     levelCleared, campaignCleared, lanRole, lanConnected, lanLastStatus, matchArenaId, matchPaddles.left, matchPaddles
     .right,
     saveData?.royalPaddle, activeSaveSlot, playInfoVisible, matchRuleId, matchRuleRevision, isBossUnlocked(),
-    touchInputActive, gamepadConnected, joining
+    touchInputActive, gamepadConnected, joining, onlineMatchFlow?.phase
   ].join('|');
   if (!force && signature === royalUiSignature) return;
   royalUiSignature = signature;
   byId('matchSetup').hidden = !setup || menu || Boolean(galleryKind);
   byId('matchMenu').hidden = !menu || Boolean(galleryKind);
   byId('matchBar').hidden = title || menu || creditsActive || bossIntroActive;
+  const onlineSetup = online && onlineTransportSelected;
+  byId('matchSetup').classList.toggle('online-setup', onlineSetup);
+  const back = byId('setupMenuButton');
+  const setupCard = byId('matchSetupTitle').parentElement;
+  if (onlineSetup) {
+    if (back.parentElement !== setupCard) setupCard.prepend(back);
+  } else if (back.parentElement === setupCard) byId('matchServe').parentElement.append(back);
+  royalText(back, onlineSetup ? 'Back' : 'Menu (M)');
   byId('matchBar').classList.toggle('match-bar-paused', desktopPause);
   // Keep the toggle inside the current screen or modal's focus/inert boundary.
   if (menu && !royalLastDialog) royalReturnFocus = document.activeElement;
@@ -13123,9 +13175,13 @@ function syncRoyalUi(force = false) {
   setLocalizedTitle(menuToggle, 'Menu (M)');
   byId('matchConnection').hidden = title || !online;
   const connectionParent = menu ? byId('matchConnection') : byId('matchSetupBody');
-  if (lanPanel.parentElement !== connectionParent) {
-    if (connectionParent.id === 'matchConnection') connectionParent.append(lanPanel);
-    else connectionParent.insertBefore(lanPanel, document.querySelector('.royal-selection-row'));
+  if (menu) {
+    if (lanPanel.parentElement !== connectionParent) connectionParent.append(lanPanel);
+  } else {
+    const choices = document.querySelector('.royal-selection-row');
+    if (onlineSetup) {
+      if (choices.nextElementSibling !== lanPanel) choices.after(lanPanel);
+    } else if (lanPanel.nextElementSibling !== choices) choices.before(lanPanel);
   }
   lanPanel.classList.toggle('hidden', !online);
   lanPanel.hidden = !online;
@@ -13148,7 +13204,7 @@ function syncRoyalUi(force = false) {
   choices.dataset.online = String(online);
   customPanel.classList.toggle('hidden', mode !== 3);
   byId('matchCpuSettings').hidden = title || mode !== 3;
-  const canServe = !online || lanConnected;
+  const canServe = (!online || lanConnected) && !onlineMatchFlowBlocksPlay();
   byId('matchServe').hidden = !canServe;
   byId('matchContinue').hidden = title || setup || menu || !canServe || !(waitingForServe || gameOver || levelCleared ||
     campaignCleared);
@@ -13187,7 +13243,7 @@ function updateRoyalControlHint() {
     'Drag to move' : mode === 2 && !online ? 'P1 W/S · P2 ↑/↓' : 'W/S or ↑/↓: move';
   const action = gamepadConnected ? waitingForServe ? 'A: serve' : 'Start: pause' : touch ? waitingForServe ?
     'Tap: serve' : 'Two fingers: pause' : waitingForServe ? 'Space: serve' : 'P: pause';
-  royalText(controlHint, online && !lanConnected ? 'Menu (M)' : move + ' · ' + action);
+  royalText(controlHint, onlineMatchFlowBlocksPlay() ? '' : online && !lanConnected ? 'Menu (M)' : move + ' · ' + action);
   for (const [id, current] of [
       ['helpKeyboard', !gamepadConnected && !touch],
       ['helpController', gamepadConnected],
@@ -13239,6 +13295,7 @@ function royalActiveDialog() {
   if (galleryKind) return byId('royalGallery');
   for (const id of ['rotateDevice', 'matchMenu', 'matchSetup'])
     if (byId(id) && !byId(id).hidden) return byId(id);
+  if (onlineMatchFlowVisible() && onlineMatchFlow.phase !== 'go') return byId('onlineMatchFlow');
   return null;
 }
 
@@ -13250,7 +13307,7 @@ function royalFocusables(panel) {
 
 function syncRoyalFocus() {
   const dialog = royalActiveDialog();
-  for (const id of ['matchBar', 'matchSetup', 'matchMenu', 'titleScreen']) {
+  for (const id of ['matchBar', 'matchSetup', 'matchMenu', 'titleScreen', 'onlineMatchFlow']) {
     const node = byId(id);
     if (node) node.inert = Boolean(dialog && node !== dialog);
   }
@@ -13287,7 +13344,7 @@ function handleRoyalUiKey(event) {
     } else if (dialog.id === 'matchMenu') setMenusVisible(false);
     else showTitleScreen();
   } else if (!form && event.target.closest?.('.match-ui') && ['Enter', ' '].includes(event.key)) {
-    if (event.target.tagName === 'BUTTON' || event.target.tagName === 'SUMMARY') event.target.click();
+    if (!event.repeat && (event.target.tagName === 'BUTTON' || event.target.tagName === 'SUMMARY')) event.target.click();
   } else if (!form && event.key.toLowerCase() === 'm' && !bossIntroActive && !creditsActive) {
     if (!event.repeat) toggleRoyalMenu();
   } else return false;
@@ -13328,7 +13385,8 @@ function pollRoyalUiGamepad(now) {
     if (panel.id === 'rotateDevice') {
       royalRotateDismissed = true;
       syncRoyalOrientation();
-    } else toggleRoyalMenu();
+    } else if (panel.id === 'matchSetup' && onlineTransportSelected) showTitleScreen();
+    else toggleRoyalMenu();
   }
 }
 

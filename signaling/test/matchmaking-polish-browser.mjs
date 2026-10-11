@@ -133,7 +133,8 @@ try {
     assert.notEqual(await p.locator('.primary-campaign span').innerText(),'Single Player — Battle Computer Opponents');
     await p.locator('.primary-online').click();
     assert.notEqual(await p.locator('#findMatchButton').innerText(),'Find Match');
-    assert.notEqual(await p.locator('#matchArenaPreference option').first().innerText(),'Any Arena');
+    assert.equal(await p.locator('#matchArenaPreference').count(),0);
+    assert.notEqual(await p.locator('.matchmaking-rules').innerText(),'First to 10');
     await p.evaluate(()=>{showTitleScreen();setGameMuteAll(true);});
     await p.locator('#menuToggle').click();await p.locator('#matchSettings summary').click();
     const text=await p.locator('#soundEffectsButton').innerText();

@@ -71,7 +71,10 @@ try {
       const a = await page(nativeHost ? native : 'docs/demo/');
       const b = await page(nativeHost ? 'docs/demo/' : native);
       for (const p of [a,b]) await p.evaluate(()=>{matchRuleId='quick';});
-      await a.locator('#matchArenaPreference').selectOption('2');
+      for (const p of [a,b]) {
+        await p.locator('#chooseArenaButton').click();
+        await p.locator('[data-choice-id="2"]').click();
+      }
       await a.locator('#findMatchButton').click();
       await until(watcher,()=>matchmakingWaiting===1);
       await b.locator('#findMatchButton').click();
@@ -82,6 +85,9 @@ try {
       assert.deepEqual(await Promise.all([a,b].map(p=>p.evaluate(()=>[lanRole,matchArenaId,matchRuleId]))),
         [['host',2,'classic'],['guest',2,'classic']]);
       for (const p of [a,b]) {
+        assert.equal(await p.locator('#matchSetup').isVisible(),false,'assigned players see the arena');
+        assert.equal(await p.locator('#onlineMatchFlow').isVisible(),true);
+        assert.equal(await p.evaluate(()=>waitingForServe && paused && onlineGameBlocked),true);
         assert.equal(await p.locator('#chooseArenaButton').isVisible(),false);
         assert.equal(await p.locator('.match-rule-options').isVisible(),false);
         assert.equal(await p.evaluate(()=>setMatchRule('endless')),false);
@@ -92,7 +98,11 @@ try {
       if (!signalingOnly) {
         await Promise.all([a,b].map(p=>until(p,()=>lanConnected && (lanRole==='host'||onlineHasState))));
         for (const p of [a,b]) assert.equal(await p.locator('#cancelSearchButton').isVisible(),false);
-        await a.evaluate(()=>{gameWindowFocused=true;waitingForServe=false;paused=false;sendLanState(true);});
+        await Promise.all([a,b].map(p=>until(p,()=>onlineMatchFlow?.phase==='ready')));
+        await a.locator('#onlineReadyButton').click();
+        assert.equal(await a.evaluate(()=>waitingForServe),true);
+        await b.locator('#onlineReadyButton').click();
+        await until(a,()=>!waitingForServe && !paused);
         await until(b,()=>!waitingForServe && !paused);
         await b.evaluate(()=>{gameWindowFocused=true;keys.add('ArrowDown');});
         await until(a,()=>onlineAppliedInputSeq>0);
@@ -101,12 +111,14 @@ try {
       if (nativeHost && native.startsWith('windows')) {
         await b.evaluate(()=>validMatchmakingState({type:'rules',rules:{id:'endless'}}));
         await until(a,()=>onlineSession===null);
-        assert.match(await b.locator('#lanStatus').innerText(),/latest game/);
+        assert.match(await b.locator('#onlineFlowNote').innerText(),/latest game/);
       } else {
         await a.evaluate(()=>cancelMatchSearch());
         await until(b,()=>onlineSession===null);
       }
       for (const p of [a,b]) assert.equal(await p.evaluate(()=>matchRuleId),'quick','private preset restored');
+      assert.equal(await b.locator('#onlineRetryButton').isVisible(),true);
+      await b.locator('#onlineFlowBack').click();
       assert.equal(await b.locator('#findMatchButton').isVisible(),true);
       await a.close();await b.close();
       console.log(`PASS: ${native} as ${nativeHost?'host':'guest'} shares browser queue, locked settings, real SDP and failure recovery${signalingOnly?'':' plus connected RTC data channels'}`);

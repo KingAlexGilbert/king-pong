@@ -70,6 +70,8 @@ jobs:
         run: npm run test:browser
       - name: Test automatic cross-build matchmaking with real WebRTC
         run: npm run test:matchmaking
+      - name: Test online menu and synchronized ready flow with controlled channels
+        run: npm run test:online-flow
       - name: Test new title tiles, approved icons and effective audio controls
         run: npm run test:powerup-ui
       - name: Test gameplay, selections, saves and touch layouts in every HTML build

@@ -953,6 +953,9 @@ function paddleThumbnail(entry) {
 }
 
 function openRoyalGallery(kind, side = 'left') {
+  if (typeof onlineMatchFlowVisible === 'function' && onlineMatchFlowVisible()) return;
+  if (kind === 'arena' && typeof matchmakingRequested !== 'undefined' &&
+      (matchmakingRequested || matchmakingState === 'waiting')) return;
   if (kind === 'arena' && typeof matchmakingLocked === 'function' && matchmakingLocked()) return;
   if (kind === 'arena' && lanRole === 'guest') return;
   if (isLanActive() && !waitingForServe) return;

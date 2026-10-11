@@ -340,6 +340,7 @@ try {
     await active(p, ['twoPlayerModeButton']);
     await p.evaluate(() => startLanTwoPlayerSetup(false));
     await p.locator('#setupMenuButton').click();
+    if (await p.evaluate(() => document.body.classList.contains('title-active'))) await p.locator('#menuToggle').click();
     await p.locator('#matchModes summary').click();
     await p.locator('button[data-campaign="1"]').click();
     await active(p, ['campaign-1']);
@@ -579,10 +580,12 @@ try {
     });
     for (const packet of packets) await guest.evaluate(packet => handleLanMessage(packet), packet);
   };
+  await host.locator('#onlinePrivateRules summary').click();
   await host.locator('#matchRule-winTwo').click();
   await deliver();
   assert.equal(await guest.evaluate(() => matchRuleId), 'winTwo');
   assert.equal(await guest.locator('.match-rule-options').isVisible(), false);
+  await guest.locator('#onlinePrivateRules summary').click();
   assert.match(await guest.locator('#matchRulesSummary').innerText(), /Win by Two/);
   assert.equal(await guest.evaluate(() => setMatchRule('quick')), false);
   const hostState = await host.evaluate(() => JSON.stringify([matchRulePayload(), left, right, ball, royalPickup]));
@@ -938,6 +941,7 @@ try {
     assert.notEqual(await translated.locator('#matchSetupHint').innerText(),
       'Create a room or join a friend with their room code.');
     await translated.locator('#setupMenuButton').tap();
+    await translated.locator('#menuToggle').tap();
     await translated.locator('#matchSettings summary').tap();
     await bounds(translated, '#matchMenu .match-card');
     await snap(translated, locale + '-audio');
@@ -967,7 +971,7 @@ try {
   await touchOnline.locator('.primary-online').tap();
   assert.equal(await touchOnline.locator('#lanPanel').isVisible(), true, 'touch still enters online setup');
   await touchOnline.locator('#setupMenuButton').tap();
-  await touchOnline.locator('#titleJumpButton').tap();
+  assert.equal(await touchOnline.evaluate(() => document.body.classList.contains('title-active')), true);
   assert.deepEqual(await onlineStyle(touchOnline), touchRest, 'returning after a tap does not leave a stuck highlight');
   await touchOnline.context().close();
   pass('Play Online touch activation has no sticky desktop hover');

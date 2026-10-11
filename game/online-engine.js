@@ -4,7 +4,7 @@ function onlineLanSend(payload) {
   /* ROYAL POLISH */
   payload.matchRules = "presets";
   /* END ROYAL POLISH */
-  const channel = (payload.type === "action" || payload.type === "selection" || payload.type === "rules") ?
+  const channel = (payload.type === "action" || payload.type === "selection" || payload.type === "rules" || payload.type === "match-setup") ?
     onlineControlChannel : lanChannel;
   if (!channel || channel.readyState !== "open") return false;
   try {
