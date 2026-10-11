@@ -4,7 +4,7 @@
 
 <h1 align="center">King Pong</h1>
 
-King Pong is a retro arcade Pong game featuring an 18-level campaign, custom games, local, LAN, and browser online multiplayer, progressive paddle shapes, save slots, multiple languages, and a secret ending.
+King Pong is a retro arcade Pong game featuring an 18-level campaign, custom games, local, LAN, and cross-platform online multiplayer, progressive paddle shapes, save slots, multiple languages, and a secret ending.
 
 Play directly in your browser or download King Pong for Windows, Linux, and Android.
 
@@ -17,6 +17,10 @@ Made by: King Alex Gilbert
 ## Play King Pong
 
 King Pong can now be played directly in your web browser with no installation required!
+
+Choose **Play Online** to find another player automatically, or create/join a private room with a room code. Browser, Android, Windows, and Linux players use the same queue. Choose **Campaign** for single-player games against the computer.
+
+Find Match shows whether someone is waiting. Pick **Any Arena** or an arena preference, then leave the search open or cancel at any time. Automatic matches use Classic rules (first to 10); private rooms keep their custom settings. See [matchmaking and signaling](signaling/README.md) for arena selection and server setup.
 
 ### Browser Version
 
@@ -203,7 +207,7 @@ The primary shared game source is located in:
 
 Make shared gameplay, rendering, audio, and UI changes here. Run `node tools/sync-gameplay.mjs` from the repository root to copy them into the Android, Windows, Linux, and browser HTML files. Do not edit the embedded shared blocks directly; synchronization replaces them.
 
-The platform HTML files still contain the legacy engine and platform-specific code outside those shared blocks. `game/polish-integration.mjs` owns their shared polish hooks and the synchronized `simulateHazardStep` and `drawBackground` functions. Other changes there must be applied to each affected platform. Keep `windows/webview-2/index.html` and `Linux/assets/index.html` byte-identical.
+The platform HTML files still contain the legacy engine and platform-specific code outside those shared blocks. `game/serve-integration.mjs` owns the regular serve acceleration. `game/polish-integration.mjs` owns their shared polish hooks and the synchronized `simulateHazardStep` and `drawBackground` functions. Other changes there must be applied to each affected platform. Keep `windows/webview-2/index.html` and `Linux/assets/index.html` byte-identical.
 
 The Android application and packaging files are in `android/`. Its game HTML is located at:
 

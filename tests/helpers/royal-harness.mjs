@@ -1,4 +1,5 @@
 import vm from 'node:vm';
+import {iconSources} from '../../tools/sync-online.mjs';
 import {
   readFileSync
 } from 'node:fs';
@@ -35,6 +36,7 @@ export function harness(platform = 'Browser') {
   ].map(n => constantSource(html, n)).join('\n');
   const context = vm.createContext({
     console,
+    Image: class { constructor(width, height) { this.width = width; this.height = height; this.complete = true; this.naturalWidth = width; } },
     performance: {
       now: () => 1000
     },
@@ -84,6 +86,7 @@ export function harness(platform = 'Browser') {
     function applyLanHostState(message){applied.push(message.seq)}
     function serveOrContinue(){} function togglePause(){} function retryLevel(){}
     ${core.filter(n=>html.includes('function '+n+'(')).map(n=>functionSource(html,n)).join('\n')}
+    ${iconSources()}
     ${definitions}
     ${shared}
   `);

@@ -35,13 +35,14 @@ const server = createServer(async (request, response) => {
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 const origin = `http://127.0.0.1:${server.address().port}`;
 const mf = new Miniflare(convertV4MiniflareOptions({
-  modules: ['./worker-fixture.mjs', '../src/worker.js', '../src/metered-turn.js'].map(path => ({
+  modules: ['./worker-fixture.mjs', '../src/worker.js', '../src/metered-turn.js', '../src/matchmaking.js', '../src/matchmaking-contract.js', '../src/native-bridge.js'].map(path => ({
     type: 'ESModule',
     path: fileURLToPath(new URL(path, import.meta.url))
   })),
   modulesRoot: fileURLToPath(new URL('../', import.meta.url)),
   compatibilityDate: '2025-09-06',
   durableObjects: {
+    MATCHMAKING: {className: 'MatchmakingQueue', useSQLite: true},
     ROOMS: {
       className: 'PongRoom',
       useSQLite: true

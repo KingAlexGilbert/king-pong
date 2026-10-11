@@ -3,6 +3,7 @@ const gameAudioBuses = new WeakMap();
 const activeGameSounds = new Set();
 let gameAudioEpoch = 0;
 let gameImpactVoice = null;
+let royalPowerupVoice = null;
 
 // Impacts share one short voice. Two balls (or a corner contact) must not add
 // square waves together; leave score jingles, music and menu cues independent.
@@ -92,6 +93,7 @@ function trackGameSound(oscillator, gain) {
 function stopGameSounds() {
   gameAudioEpoch++; // Delayed score jingles from the old audio/slot state must not start later.
   gameImpactVoice = null;
+  royalPowerupVoice = null;
   for (const oscillator of activeGameSounds) {
     try {
       oscillator.stop();
@@ -109,7 +111,7 @@ function setGameMuteAll(muted) {
 }
 
 function setSoundEffectsEnabled(enabled) {
-  if (!saveData) return;
+  if (!saveData || saveData.muteAll) return;
   saveData.soundEffectsEnabled = Boolean(enabled);
   stopGameSounds();
   updateGameAudioGains();
@@ -118,15 +120,59 @@ function setSoundEffectsEnabled(enabled) {
 }
 
 function updateAudioControls() {
+  const muted = saveData?.muteAll === true;
   for (const [id, enabled] of [
-      ['muteAllButton', saveData?.muteAll === true],
+      ['muteAllButton', muted],
+      ['musicButton', musicEnabled],
       ['soundEffectsButton', saveData?.soundEffectsEnabled !== false]
     ]) {
     const button = document.getElementById(id);
     if (!button) continue;
-    button.setAttribute('aria-pressed', String(enabled));
-    setLocalizedText(button, enabled ? 'ON' : 'OFF');
+    const suppressed = muted && id !== 'muteAllButton';
+    button.disabled = suppressed;
+    button.setAttribute('aria-pressed', String(enabled && !suppressed));
+    setLocalizedText(button, suppressed ? 'Muted by Mute All' : enabled ? 'ON' : 'OFF');
+    setLocalizedTitle(button, suppressed ? 'Muted by Mute All' : enabled ? 'ON' : 'OFF');
   }
   const musicState = document.getElementById('audioMusicState');
-  if (musicState) setLocalizedText(musicState, musicEnabled ? 'ON' : 'OFF');
+  if (musicState) setLocalizedText(musicState, muted ? 'Muted by Mute All' : musicEnabled ? 'ON' : 'OFF');
+}
+
+function playRoyalPowerupSound(kind) {
+  // Never resume suspended audio or retain a cue for a later user gesture.
+  if (!gameAudioEnabled('sfx') || document.hidden || !audioCtx || audioCtx.state !== 'running') return;
+  try {
+    const context = audioCtx, now = context.currentTime;
+    const old = royalPowerupVoice;
+    if (old && old.context === context && now < old.end) {
+      if (kind === 'spawn') return;
+      const level = old.peak * Math.max(0, Math.min(1, (now - old.start) / 0.004, (old.end - now) / 0.04));
+      old.gain.gain.cancelScheduledValues(now);
+      old.gain.gain.setValueAtTime(level, now);
+      old.gain.gain.linearRampToValueAtTime(0, now + 0.004);
+      old.oscillator.stop(now + 0.004);
+    }
+    const oscillator = context.createOscillator(), gain = context.createGain();
+    const pickup = kind === 'pickup', duration = pickup ? 0.19 : 0.13, peak = pickup ? 0.035 : 0.025;
+    oscillator.type = 'triangle';
+    oscillator.frequency.setValueAtTime(pickup ? 660 : 440, now);
+    oscillator.frequency.setValueAtTime(pickup ? 880 : 587.33, now + 0.065);
+    if (pickup) oscillator.frequency.setValueAtTime(1108.73, now + 0.12);
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(peak, now + 0.004);
+    gain.gain.setValueAtTime(peak, now + duration - 0.04);
+    gain.gain.linearRampToValueAtTime(0, now + duration);
+    oscillator.connect(gain);
+    connectGameAudio(gain, context, 'sfx');
+    trackGameSound(oscillator, gain);
+    royalPowerupVoice = {context, oscillator, gain, start: now, end: now + duration, peak};
+    oscillator.start(now);
+    oscillator.stop(now + duration);
+  } catch { /* Audio must never block gameplay. */ }
+}
+
+function stopRoyalPowerupSound() {
+  if (!royalPowerupVoice) return;
+  try { royalPowerupVoice.oscillator.stop(); } catch {}
+  royalPowerupVoice = null;
 }

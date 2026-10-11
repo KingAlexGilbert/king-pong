@@ -1561,40 +1561,6 @@ textarea:focus-visible {
   text-wrap: balance;
 }
 
-.title-card .primary-online {
-  box-sizing: border-box;
-  width: min(100%, 620px);
-  margin: 0 auto 22px;
-  padding: 18px 16px;
-  min-height: 60px;
-  background: linear-gradient(#251e0f, #141006);
-  border: 2px solid #ffd469;
-  color: #ffe3a0;
-  font-size: clamp(20px, 4vw, 28px);
-  letter-spacing: .14em;
-  box-shadow: 0 0 20px #ffd46924;
-  animation: royalGoldPulse 4s ease-in-out infinite;
-}
-
-.title-card .primary-online:focus-visible:not(:disabled),
-.title-card .primary-online:active:not(:disabled) {
-  color: #fff4d1;
-  border-color: #fff0b3;
-  background: linear-gradient(#4a3715, #2c200b);
-  box-shadow: inset 0 0 0 2px #a57a32, 0 0 18px #ffd46955;
-  animation: none;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .title-card .primary-online:hover:not(:disabled) {
-    color: #fff4d1;
-    border-color: #fff0b3;
-    background: linear-gradient(#4a3715, #2c200b);
-    box-shadow: inset 0 0 0 2px #a57a32, 0 0 18px #ffd46955;
-    animation: none;
-  }
-}
-
 @keyframes royalGoldPulse {
 
   0%,
@@ -2313,11 +2279,7 @@ body.royal-panel-open .match-footer #controlHint {
     margin-bottom: 14px;
   }
 
-  .title-card .primary-online {
-    min-height: 48px;
-    margin-bottom: 12px;
-    padding: 10px;
-  }
+
 
   .title-actions button {
     min-height: 44px;
@@ -2698,6 +2660,50 @@ body.royal-panel-open .match-footer #controlHint {
   scrollbar-color: #8c7144 #050406;
   scrollbar-width: thin;
 }
+
+/* Equal primary modes, with distinct arcade colors and one accessible button each. */
+.title-primary-modes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin: 16px 0 20px;
+}
+.title-card .title-primary-modes button {
+  width: 100%;
+  min-height: 112px;
+  padding: 15px 12px;
+  margin: 0;
+  letter-spacing: 1px;
+  background: linear-gradient(var(--mode-fill), #111421);
+  animation: none;
+  border: 2px solid var(--mode-color);
+  color: var(--mode-color);
+  box-shadow: 4px 4px 0 var(--mode-shadow);
+  transition: background-color 100ms, transform 100ms, box-shadow 100ms;
+}
+.title-primary-modes .primary-online { --mode-color: #71caff; --mode-shadow: #244564; --mode-fill: #142638; --mode-hover: #244564; }
+.title-primary-modes .primary-campaign { --mode-color: #ffd469; --mode-shadow: #745323; --mode-fill: #2d2515; --mode-hover: #554120; }
+.title-primary-modes strong { display: block; font-size: clamp(16px, 2.5vw, 23px); }
+.title-primary-modes span { display: block; color: #e0e4ed; font-size: 11px; line-height: 1.65; letter-spacing: 0; margin-top: 10px; }
+.title-card .title-primary-modes button:focus-visible { outline: 2px solid #fff; outline-offset: 4px; color: #fff; background: linear-gradient(var(--mode-hover), #202433); }
+@media (hover: hover) and (pointer: fine) {
+  .title-card .title-primary-modes button:hover { color: #fff; background: linear-gradient(var(--mode-hover), #202433); }
+}
+.title-card .title-primary-modes button:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 var(--mode-shadow); }
+#matchmakingPanel { padding: 4px 0 16px; }
+#matchmakingPanel h3, #onlinePrivateRooms h3 { margin: 10px 0; font-size: 14px; color: #71caff; }
+#matchmakingPanel p, #onlinePrivateRooms p { font-size: 11px; line-height: 1.6; margin: 10px 0; }
+#matchmakingPanel label { display: block; font-size: 11px; margin: 12px 0 8px; }
+#matchArenaPreference { width: 100%; min-height: 40px; padding: 8px; background: #111421; color: #eee; border: 1px solid #576174; font: inherit; font-size: 12px; }
+#onlinePrivateRooms { border-top: 1px solid #45404a; padding-top: 6px; }
+#onlinePrivateRooms button { margin: 4px 8px 4px 0; }
+#onlineRoomCode { margin-left: 10px; }
+.audio-row button:disabled { opacity: .65; background: #15151d; color: #b4b4c2; border-color: #555; box-shadow: none; }
+@media (max-width: 520px) and (orientation: portrait) {
+  .title-primary-modes { grid-template-columns: 1fr; grid-auto-rows: 1fr; gap: 10px; }
+  .title-card .title-primary-modes button { min-height: 86px; }
+  .title-primary-modes span { margin-top: 5px; }
+}
 </style>
 </head>
 
@@ -2772,6 +2778,1536 @@ body.royal-panel-open .match-footer #controlHint {
       </div>
     </section>
   </div>
+  <script id="online-support">
+// Set this to the HTTPS workers.dev URL printed by `npm run deploy` in signaling/.
+// This public URL is the only server configuration shipped to the browser.
+window.KING_PONG_SIGNALING_URL = 'https://king-pong-signaling.kingalexgilbert.workers.dev';
+// Added to the existing localization tables before their lookup cache is built.
+window.KING_PONG_ONLINE_TRANSLATIONS = {
+  "es": {
+    "Online Multiplayer": "Multijugador en línea",
+    "Create Room": "Crear sala",
+    "Join Room": "Unirse a sala",
+    "Enter Room Code": "Introduce el código",
+    "Join": "Unirse",
+    "Room Code": "Código de sala",
+    "Choose Create Room or Join Room.": "Elige Crear sala o Unirse a sala.",
+    "Waiting for Player 2...": "Esperando al jugador 2...",
+    "Connecting...": "Conectando...",
+    "Connected!": "¡Conectado!",
+    "Direct connection unavailable. Trying relay...": "Sin conexión directa. Probando un servidor de retransmisión...",
+    "Connection interrupted. Reconnecting...": "Conexión interrumpida. Reconectando...",
+    "Enter a valid five-character room code.": "Introduce un código válido de cinco caracteres.",
+    "Room not found. Check the code or ask for a new room.": "Sala no encontrada. Comprueba el código o pide otra sala.",
+    "Room already full. Ask for a new room.": "La sala está llena. Pide otra sala.",
+    "Connection timed out. Please create or join a new room.": "La conexión tardó demasiado. Crea otra sala o únete a una nueva.",
+    "Relay connection unavailable. Please try again later.": "La retransmisión no está disponible. Inténtalo más tarde.",
+    "Host disconnected. Join a new room to play again.": "El anfitrión se desconectó. Únete a otra sala para jugar.",
+    "Player 2 disconnected. Create a new room to play again.": "El jugador 2 se desconectó. Crea otra sala para jugar.",
+    "Room expired. Please create or join a new room.": "La sala caducó. Crea otra sala o únete a una nueva.",
+    "Too many attempts. Please wait a minute and try again.": "Demasiados intentos. Espera un minuto y vuelve a intentarlo.",
+    "Could not connect the players. Please try a new room.": "No se pudo conectar a los jugadores. Prueba otra sala.",
+    "Connection lost. Please create or join a new room.": "Se perdió la conexión. Crea otra sala o únete a una nueva.",
+    "Online multiplayer is unavailable. Please try again later.": "El multijugador en línea no está disponible. Inténtalo más tarde.",
+    "This browser cannot play online. Try an updated browser.": "Este navegador no permite jugar en línea. Prueba uno actualizado.",
+    "Choose a save slot, then choose a game mode.": "Elige una ranura de guardado y un modo de juego.",
+    "Online Multiplayer: W/S or Arrow keys move your paddle - Space: serve/continue - P: pause - R: retry - M: menus": "En línea: W/S o flechas para moverte - Espacio: sacar/continuar - P: pausa - R: reiniciar - M: menús"
+  },
+  "fr": {
+    "Online Multiplayer": "Multijoueur en ligne",
+    "Create Room": "Créer une salle",
+    "Join Room": "Rejoindre une salle",
+    "Enter Room Code": "Saisir le code",
+    "Join": "Rejoindre",
+    "Room Code": "Code de salle",
+    "Choose Create Room or Join Room.": "Choisissez Créer ou Rejoindre une salle.",
+    "Waiting for Player 2...": "En attente du joueur 2...",
+    "Connecting...": "Connexion...",
+    "Connected!": "Connecté !",
+    "Direct connection unavailable. Trying relay...": "Connexion directe indisponible. Essai via relais...",
+    "Connection interrupted. Reconnecting...": "Connexion interrompue. Reconnexion...",
+    "Enter a valid five-character room code.": "Saisissez un code valide de cinq caractères.",
+    "Room not found. Check the code or ask for a new room.": "Salle introuvable. Vérifiez le code ou demandez une nouvelle salle.",
+    "Room already full. Ask for a new room.": "Salle complète. Demandez une nouvelle salle.",
+    "Connection timed out. Please create or join a new room.": "Délai de connexion dépassé. Créez ou rejoignez une nouvelle salle.",
+    "Relay connection unavailable. Please try again later.": "Relais indisponible. Réessayez plus tard.",
+    "Host disconnected. Join a new room to play again.": "Hôte déconnecté. Rejoignez une nouvelle salle pour rejouer.",
+    "Player 2 disconnected. Create a new room to play again.": "Joueur 2 déconnecté. Créez une nouvelle salle pour rejouer.",
+    "Room expired. Please create or join a new room.": "Salle expirée. Créez ou rejoignez une nouvelle salle.",
+    "Too many attempts. Please wait a minute and try again.": "Trop de tentatives. Attendez une minute et réessayez.",
+    "Could not connect the players. Please try a new room.": "Impossible de connecter les joueurs. Essayez une nouvelle salle.",
+    "Connection lost. Please create or join a new room.": "Connexion perdue. Créez ou rejoignez une nouvelle salle.",
+    "Online multiplayer is unavailable. Please try again later.": "Multijoueur en ligne indisponible. Réessayez plus tard.",
+    "This browser cannot play online. Try an updated browser.": "Ce navigateur ne permet pas le jeu en ligne. Essayez un navigateur à jour.",
+    "Choose a save slot, then choose a game mode.": "Choisissez un emplacement de sauvegarde, puis un mode de jeu.",
+    "Online Multiplayer: W/S or Arrow keys move your paddle - Space: serve/continue - P: pause - R: retry - M: menus": "En ligne : W/S ou flèches pour bouger - Espace : servir/continuer - P : pause - R : recommencer - M : menus"
+  },
+  "de": {
+    "Online Multiplayer": "Online-Mehrspieler",
+    "Create Room": "Raum erstellen",
+    "Join Room": "Raum beitreten",
+    "Enter Room Code": "Raumcode eingeben",
+    "Join": "Beitreten",
+    "Room Code": "Raumcode",
+    "Choose Create Room or Join Room.": "Raum erstellen oder beitreten wählen.",
+    "Waiting for Player 2...": "Warte auf Spieler 2...",
+    "Connecting...": "Verbindung wird hergestellt...",
+    "Connected!": "Verbunden!",
+    "Direct connection unavailable. Trying relay...": "Direktverbindung nicht möglich. Versuche Relay...",
+    "Connection interrupted. Reconnecting...": "Verbindung unterbrochen. Wiederverbinden...",
+    "Enter a valid five-character room code.": "Gültigen fünfstelligen Raumcode eingeben.",
+    "Room not found. Check the code or ask for a new room.": "Raum nicht gefunden. Code prüfen oder neuen Raum anfordern.",
+    "Room already full. Ask for a new room.": "Raum ist voll. Neuen Raum anfordern.",
+    "Connection timed out. Please create or join a new room.": "Zeitüberschreitung. Neuen Raum erstellen oder beitreten.",
+    "Relay connection unavailable. Please try again later.": "Relay nicht verfügbar. Später erneut versuchen.",
+    "Host disconnected. Join a new room to play again.": "Host getrennt. Zum Weiterspielen einem neuen Raum beitreten.",
+    "Player 2 disconnected. Create a new room to play again.": "Spieler 2 getrennt. Zum Weiterspielen einen neuen Raum erstellen.",
+    "Room expired. Please create or join a new room.": "Raum abgelaufen. Neuen Raum erstellen oder beitreten.",
+    "Too many attempts. Please wait a minute and try again.": "Zu viele Versuche. Eine Minute warten und erneut versuchen.",
+    "Could not connect the players. Please try a new room.": "Spieler konnten nicht verbunden werden. Neuen Raum versuchen.",
+    "Connection lost. Please create or join a new room.": "Verbindung verloren. Neuen Raum erstellen oder beitreten.",
+    "Online multiplayer is unavailable. Please try again later.": "Online-Mehrspieler nicht verfügbar. Später erneut versuchen.",
+    "This browser cannot play online. Try an updated browser.": "Dieser Browser unterstützt kein Online-Spiel. Aktualisierten Browser versuchen.",
+    "Choose a save slot, then choose a game mode.": "Speicherplatz und dann Spielmodus wählen.",
+    "Online Multiplayer: W/S or Arrow keys move your paddle - Space: serve/continue - P: pause - R: retry - M: menus": "Online: W/S oder Pfeile bewegen - Leertaste: Aufschlag/weiter - P: Pause - R: Neustart - M: Menüs"
+  },
+  "pt": {
+    "Online Multiplayer": "Multijogador online",
+    "Create Room": "Criar sala",
+    "Join Room": "Entrar na sala",
+    "Enter Room Code": "Digite o código",
+    "Join": "Entrar",
+    "Room Code": "Código da sala",
+    "Choose Create Room or Join Room.": "Escolha Criar sala ou Entrar na sala.",
+    "Waiting for Player 2...": "Aguardando jogador 2...",
+    "Connecting...": "Conectando...",
+    "Connected!": "Conectado!",
+    "Direct connection unavailable. Trying relay...": "Conexão direta indisponível. Tentando retransmissão...",
+    "Connection interrupted. Reconnecting...": "Conexão interrompida. Reconectando...",
+    "Enter a valid five-character room code.": "Digite um código válido de cinco caracteres.",
+    "Room not found. Check the code or ask for a new room.": "Sala não encontrada. Confira o código ou peça outra sala.",
+    "Room already full. Ask for a new room.": "Sala cheia. Peça uma nova sala.",
+    "Connection timed out. Please create or join a new room.": "A conexão expirou. Crie ou entre em uma nova sala.",
+    "Relay connection unavailable. Please try again later.": "Retransmissão indisponível. Tente novamente mais tarde.",
+    "Host disconnected. Join a new room to play again.": "O anfitrião desconectou. Entre em outra sala para jogar.",
+    "Player 2 disconnected. Create a new room to play again.": "O jogador 2 desconectou. Crie outra sala para jogar.",
+    "Room expired. Please create or join a new room.": "A sala expirou. Crie ou entre em uma nova sala.",
+    "Too many attempts. Please wait a minute and try again.": "Muitas tentativas. Aguarde um minuto e tente novamente.",
+    "Could not connect the players. Please try a new room.": "Não foi possível conectar os jogadores. Tente outra sala.",
+    "Connection lost. Please create or join a new room.": "Conexão perdida. Crie ou entre em uma nova sala.",
+    "Online multiplayer is unavailable. Please try again later.": "Multijogador online indisponível. Tente novamente mais tarde.",
+    "This browser cannot play online. Try an updated browser.": "Este navegador não permite jogar online. Tente um navegador atualizado.",
+    "Choose a save slot, then choose a game mode.": "Escolha um slot de salvamento e um modo de jogo.",
+    "Online Multiplayer: W/S or Arrow keys move your paddle - Space: serve/continue - P: pause - R: retry - M: menus": "Online: W/S ou setas movem a raquete - Espaço: sacar/continuar - P: pausa - R: reiniciar - M: menus"
+  },
+  "it": {
+    "Online Multiplayer": "Multigiocatore online",
+    "Create Room": "Crea stanza",
+    "Join Room": "Entra nella stanza",
+    "Enter Room Code": "Inserisci il codice",
+    "Join": "Entra",
+    "Room Code": "Codice stanza",
+    "Choose Create Room or Join Room.": "Scegli Crea stanza o Entra nella stanza.",
+    "Waiting for Player 2...": "In attesa del giocatore 2...",
+    "Connecting...": "Connessione...",
+    "Connected!": "Connesso!",
+    "Direct connection unavailable. Trying relay...": "Connessione diretta non disponibile. Provo tramite relay...",
+    "Connection interrupted. Reconnecting...": "Connessione interrotta. Riconnessione...",
+    "Enter a valid five-character room code.": "Inserisci un codice valido di cinque caratteri.",
+    "Room not found. Check the code or ask for a new room.": "Stanza non trovata. Controlla il codice o chiedi una nuova stanza.",
+    "Room already full. Ask for a new room.": "Stanza piena. Chiedi una nuova stanza.",
+    "Connection timed out. Please create or join a new room.": "Connessione scaduta. Crea o entra in una nuova stanza.",
+    "Relay connection unavailable. Please try again later.": "Relay non disponibile. Riprova più tardi.",
+    "Host disconnected. Join a new room to play again.": "Host disconnesso. Entra in una nuova stanza per rigiocare.",
+    "Player 2 disconnected. Create a new room to play again.": "Giocatore 2 disconnesso. Crea una nuova stanza per rigiocare.",
+    "Room expired. Please create or join a new room.": "Stanza scaduta. Crea o entra in una nuova stanza.",
+    "Too many attempts. Please wait a minute and try again.": "Troppi tentativi. Attendi un minuto e riprova.",
+    "Could not connect the players. Please try a new room.": "Impossibile collegare i giocatori. Prova una nuova stanza.",
+    "Connection lost. Please create or join a new room.": "Connessione persa. Crea o entra in una nuova stanza.",
+    "Online multiplayer is unavailable. Please try again later.": "Multigiocatore online non disponibile. Riprova più tardi.",
+    "This browser cannot play online. Try an updated browser.": "Questo browser non supporta il gioco online. Prova un browser aggiornato.",
+    "Choose a save slot, then choose a game mode.": "Scegli uno slot di salvataggio e una modalità di gioco.",
+    "Online Multiplayer: W/S or Arrow keys move your paddle - Space: serve/continue - P: pause - R: retry - M: menus": "Online: W/S o frecce per muoverti - Spazio: servizio/continua - P: pausa - R: riprova - M: menu"
+  },
+  "nl": {
+    "Online Multiplayer": "Online multiplayer",
+    "Create Room": "Kamer maken",
+    "Join Room": "Deelnemen",
+    "Enter Room Code": "Voer de kamercode in",
+    "Join": "Deelnemen",
+    "Room Code": "Kamercode",
+    "Choose Create Room or Join Room.": "Kies Kamer maken of Deelnemen.",
+    "Waiting for Player 2...": "Wachten op speler 2...",
+    "Connecting...": "Verbinden...",
+    "Connected!": "Verbonden!",
+    "Direct connection unavailable. Trying relay...": "Directe verbinding niet mogelijk. Relay proberen...",
+    "Connection interrupted. Reconnecting...": "Verbinding onderbroken. Opnieuw verbinden...",
+    "Enter a valid five-character room code.": "Voer een geldige code van vijf tekens in.",
+    "Room not found. Check the code or ask for a new room.": "Kamer niet gevonden. Controleer de code of vraag om een nieuwe kamer.",
+    "Room already full. Ask for a new room.": "Kamer is vol. Vraag om een nieuwe kamer.",
+    "Connection timed out. Please create or join a new room.": "Verbinding duurde te lang. Maak een nieuwe kamer of neem deel.",
+    "Relay connection unavailable. Please try again later.": "Relay niet beschikbaar. Probeer het later opnieuw.",
+    "Host disconnected. Join a new room to play again.": "Host heeft de verbinding verbroken. Neem deel aan een nieuwe kamer.",
+    "Player 2 disconnected. Create a new room to play again.": "Speler 2 heeft de verbinding verbroken. Maak een nieuwe kamer.",
+    "Room expired. Please create or join a new room.": "Kamer verlopen. Maak een nieuwe kamer of neem deel.",
+    "Too many attempts. Please wait a minute and try again.": "Te veel pogingen. Wacht een minuut en probeer opnieuw.",
+    "Could not connect the players. Please try a new room.": "Spelers konden niet verbinden. Probeer een nieuwe kamer.",
+    "Connection lost. Please create or join a new room.": "Verbinding verloren. Maak een nieuwe kamer of neem deel.",
+    "Online multiplayer is unavailable. Please try again later.": "Online multiplayer is niet beschikbaar. Probeer het later opnieuw.",
+    "This browser cannot play online. Try an updated browser.": "Deze browser kan niet online spelen. Probeer een bijgewerkte browser.",
+    "Choose a save slot, then choose a game mode.": "Kies een opslagvak en vervolgens een spelmodus.",
+    "Online Multiplayer: W/S or Arrow keys move your paddle - Space: serve/continue - P: pause - R: retry - M: menus": "Online: W/S of pijlen bewegen - Spatie: serveren/doorgaan - P: pauze - R: opnieuw - M: menu's"
+  },
+  "ja": {
+    "Online Multiplayer": "オンライン対戦",
+    "Create Room": "ルームを作成",
+    "Join Room": "ルームに参加",
+    "Enter Room Code": "ルームコードを入力",
+    "Join": "参加",
+    "Room Code": "ルームコード",
+    "Choose Create Room or Join Room.": "ルームの作成か参加を選んでください。",
+    "Waiting for Player 2...": "プレイヤー2を待っています…",
+    "Connecting...": "接続中…",
+    "Connected!": "接続しました！",
+    "Direct connection unavailable. Trying relay...": "直接接続できません。中継接続を試しています…",
+    "Connection interrupted. Reconnecting...": "接続が途切れました。再接続中…",
+    "Enter a valid five-character room code.": "有効な5文字のコードを入力してください。",
+    "Room not found. Check the code or ask for a new room.": "ルームが見つかりません。コードを確認するか、新しいルームを作成してもらってください。",
+    "Room already full. Ask for a new room.": "ルームは満員です。新しいルームを作成してもらってください。",
+    "Connection timed out. Please create or join a new room.": "接続がタイムアウトしました。新しいルームを作成するか参加してください。",
+    "Relay connection unavailable. Please try again later.": "中継接続を利用できません。後でもう一度お試しください。",
+    "Host disconnected. Join a new room to play again.": "ホストが切断しました。新しいルームに参加してください。",
+    "Player 2 disconnected. Create a new room to play again.": "プレイヤー2が切断しました。新しいルームを作成してください。",
+    "Room expired. Please create or join a new room.": "ルームの有効期限が切れました。新しいルームを作成するか参加してください。",
+    "Too many attempts. Please wait a minute and try again.": "試行回数が多すぎます。1分待って再試行してください。",
+    "Could not connect the players. Please try a new room.": "プレイヤーを接続できませんでした。新しいルームをお試しください。",
+    "Connection lost. Please create or join a new room.": "接続が失われました。新しいルームを作成するか参加してください。",
+    "Online multiplayer is unavailable. Please try again later.": "オンライン対戦を利用できません。後でもう一度お試しください。",
+    "This browser cannot play online. Try an updated browser.": "このブラウザーではオンライン対戦できません。最新版のブラウザーをお試しください。",
+    "Choose a save slot, then choose a game mode.": "セーブスロットを選んでからゲームモードを選択してください。",
+    "Online Multiplayer: W/S or Arrow keys move your paddle - Space: serve/continue - P: pause - R: retry - M: menus": "オンライン: W/S・矢印で移動 - Space: サーブ・続行 - P: 一時停止 - R: 再挑戦 - M: メニュー"
+  },
+  "ko": {
+    "Online Multiplayer": "온라인 멀티플레이",
+    "Create Room": "방 만들기",
+    "Join Room": "방 참가",
+    "Enter Room Code": "방 코드 입력",
+    "Join": "참가",
+    "Room Code": "방 코드",
+    "Choose Create Room or Join Room.": "방 만들기 또는 방 참가를 선택하세요.",
+    "Waiting for Player 2...": "플레이어 2 대기 중...",
+    "Connecting...": "연결 중...",
+    "Connected!": "연결됨!",
+    "Direct connection unavailable. Trying relay...": "직접 연결 불가. 중계 서버 연결 시도 중...",
+    "Connection interrupted. Reconnecting...": "연결 끊김. 다시 연결 중...",
+    "Enter a valid five-character room code.": "유효한 5자리 방 코드를 입력하세요.",
+    "Room not found. Check the code or ask for a new room.": "방을 찾을 수 없습니다. 코드를 확인하거나 새 방을 요청하세요.",
+    "Room already full. Ask for a new room.": "방이 가득 찼습니다. 새 방을 요청하세요.",
+    "Connection timed out. Please create or join a new room.": "연결 시간이 초과되었습니다. 새 방을 만들거나 참가하세요.",
+    "Relay connection unavailable. Please try again later.": "중계 연결을 사용할 수 없습니다. 나중에 다시 시도하세요.",
+    "Host disconnected. Join a new room to play again.": "호스트 연결이 끊겼습니다. 새 방에 참가하세요.",
+    "Player 2 disconnected. Create a new room to play again.": "플레이어 2 연결이 끊겼습니다. 새 방을 만드세요.",
+    "Room expired. Please create or join a new room.": "방이 만료되었습니다. 새 방을 만들거나 참가하세요.",
+    "Too many attempts. Please wait a minute and try again.": "시도 횟수가 너무 많습니다. 1분 후 다시 시도하세요.",
+    "Could not connect the players. Please try a new room.": "플레이어를 연결할 수 없습니다. 새 방에서 시도하세요.",
+    "Connection lost. Please create or join a new room.": "연결이 끊겼습니다. 새 방을 만들거나 참가하세요.",
+    "Online multiplayer is unavailable. Please try again later.": "온라인 멀티플레이를 사용할 수 없습니다. 나중에 다시 시도하세요.",
+    "This browser cannot play online. Try an updated browser.": "이 브라우저는 온라인 플레이를 지원하지 않습니다. 최신 브라우저를 사용하세요.",
+    "Choose a save slot, then choose a game mode.": "저장 슬롯을 선택한 후 게임 모드를 선택하세요.",
+    "Online Multiplayer: W/S or Arrow keys move your paddle - Space: serve/continue - P: pause - R: retry - M: menus": "온라인: W/S 또는 방향키로 이동 - Space: 서브/계속 - P: 일시정지 - R: 재시도 - M: 메뉴"
+  },
+  "zh": {
+    "Online Multiplayer": "在线多人游戏",
+    "Create Room": "创建房间",
+    "Join Room": "加入房间",
+    "Enter Room Code": "输入房间代码",
+    "Join": "加入",
+    "Room Code": "房间代码",
+    "Choose Create Room or Join Room.": "选择创建房间或加入房间。",
+    "Waiting for Player 2...": "正在等待玩家2…",
+    "Connecting...": "正在连接…",
+    "Connected!": "已连接！",
+    "Direct connection unavailable. Trying relay...": "无法直接连接。正在尝试中继…",
+    "Connection interrupted. Reconnecting...": "连接中断。正在重新连接…",
+    "Enter a valid five-character room code.": "请输入有效的五位房间代码。",
+    "Room not found. Check the code or ask for a new room.": "未找到房间。请检查代码或请求创建新房间。",
+    "Room already full. Ask for a new room.": "房间已满。请请求创建新房间。",
+    "Connection timed out. Please create or join a new room.": "连接超时。请创建或加入新房间。",
+    "Relay connection unavailable. Please try again later.": "中继连接不可用。请稍后重试。",
+    "Host disconnected. Join a new room to play again.": "房主已断开连接。请加入新房间继续游戏。",
+    "Player 2 disconnected. Create a new room to play again.": "玩家2已断开连接。请创建新房间继续游戏。",
+    "Room expired. Please create or join a new room.": "房间已过期。请创建或加入新房间。",
+    "Too many attempts. Please wait a minute and try again.": "尝试次数过多。请等待一分钟后重试。",
+    "Could not connect the players. Please try a new room.": "无法连接玩家。请尝试新房间。",
+    "Connection lost. Please create or join a new room.": "连接已断开。请创建或加入新房间。",
+    "Online multiplayer is unavailable. Please try again later.": "在线多人游戏不可用。请稍后重试。",
+    "This browser cannot play online. Try an updated browser.": "此浏览器无法在线游戏。请尝试更新浏览器。",
+    "Choose a save slot, then choose a game mode.": "请选择存档槽，然后选择游戏模式。",
+    "Online Multiplayer: W/S or Arrow keys move your paddle - Space: serve/continue - P: pause - R: retry - M: menus": "在线: W/S或方向键移动 - 空格: 发球/继续 - P: 暂停 - R: 重试 - M: 菜单"
+  }
+};
+
+// Matchmaking and effective audio labels.
+Object.entries({
+  "es": {
+    "Find Match": "Buscar partida",
+    "Cancel Search": "Cancelar búsqueda",
+    "Arena preference": "Arena preferida",
+    "Any Arena": "Cualquier arena",
+    "Private Room": "Sala privada",
+    "Automatically connect to another player.": "Conecta automáticamente con otro jugador.",
+    "Play with friends using a room code.": "Juega con amigos usando un código de sala.",
+    "0 players waiting — Be the first to search!": "0 jugadores esperando — ¡Sé el primero en buscar!",
+    "Opponent available — Find Match!": "Oponente disponible — ¡Busca partida!",
+    "No opponents waiting. You'll be matched when someone joins.": "No hay oponentes esperando. Te emparejaremos cuando llegue alguien.",
+    "Searching for an opponent...": "Buscando oponente...",
+    "Still searching. You can leave the search open or cancel.": "Seguimos buscando. Puedes esperar o cancelar.",
+    "Match Found!": "¡Partida encontrada!",
+    "Search canceled.": "Búsqueda cancelada.",
+    "Search stopped while the app was in the background.": "La búsqueda se detuvo al pasar la aplicación a segundo plano.",
+    "Queue status unavailable. Press Find Match to retry.": "Cola no disponible. Pulsa Buscar partida para reintentar.",
+    "Find an opponent or create/join a private room.": "Busca un oponente o crea/únete a una sala privada.",
+    "Opponent disconnected. Find another match.": "El oponente se desconectó. Busca otra partida.",
+    "Both players must reload the latest game.": "Ambos jugadores deben cargar la última versión.",
+    "Matchmaking uses the same arena and rules for both players.": "Ambos jugadores usan la misma arena y reglas.",
+    "Challenge real players": "Desafía a jugadores reales",
+    "Single Player — Battle Computer Opponents": "Un jugador — Enfréntate a la computadora",
+    "CAMPAIGN": "CAMPAÑA",
+    "Muted by Mute All": "Silenciado por Silenciar todo",
+    "Checking queue...": "Consultando la cola..."
+  },
+  "fr": {
+    "Find Match": "Trouver une partie",
+    "Cancel Search": "Annuler la recherche",
+    "Arena preference": "Arène préférée",
+    "Any Arena": "Toutes les arènes",
+    "Private Room": "Salon privé",
+    "Automatically connect to another player.": "Connectez-vous automatiquement à un autre joueur.",
+    "Play with friends using a room code.": "Jouez entre amis avec un code de salon.",
+    "0 players waiting — Be the first to search!": "0 joueur en attente — Lancez la recherche !",
+    "Opponent available — Find Match!": "Adversaire disponible — Trouvez une partie !",
+    "No opponents waiting. You'll be matched when someone joins.": "Aucun adversaire en attente. La partie démarrera quand quelqu’un arrivera.",
+    "Searching for an opponent...": "Recherche d’un adversaire...",
+    "Still searching. You can leave the search open or cancel.": "Recherche en cours. Vous pouvez patienter ou annuler.",
+    "Match Found!": "Partie trouvée !",
+    "Search canceled.": "Recherche annulée.",
+    "Search stopped while the app was in the background.": "La recherche s’est arrêtée lorsque l’application est passée en arrière-plan.",
+    "Queue status unavailable. Press Find Match to retry.": "File indisponible. Appuyez sur Trouver une partie pour réessayer.",
+    "Find an opponent or create/join a private room.": "Trouvez un adversaire ou créez/rejoignez un salon privé.",
+    "Opponent disconnected. Find another match.": "Adversaire déconnecté. Trouvez une autre partie.",
+    "Both players must reload the latest game.": "Les deux joueurs doivent charger la dernière version.",
+    "Matchmaking uses the same arena and rules for both players.": "Les deux joueurs utilisent la même arène et les mêmes règles.",
+    "Challenge real players": "Affrontez de vrais joueurs",
+    "Single Player — Battle Computer Opponents": "Solo — Affrontez des adversaires contrôlés par l’ordinateur",
+    "CAMPAIGN": "CAMPAGNE",
+    "Muted by Mute All": "Coupé par Tout couper",
+    "Checking queue...": "Consultation de la file..."
+  },
+  "de": {
+    "Find Match": "Spiel finden",
+    "Cancel Search": "Suche abbrechen",
+    "Arena preference": "Bevorzugte Arena",
+    "Any Arena": "Beliebige Arena",
+    "Private Room": "Privater Raum",
+    "Automatically connect to another player.": "Automatisch mit einem anderen Spieler verbinden.",
+    "Play with friends using a room code.": "Mit Freunden über einen Raumcode spielen.",
+    "0 players waiting — Be the first to search!": "0 Spieler warten — Starte die erste Suche!",
+    "Opponent available — Find Match!": "Gegner verfügbar — Spiel finden!",
+    "No opponents waiting. You'll be matched when someone joins.": "Keine Gegner warten. Du wirst verbunden, sobald jemand hinzukommt.",
+    "Searching for an opponent...": "Gegner wird gesucht...",
+    "Still searching. You can leave the search open or cancel.": "Suche läuft. Du kannst weiter warten oder abbrechen.",
+    "Match Found!": "Spiel gefunden!",
+    "Search canceled.": "Suche abgebrochen.",
+    "Search stopped while the app was in the background.": "Die Suche wurde im Hintergrund beendet.",
+    "Queue status unavailable. Press Find Match to retry.": "Warteschlange nicht erreichbar. Mit Spiel finden erneut versuchen.",
+    "Find an opponent or create/join a private room.": "Finde einen Gegner oder erstelle/betritt einen privaten Raum.",
+    "Opponent disconnected. Find another match.": "Gegner getrennt. Finde ein neues Spiel.",
+    "Both players must reload the latest game.": "Beide Spieler müssen die neueste Spielversion neu laden.",
+    "Matchmaking uses the same arena and rules for both players.": "Beide Spieler verwenden dieselbe Arena und dieselben Regeln.",
+    "Challenge real players": "Fordere echte Spieler heraus",
+    "Single Player — Battle Computer Opponents": "Einzelspieler — Gegen Computergegner",
+    "CAMPAIGN": "KAMPAGNE",
+    "Muted by Mute All": "Durch Alles stummschalten deaktiviert",
+    "Checking queue...": "Warteschlange wird geprüft..."
+  },
+  "pt": {
+    "Find Match": "Encontrar partida",
+    "Cancel Search": "Cancelar busca",
+    "Arena preference": "Arena preferida",
+    "Any Arena": "Qualquer arena",
+    "Private Room": "Sala privada",
+    "Automatically connect to another player.": "Conecte-se automaticamente a outro jogador.",
+    "Play with friends using a room code.": "Jogue com amigos usando um código de sala.",
+    "0 players waiting — Be the first to search!": "0 jogadores esperando — Seja o primeiro a buscar!",
+    "Opponent available — Find Match!": "Adversário disponível — Encontre uma partida!",
+    "No opponents waiting. You'll be matched when someone joins.": "Nenhum adversário esperando. A partida será formada quando alguém entrar.",
+    "Searching for an opponent...": "Buscando adversário...",
+    "Still searching. You can leave the search open or cancel.": "Ainda buscando. Você pode esperar ou cancelar.",
+    "Match Found!": "Partida encontrada!",
+    "Search canceled.": "Busca cancelada.",
+    "Search stopped while the app was in the background.": "A busca parou quando o aplicativo foi para segundo plano.",
+    "Queue status unavailable. Press Find Match to retry.": "Fila indisponível. Toque em Encontrar partida para tentar novamente.",
+    "Find an opponent or create/join a private room.": "Encontre um adversário ou crie/entre em uma sala privada.",
+    "Opponent disconnected. Find another match.": "Adversário desconectado. Encontre outra partida.",
+    "Both players must reload the latest game.": "Os dois jogadores precisam carregar a versão mais recente.",
+    "Matchmaking uses the same arena and rules for both players.": "Os dois jogadores usam a mesma arena e as mesmas regras.",
+    "Challenge real players": "Desafie jogadores reais",
+    "Single Player — Battle Computer Opponents": "Um jogador — Enfrente o computador",
+    "CAMPAIGN": "CAMPANHA",
+    "Muted by Mute All": "Silenciado por Silenciar tudo",
+    "Checking queue...": "Consultando a fila..."
+  },
+  "it": {
+    "Find Match": "Trova partita",
+    "Cancel Search": "Annulla ricerca",
+    "Arena preference": "Arena preferita",
+    "Any Arena": "Qualsiasi arena",
+    "Private Room": "Stanza privata",
+    "Automatically connect to another player.": "Collegati automaticamente a un altro giocatore.",
+    "Play with friends using a room code.": "Gioca con gli amici usando un codice stanza.",
+    "0 players waiting — Be the first to search!": "0 giocatori in attesa — Inizia tu la ricerca!",
+    "Opponent available — Find Match!": "Avversario disponibile — Trova partita!",
+    "No opponents waiting. You'll be matched when someone joins.": "Nessun avversario in attesa. Ti collegheremo quando arriverà qualcuno.",
+    "Searching for an opponent...": "Ricerca avversario...",
+    "Still searching. You can leave the search open or cancel.": "Ricerca in corso. Puoi attendere o annullare.",
+    "Match Found!": "Partita trovata!",
+    "Search canceled.": "Ricerca annullata.",
+    "Search stopped while the app was in the background.": "Ricerca interrotta quando l’app è passata in secondo piano.",
+    "Queue status unavailable. Press Find Match to retry.": "Coda non disponibile. Premi Trova partita per riprovare.",
+    "Find an opponent or create/join a private room.": "Trova un avversario o crea/entra in una stanza privata.",
+    "Opponent disconnected. Find another match.": "Avversario disconnesso. Trova un’altra partita.",
+    "Both players must reload the latest game.": "Entrambi i giocatori devono caricare l’ultima versione.",
+    "Matchmaking uses the same arena and rules for both players.": "Entrambi i giocatori usano la stessa arena e le stesse regole.",
+    "Challenge real players": "Sfida giocatori reali",
+    "Single Player — Battle Computer Opponents": "Giocatore singolo — Affronta il computer",
+    "CAMPAIGN": "CAMPAGNA",
+    "Muted by Mute All": "Disattivato da Silenzia tutto",
+    "Checking queue...": "Controllo della coda..."
+  },
+  "nl": {
+    "Find Match": "Wedstrijd zoeken",
+    "Cancel Search": "Zoeken annuleren",
+    "Arena preference": "Voorkeursarena",
+    "Any Arena": "Willekeurige arena",
+    "Private Room": "Privékamer",
+    "Automatically connect to another player.": "Maak automatisch verbinding met een andere speler.",
+    "Play with friends using a room code.": "Speel met vrienden via een kamercode.",
+    "0 players waiting — Be the first to search!": "0 spelers wachten — Begin als eerste met zoeken!",
+    "Opponent available — Find Match!": "Tegenstander beschikbaar — Zoek een wedstrijd!",
+    "No opponents waiting. You'll be matched when someone joins.": "Er wachten geen tegenstanders. Je wordt gekoppeld zodra iemand meedoet.",
+    "Searching for an opponent...": "Tegenstander zoeken...",
+    "Still searching. You can leave the search open or cancel.": "Nog aan het zoeken. Je kunt blijven wachten of annuleren.",
+    "Match Found!": "Wedstrijd gevonden!",
+    "Search canceled.": "Zoeken geannuleerd.",
+    "Search stopped while the app was in the background.": "Het zoeken is gestopt toen de app naar de achtergrond ging.",
+    "Queue status unavailable. Press Find Match to retry.": "Wachtrij niet beschikbaar. Druk op Wedstrijd zoeken om opnieuw te proberen.",
+    "Find an opponent or create/join a private room.": "Zoek een tegenstander of maak/open een privékamer.",
+    "Opponent disconnected. Find another match.": "Tegenstander verbroken. Zoek een nieuwe wedstrijd.",
+    "Both players must reload the latest game.": "Beide spelers moeten de nieuwste versie laden.",
+    "Matchmaking uses the same arena and rules for both players.": "Beide spelers gebruiken dezelfde arena en regels.",
+    "Challenge real players": "Daag echte spelers uit",
+    "Single Player — Battle Computer Opponents": "Eén speler — Speel tegen de computer",
+    "CAMPAIGN": "CAMPAGNE",
+    "Muted by Mute All": "Gedempt door Alles dempen",
+    "Checking queue...": "Wachtrij controleren..."
+  },
+  "ja": {
+    "Find Match": "対戦相手を探す",
+    "Cancel Search": "検索をキャンセル",
+    "Arena preference": "希望のアリーナ",
+    "Any Arena": "どのアリーナでも",
+    "Private Room": "プライベートルーム",
+    "Automatically connect to another player.": "他のプレイヤーと自動で接続します。",
+    "Play with friends using a room code.": "ルームコードで友達と対戦します。",
+    "0 players waiting — Be the first to search!": "待機中のプレイヤーは0人 — 最初に検索しよう！",
+    "Opponent available — Find Match!": "対戦相手がいます — 対戦相手を探そう！",
+    "No opponents waiting. You'll be matched when someone joins.": "待機中の相手はいません。誰かが参加するとマッチングします。",
+    "Searching for an opponent...": "対戦相手を検索中…",
+    "Still searching. You can leave the search open or cancel.": "引き続き検索中です。待機を続けるかキャンセルできます。",
+    "Match Found!": "対戦相手が見つかりました！",
+    "Search canceled.": "検索をキャンセルしました。",
+    "Search stopped while the app was in the background.": "アプリがバックグラウンドになったため検索を停止しました。",
+    "Queue status unavailable. Press Find Match to retry.": "待機状況を取得できません。「対戦相手を探す」で再試行してください。",
+    "Find an opponent or create/join a private room.": "対戦相手を探すか、プライベートルームを作成・参加してください。",
+    "Opponent disconnected. Find another match.": "対戦相手が切断しました。別の対戦相手を探してください。",
+    "Both players must reload the latest game.": "両プレイヤーとも最新版を読み込んでください。",
+    "Matchmaking uses the same arena and rules for both players.": "両プレイヤーに同じアリーナとルールが適用されます。",
+    "Challenge real players": "他のプレイヤーと対戦",
+    "Single Player — Battle Computer Opponents": "1人プレイ — コンピューターと対戦",
+    "CAMPAIGN": "キャンペーン",
+    "Muted by Mute All": "全音声ミュート中",
+    "Checking queue...": "待機状況を確認中…"
+  },
+  "ko": {
+    "Find Match": "상대 찾기",
+    "Cancel Search": "검색 취소",
+    "Arena preference": "선호 경기장",
+    "Any Arena": "모든 경기장",
+    "Private Room": "비공개 방",
+    "Automatically connect to another player.": "다른 플레이어와 자동으로 연결합니다.",
+    "Play with friends using a room code.": "방 코드로 친구와 플레이하세요.",
+    "0 players waiting — Be the first to search!": "대기 중인 플레이어 0명 — 먼저 검색하세요!",
+    "Opponent available — Find Match!": "상대가 있습니다 — 상대를 찾아보세요!",
+    "No opponents waiting. You'll be matched when someone joins.": "대기 중인 상대가 없습니다. 다른 플레이어가 참여하면 연결됩니다.",
+    "Searching for an opponent...": "상대 검색 중...",
+    "Still searching. You can leave the search open or cancel.": "계속 검색 중입니다. 기다리거나 취소할 수 있습니다.",
+    "Match Found!": "상대를 찾았습니다!",
+    "Search canceled.": "검색이 취소되었습니다.",
+    "Search stopped while the app was in the background.": "앱이 백그라운드로 전환되어 검색이 중단되었습니다.",
+    "Queue status unavailable. Press Find Match to retry.": "대기열을 확인할 수 없습니다. 상대 찾기를 눌러 다시 시도하세요.",
+    "Find an opponent or create/join a private room.": "상대를 찾거나 비공개 방을 만들고 참여하세요.",
+    "Opponent disconnected. Find another match.": "상대가 연결을 끊었습니다. 다른 상대를 찾으세요.",
+    "Both players must reload the latest game.": "두 플레이어 모두 최신 버전을 다시 불러와야 합니다.",
+    "Matchmaking uses the same arena and rules for both players.": "두 플레이어에게 같은 경기장과 규칙이 적용됩니다.",
+    "Challenge real players": "실제 플레이어와 대결",
+    "Single Player — Battle Computer Opponents": "싱글 플레이 — 컴퓨터 상대와 대결",
+    "CAMPAIGN": "캠페인",
+    "Muted by Mute All": "모두 음소거로 음소거됨",
+    "Checking queue...": "대기열 확인 중..."
+  },
+  "zh": {
+    "Find Match": "寻找对手",
+    "Cancel Search": "取消搜索",
+    "Arena preference": "偏好场地",
+    "Any Arena": "任意场地",
+    "Private Room": "私人房间",
+    "Automatically connect to another player.": "自动连接另一位玩家。",
+    "Play with friends using a room code.": "使用房间代码与朋友对战。",
+    "0 players waiting — Be the first to search!": "0名玩家正在等待 — 成为第一个搜索的人！",
+    "Opponent available — Find Match!": "有对手可用 — 寻找对手！",
+    "No opponents waiting. You'll be matched when someone joins.": "暂无对手等待。有人加入后将自动匹配。",
+    "Searching for an opponent...": "正在寻找对手…",
+    "Still searching. You can leave the search open or cancel.": "仍在搜索。你可以继续等待或取消。",
+    "Match Found!": "已找到对手！",
+    "Search canceled.": "已取消搜索。",
+    "Search stopped while the app was in the background.": "应用进入后台，搜索已停止。",
+    "Queue status unavailable. Press Find Match to retry.": "无法获取队列状态。点击寻找对手重试。",
+    "Find an opponent or create/join a private room.": "寻找对手，或创建/加入私人房间。",
+    "Opponent disconnected. Find another match.": "对手已断开连接。请寻找新对手。",
+    "Both players must reload the latest game.": "双方玩家都需要重新加载最新版本。",
+    "Matchmaking uses the same arena and rules for both players.": "双方玩家使用相同的场地和规则。",
+    "Challenge real players": "挑战真人玩家",
+    "Single Player — Battle Computer Opponents": "单人模式 — 对战电脑对手",
+    "CAMPAIGN": "战役",
+    "Muted by Mute All": "已被全部静音覆盖",
+    "Checking queue...": "正在查看队列…"
+  }
+}).forEach(([code, phrases]) => Object.assign(window.KING_PONG_ONLINE_TRANSLATIONS[code], phrases));
+
+// Recovery action stays explicit for automatic matches.
+Object.entries({
+  "es": "La partida falló. Pulsa Buscar partida para volver a intentarlo.",
+  "fr": "Échec de la partie. Appuyez sur Trouver un adversaire pour réessayer.",
+  "de": "Verbindung fehlgeschlagen. Drücke Spiel suchen, um es erneut zu versuchen.",
+  "pt": "A partida falhou. Pressione Buscar partida para tentar novamente.",
+  "it": "Partita non riuscita. Premi Trova partita per riprovare.",
+  "nl": "Wedstrijd mislukt. Druk op Zoek wedstrijd om opnieuw te proberen.",
+  "ja": "接続に失敗しました。「対戦相手を探す」で再試行してください。",
+  "ko": "대전 연결에 실패했습니다. 상대 찾기를 눌러 다시 시도하세요.",
+  "zh": "匹配失败。点击寻找对手重试。"
+}).forEach(([code, text]) => {
+  window.KING_PONG_ONLINE_TRANSLATIONS[code]['Match failed. Press Find Match to try again.'] = text;
+});
+// Generated by tools/sync-gameplay.mjs from the existing arenas/rules and compatibility revision.
+const KING_PONG_MATCHMAKING = Object.freeze({
+  "protocol": "royal-bca5c4f7ce3770e1",
+  "arenas": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17
+  ],
+  "rules": "classic"
+});
+function kingPongSignalingSocket(url) {
+  if (typeof location === 'undefined' || location.protocol !== 'file:') return new WebSocket(url);
+  return new PackagedSignalingSocket(url);
+}
+
+class PackagedSignalingSocket {
+  constructor(url) {
+    this.readyState = 0;
+    const target = new URL(url);
+    target.protocol = target.protocol === 'wss:' ? 'https:' : 'http:';
+    const path = target.pathname;
+    target.pathname = '/v1/native-bridge';
+    const frame = this.frame = document.createElement('iframe');
+    frame.hidden = true;
+    frame.name = 'king-pong-signaling';
+    frame.title = 'King Pong signaling';
+    frame.setAttribute('aria-hidden', 'true');
+    frame.setAttribute('sandbox', 'allow-scripts allow-same-origin');
+    frame.referrerPolicy = 'no-referrer';
+    frame.src = target.href;
+    const channel = new MessageChannel();
+    this.port = channel.port1;
+    this.port.onmessage = event => {
+      if (this.readyState === 3) return;
+      const m = event.data;
+      if (m.type === 'open') { this.readyState = 1; this.onopen?.(); }
+      else if (m.type === 'message') this.onmessage?.({data: m.data});
+      else if (m.type === 'error') this.onerror?.();
+      else if (m.type === 'close') { this.close(); this.onclose?.(); }
+    };
+    frame.onload = () => {
+      if (this.readyState === 3) return;
+      frame.contentWindow.postMessage({type: 'king-pong-signaling', path}, target.origin, [channel.port2]);
+    };
+    frame.onerror = () => this.onerror?.();
+    document.body.append(frame);
+  }
+
+  send(data) {
+    if (this.readyState === 1) this.port.postMessage({type: 'send', data});
+  }
+
+  close() {
+    if (this.readyState === 3) return;
+    this.readyState = 3;
+    this.port.postMessage({type: 'close'});
+    this.port.close();
+    this.frame.remove();
+  }
+}
+
+/* Signaling owns connection setup only. The existing LAN protocol still owns gameplay. */
+class KingPongRoom {
+  constructor(baseUrl, hooks) {
+    this.baseUrl = baseUrl;
+    this.hooks = hooks;
+    this.attempt = -1;
+    this.queue = Promise.resolve();
+    this.candidates = [];
+    this.closed = false;
+    this.connected = false;
+  }
+
+  open(role, code = '', assignment = null) {
+    this.assignment = assignment;
+    this.role = role;
+    let url;
+    try {
+      url = new URL(this.baseUrl);
+      if (url.username || url.password || url.search || url.hash ||
+          !(url.protocol === 'https:' || url.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(url.hostname))) throw new Error();
+      url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
+      url.pathname = assignment ? `/v1/match/${assignment.match.id}/${assignment.token}` :
+        role === 'host' ? '/v1/create' : `/v1/join/${code}`;
+      this.socket = kingPongSignalingSocket(url);
+    } catch { this.fail('unavailable'); return; }
+    this.hooks.status('Connecting...');
+    this.openTimer = setTimeout(() => this.fail('timeout'), 12_000);
+    this.socket.onopen = () => {
+      this.lastPong = Date.now();
+      this.heartbeat = setInterval(() => {
+        if (Date.now() - this.lastPong > 60_000) this.fail('connection_lost');
+        else if (this.socket.readyState === WebSocket.OPEN) this.socket.send('ping');
+      }, 20_000);
+    };
+    this.socket.onmessage = event => {
+      if (event.data === 'pong') { this.lastPong = Date.now(); return; }
+      // SDP installation is asynchronous; serialize messages so early ICE cannot race it.
+      this.queue = this.queue.then(() => {
+        if (!this.closed) return this.receive(JSON.parse(event.data));
+      }).catch(() => this.fail('negotiation_failed'));
+    };
+    this.socket.onerror = () => this.fail('connection_lost');
+    this.socket.onclose = () => {
+      this.queue.then(() => this.fail('connection_lost')).catch(() => this.fail('connection_lost'));
+    };
+  }
+
+  send(message) {
+    if (!this.closed && this.socket?.readyState === WebSocket.OPEN) {
+      this.socket.send(JSON.stringify(message));
+    }
+  }
+
+  async receive(message) {
+    if (message.type === 'error') { this.fail(message.code); return; }
+    if (message.type === 'welcome') {
+      if (message.role !== this.role || !/^[A-HJ-NP-Z2-9]{5}$/.test(message.code)) throw new Error();
+      if (this.assignment && (message.match?.id !== this.assignment.match.id ||
+          message.match?.arena !== this.assignment.match.arena || message.match?.rules !== this.assignment.match.rules ||
+          message.match?.protocol !== KING_PONG_MATCHMAKING.protocol)) throw new Error();
+      clearTimeout(this.openTimer);
+      this.hooks.welcome(message.code);
+      this.hooks.status(this.role === 'host' ? 'Waiting for Player 2...' : 'Connecting...');
+      return;
+    }
+    if (message.type === 'start') {
+      if (![0, 1].includes(message.attempt) || message.attempt <= this.attempt || !Array.isArray(message.iceServers)) return;
+      this.attempt = message.attempt;
+      this.relayPending = false;
+      this.connected = false;
+      this.dropPeer();
+      this.candidates = [];
+      this.hooks.status(this.attempt ? 'Direct connection unavailable. Trying relay...' : 'Connecting...');
+      const peer = this.peer = new RTCPeerConnection({
+        iceServers: message.iceServers,
+        iceTransportPolicy: this.attempt ? 'relay' : 'all'
+      });
+      this.hooks.peer(peer);
+      const attempt = this.attempt;
+      peer.onicecandidate = event => {
+        if (event.candidate && this.peer === peer && !this.relayPending) {
+          this.send({ type: 'candidate', attempt, candidate: event.candidate.toJSON() });
+        }
+      };
+      peer.onconnectionstatechange = () => {
+        if (this.peer !== peer || this.closed) return;
+        if (peer.connectionState === 'failed') {
+          if (this.connected) this.fail(this.role === 'host' ? 'guest_left' : 'host_left');
+          else this.relay();
+        } else if (peer.connectionState === 'disconnected') {
+          clearTimeout(this.disconnectTimer);
+          this.hooks.status('Connection interrupted. Reconnecting...');
+          this.hooks.interrupted?.();
+          this.disconnectTimer = setTimeout(() => this.fail('connection_lost'), 8000);
+        } else if (peer.connectionState === 'connected') {
+          clearTimeout(this.disconnectTimer);
+          if (this.connected) { this.hooks.status('Connected!'); this.hooks.resumed?.(); }
+        }
+      };
+      if (!this.totalTimer) this.totalTimer = setTimeout(() => this.fail('timeout'), 45_000);
+      if (!attempt) this.directTimer = setTimeout(() => this.relay(), 8000);
+      if (this.role === 'host') {
+        this.wire(peer.createDataChannel('pong-lan-input-v1', { ordered: false, maxRetransmits: 1 }), false, peer);
+        this.wire(peer.createDataChannel('pong-control-v1'), true, peer);
+        const offer = await peer.createOffer();
+        if (this.peer !== peer || this.closed) return;
+        await peer.setLocalDescription(offer);
+        if (this.peer === peer && !this.closed) this.send({ type: 'description', attempt, description: peer.localDescription.toJSON() });
+      } else {
+        peer.ondatachannel = event => {
+          if (event.channel.label === 'pong-lan-input-v1') this.wire(event.channel, false, peer);
+          else if (event.channel.label === 'pong-control-v1') this.wire(event.channel, true, peer);
+          else event.channel.close();
+        };
+      }
+      return;
+    }
+    if (message.attempt !== this.attempt || this.relayPending || !this.peer) return;
+    const peer = this.peer;
+    if (message.type === 'description') {
+      const expected = this.role === 'host' ? 'answer' : 'offer';
+      if (message.description?.type !== expected) throw new Error();
+      await peer.setRemoteDescription(message.description);
+      if (this.peer !== peer || this.closed) return;
+      for (const candidate of this.candidates) await peer.addIceCandidate(candidate);
+      this.candidates = [];
+      if (this.role === 'guest') {
+        await peer.setLocalDescription(await peer.createAnswer());
+        if (this.peer === peer && !this.closed) this.send({ type: 'description', attempt: this.attempt, description: peer.localDescription.toJSON() });
+      }
+    } else if (message.type === 'candidate') {
+      if (peer.remoteDescription) await peer.addIceCandidate(message.candidate);
+      else if (this.candidates.length < 128) this.candidates.push(message.candidate);
+      else throw new Error();
+    }
+  }
+
+  wire(channel, control, peer) {
+    if (this.closed || this.peer !== peer) { channel.close(); return; }
+    if (control) this.control = channel;
+    else this.data = channel;
+    this.hooks.channel(channel, control);
+    channel.onmessage = event => {
+      if (!this.closed && this.connected && this.peer === peer) this.hooks.message(event.data);
+    };
+    channel.onopen = () => {
+      if (this.closed || this.peer !== peer || this.relayPending || this.connected ||
+          this.data?.readyState !== 'open' || this.control?.readyState !== 'open') return;
+      this.connected = true;
+      clearTimeout(this.directTimer);
+      clearTimeout(this.totalTimer);
+      this.totalTimer = null;
+      this.send({ type: 'connected' });
+      this.hooks.connected();
+    };
+    channel.onclose = () => {
+      if (this.closed || this.peer !== peer || this.relayPending) return;
+      // A room-expiry message may follow the peer's channel close by a few milliseconds.
+      clearTimeout(this.peerLostTimer);
+      this.peerLostTimer = setTimeout(() => {
+        if (this.peer === peer) this.fail(this.role === 'host' ? 'guest_left' : 'host_left');
+      }, 250);
+    };
+    channel.onerror = () => { if (!this.closed && this.peer === peer && !this.relayPending) this.fail(this.connected ? (this.role === 'host' ? 'guest_left' : 'host_left') : 'negotiation_failed'); };
+  }
+
+  relay() {
+    if (this.closed || this.connected || this.relayPending) return;
+    if (this.attempt === 1) { this.fail('negotiation_failed'); return; }
+    this.relayPending = true;
+    clearTimeout(this.directTimer);
+    this.hooks.status('Direct connection unavailable. Trying relay...');
+    this.send({ type: 'relay' });
+  }
+
+  dropPeer() {
+    clearTimeout(this.directTimer);
+    clearTimeout(this.disconnectTimer);
+    clearTimeout(this.peerLostTimer);
+    const peer = this.peer;
+    this.peer = null;
+    for (const channel of [this.data, this.control]) {
+      if (channel) { channel.onclose = channel.onerror = channel.onopen = channel.onmessage = null; channel.close(); }
+    }
+    this.data = this.control = null;
+    if (peer) { peer.onicecandidate = peer.onconnectionstatechange = peer.ondatachannel = null; peer.close(); }
+  }
+
+  close() {
+    if (this.closed) return;
+    this.closed = true;
+    clearTimeout(this.openTimer);
+    clearTimeout(this.totalTimer);
+    clearInterval(this.heartbeat);
+    this.dropPeer();
+    if (this.socket) {
+      this.socket.onopen = this.socket.onmessage = this.socket.onerror = this.socket.onclose = null;
+      this.socket.close();
+    }
+  }
+
+  fail(code) {
+    if (this.closed) return;
+    this.close();
+    this.hooks.error(code);
+  }
+}
+
+let onlineSession = null;
+let onlineTransportSelected = false;
+let onlineNativeTransport = false;
+let onlineMatchAssignment = null;
+let matchmakingPreviousRules = null;
+let onlineControlChannel = null;
+let onlineGameBlocked = false;
+let onlineHasState = false;
+const onlineInputs = new Map();
+const ONLINE_ERRORS = {
+  incompatible: 'Both players must reload the latest game.',
+  opponent_left: 'Opponent disconnected. Find another match.',
+  invalid_code: 'Enter a valid five-character room code.',
+  not_found: 'Room not found. Check the code or ask for a new room.',
+  full: 'Room already full. Ask for a new room.',
+  timeout: 'Connection timed out. Please create or join a new room.',
+  relay_unavailable: 'Relay connection unavailable. Please try again later.',
+  host_left: 'Host disconnected. Join a new room to play again.',
+  guest_left: 'Player 2 disconnected. Create a new room to play again.',
+  expired: 'Room expired. Please create or join a new room.',
+  rate_limited: 'Too many attempts. Please wait a minute and try again.',
+  negotiation_failed: 'Could not connect the players. Please try a new room.',
+  connection_lost: 'Connection lost. Please create or join a new room.',
+  unavailable: 'Online multiplayer is unavailable. Please try again later.'
+};
+
+function sanitizeOnlineRoomCode(value) {
+  return String(value || '').toUpperCase().replace(/\s/g, '').slice(0, 5);
+}
+
+function setOnlineControls(busy, joining = false) {
+  if (!byId('onlineJoinForm')) return;
+  onlineHostControl().hidden = busy;
+  onlineJoinControl().hidden = busy || joining;
+  onlineDisconnectControl().hidden = !busy;
+  byId('onlineJoinForm').hidden = busy || !joining;
+  byId('onlineCodeDisplay').hidden = !busy || !lanRoomCode || Boolean(onlineMatchAssignment);
+  if (byId('matchmakingPanel')) syncMatchmakingUi();
+  if (!busy) byId('onlineRoomCode').textContent = '';
+}
+
+function closeOnlineConnection(showMessage = true, keepQueue = false) {
+  if (!keepQueue) stopMatchmaking();
+  onlineMatchAssignment = null;
+  if (matchmakingPreviousRules !== null) { matchRuleId = matchmakingPreviousRules; matchmakingPreviousRules = null; }
+  stopRoyalPowerupSound();
+  resetMatchConnectionState();
+  remoteSelectionSequence = -1;
+  onlineLastSentAxis = null;
+  onlineAppliedInputSeq = -1;
+  const session = onlineSession;
+  onlineSession = null;
+  if (session) session.close();
+  lanPeer = lanChannel = onlineControlChannel = null;
+  lanConnected = false;
+  lanRole = 'none';
+  lanRoomCode = '';
+  lanLastInputSeq = lanLastStateSeq = -1;
+  lanLastActionAt = -Infinity;
+  lanRemoteInput = { axis: 0, targetY: null, lastAt: 0 };
+  onlineHasState = onlineGameBlocked = false;
+  onlineInputs.clear();
+  document.body.classList.remove('lan-connected');
+  setOnlineControls(false);
+  if (showMessage) { paused = true; setLanStatus('Find an opponent or create/join a private room.'); }
+  updateLanPanelVisibility();
+  updateModeControls();
+}
+
+function startOnlineSetup(fromTitle = false) {
+  closeLanConnection(false);
+  onlineTransportSelected = true;
+  if (fromTitle) hideTitleScreen();
+  if (!onlineSession) {
+    startTwoPlayerMode(true, false);
+    if (typeof hideFirstStartControls === 'function') hideFirstStartControls();
+    onlineGameBlocked = true;
+    setOnlineControls(false);
+    setLanStatus('Find an opponent or create/join a private room.');
+  }
+  setLanPanelOpen(true);
+  setMenusVisible(true);
+  observeMatchmaking();
+}
+
+function hostOnlineMatch() { openOnlineRoom('host'); }
+function prepareOnlineJoin() {
+  closeOnlineConnection(false);
+  onlineGameBlocked = true;
+  setOnlineControls(false, true);
+  setLanStatus('Enter Room Code');
+  onlineRoomInput().value = '';
+  onlineRoomInput().focus();
+}
+function joinOnlineRoom() {
+  const code = sanitizeOnlineRoomCode(onlineRoomInput().value);
+  if (!/^[A-HJ-NP-Z2-9]{5}$/.test(code)) { setLanStatus(ONLINE_ERRORS.invalid_code); return; }
+  openOnlineRoom('guest', code);
+}
+
+function openOnlineRoom(role, code = '', assignment = null) {
+  closeLanConnection(false, Boolean(assignment));
+  onlineTransportSelected = true;
+  onlineMatchAssignment = assignment?.match || null;
+  if (assignment) matchmakingPreviousRules = matchRuleId;
+  onlineGameBlocked = true;
+  if (!isLanSupported() || typeof WebSocket === 'undefined') { setLanStatus('This browser cannot play online. Try an updated browser.'); return; }
+  if (!window.KING_PONG_SIGNALING_URL) { setLanStatus(ONLINE_ERRORS.unavailable); return; }
+  lanRole = role;
+  startTwoPlayerMode(true, false);
+  if (onlineMatchAssignment) applyMatchmakingSettings();
+  if (typeof hideFirstStartControls === 'function') hideFirstStartControls();
+  setLanPanelOpen(true);
+  setMenusVisible(true);
+  setOnlineControls(true);
+  const session = new KingPongRoom(window.KING_PONG_SIGNALING_URL, {
+    status: message => { if (onlineSession === session) setLanStatus(message); },
+    welcome: code => {
+      if (onlineSession !== session) return;
+      lanRoomCode = code;
+      byId('onlineRoomCode').textContent = code;
+      byId('onlineCodeDisplay').hidden = Boolean(onlineMatchAssignment);
+    },
+    peer: peer => { lanPeer = peer; lanConnected = false; onlineGameBlocked = true; },
+    channel: (channel, control) => { if (control) onlineControlChannel = channel; else lanChannel = channel; },
+    message: raw => handleLanMessage(raw),
+    interrupted: () => {
+      onlineGameBlocked = true;
+      paused = true;
+      resumeCountdownEndAt = 0;
+      lanRemoteInput = { axis: 0, targetY: null, lastAt: 0 };
+    },
+    resumed: () => {
+      onlineGameBlocked = false;
+      if (role === 'host') sendLanState(true);
+    },
+    connected: () => {
+      if (onlineSession !== session) return;
+      lanConnected = true;
+      onlineGameBlocked = false;
+      if (assignment) matchmakingComplete();
+      setLanStatus('Connected!');
+      updateModeControls();
+      setMenusVisible(false);
+      if (role === 'host') sendLanState(true);
+      else { sendPaddleSelection(); sendLanInput(null, true); }
+    },
+    error: code => {
+      if (onlineSession !== session) return;
+      closeOnlineConnection(false);
+      // Keep a disconnected guest from falling through to the local physics loop.
+      onlineGameBlocked = true;
+      paused = true;
+      setLanPanelOpen(true);
+      setMenusVisible(true);
+      setLanStatus(assignment ? matchmakingError(code) : ONLINE_ERRORS[code] || ONLINE_ERRORS.connection_lost);
+    }
+  });
+  onlineSession = session;
+  syncMatchmakingUi();
+  session.open(role, code, assignment);
+}
+
+function onlineInput(input, seq) {
+  if (onlineSession && onlineHasState && !paused) {
+    input = { axis: input.axis, targetY: right.y };
+    onlineInputs.set(seq, right.y);
+    if (onlineInputs.size > 120) onlineInputs.delete(onlineInputs.keys().next().value);
+  }
+  return input;
+}
+
+let onlineLastSentAxis = null;
+let onlineAppliedInputSeq = -1;
+
+function onlinePaddleState(state, levelChanged) {
+  const authoritative = finiteNumber(state.rightY, right.y);
+  if (!onlineSession) return authoritative;
+  let y = right.y;
+  if (!onlineHasState || levelChanged || state.paused) {
+    y = authoritative;
+    onlineInputs.clear();
+  } else if (onlineInputs.has(state.inputSeq)) {
+    // Reconcile the position the host accepted, keeping motion since that input responsive.
+    y += authoritative - onlineInputs.get(state.inputSeq);
+  }
+  for (const seq of onlineInputs.keys()) if (seq <= state.inputSeq) onlineInputs.delete(seq);
+  onlineHasState = true;
+  return y;
+}
+
+window.addEventListener('pagehide', () => { stopMatchmaking(); if (onlineSession) onlineSession.close(); });
+
+let matchmakingSocket = null;
+let matchmakingState = 'offline';
+let matchmakingWaiting = null;
+let matchmakingRequested = false;
+let matchmakingHeartbeat = null;
+let matchmakingOpenTimer = null;
+let matchmakingWaitTimer = null;
+let matchmakingLastPong = 0;
+
+function onlineRoomInput() { return byId('onlineRoomInput') || lanRoomCodeInput; }
+function onlineHostControl() { return byId('onlineHostButton') || lanHostButton; }
+function onlineJoinControl() { return byId('onlineJoinButton') || lanJoinButton; }
+function onlineDisconnectControl() { return byId('onlineDisconnectButton') || lanDisconnectButton; }
+function matchmakingLocked() { return Boolean(onlineMatchAssignment); }
+
+function syncMatchmakingUi() {
+  if (!byId('matchmakingPanel')) return;
+  const searching = matchmakingRequested || matchmakingState === 'waiting';
+  const connecting = matchmakingState === 'connecting' || matchmakingLocked();
+  byId('findMatchButton').hidden = searching || connecting || Boolean(onlineSession);
+  byId('cancelSearchButton').hidden = lanConnected || !searching && !connecting;
+  byId('matchArenaPreference').disabled = searching || connecting || Boolean(onlineSession);
+  byId('matchmakingAvailability').hidden = connecting;
+  const status = matchmakingState === 'opening' ? 'Checking queue...' : matchmakingWaiting === null ? 'Queue status unavailable. Press Find Match to retry.' :
+    matchmakingWaiting - (matchmakingState === 'waiting' ? 1 : 0) > 0 ?
+      'Opponent available — Find Match!' : searching ?
+      "No opponents waiting. You'll be matched when someone joins." : '0 players waiting — Be the first to search!';
+  royalText(byId('matchmakingAvailability'), status);
+  byId('onlinePrivateRooms').hidden = searching || connecting || Boolean(onlineSession);
+}
+
+function stopMatchmaking() {
+  const socket = matchmakingSocket;
+  matchmakingSocket = null;
+  clearInterval(matchmakingHeartbeat);
+  clearTimeout(matchmakingOpenTimer);
+  clearTimeout(matchmakingWaitTimer);
+  matchmakingRequested = false;
+  matchmakingState = 'offline';
+  matchmakingWaiting = null;
+  if (socket) {
+    socket.onopen = socket.onmessage = socket.onclose = socket.onerror = null;
+    socket.close();
+  }
+  syncMatchmakingUi();
+}
+
+function matchmakingError(code) {
+  return ['incompatible', 'rate_limited', 'unavailable', 'relay_unavailable'].includes(code) ? ONLINE_ERRORS[code] :
+    'Match failed. Press Find Match to try again.';
+}
+
+function matchmakingFailed(code) {
+  const connecting = matchmakingLocked() && !lanConnected;
+  stopMatchmaking();
+  if (connecting) closeLanConnection(false);
+  onlineGameBlocked = true;
+  paused = true;
+  setLanStatus(matchmakingError(code));
+}
+
+function observeMatchmaking() {
+  if (matchmakingSocket || document.hidden || !window.KING_PONG_SIGNALING_URL) return;
+  let socket;
+  try {
+    const url = new URL(window.KING_PONG_SIGNALING_URL);
+    if (url.username || url.password || url.search || url.hash ||
+        !(url.protocol === 'https:' || url.protocol === 'http:' && ['127.0.0.1', 'localhost'].includes(url.hostname))) throw new Error();
+    url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
+    url.pathname = '/v1/queue/' + KING_PONG_MATCHMAKING.protocol;
+    socket = matchmakingSocket = kingPongSignalingSocket(url);
+  } catch { matchmakingFailed('unavailable'); return; }
+  matchmakingState = 'opening';
+  matchmakingOpenTimer = setTimeout(() => matchmakingFailed('timeout'), 12_000);
+  socket.onopen = () => {
+    if (socket !== matchmakingSocket) return;
+    matchmakingLastPong = Date.now();
+    matchmakingHeartbeat = setInterval(() => {
+      if (Date.now() - matchmakingLastPong > 60_000) matchmakingFailed('connection_lost');
+      else if (socket.readyState === 1) socket.send('ping');
+    }, 20_000);
+    if (matchmakingRequested) sendMatchSearch();
+  };
+  socket.onmessage = event => {
+    if (socket !== matchmakingSocket) return;
+    if (event.data === 'pong') { matchmakingLastPong = Date.now(); return; }
+    try {
+      const m = JSON.parse(event.data);
+      if (m.type === 'queue') {
+        clearTimeout(matchmakingOpenTimer);
+        if (!Number.isInteger(m.waiting) || m.waiting < 0 || m.waiting > 256 ||
+            !['watching', 'waiting', 'connecting'].includes(m.state)) throw new Error();
+        matchmakingWaiting = m.waiting;
+        matchmakingState = m.state;
+      } else if (m.type === 'matched') {
+        if (!matchmakingRequested || m.match?.protocol !== KING_PONG_MATCHMAKING.protocol ||
+            !KING_PONG_MATCHMAKING.arenas.includes(m.match.arena) || m.match.rules !== KING_PONG_MATCHMAKING.rules ||
+            !/^[a-f0-9-]{36}$/.test(m.match.id) || !/^[a-f0-9-]{36}$/.test(m.token) ||
+            !['host', 'guest'].includes(m.role)) throw new Error();
+        clearTimeout(matchmakingWaitTimer);
+        matchmakingRequested = false;
+        matchmakingState = 'connecting';
+        openOnlineRoom(m.role, '', m);
+        setLanStatus('Match Found!');
+      } else if (m.type === 'complete') {
+        stopMatchmaking();
+      } else if (m.type === 'failed' || m.type === 'error') {
+        matchmakingFailed(m.code);
+      } else throw new Error();
+      syncMatchmakingUi();
+    } catch { matchmakingFailed('negotiation_failed'); }
+  };
+  socket.onerror = socket.onclose = () => {
+    if (socket === matchmakingSocket) matchmakingFailed('connection_lost');
+  };
+}
+
+function sendMatchSearch() {
+  if (!matchmakingRequested || matchmakingSocket?.readyState !== 1) return;
+  const value = byId('matchArenaPreference').value;
+  matchmakingSocket.send(JSON.stringify({ type: 'search', protocol: KING_PONG_MATCHMAKING.protocol,
+    arena: value === 'any' ? null : Number(value) }));
+}
+
+function findOnlineMatch() {
+  if (onlineSession || matchmakingRequested || matchmakingState === 'waiting') return;
+  if (!isLanSupported()) { setLanStatus('This browser cannot play online. Try an updated browser.'); return; }
+  onlineTransportSelected = true;
+  onlineGameBlocked = true;
+  matchmakingRequested = true;
+  setLanStatus('Searching for an opponent...');
+  if (matchmakingSocket?.readyState === 1) sendMatchSearch();
+  else observeMatchmaking();
+  clearTimeout(matchmakingWaitTimer);
+  matchmakingWaitTimer = setTimeout(() => {
+    if (matchmakingState === 'waiting') setLanStatus('Still searching. You can leave the search open or cancel.');
+  }, 60_000);
+  syncMatchmakingUi();
+}
+
+function cancelMatchSearch() {
+  closeLanConnection(false);
+  onlineTransportSelected = true;
+  onlineGameBlocked = true;
+  paused = true;
+  setLanStatus('Search canceled.');
+  observeMatchmaking();
+}
+
+function matchmakingComplete() {
+  if (matchmakingSocket?.readyState === 1) matchmakingSocket.send(JSON.stringify({type: 'complete'}));
+}
+
+function applyMatchmakingSettings() {
+  if (!onlineMatchAssignment) return;
+  matchRuleId = onlineMatchAssignment.rules;
+  matchRuleRevision = 0;
+  remoteRuleRevision = -1;
+  setLevelByAbsoluteIndex(onlineMatchAssignment.arena, true);
+}
+
+function validMatchmakingState(message) {
+  if (!onlineMatchAssignment) return true;
+  const match = onlineMatchAssignment;
+  if (message.type === 'rules') {
+    if (message.rules?.id === match.rules) return true;
+    onlineSession?.fail('incompatible');
+    return false;
+  }
+  if (message.type !== 'state') return true;
+  if (message.rules?.id === match.rules && message.selection?.arena === match.arena &&
+      message.activeCampaign === Math.floor(match.arena / 6) && message.levelIndex === match.arena % 6) return true;
+  onlineSession?.fail('incompatible');
+  return false;
+}
+
+function initMatchmakingUi() {
+  const panel = document.createElement('section');
+  panel.id = 'matchmakingPanel';
+  const title = document.createElement('h3');
+  setLocalizedText(title, 'Find Match');
+  const note = document.createElement('p');
+  setLocalizedText(note, 'Automatically connect to another player.');
+  const label = document.createElement('label');
+  label.htmlFor = 'matchArenaPreference';
+  setLocalizedText(label, 'Arena preference');
+  const select = document.createElement('select');
+  select.id = 'matchArenaPreference';
+  for (const [value, text] of [['any', 'Any Arena'], ...arenaCatalog.filter(a => KING_PONG_MATCHMAKING.arenas.includes(a.id))
+      .map(a => [a.id, a.level.name])]) {
+    const option = document.createElement('option');
+    option.value = String(value);
+    setLocalizedText(option, text);
+    select.append(option);
+  }
+  const status = document.createElement('p');
+  status.id = 'matchmakingAvailability';
+  status.setAttribute('role', 'status');
+  status.setAttribute('aria-live', 'polite');
+  panel.append(title, note, label, select, status,
+    royalButton('findMatchButton', 'Find Match', findOnlineMatch, 'match-primary'),
+    royalButton('cancelSearchButton', 'Cancel Search', cancelMatchSearch));
+  const privateRooms = document.createElement('section');
+  privateRooms.id = 'onlinePrivateRooms';
+  const privateTitle = document.createElement('h3');
+  setLocalizedText(privateTitle, 'Private Room');
+  const privateNote = document.createElement('p');
+  setLocalizedText(privateNote, 'Play with friends using a room code.');
+  privateRooms.append(privateTitle, privateNote);
+  const root = document.createElement('div');
+  root.id = 'onlineUiRoot';
+  if (onlineNativeTransport) {
+    const row = document.createElement('div');
+    row.className = 'lan-row';
+    row.append(royalButton('onlineHostButton', 'Create Room', hostOnlineMatch),
+      royalButton('onlineJoinButton', 'Join Room', prepareOnlineJoin));
+    privateRooms.append(row);
+    const code = document.createElement('div');
+    code.id = 'onlineCodeDisplay';
+    code.hidden = true;
+    const codeLabel = document.createElement('span');
+    setLocalizedText(codeLabel, 'Room Code');
+    const output = document.createElement('output');
+    output.id = 'onlineRoomCode';
+    output.translate = false;
+    code.append(codeLabel, output);
+    const form = document.createElement('form');
+    form.id = 'onlineJoinForm';
+    form.hidden = true;
+    const inputLabel = document.createElement('label');
+    inputLabel.htmlFor = 'onlineRoomInput';
+    setLocalizedText(inputLabel, 'Enter Room Code');
+    const input = document.createElement('input');
+    input.id = 'onlineRoomInput';
+    input.maxLength = 5;
+    input.autocomplete = 'off';
+    input.spellcheck = false;
+    const join = royalButton('onlineJoinSubmit', 'Join', () => {});
+    join.type = 'submit';
+    form.append(inputLabel, input, join);
+    form.addEventListener('submit', e => { e.preventDefault(); joinOnlineRoom(); });
+    root.append(code, form, royalButton('onlineDisconnectButton', 'Disconnect', () => closeLanConnection()));
+    root.querySelector('#onlineDisconnectButton').hidden = true;
+  } else {
+    privateRooms.append(lanHostButton, lanJoinButton);
+    root.append(byId('onlineCodeDisplay'), byId('onlineJoinForm'), lanDisconnectButton);
+  }
+  root.prepend(panel, privateRooms);
+  lanPanel.append(root);
+  syncMatchmakingUi();
+}
+
+function syncOnlineTransportUi() {
+  if (!byId('onlineUiRoot')) return;
+  byId('onlineUiRoot').hidden = !onlineTransportSelected;
+  if (onlineNativeTransport) for (const child of lanPanel.children) {
+    if (child.id === 'onlineUiRoot' || child.id === 'lanStatus') continue;
+    child.hidden = onlineTransportSelected;
+  }
+  const activeMenu = onlineTransportSelected && royalOnlineMode() && !document.body.classList.contains('title-active');
+  if (!activeMenu && matchmakingSocket && !matchmakingLocked()) stopMatchmaking();
+}
+
+function stopBackgroundMatchmaking() {
+  if (!matchmakingSocket) return;
+  const wasSearching = matchmakingRequested || matchmakingState === 'waiting' || matchmakingLocked();
+  if (matchmakingLocked() && !lanConnected) closeLanConnection(false);
+  stopMatchmaking();
+  if (wasSearching && onlineTransportSelected && !lanConnected) setLanStatus('Search stopped while the app was in the background.');
+}
+document.addEventListener('visibilitychange', () => { if (document.hidden) stopBackgroundMatchmaking(); });
+document.addEventListener('kingpong-background', stopBackgroundMatchmaking);
+
+// Online-only adapters retain the existing browser reconciliation and reliable control channel.
+function onlineLanSend(payload) {
+  payload.gameplay = "royal";
+  /* ROYAL POLISH */
+  payload.matchRules = "presets";
+  /* END ROYAL POLISH */
+  const channel = (payload.type === "action" || payload.type === "selection" || payload.type === "rules") ?
+    onlineControlChannel : lanChannel;
+  if (!channel || channel.readyState !== "open") return false;
+  try {
+    if (channel.bufferedAmount > 65536) return false;
+    channel.send(JSON.stringify(payload));
+    return true;
+  } catch {
+    if (onlineSession) onlineSession.fail("connection_lost");
+    return false;
+  }
+}
+
+function onlineSendLanInput(gamepads = null, force = false) {
+  if (lanRole !== "guest" || !lanChannel || lanChannel.readyState !== "open") return;
+  const localInput = readLocalLanInput(gamepads);
+  if (!force && frame % 2 !== 0 && localInput.axis === onlineLastSentAxis) return;
+  onlineLastSentAxis = localInput.axis;
+  const seq = ++lanInputSeq;
+  const input = onlineInput(localInput, seq);
+  lanSend({
+    v: LAN_SIGNAL_VERSION,
+    type: "input",
+    room: lanRoomCode,
+    seq,
+    axis: input.axis,
+    targetY: input.targetY
+  });
+}
+
+function onlineApplyLanHostState(state) {
+  const previousArena = matchArenaId;
+  applySelectionState(state.selection);
+  const campaignIndex = clamp(Math.round(Number(state.activeCampaign) || 0), 0, CAMPAIGNS.length - 1);
+  const levelInCampaign = clamp(Math.round(Number(state.levelIndex) || 0), 0, CAMPAIGNS[campaignIndex].levels.length -
+    1);
+  const levelChanged = previousArena !== matchArenaId || mode !== 2 || activeCampaign !== campaignIndex ||
+    levelIndex !== levelInCampaign;
+  mode = 2;
+  if (levelChanged) {
+    activeCampaign = campaignIndex;
+    levelIndex = levelInCampaign;
+    cloneHazards();
+    setAccent();
+    populateCustomLevelSelect();
+    syncCustomLevelSelectToCurrent();
+  }
+  left.y = clamp(finiteNumber(state.leftY, left.y), visiblePlayfieldBounds().top, visiblePlayfieldBounds().bottom -
+    PADDLE_H);
+  right.y = clamp(onlinePaddleState(state, levelChanged), visiblePlayfieldBounds().top, visiblePlayfieldBounds()
+    .bottom - PADDLE_H);
+  left.score = clamp(Math.round(Number(state.leftScore) || 0), 0, MATCH_SCORE_MAX);
+  right.score = clamp(Math.round(Number(state.rightScore) || 0), 0, MATCH_SCORE_MAX);
+  if (state.ball && typeof state.ball === "object") {
+    ball.prevX = ball.x;
+    ball.prevY = ball.y;
+    ball.x = clamp(finiteNumber(state.ball.x, ball.x), -BALL_SIZE * 2, W + BALL_SIZE * 2);
+    ball.y = clamp(finiteNumber(state.ball.y, ball.y), visiblePlayfieldBounds().top, visiblePlayfieldBounds().bottom -
+      BALL_SIZE);
+    ball.vx = clamp(Number(state.ball.vx) || 0, -20, 20);
+    ball.vy = clamp(Number(state.ball.vy) || 0, -20, 20);
+    ball.lastScored = clamp(Math.round(Number(state.ball.lastScored) || 0), -1, 1);
+    rallyLaunchFramesRemaining = clamp(Math.round(Number(state.ball.rallyLaunchFramesRemaining) || 0), 0,
+      RALLY_LAUNCH_RAMP_FRAMES);
+    rallyLaunchTargetSpeed = clamp(Number(state.ball.rallyLaunchTargetSpeed) || 0, 0, 20);
+    rallySpawnPulseX = clamp(finiteNumber(state.ball.rallySpawnPulseX, ball.x + BALL_HALF), 0, W);
+    rallySpawnPulseY = clamp(finiteNumber(state.ball.rallySpawnPulseY, ball.y + BALL_HALF), 0, H);
+  }
+  if (Array.isArray(state.hazards)) {
+    state.hazards.slice(0, 128).forEach(source => {
+      if (!source || typeof source !== "object") return;
+      const hazard = hazards.find(item => item.id === source.id);
+      if (!hazard) return;
+      if (Number.isFinite(Number(source.x))) hazard.x = clamp(Number(source.x), -W, W * 2);
+      if (Number.isFinite(Number(source.y))) hazard.y = clamp(Number(source.y), -H, H * 2);
+      hazard.hitFlash = clamp(Math.round(Number(source.hitFlash) || 0), 0, 20);
+    });
+  }
+  paused = Boolean(state.paused);
+  const syncedResumeCountdownMs = clamp(Number(state.resumeCountdownMs) || 0, 0, RESUME_COUNTDOWN_MS);
+  resumeCountdownEndAt = paused && syncedResumeCountdownMs > 0 ? performance.now() + syncedResumeCountdownMs : 0;
+  waitingForServe = Boolean(state.waitingForServe);
+  gameOver = Boolean(state.gameOver);
+  levelCleared = Boolean(state.levelCleared);
+  campaignCleared = Boolean(state.campaignCleared);
+  endMessage = String(state.endMessage || "").slice(0, 180);
+  if (document.body.classList.contains("title-active")) hideTitleScreen();
+  if (levelChanged) {
+    updateModeControls();
+    updateHud();
+  }
+  applyRoyalState(state.royal);
+  queueGuestSnapshot(state);
+}
+
+function onlineUpdatePlayerPaddles(gamepads = getConnectedGamepads()) {
+  const bounds = visiblePlayfieldBounds();
+  if (isLanGuestActive()) {
+    const input = readLocalLanInput(gamepads);
+    if (input.targetY !== null) {
+      right.y = input.targetY;
+    } else {
+      right.y += input.axis * PADDLE_SPEED;
+    }
+    clampPaddleToVisiblePlayfield(left);
+    clampPaddleToVisiblePlayfield(right);
+    return;
+  }
+  const lanLocalPaddleControls = mode === 2 && (isLanHostActive() || lanRole === "host");
+  const singlePlayerControls = mode !== 2 || lanLocalPaddleControls;
+  const leftUp = keys.has("w") || keys.has("W") || singlePlayerControls && keys.has("ArrowUp");
+  const leftDown = keys.has("s") || keys.has("S") || singlePlayerControls && keys.has("ArrowDown");
+  if (leftUp) {
+    left.y -= PADDLE_SPEED;
+  }
+  if (leftDown) {
+    left.y += PADDLE_SPEED;
+  }
+  if (touchPaddleTargets.left !== null) {
+    left.y = touchPaddleTargets.left;
+  }
+  if (mode === 2 && !isLanHostActive() && touchPaddleTargets.right !== null) {
+    right.y = touchPaddleTargets.right;
+  }
+  const primaryPad = gamepads[0];
+  const secondaryPad = gamepads[1];
+  if (singlePlayerControls && primaryPad) {
+    left.y += gamepadVertical(primaryPad, 1) * PADDLE_SPEED;
+  }
+  if (mode === 2) {
+    if (isLanHostActive()) {
+      onlineAppliedInputSeq = lanLastInputSeq;
+      const remoteFresh = performance.now() - lanRemoteInput.lastAt < 1200;
+      if (remoteFresh && lanRemoteInput.targetY !== null) {
+        right.y = clamp(lanRemoteInput.targetY, bounds.top, bounds.bottom - PADDLE_H);
+      } else if (remoteFresh) {
+        right.y += lanRemoteInput.axis * PADDLE_SPEED;
+      }
+    } else {
+      if (keys.has("ArrowUp")) {
+        right.y -= PADDLE_SPEED;
+      }
+      if (keys.has("ArrowDown")) {
+        right.y += PADDLE_SPEED;
+      }
+      if (primaryPad) {
+        left.y += gamepadVertical(primaryPad, 1) * PADDLE_SPEED;
+      }
+      if (secondaryPad) {
+        right.y += gamepadVertical(secondaryPad, 1) * PADDLE_SPEED;
+      }
+    }
+  }
+  clampPaddleToVisiblePlayfield(left);
+  clampPaddleToVisiblePlayfield(right);
+}
+
+function onlineSendLanState(force = false) {
+  if (!isLanHostActive()) return;
+  if (!force && frame % LAN_STATE_EVERY_FRAMES !== 0) return;
+  /* ROYAL POLISH */
+  sendMatchRules();
+  /* END ROYAL POLISH */
+  lanSend({
+    v: LAN_SIGNAL_VERSION,
+    type: "state",
+    room: lanRoomCode,
+    seq: ++lanStateSeq,
+    inputSeq: onlineAppliedInputSeq,
+    tick: frame,
+    selection: selectionPayload(),
+    royal: packRoyalState(),
+    /* ROYAL POLISH */
+    rules: matchRulePayload(),
+    /* END ROYAL POLISH */
+    activeCampaign,
+    levelIndex,
+    leftY: Math.round(left.y * 100) / 100,
+    rightY: Math.round(right.y * 100) / 100,
+    leftScore: left.score,
+    rightScore: right.score,
+    ball: {
+      x: Math.round(ball.x * 100) / 100,
+      y: Math.round(ball.y * 100) / 100,
+      vx: Math.round(ball.vx * 100) / 100,
+      vy: Math.round(ball.vy * 100) / 100,
+      lastScored: ball.lastScored,
+      rallyLaunchFramesRemaining,
+      rallyLaunchTargetSpeed,
+      rallySpawnPulseX,
+      rallySpawnPulseY
+    },
+    hazards: serializeLanHazards(),
+    paused,
+    resumeCountdownMs: Math.round(resumeCountdownRemainingMs()),
+    waitingForServe,
+    gameOver,
+    levelCleared,
+    campaignCleared,
+    endMessage: String(endMessage || "").slice(0, 180)
+  });
+}
+
+// Native LAN functions remain intact. Route only online sessions through the
+// existing browser transport and prediction adapters, after legacy declarations.
+function installOnlineSupport() {
+  onlineNativeTransport = typeof lanLocalSignal !== 'undefined';
+  const nativeClose = onlineNativeTransport ? closeLanConnection : null;
+  const nativeSetup = onlineNativeTransport ? startLanTwoPlayerSetup : null;
+  const nativeHost = onlineNativeTransport ? hostLanMatch : null;
+  const nativeJoin = onlineNativeTransport ? prepareLanJoin : null;
+  window.closeLanConnection = (show = true, keepQueue = false) => {
+    if (nativeClose && !onlineSession && !onlineTransportSelected) nativeClose(false);
+    closeOnlineConnection(show, keepQueue);
+  };
+  window.startLanTwoPlayerSetup = fromTitle => {
+    if (!nativeSetup) return startOnlineSetup(fromTitle);
+    closeLanConnection(false);
+    onlineTransportSelected = false;
+    nativeSetup(fromTitle);
+  };
+  window.hostLanMatch = () => onlineTransportSelected || !nativeHost ? hostOnlineMatch() : nativeHost();
+  window.prepareLanJoin = () => onlineTransportSelected || !nativeJoin ? prepareOnlineJoin() : nativeJoin();
+  if (!onlineNativeTransport) window.sanitizeRoomCode = sanitizeOnlineRoomCode;
+  for (const [name, online] of Object.entries({lanSend: onlineLanSend, sendLanInput: onlineSendLanInput,
+      sendLanState: onlineSendLanState, applyLanHostState: onlineApplyLanHostState, updatePlayerPaddles: onlineUpdatePlayerPaddles})) {
+    const local = window[name];
+    window[name] = (...args) => onlineSession ? online(...args) : local(...args);
+  }
+  for (const name of ['update', 'requestServeOrContinue', 'requestTogglePause', 'requestRetryLevel']) {
+    const original = window[name];
+    window[name] = (...args) => {
+      if (mode === 2 && onlineGameBlocked) return;
+      return original(...args);
+    };
+  }
+  const levelChoice = applyCustomLevelPickerChoice;
+  window.applyCustomLevelPickerChoice = value => { if (!matchmakingLocked()) levelChoice(value); };
+  const guestMessage = handleLanGuestMessage;
+  window.handleLanGuestMessage = message => {
+    if (validMatchmakingState(message)) guestMessage(message);
+  };
+}
+</script>
   <script id="royal-localization">
 // Merged into existing phrase tables before their translation cache is built.
 window.KING_PONG_ROYAL_TRANSLATIONS = {
@@ -3720,6 +5256,11 @@ Object.entries({
 }).forEach(([code, values]) => ['Music', 'Space', 'Title Screen'].forEach((key, index) => {
   window.KING_PONG_ROYAL_TRANSLATIONS[code][key] = values[index];
 }));
+
+// The packaged shells use the same online and audio phrases as the browser.
+Object.entries(window.KING_PONG_ONLINE_TRANSLATIONS || {}).forEach(([code, phrases]) => {
+  Object.assign(window.KING_PONG_ROYAL_TRANSLATIONS[code], phrases);
+});
 </script>
   <script>
 const LOCALIZATION = (() => {
@@ -6567,6 +8108,7 @@ function setMusicEnabled(enabled) {
 }
 
 function toggleMusic() {
+  if (saveData?.muteAll) return;
   setMusicEnabled(!musicEnabled);
 }
 
@@ -9179,32 +10721,26 @@ function beginRallyLaunchRamp() {
   rallyLaunchFramesRemaining = RALLY_LAUNCH_RAMP_FRAMES;
   rallySpawnPulseX = ball.x + BALL_HALF;
   rallySpawnPulseY = ball.y + BALL_HALF;
-  ball.vx *= RALLY_LAUNCH_START_SPEED_SCALE;
-  ball.vy *= RALLY_LAUNCH_START_SPEED_SCALE;
+  ball.vx *= 0.4;
+  ball.vy *= 0.4;
 }
 
 function updateRallyLaunchRamp() {
-  if (rallyLaunchFramesRemaining <= 0 || rallyLaunchTargetSpeed <= 0) return;
+  if (rallyLaunchFramesRemaining <= 0) return;
   const elapsed = RALLY_LAUNCH_RAMP_FRAMES - rallyLaunchFramesRemaining + 1;
-  const progress = clamp(elapsed / RALLY_LAUNCH_RAMP_FRAMES, 0, 1);
-  const eased = progress * progress * (3 - 2 * progress);
-  const desiredSpeed = rallyLaunchTargetSpeed * lerp(RALLY_LAUNCH_START_SPEED_SCALE, 1, eased) * (ball.rush ? 1.3 : 1);
-  const currentSpeed = Math.hypot(ball.vx, ball.vy);
-  if (currentSpeed > 0.001) {
-    const scale = desiredSpeed / currentSpeed;
-    ball.vx *= scale;
-    ball.vy *= scale;
-  }
   rallyLaunchFramesRemaining--;
-  if (rallyLaunchFramesRemaining <= 0) {
-    const finalSpeed = Math.hypot(ball.vx, ball.vy);
-    if (finalSpeed > 0.001) {
-      const finalScale = rallyLaunchTargetSpeed * (ball.rush ? 1.3 : 1) / finalSpeed;
-      ball.vx *= finalScale;
-      ball.vy *= finalScale;
+  // Keep the original ripple timing. Only the first 0.4 seconds change speed.
+  if (rallyLaunchTargetSpeed > 0 && elapsed <= 24) {
+    const desiredSpeed = rallyLaunchTargetSpeed * lerp(0.4, 1, elapsed / 24) * (ball.rush ? 1.3 : 1);
+    const currentSpeed = Math.hypot(ball.vx, ball.vy);
+    if (currentSpeed > 0.001) {
+      const scale = desiredSpeed / currentSpeed;
+      ball.vx *= scale;
+      ball.vy *= scale;
     }
-    clearRallyLaunchRamp();
   }
+  if (elapsed >= 24) rallyLaunchTargetSpeed = 0;
+  if (rallyLaunchFramesRemaining <= 0) clearRallyLaunchRamp();
 }
 
 function resetBall(direction = 1, waitForServe = true, spawnNearPlayer = false) {
@@ -10093,6 +11629,8 @@ function hitPaddle(paddle, direction) {
   shakeFrames = Math.max(shakeFrames, 3);
   playImpactSound(180 + Math.abs(relative) * 260, 0.035);
   /* ROYAL POLISH */
+  // A paddle return ends serve acceleration, while the spawn ripple continues.
+  if (ball !== royalSplitBall) rallyLaunchTargetSpeed = 0;
   if (ball === royalSplitBall) royalSplitBall = null;
   /* END ROYAL POLISH */
 }
@@ -10300,11 +11838,10 @@ function resolveCircleCollision(h, quiet = false) {
 
 function resolveHazardCollisions() {
   for (const h of hazards) {
-    if (h.type === "circle") {
-      resolveCircleCollision(h);
-    } else {
-      resolveRectCollision(h);
-    }
+    const hit = h.type === "circle" ? resolveCircleCollision(h) : resolveRectCollision(h);
+    // A real contact owns its outgoing speed. CPU prediction calls the quiet
+    // solvers directly, and a Split collision must not cancel the primary ramp.
+    if (hit && ball !== royalSplitBall) rallyLaunchTargetSpeed = 0;
   }
 }
 
@@ -10895,24 +12432,7 @@ function drawOverlay() {
 
 function drawRallySpawnPulse(view = captureVisualState()) {
   if (view.launch.remaining <= 0 || mode === 4) return;
-  const progress = 1 - view.launch.remaining / RALLY_LAUNCH_RAMP_FRAMES;
-  const radius = lerp(RALLY_SPAWN_PULSE_START_RADIUS, RALLY_SPAWN_PULSE_END_RADIUS, progress);
-  const alpha = (1 - progress) * 0.82;
-  ctx.save();
-  ctx.globalAlpha = alpha;
-  ctx.strokeStyle = currentCampaign().accent;
-  ctx.lineWidth = 2;
-  ctx.shadowColor = currentCampaign().accent;
-  ctx.shadowBlur = 14;
-  ctx.beginPath();
-  ctx.arc(view.launch.x, view.launch.y, radius, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.globalAlpha = alpha * 0.42;
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.arc(view.launch.x, view.launch.y, radius * 0.58, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.restore();
+  drawSpawnRipple(view.launch, currentCampaign().accent);
 }
 
 function draw(view = captureVisualState()) {
@@ -10988,6 +12508,11 @@ function draw(view = captureVisualState()) {
   }
   ctx.restore();
 } // BEGIN SHARED ROYAL GAMEPLAY
+const ROYAL_APPROVED_ICONS = {
+  "split": "data:image/png;base64,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",
+  "rush": "data:image/png;base64,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",
+  "guard": "data:image/png;base64,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"
+};
 // Shared source embedded by tools/sync-gameplay.mjs; native packages remain self-contained.
 let visualPrevious = null;
 let visualCurrent = null;
@@ -11055,6 +12580,7 @@ function captureVisualState() {
       ...royalGuards
     },
     guardHits: captureGuardHits(),
+    powerupPulse: royalPowerupPulse ? {...royalPowerupPulse} : null,
     launch: {
       remaining: rallyLaunchFramesRemaining,
       x: rallySpawnPulseX,
@@ -11096,6 +12622,9 @@ function interpolateVisualState(a, b, alpha) {
     ball: mixVisualEntity(a.ball, b.ball, alpha),
     split: mixVisualEntity(a.split, b.split, alpha),
     guardHits: interpolateGuardHits(a.guardHits, b.guardHits, alpha),
+    powerupPulse: a.powerupPulse && b.powerupPulse && a.powerupPulse.x === b.powerupPulse.x &&
+      a.powerupPulse.y === b.powerupPulse.y ? {...b.powerupPulse,
+        remaining: lerp(a.powerupPulse.remaining, b.powerupPulse.remaining, alpha)} : b.powerupPulse,
     launch: a.launch.remaining > 0 && b.launch.remaining > 0 ? {
       ...b.launch,
       remaining: lerp(a.launch.remaining, b.launch.remaining, alpha)
@@ -11254,144 +12783,25 @@ const ROYAL_SPAWN_X_MARGIN = 112;
 const ROYAL_TYPES = ['split', 'rush', 'guard'];
 const ROYAL_COLORS = {
   split: '#bd7aff',
-  rush: '#ff604d',
+  rush: '#ffd469',
   guard: '#59baff'
 };
-const ROYAL_PICKUP_SIZE = 24; // Source sprite resolution, shared with the help UI.
-const ROYAL_PICKUP_RENDER_SIZE = 30; // Presentation only; collection keeps its 24-unit radius.
-const ROYAL_PICKUP_ART_SYMBOLS = '123456789ABCDEF';
-// Visual-only 24 x 24 pixel sprites, shared by gameplay and help.
-const ROYAL_PICKUP_ART = {
-  split: {
-    // Approved reference: a large left ball forks into two smaller right balls.
-    palette: ['#11001f', '#4a006d', '#250039', '#9000dc', '#f16cff', '#fff7df', '#cf20f1', '#62079c'],
-    pixels: [
-      '........................',
-      '.........111111.........',
-      '......115665444411......',
-      '.....14422222222441.....',
-      '....1542333333332441....',
-      '...162233335333335551...',
-      '..15423333333333566751..',
-      '..14233333333366567451..',
-      '..52355553333366574854..',
-      '.1425566553336633555241.',
-      '.1455667745366333333241.',
-      '.1456677745663333333241.',
-      '.1456777445663333333241.',
-      '.1457774445366333333241.',
-      '.1425444453336633555241.',
-      '..42355553333366566754..',
-      '..14233333333366567451..',
-      '..15423333333333574851..',
-      '...142233334333335551...',
-      '....1542333333332441....',
-      '.....14422222222441.....',
-      '......114565444411......',
-      '.........111111.........',
-      '........................',
-    ]
-  },
-  rush: {
-    palette: ['#000000', '#440c02', '#915b19', '#d6832b', '#df6f10', '#9b3e0b', '#6a3805', '#f8e48e', '#c83e0a', '#a31704', '#d25415', '#e7bc51', '#4d0001', '#e29f3a', '#592007'],
-    pixels: [
-      '........................',
-      '........................',
-      '..........1111..........',
-      '.......1234456721.......',
-      '......248859AA6B31......',
-      '.....2C884AAADDD652.....',
-      '....14E5ABAA552F2631....',
-      '....7BA99B4C833D7667....',
-      '...1B9A636488387F2D61...',
-      '...F9DAAF37C78836F33F...',
-      '..1BBBE83CCF48BE73E76...',
-      '...B4EC8C3CC8CB9EE3F6...',
-      '..1AAA9E8359CBA6597D6...',
-      '...6A795C36AEEA5A62A7...',
-      '...29FABEC35CCE55B291...',
-      '...1654EC8C337F2F7A61...',
-      '....2BDDA5CE9AD22FB2....',
-      '.....35AAAAADC7DA57.....',
-      '.....1759DDDDAA957......',
-      '.......2659999B62.......',
-      '.........1F77F1.........',
-      '........................',
-      '........................',
-      '........................',
-    ]
-  },
-  guard: {
-    palette: ['#000000', '#082f4a', '#021543', '#316296', '#5f88b5', '#5ad5f6', '#3caaed', '#0c81c8', '#d4eef8', '#03549f', '#a9bad8', '#033394', '#214d86', '#000054', '#040000'],
-    pixels: [
-      '........................',
-      '........................',
-      '..........12231.........',
-      '.......1245678421.......',
-      '......359968AAAA821.....',
-      '.....37997A4B3C228D.....',
-      '....15684DD9953D2382....',
-      '....27AD9BB99B4B53AA1...',
-      '...18A4D99B554574AB82...',
-      '...28CA4555BB554DDACA1..',
-      '..1486A99B997A45BD2283..',
-      '..1AAAAB699978CEBDAE83..',
-      '..FA876566997ACCB46783..',
-      '..1AA794B7667CE8556A83..',
-      '...2AC8AB7768CCBD8ACA1..',
-      '...18C484987AC75D6482...',
-      '....2876C598C5B2A78AF...',
-      '....1A7AA2B97B2CCC83....',
-      '.....388CC35B2EC882.....',
-      '......1D888C2A8883......',
-      '........1DA788D21.......',
-      '..........1131..........',
-      '........................',
-      '........................',
-    ]
-  }
-};
+const ROYAL_PICKUP_SIZE = 96;
+const ROYAL_PICKUP_RENDER_SIZE = 36; // Cosmetic only; collection radius remains 24.
 const royalPickupSprites = new Map();
 function royalPickupSprite(type) {
   if (royalPickupSprites.has(type)) return royalPickupSprites.get(type);
-  const sprite = document.createElement('canvas');
-  sprite.width = sprite.height = ROYAL_PICKUP_SIZE;
-  const c = sprite.getContext('2d');
-  const art = ROYAL_PICKUP_ART[type];
-  if (art) {
-    for (let y = 0; y < ROYAL_PICKUP_SIZE; y++) {
-      const row = art.pixels[y];
-      for (let x = 0; x < ROYAL_PICKUP_SIZE; x++) {
-        const symbol = row[x];
-        if (symbol === '.') continue;
-        const paletteIndex = ROYAL_PICKUP_ART_SYMBOLS.indexOf(symbol);
-        if (paletteIndex < 0) continue;
-        c.fillStyle = art.palette[paletteIndex];
-        c.fillRect(x, y, 1, 1);
-      }
-    }
-  } else {
-    // Defensive fallback for an unknown type; normal gameplay only uses ROYAL_TYPES.
-    c.fillStyle = ROYAL_COLORS[type] || '#fff7df';
-    c.fillRect(2, 2, ROYAL_PICKUP_SIZE - 4, ROYAL_PICKUP_SIZE - 4);
-  }
-  // Keep each pickup visually distinct even without its color palette.
-  c.fillStyle = '#fff7df';
-
-  if (type === 'rush') {
-    c.fillRect(11, 2, 2, 2);
-    c.fillRect(8, 4, 2, 1);
-  } else if (type === 'guard') {
-    c.fillRect(19, 3, 2, 2);
-    c.fillRect(20, 6, 1, 2);
-  }
-
+  const sprite = new Image(ROYAL_PICKUP_SIZE, ROYAL_PICKUP_SIZE);
+  sprite.src = ROYAL_APPROVED_ICONS[type];
   royalPickupSprites.set(type, sprite);
   return sprite;
 }
 
 function resetRoyalRally() {
+  if (typeof stopRoyalPowerupSound === 'function') stopRoyalPowerupSound();
   royalSplitBall = royalPickup = null;
+  royalPowerupPulse = null;
+  royalPowerupCues = [];
   royalGuardHits = {left: null, right: null};
   royalCpuTarget = null;
   royalGuards = {
@@ -11414,6 +12824,7 @@ function royalActive() {
 function updateRoyalPowerups() {
   if (!royalActive()) return;
   royalRallyTick++;
+  if (royalPowerupPulse && --royalPowerupPulse.remaining <= 0) royalPowerupPulse = null;
   for (const side of ['left', 'right']) {
     royalGuards[side] = Math.max(0, royalGuards[side] - 1);
     if (royalGuardHits[side] && --royalGuardHits[side].ttl <= 0) royalGuardHits[side] = null;
@@ -11422,11 +12833,11 @@ function updateRoyalPowerups() {
   if (!royalPickup && royalRallyTick % 480 === 180) {
     const spot = findRoyalPickupSpot();
     const type = ROYAL_TYPES[royalPickupIndex++ % ROYAL_TYPES.length];
-    if (spot) royalPickup = {
-      type,
-      ...spot,
-      ttl: 480
-    };
+    if (spot) {
+      royalPickup = {type, ...spot, ttl: 480};
+      royalPowerupPulse = {x: spot.x, y: spot.y, remaining: 60};
+      emitRoyalPowerupCue('spawn', type);
+    }
   }
 }
 
@@ -11537,8 +12948,8 @@ function collectRoyalPickup() {
   if (Math.hypot(ball.prevX + BALL_HALF + dx * t - royalPickup.x, ball.prevY + BALL_HALF + dy * t - royalPickup.y) <=
     ROYAL_COLLECTION_RADIUS) {
     if (awardRoyalPowerup(royalPickup.type)) {
+      emitRoyalPowerupCue('pickup', royalPickup.type);
       royalPickup = null;
-      playImpactSound(660, 0.04);
     }
   }
 }
@@ -11649,12 +13060,16 @@ function packRoyalState() {
     guards: {
       ...royalGuards
     },
-    guardHits: captureGuardHits()
+    guardHits: captureGuardHits(),
+    powerupPulse: royalPowerupPulse ? {...royalPowerupPulse} : null,
+    cueSeq: royalPowerupCueSequence,
+    cues: royalPowerupCues.map(c => ({seq: c.seq, kind: c.kind, type: c.type, age: royalRallyTick - c.tick}))
   };
 }
 
 function validRoyalState(value) {
   const bounded = (n, min, max) => typeof n === 'number' && Number.isFinite(n) && n >= min && n <= max;
+  if (!validRoyalCueState(value)) return false;
   if (!value || !Number.isSafeInteger(value.rally) || value.rally < 0 || typeof value.rush !== 'boolean') return false;
   if (!value.guards || !['left', 'right'].every(k => Number.isInteger(value.guards[k]) && bounded(value.guards[k], 0,
       600))) return false;
@@ -11672,6 +13087,8 @@ function validRoyalState(value) {
 }
 
 function applyRoyalState(value) {
+  receiveRoyalPowerupCues(value);
+  royalPowerupPulse = value?.powerupPulse ? {...value.powerupPulse} : null;
   const copy = hit => hit ? {seq: hit.seq, y: hit.y, ttl: hit.ttl} : null;
   royalGuardHits = {left: copy(value?.guardHits?.left), right: copy(value?.guardHits?.right)};
   if (!value) {
@@ -11739,6 +13156,7 @@ function drawRoyalBall(b, translucent = false) {
 }
 
 function drawRoyalEffects(view) {
+  if (view.powerupPulse) drawSpawnRipple(view.powerupPulse, ROYAL_COLORS[view.pickup?.type] || currentCampaign().accent);
   ctx.save();
   for (const side of ['left', 'right']) {
     if (view.guards[side] <= 0) continue;
@@ -11768,8 +13186,9 @@ function drawRoyalEffects(view) {
     const p = view.pickup;
     ctx.shadowBlur = 0;
     ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(royalPickupSprite(p.type), p.x - ROYAL_PICKUP_RENDER_SIZE / 2,
-      p.y - ROYAL_PICKUP_RENDER_SIZE / 2, ROYAL_PICKUP_RENDER_SIZE, ROYAL_PICKUP_RENDER_SIZE);
+    const sprite = royalPickupSprite(p.type);
+    if (sprite.complete && sprite.naturalWidth) ctx.drawImage(sprite, Math.round(p.x - ROYAL_PICKUP_RENDER_SIZE / 2),
+      Math.round(p.y - ROYAL_PICKUP_RENDER_SIZE / 2), ROYAL_PICKUP_RENDER_SIZE, ROYAL_PICKUP_RENDER_SIZE);
   }
   ctx.restore();
 }
@@ -11898,6 +13317,7 @@ function initializeMatchSelections() {
   const arena = saveData && saveData.royalArena;
   matchArenaId = validArenaId(arena) && arenaUnlocked(arena) ? arena : firstAvailableLevelInCurrentPicker();
   if (!validArenaId(matchArenaId)) matchArenaId = 0;
+  if (typeof matchmakingLocked === 'function' && matchmakingLocked()) matchArenaId = onlineMatchAssignment.arena;
 }
 
 function selectionPayload() {
@@ -11982,6 +13402,9 @@ function receivePaddleSelection(message) {
 }
 
 function resetMatchConnectionState() {
+  guestPowerupCueSequence = -1;
+  royalPowerupPulse = null;
+  royalPowerupCues = [];
   guestGuardSoundSequence = {left: -1, right: -1};
   resetMatchRuleConnection();
   resetVisualHistory();
@@ -12045,6 +13468,7 @@ function paddleThumbnail(entry) {
 }
 
 function openRoyalGallery(kind, side = 'left') {
+  if (kind === 'arena' && typeof matchmakingLocked === 'function' && matchmakingLocked()) return;
   if (kind === 'arena' && lanRole === 'guest') return;
   if (isLanActive() && !waitingForServe) return;
   galleryKind = kind;
@@ -12182,7 +13606,6 @@ function pollRoyalGalleryGamepad(now) {
 }
 
 function initRoyalMenus() {
-  const browserOnline = typeof KingPongRoom !== 'undefined';
   const card = document.querySelector('.title-card');
   setLocalizedText(document.querySelector('.title-subtitle'),
     'Choose your paddle. Choose your arena. Claim royal powerups. Take your crown!');
@@ -12199,36 +13622,27 @@ function initRoyalMenus() {
   localChoices.id = 'localPlayChoices';
   localChoices.hidden = true;
   localChoices.append(titleTwoPlayerButton);
-  if (browserOnline) {
-    titleLanButton.classList.add('primary-online');
-    setLocalizedText(titleLanButton, 'PLAY ONLINE');
-    actions.before(titleLanButton);
-    const lanNote = document.createElement('span');
-    setLocalizedText(lanNote, 'LAN Play is available in the native apps.');
-    localChoices.append(lanNote);
-  } else {
-    localChoices.append(titleLanButton);
-    const online = document.createElement('button');
+  const primary = document.createElement('div');
+  primary.className = 'title-primary-modes';
+  const online = onlineNativeTransport ? document.createElement('button') : titleLanButton;
+  if (onlineNativeTransport) {
+    online.id = 'titleOnlineButton';
     online.type = 'button';
-    online.className = 'primary-online';
-    setLocalizedText(online, 'PLAY ONLINE');
-    online.addEventListener('click', () => {
-      const panel = byId('onlineBrowserNotice');
-      panel.hidden = !panel.hidden;
-    });
-    const notice = document.createElement('div');
-    notice.id = 'onlineBrowserNotice';
-    notice.hidden = true;
-    const text = document.createElement('p');
-    setLocalizedText(text, 'Open this address in your browser to play online:');
-    const url = document.createElement('input');
-    url.readOnly = true;
-    url.value = 'https://kingalexgilbert.github.io/king-pong/demo/';
-    url.setAttribute('aria-label', 'Online Multiplayer');
-    url.addEventListener('click', () => url.select());
-    notice.append(text, url);
-    actions.before(online, notice);
+    online.addEventListener('click', () => startOnlineSetup(true));
+    localChoices.append(titleLanButton);
   }
+  for (const [button, heading, subtitle, style] of [
+      [online, 'PLAY ONLINE', 'Challenge real players', 'primary-online'],
+      [titleCampaignButton, 'CAMPAIGN', 'Single Player — Battle Computer Opponents', 'primary-campaign']]) {
+    button.className = style;
+    button.replaceChildren();
+    const title = document.createElement('strong'), hint = document.createElement('span');
+    setLocalizedText(title, heading);
+    setLocalizedText(hint, subtitle);
+    button.append(title, hint);
+    primary.append(button);
+  }
+  actions.before(primary);
   actions.after(localChoices);
   const saves = document.createElement('details');
   saves.className = 'compact-saves';
@@ -12274,7 +13688,7 @@ function initRoyalMenus() {
   gallery.addEventListener('click', e => {
     if (e.target === gallery) closeRoyalGallery();
   });
-  if (browserOnline) {
+  if (!onlineNativeTransport) {
     const help = document.createElement('p');
     help.className = 'royal-help';
     setLocalizedText(help, 'Solid paddle: host confirmed. Faint cursor: your input.');
@@ -12292,7 +13706,69 @@ function initRoyalMenus() {
   if (typeof preventMenuKeyboardActivation === 'undefined') window.addEventListener('keydown', handleRoyalMenuKey,
   true);
   updateRoyalSelectionLabels();
+  initMatchmakingUi();
   initRoyalUi();
+}
+
+// Cosmetic events travel in authoritative snapshots, with monotonic IDs. Keeping
+// the last few events survives snapshot loss without replaying cues on resync.
+let royalPowerupPulse = null;
+let royalPowerupCueSequence = 0;
+let guestPowerupCueSequence = -1;
+let royalPowerupCues = [];
+
+function emitRoyalPowerupCue(kind, type) {
+  royalPowerupCues.push({seq: ++royalPowerupCueSequence, kind, type, tick: royalRallyTick});
+  if (royalPowerupCues.length > 4) royalPowerupCues.shift();
+  if (typeof playRoyalPowerupSound === 'function') playRoyalPowerupSound(kind);
+}
+
+function validRoyalCueState(value) {
+  if (!value) return true;
+  if (value.powerupPulse !== undefined && value.powerupPulse !== null) {
+    const p = value.powerupPulse;
+    if (!Number.isFinite(p.x) || p.x < 0 || p.x > W || !Number.isFinite(p.y) || p.y < 0 || p.y > H ||
+        !Number.isFinite(p.remaining) || p.remaining < 0 || p.remaining > 60) return false;
+  }
+  if (value.cueSeq === undefined && value.cues === undefined) return true;
+  return Number.isSafeInteger(value.cueSeq) && value.cueSeq >= 0 && Array.isArray(value.cues) && value.cues.length <= 4 &&
+    value.cues.every(c => c && Number.isSafeInteger(c.seq) && c.seq > 0 && c.seq <= value.cueSeq &&
+      ['spawn', 'pickup'].includes(c.kind) && ROYAL_TYPES.includes(c.type) && Number.isSafeInteger(c.age) && c.age >= 0);
+}
+
+function receiveRoyalPowerupCues(value) {
+  if (!value || !Number.isSafeInteger(value.cueSeq)) return;
+  if (guestPowerupCueSequence < 0) { guestPowerupCueSequence = value.cueSeq; return; }
+  for (const cue of value.cues || []) {
+    if (cue.seq <= guestPowerupCueSequence) continue;
+    guestPowerupCueSequence = cue.seq;
+    if (cue.age > 30 || paused || gameOver || waitingForServe || document.hidden ||
+        document.body.classList.contains('royal-panel-open') || document.body.classList.contains('title-active')) continue;
+    if (typeof playRoyalPowerupSound === 'function') playRoyalPowerupSound(cue.kind);
+  }
+  guestPowerupCueSequence = Math.max(guestPowerupCueSequence, value.cueSeq);
+}
+
+// Shared by the unchanged ball-spawn animation and the cosmetic pickup pulse.
+function drawSpawnRipple(pulse, color) {
+  const progress = 1 - pulse.remaining / RALLY_LAUNCH_RAMP_FRAMES;
+  const radius = lerp(RALLY_SPAWN_PULSE_START_RADIUS, RALLY_SPAWN_PULSE_END_RADIUS, progress);
+  const alpha = (1 - progress) * 0.82;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.shadowColor = color;
+  ctx.shadowBlur = 14;
+  ctx.beginPath();
+  ctx.arc(pulse.x, pulse.y, radius, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.globalAlpha = alpha * 0.42;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.arc(pulse.x, pulse.y, radius * 0.58, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
 }
 
 // Rules are session state. Only the local match or the online host can change them.
@@ -12348,6 +13824,7 @@ function validMatchScores(state) {
 }
 
 function canChooseMatchRules() {
+  if (typeof matchmakingLocked === 'function' && matchmakingLocked()) return false;
   return mode === 2 && lanRole !== 'guest' && waitingForServe && !gameOver && left.score === 0 && right.score === 0;
 }
 
@@ -12420,6 +13897,7 @@ const gameAudioBuses = new WeakMap();
 const activeGameSounds = new Set();
 let gameAudioEpoch = 0;
 let gameImpactVoice = null;
+let royalPowerupVoice = null;
 
 // Impacts share one short voice. Two balls (or a corner contact) must not add
 // square waves together; leave score jingles, music and menu cues independent.
@@ -12509,6 +13987,7 @@ function trackGameSound(oscillator, gain) {
 function stopGameSounds() {
   gameAudioEpoch++; // Delayed score jingles from the old audio/slot state must not start later.
   gameImpactVoice = null;
+  royalPowerupVoice = null;
   for (const oscillator of activeGameSounds) {
     try {
       oscillator.stop();
@@ -12526,7 +14005,7 @@ function setGameMuteAll(muted) {
 }
 
 function setSoundEffectsEnabled(enabled) {
-  if (!saveData) return;
+  if (!saveData || saveData.muteAll) return;
   saveData.soundEffectsEnabled = Boolean(enabled);
   stopGameSounds();
   updateGameAudioGains();
@@ -12535,17 +14014,61 @@ function setSoundEffectsEnabled(enabled) {
 }
 
 function updateAudioControls() {
+  const muted = saveData?.muteAll === true;
   for (const [id, enabled] of [
-      ['muteAllButton', saveData?.muteAll === true],
+      ['muteAllButton', muted],
+      ['musicButton', musicEnabled],
       ['soundEffectsButton', saveData?.soundEffectsEnabled !== false]
     ]) {
     const button = document.getElementById(id);
     if (!button) continue;
-    button.setAttribute('aria-pressed', String(enabled));
-    setLocalizedText(button, enabled ? 'ON' : 'OFF');
+    const suppressed = muted && id !== 'muteAllButton';
+    button.disabled = suppressed;
+    button.setAttribute('aria-pressed', String(enabled && !suppressed));
+    setLocalizedText(button, suppressed ? 'Muted by Mute All' : enabled ? 'ON' : 'OFF');
+    setLocalizedTitle(button, suppressed ? 'Muted by Mute All' : enabled ? 'ON' : 'OFF');
   }
   const musicState = document.getElementById('audioMusicState');
-  if (musicState) setLocalizedText(musicState, musicEnabled ? 'ON' : 'OFF');
+  if (musicState) setLocalizedText(musicState, muted ? 'Muted by Mute All' : musicEnabled ? 'ON' : 'OFF');
+}
+
+function playRoyalPowerupSound(kind) {
+  // Never resume suspended audio or retain a cue for a later user gesture.
+  if (!gameAudioEnabled('sfx') || document.hidden || !audioCtx || audioCtx.state !== 'running') return;
+  try {
+    const context = audioCtx, now = context.currentTime;
+    const old = royalPowerupVoice;
+    if (old && old.context === context && now < old.end) {
+      if (kind === 'spawn') return;
+      const level = old.peak * Math.max(0, Math.min(1, (now - old.start) / 0.004, (old.end - now) / 0.04));
+      old.gain.gain.cancelScheduledValues(now);
+      old.gain.gain.setValueAtTime(level, now);
+      old.gain.gain.linearRampToValueAtTime(0, now + 0.004);
+      old.oscillator.stop(now + 0.004);
+    }
+    const oscillator = context.createOscillator(), gain = context.createGain();
+    const pickup = kind === 'pickup', duration = pickup ? 0.19 : 0.13, peak = pickup ? 0.035 : 0.025;
+    oscillator.type = 'triangle';
+    oscillator.frequency.setValueAtTime(pickup ? 660 : 440, now);
+    oscillator.frequency.setValueAtTime(pickup ? 880 : 587.33, now + 0.065);
+    if (pickup) oscillator.frequency.setValueAtTime(1108.73, now + 0.12);
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(peak, now + 0.004);
+    gain.gain.setValueAtTime(peak, now + duration - 0.04);
+    gain.gain.linearRampToValueAtTime(0, now + duration);
+    oscillator.connect(gain);
+    connectGameAudio(gain, context, 'sfx');
+    trackGameSound(oscillator, gain);
+    royalPowerupVoice = {context, oscillator, gain, start: now, end: now + duration, peak};
+    oscillator.start(now);
+    oscillator.stop(now + duration);
+  } catch { /* Audio must never block gameplay. */ }
+}
+
+function stopRoyalPowerupSound() {
+  if (!royalPowerupVoice) return;
+  try { royalPowerupVoice.oscillator.stop(); } catch {}
+  royalPowerupVoice = null;
 }
 
 // Shared presentation layer. The existing game and network state remain authoritative.
@@ -12578,12 +14101,16 @@ function setRoyalOnlineSelection(open) {
 }
 
 function resetRoyalLocalSetup() {
+  if (typeof stopMatchmaking === 'function') stopMatchmaking();
+  if (typeof onlineTransportSelected !== 'undefined') onlineTransportSelected = false;
   royalOnlineSelected = false;
   royalMenuRequested = false;
   lanPanelOpen = false;
 }
 
 function resetRoyalUiForTitle() {
+  if (typeof stopMatchmaking === 'function') stopMatchmaking();
+  if (typeof stopRoyalPowerupSound === 'function') stopRoyalPowerupSound();
   royalOnlineSelected = royalMenuRequested = false;
   lanPanelOpen = false;
   royalRotateDismissed = false;
@@ -12600,7 +14127,7 @@ function resetRoyalUiForTitle() {
 function royalModeName() {
   if (mode === 4 || bossIntroActive) return 'Secret Boss';
   if (mode === 3) return 'Custom Game';
-  if (royalOnlineMode()) return typeof KingPongRoom !== 'undefined' ? 'Online Multiplayer' : 'LAN Two Player';
+  if (royalOnlineMode()) return typeof onlineTransportSelected !== 'undefined' && onlineTransportSelected ? 'Online Multiplayer' : 'LAN Two Player';
   if (mode === 2) return 'Local Two Player';
   return 'Campaign';
 }
@@ -12748,6 +14275,9 @@ function initRoyalUi() {
   royalText(twoPlayerModeButton, 'Local Two Player');
   modeGrid.append(campaignGroup, customModeButton, twoPlayerModeButton, lanModeButton,
     royalButton('menuBoss', 'Secret Boss', startBossFromTitle, 'secret-boss-button'));
+  if (typeof onlineNativeTransport !== 'undefined' && onlineNativeTransport) {
+    modeGrid.append(royalButton('menuOnline', 'Online Multiplayer', () => startOnlineSetup(false)));
+  }
   modes.append(modeGrid);
   menu.append(modes);
   const settings = royalDisclosure('Settings', 'matchSettings');
@@ -12826,6 +14356,7 @@ function initRoyalUi() {
   }
   prepareAccessibleMenuControls();
   document.body.classList.add('royal-ui-ready');
+  updateAudioControls();
   // One listener per page. Rotation only changes presentation, never match or connection state.
   window.addEventListener('resize', syncRoyalOrientation);
   window.screen.orientation?.addEventListener?.('change', syncRoyalOrientation);
@@ -12847,16 +14378,15 @@ function royalHelpSection(id, label) {
 }
 
 function royalPowerupHelpIcon(type) {
-  const sprite = royalPickupSprite(type);
-  const icon = document.createElement('canvas');
-  icon.width = sprite.width;
-  icon.height = sprite.height;
+  const icon = document.createElement('img');
+  icon.src = ROYAL_APPROVED_ICONS[type];
+  icon.alt = '';
+  icon.width = icon.height = 40;
   icon.setAttribute('aria-hidden', 'true');
-  icon.style.width = '32px';
-  icon.style.height = '32px';
-  icon.style.flex = '0 0 32px';
+  icon.style.width = '40px';
+  icon.style.height = '40px';
+  icon.style.flex = '0 0 40px';
   icon.style.imageRendering = 'pixelated';
-  icon.getContext('2d').drawImage(sprite, 0, 0);
   return icon;
 }
 
@@ -12941,7 +14471,8 @@ function createMatchRulesUi() {
 
 function syncMatchRulesUi() {
   byId('matchRules').hidden = mode !== 2;
-  const guest = lanRole === 'guest';
+  const fixed = typeof matchmakingLocked === 'function' && matchmakingLocked();
+  const guest = lanRole === 'guest' || fixed;
   byId('matchRules').querySelector('.match-rule-options').hidden = guest;
   for (const id of Object.keys(MATCH_RULES)) {
     const button = byId('matchRule-' + id);
@@ -12950,7 +14481,7 @@ function syncMatchRulesUi() {
   }
   byId('matchRulesSummary').hidden = !guest;
   royalText(byId('matchRulesSummary'), localizeText(matchRule().label) + ' · ' + localizeText(
-    'The host chooses the match rules.'));
+    fixed ? 'Matchmaking uses the same arena and rules for both players.' : 'The host chooses the match rules.'));
 }
 
 function royalContinue() {
@@ -13007,6 +14538,7 @@ function syncRoyalUi(force = false) {
   if (!byId('matchSetup')) return;
   const title = document.body.classList.contains('title-active');
   const online = royalOnlineMode();
+  const fixedMatch = typeof matchmakingLocked === 'function' && matchmakingLocked();
   const joining = online && byId('onlineJoinForm') && !byId('onlineJoinForm').hidden;
   const setup = !title && !bossIntroActive && !creditsActive && royalNeedsSetup();
   const menu = !bossIntroActive && !creditsActive && menusVisible && (!setup || royalMenuRequested);
@@ -13033,14 +14565,16 @@ function syncRoyalUi(force = false) {
     else toggleParent.prepend(menuToggle);
   }
   document.body.classList.toggle('royal-panel-open', setup || menu || Boolean(galleryKind));
+  if (title || setup || menu || galleryKind || paused || gameOver) stopRoyalPowerupSound();
   // One source of truth for active states, including setup before any peer exists.
   for (const button of [...campaignButtons, byId('menuCampaign'), customModeButton, twoPlayerModeButton, lanModeButton,
-      byId('menuBoss')
-    ]) {
+      byId('menuBoss'), byId('menuOnline')
+    ].filter(Boolean)) {
     const active = !title && (button.dataset.campaign !== undefined ? mode === 1 && Number(button.dataset.campaign) ===
       activeCampaign :
       button === byId('menuCampaign') ? mode === 1 : button === customModeButton ? mode === 3 : button ===
-      twoPlayerModeButton ? mode === 2 && !online : button === lanModeButton ? online : mode === 4);
+      twoPlayerModeButton ? mode === 2 && !online : button === byId('menuOnline') ? online && onlineTransportSelected :
+      button === lanModeButton ? online && (!onlineNativeTransport || !onlineTransportSelected) : mode === 4);
     button.classList.toggle('active', active && button.dataset.campaign === undefined);
     button.classList.toggle('chapter-active', active && button.dataset.campaign !== undefined);
     button.setAttribute('aria-pressed', String(active));
@@ -13081,7 +14615,7 @@ function syncRoyalUi(force = false) {
   paintRoyalChoice(byId('chooseArenaButton'), mode === 2 && !online ? '03' : '02', 'Choose your arena', arenaCatalog[
     matchArenaId] || arenaCatalog[0], 'arena');
   byId('choosePaddle2Button').hidden = mode !== 2 || online;
-  byId('chooseArenaButton').hidden = mode !== 2 && mode !== 3 || lanRole === 'guest' || joining;
+  byId('chooseArenaButton').hidden = fixedMatch || mode !== 2 && mode !== 3 || lanRole === 'guest' || joining;
   choices.dataset.online = String(online);
   customPanel.classList.toggle('hidden', mode !== 3);
   byId('matchCpuSettings').hidden = title || mode !== 3;
@@ -13094,17 +14628,18 @@ function syncRoyalUi(force = false) {
   royalText(byId('matchPause'), paused ? 'Resume' : 'Pause');
   royalText(byId('matchResume'), title ? 'Close menu' : setup ? 'Back to setup' : gameOver ? 'Retry' :
     paused ? 'Resume' : waitingForServe ? 'Serve' : 'Back to match');
-  royalText(byId('matchSetupHint'), online ? lanRole === 'guest' ? 'Choose your paddle. The host chooses the arena.' :
+  royalText(byId('matchSetupHint'), fixedMatch ? 'Matchmaking uses the same arena and rules for both players.' : online ? lanRole === 'guest' ? 'Choose your paddle. The host chooses the arena.' :
     lanConnected ? 'Both players can choose a paddle before serving.' :
-    'Create a room or join a friend with their room code.' : mode === 3 ?
+    'Find an opponent or create/join a private room.' : mode === 3 ?
     'Choose your paddle and arena, then start the match.' : 'Choose your paddles and arena, then start the match.');
   byId('menuPaddle').hidden = !title && (mode === 4 || online && !waitingForServe);
   byId('menuPaddle2').hidden = title || mode !== 2 || online;
-  byId('menuArena').hidden = title || mode !== 2 && mode !== 3 || lanRole === 'guest' || joining ||
+  byId('menuArena').hidden = fixedMatch || title || mode !== 2 && mode !== 3 || lanRole === 'guest' || joining ||
     online && !waitingForServe;
   restartButton.hidden = title;
   restartButton.disabled = online && !lanConnected;
   syncMatchRulesUi();
+  if (typeof syncOnlineTransportUi === 'function') syncOnlineTransportUi();
   updateRoyalControlHint();
   syncRoyalOrientation();
   syncRoyalFocus();
@@ -13655,6 +15190,7 @@ handleViewportChange();
 setMenusVisible(false);
 refreshGamepadConnection();
 LOCALIZATION.localizeStaticDom();
+installOnlineSupport();
 recoverInterruptedSaveImport();
 loadSaveSlot(rememberedSaveSlot());
 setLevelByAbsoluteIndex(firstUnlockedCampaignIndex(), false);

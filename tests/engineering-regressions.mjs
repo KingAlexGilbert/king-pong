@@ -389,17 +389,18 @@ test('guest simulation does not allocate unused local render snapshots', () => {
   assert.equal(h.run('frame'), 60);
 });
 
-test('pickup art is 24 units, cached per type, distinct without color, and independent of collection radius', () => {
+test('approved PNGs are cached per type with transparency, distinct artwork, and unchanged collection radius', () => {
   const h = harness();
-  h.run(`let allocations=0;document.createElement=()=>{allocations++;const marks=[];return{marks,getContext:()=>({fillRect(...r){marks.push([this.fillStyle,...r])}})}};
-    const sprites=ROYAL_TYPES.map(royalPickupSprite);ROYAL_TYPES.forEach(royalPickupSprite);`);
-  assert.equal(h.run('allocations'), 3);
+  h.run('const sprites=ROYAL_TYPES.map(royalPickupSprite);');
   assert.equal(h.run('ROYAL_COLLECTION_RADIUS'), 24);
-  for (const s of h.json('sprites')) {
-    assert.equal(s.width, 24);
-    assert.equal(s.height, 24);
-    assert.ok(s.marks.every(([, x, y, w, hh]) => x >= 0 && y >= 0 && x + w <= 24 && y + hh <= 24));
+  assert.equal(h.run('ROYAL_TYPES.every((type,i)=>royalPickupSprite(type)===sprites[i])'), true);
+  const sprites = h.json('sprites');
+  assert.equal(new Set(sprites.map(s => s.src)).size, 3);
+  for (const sprite of sprites) {
+    const png = Buffer.from(sprite.src.split(',')[1], 'base64');
+    assert.equal(png.readUInt32BE(16), 96);
+    assert.equal(png.readUInt32BE(20), 96);
+    assert.equal(png[25], 6, 'RGBA keeps the transparent background');
+    assert.ok(png.length < 12000);
   }
-  assert.equal(new Set(h.json(
-    'sprites.map(s=>JSON.stringify(s.marks.filter(m=>m[0]==="#fff7df").map(m=>m.slice(1))))')).size, 3);
 });

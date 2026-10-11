@@ -10,12 +10,14 @@
   "durable_objects": {
     "bindings": [
       { "name": "ROOMS", "class_name": "PongRoom" },
-      { "name": "TURN_CREDENTIALS", "class_name": "MeteredTurn" }
+      { "name": "TURN_CREDENTIALS", "class_name": "MeteredTurn" },
+      { "name": "MATCHMAKING", "class_name": "MatchmakingQueue" }
     ]
   },
   "migrations": [
     { "tag": "v1", "new_sqlite_classes": ["PongRoom"] },
-    { "tag": "v2", "new_sqlite_classes": ["MeteredTurn"] }
+    { "tag": "v2", "new_sqlite_classes": ["MeteredTurn"] },
+    { "tag": "v3", "new_sqlite_classes": ["MatchmakingQueue"] }
   ],
   "ratelimits": [{
     "name": "ROOM_LIMITER",

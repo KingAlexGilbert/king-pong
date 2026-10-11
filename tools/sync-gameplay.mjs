@@ -1,7 +1,9 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { integrateRoyalUi } from '../game/ui-integration.mjs';
 import { integrateRoyalPolish } from '../game/polish-integration.mjs';
+import { integrateServeMotion } from '../game/serve-integration.mjs';
 import { integrateSaveTransfer } from '../game/save-transfer-integration.mjs';
+import { onlineSources, iconSources, integrateOnline } from './sync-online.mjs';
 
 const root = new URL('../', import.meta.url);
 const files = [
@@ -10,7 +12,8 @@ const files = [
   'Linux/assets/index.html',
   'android/app/src/main/assets/index.html'
 ];
-const script = [
+const nativeOnlineScript = onlineSources(process.argv.includes('--check'));
+const script = iconSources() + [
   'royal-gameplay.js',
   'royal-rules.js',
   'royal-audio.js',
@@ -36,7 +39,7 @@ for (const file of files) {
   const path = new URL(file, root);
   const html = readFileSync(path, 'utf8');
   let updated = replaceBlock(
-    html,
+    html.replace(/\r\n/g, '\n'),
     '// BEGIN SHARED ROYAL GAMEPLAY',
     '// END SHARED ROYAL GAMEPLAY',
     script + '\n'
@@ -46,6 +49,14 @@ for (const file of files) {
   updated = integrateRoyalUi(updated);
   updated = integrateSaveTransfer(updated, saveTransfer);
   updated = integrateRoyalPolish(updated);
+  updated = integrateServeMotion(updated);
+  updated = integrateOnline(updated, nativeOnlineScript, file !== 'docs/demo/index.html');
+  // Normalize generated content, then preserve the original file's line endings.
+updated = updated.replace(/\r\n/g, '\n');
+
+if (html.includes('\r\n')) {
+  updated = updated.replace(/\n/g, '\r\n');
+}
 
   if (process.argv.includes('--check')) {
     if (updated !== html) throw new Error(`${file}: run node tools/sync-gameplay.mjs`);

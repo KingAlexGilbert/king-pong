@@ -2,6 +2,7 @@ import worker, { PongRoom } from '../src/worker.js';
 import { MeteredTurn as ProductionMeteredTurn } from '../src/metered-turn.js';
 
 export { PongRoom };
+export { MatchmakingQueue } from '../src/matchmaking.js';
 export default worker;
 
 // Only the test entrypoint exposes these controls; Wrangler deploys src/worker.js.

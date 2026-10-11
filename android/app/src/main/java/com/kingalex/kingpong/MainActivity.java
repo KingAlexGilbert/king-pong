@@ -125,6 +125,7 @@ public final class MainActivity extends Activity {
     protected void onPause() {
         stopBatteryMonitoring();
         if (webView != null) {
+            webView.evaluateJavascript("document.dispatchEvent(new Event('kingpong-background'));", null);
             webView.onPause();
             webView.pauseTimers();
         }
@@ -375,7 +376,10 @@ public final class MainActivity extends Activity {
         public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
             Uri uri = request.getUrl();
             // Keep the native bridge on the bundled game, including fragment links.
-            return !request.isForMainFrame() || !isGameUrl(uri);
+            if (!request.isForMainFrame()) {
+                return !"https://king-pong-signaling.kingalexgilbert.workers.dev/v1/native-bridge".equals(uri.toString());
+            }
+            return !isGameUrl(uri);
         }
 
         @Override

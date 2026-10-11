@@ -110,7 +110,11 @@ const hooks = {
     maxSpeed *= royalBallSpeedScale();
   `],
   // Only a confirmed paddle contact consumes the duplicate; misses can still score.
-  hitPaddle: ["if (ball === royalSplitBall) royalSplitBall = null;"],
+  hitPaddle: [`
+    // A paddle return ends serve acceleration, while the spawn ripple continues.
+    if (ball !== royalSplitBall) rallyLaunchTargetSpeed = 0;
+    if (ball === royalSplitBall) royalSplitBall = null;
+  `],
   pointForPlayer: ["if (isLanGuestActive()) return;"],
   pointForCpu: ["if (isLanGuestActive()) return;"],
   predictBallCenterForCPU: ["if (arrival) arrival.frames = Infinity;",
@@ -121,7 +125,13 @@ const hooks = {
 };
 
 export function integrateRoyalPolish(source) {
-  for (const [name, code] of [['simulateHazardStep', predictionStep], ['drawBackground', backgroundDraw]]) {
+  for (const [name, code] of [['toggleMusic', `function toggleMusic() {
+  if (saveData?.muteAll) return;
+  setMusicEnabled(!musicEnabled);
+}`], ['simulateHazardStep', predictionStep], ['drawBackground', backgroundDraw], ['drawRallySpawnPulse', `function drawRallySpawnPulse(view = captureVisualState()) {
+  if (view.launch.remaining <= 0 || mode === 4) return;
+  drawSpawnRipple(view.launch, currentCampaign().accent);
+}`]]) {
     const [start, end] = functionRange(source, name);
     source = source.slice(0, start) + code + source.slice(end);
   }

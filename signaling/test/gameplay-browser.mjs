@@ -57,6 +57,8 @@ async function page(platform = 'Browser', options = {}) {
     if (message.type() === 'error' && !message.text().includes('404')) errors.push(message.text());
   });
   await p.addInitScript(() => {
+    // UI fixtures stay local; real signaling has its own integration test.
+    Object.defineProperty(window, 'KING_PONG_SIGNALING_URL', {get: () => '', set: () => {}, configurable: true});
     // Advancing the real loop explicitly makes collision/packet/UI assertions reproducible.
     window.requestAnimationFrame = callback => {
       window.nextGameFrame = callback;
@@ -94,7 +96,7 @@ async function assertGalleryLayout(p) {
 try {
   for (const platform of Object.keys(builds)) {
     const p = await page(platform);
-    assert.equal(await p.locator('.primary-online').innerText(), 'PLAY ONLINE');
+    assert.equal(await p.locator('.primary-online strong').innerText(), 'PLAY ONLINE');
     assert.equal(await p.locator('.compact-saves').getAttribute('open'), null);
     await p.locator('.compact-saves summary').focus();
     await p.keyboard.press('Enter');
@@ -243,8 +245,9 @@ try {
         showTitleScreen();
       });
       await p.locator('.primary-online').click();
-      assert.equal(await p.locator('#onlineBrowserNotice input').inputValue(),
-        'https://kingalexgilbert.github.io/king-pong/demo/');
+      assert.equal(await p.locator('#matchmakingPanel').isVisible(), true);
+      assert.equal(await p.evaluate(() => onlineTransportSelected), true);
+      await p.evaluate(() => showTitleScreen());
       await p.locator('#titleLocalButton').click();
       await p.locator('#titleLanButton').click();
       await p.locator('#lanPanel').waitFor({
@@ -261,7 +264,7 @@ try {
         }))
       }));
     }
-    pass(platform + ': campaign and boss initialization; native browser-online notice and existing LAN setup');
+    pass(platform + ': campaign and boss initialization; native online entry and existing LAN setup');
     await p.close();
   }
 
@@ -310,7 +313,7 @@ try {
   const localized = await page('Browser', {
     locale: 'es-ES'
   });
-  assert.equal(await localized.locator('.primary-online').innerText(), 'JUGAR EN LÍNEA');
+  assert.equal(await localized.locator('.primary-online strong').innerText(), 'JUGAR EN LÍNEA');
   await localized.locator('.title-paddle').click();
   assert.equal(await localized.locator('#royalGalleryTitle').innerText(), 'Elige tu pala');
   await localized.close();
@@ -322,6 +325,8 @@ try {
     for (const peer of [roomHost, roomGuest]) {
       await peer.evaluate(() => {
         // Only transport establishment is stubbed here. Real WebRTC stays in browser.mjs.
+        Object.defineProperty(window, 'KING_PONG_SIGNALING_URL', {value: 'http://localhost', configurable: true});
+        observeMatchmaking = () => {};
         KingPongRoom.prototype.open = function(role) {
           this.role = role;
           this.hooks.welcome('ABCDE');

@@ -464,6 +464,9 @@ def main():
             decision.ignore()
             return True
         if policy_type == WebKit2.PolicyDecisionType.NAVIGATION_ACTION:
+            if (decision.get_request().get_uri() == "https://king-pong-signaling.kingalexgilbert.workers.dev/v1/native-bridge"
+                    and decision.get_navigation_action().get_frame_name() == "king-pong-signaling"):
+                return False
             if urldefrag(decision.get_request().get_uri() or "")[0] != game_base_uri:
                 decision.ignore()
                 return True

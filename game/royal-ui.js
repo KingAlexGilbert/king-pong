@@ -28,12 +28,16 @@ function setRoyalOnlineSelection(open) {
 }
 
 function resetRoyalLocalSetup() {
+  if (typeof stopMatchmaking === 'function') stopMatchmaking();
+  if (typeof onlineTransportSelected !== 'undefined') onlineTransportSelected = false;
   royalOnlineSelected = false;
   royalMenuRequested = false;
   lanPanelOpen = false;
 }
 
 function resetRoyalUiForTitle() {
+  if (typeof stopMatchmaking === 'function') stopMatchmaking();
+  if (typeof stopRoyalPowerupSound === 'function') stopRoyalPowerupSound();
   royalOnlineSelected = royalMenuRequested = false;
   lanPanelOpen = false;
   royalRotateDismissed = false;
@@ -50,7 +54,7 @@ function resetRoyalUiForTitle() {
 function royalModeName() {
   if (mode === 4 || bossIntroActive) return 'Secret Boss';
   if (mode === 3) return 'Custom Game';
-  if (royalOnlineMode()) return typeof KingPongRoom !== 'undefined' ? 'Online Multiplayer' : 'LAN Two Player';
+  if (royalOnlineMode()) return typeof onlineTransportSelected !== 'undefined' && onlineTransportSelected ? 'Online Multiplayer' : 'LAN Two Player';
   if (mode === 2) return 'Local Two Player';
   return 'Campaign';
 }
@@ -198,6 +202,9 @@ function initRoyalUi() {
   royalText(twoPlayerModeButton, 'Local Two Player');
   modeGrid.append(campaignGroup, customModeButton, twoPlayerModeButton, lanModeButton,
     royalButton('menuBoss', 'Secret Boss', startBossFromTitle, 'secret-boss-button'));
+  if (typeof onlineNativeTransport !== 'undefined' && onlineNativeTransport) {
+    modeGrid.append(royalButton('menuOnline', 'Online Multiplayer', () => startOnlineSetup(false)));
+  }
   modes.append(modeGrid);
   menu.append(modes);
   const settings = royalDisclosure('Settings', 'matchSettings');
@@ -276,6 +283,7 @@ function initRoyalUi() {
   }
   prepareAccessibleMenuControls();
   document.body.classList.add('royal-ui-ready');
+  updateAudioControls();
   // One listener per page. Rotation only changes presentation, never match or connection state.
   window.addEventListener('resize', syncRoyalOrientation);
   window.screen.orientation?.addEventListener?.('change', syncRoyalOrientation);
@@ -297,16 +305,15 @@ function royalHelpSection(id, label) {
 }
 
 function royalPowerupHelpIcon(type) {
-  const sprite = royalPickupSprite(type);
-  const icon = document.createElement('canvas');
-  icon.width = sprite.width;
-  icon.height = sprite.height;
+  const icon = document.createElement('img');
+  icon.src = ROYAL_APPROVED_ICONS[type];
+  icon.alt = '';
+  icon.width = icon.height = 40;
   icon.setAttribute('aria-hidden', 'true');
-  icon.style.width = '32px';
-  icon.style.height = '32px';
-  icon.style.flex = '0 0 32px';
+  icon.style.width = '40px';
+  icon.style.height = '40px';
+  icon.style.flex = '0 0 40px';
   icon.style.imageRendering = 'pixelated';
-  icon.getContext('2d').drawImage(sprite, 0, 0);
   return icon;
 }
 
@@ -391,7 +398,8 @@ function createMatchRulesUi() {
 
 function syncMatchRulesUi() {
   byId('matchRules').hidden = mode !== 2;
-  const guest = lanRole === 'guest';
+  const fixed = typeof matchmakingLocked === 'function' && matchmakingLocked();
+  const guest = lanRole === 'guest' || fixed;
   byId('matchRules').querySelector('.match-rule-options').hidden = guest;
   for (const id of Object.keys(MATCH_RULES)) {
     const button = byId('matchRule-' + id);
@@ -400,7 +408,7 @@ function syncMatchRulesUi() {
   }
   byId('matchRulesSummary').hidden = !guest;
   royalText(byId('matchRulesSummary'), localizeText(matchRule().label) + ' · ' + localizeText(
-    'The host chooses the match rules.'));
+    fixed ? 'Matchmaking uses the same arena and rules for both players.' : 'The host chooses the match rules.'));
 }
 
 function royalContinue() {
@@ -457,6 +465,7 @@ function syncRoyalUi(force = false) {
   if (!byId('matchSetup')) return;
   const title = document.body.classList.contains('title-active');
   const online = royalOnlineMode();
+  const fixedMatch = typeof matchmakingLocked === 'function' && matchmakingLocked();
   const joining = online && byId('onlineJoinForm') && !byId('onlineJoinForm').hidden;
   const setup = !title && !bossIntroActive && !creditsActive && royalNeedsSetup();
   const menu = !bossIntroActive && !creditsActive && menusVisible && (!setup || royalMenuRequested);
@@ -483,14 +492,16 @@ function syncRoyalUi(force = false) {
     else toggleParent.prepend(menuToggle);
   }
   document.body.classList.toggle('royal-panel-open', setup || menu || Boolean(galleryKind));
+  if (title || setup || menu || galleryKind || paused || gameOver) stopRoyalPowerupSound();
   // One source of truth for active states, including setup before any peer exists.
   for (const button of [...campaignButtons, byId('menuCampaign'), customModeButton, twoPlayerModeButton, lanModeButton,
-      byId('menuBoss')
-    ]) {
+      byId('menuBoss'), byId('menuOnline')
+    ].filter(Boolean)) {
     const active = !title && (button.dataset.campaign !== undefined ? mode === 1 && Number(button.dataset.campaign) ===
       activeCampaign :
       button === byId('menuCampaign') ? mode === 1 : button === customModeButton ? mode === 3 : button ===
-      twoPlayerModeButton ? mode === 2 && !online : button === lanModeButton ? online : mode === 4);
+      twoPlayerModeButton ? mode === 2 && !online : button === byId('menuOnline') ? online && onlineTransportSelected :
+      button === lanModeButton ? online && (!onlineNativeTransport || !onlineTransportSelected) : mode === 4);
     button.classList.toggle('active', active && button.dataset.campaign === undefined);
     button.classList.toggle('chapter-active', active && button.dataset.campaign !== undefined);
     button.setAttribute('aria-pressed', String(active));
@@ -531,7 +542,7 @@ function syncRoyalUi(force = false) {
   paintRoyalChoice(byId('chooseArenaButton'), mode === 2 && !online ? '03' : '02', 'Choose your arena', arenaCatalog[
     matchArenaId] || arenaCatalog[0], 'arena');
   byId('choosePaddle2Button').hidden = mode !== 2 || online;
-  byId('chooseArenaButton').hidden = mode !== 2 && mode !== 3 || lanRole === 'guest' || joining;
+  byId('chooseArenaButton').hidden = fixedMatch || mode !== 2 && mode !== 3 || lanRole === 'guest' || joining;
   choices.dataset.online = String(online);
   customPanel.classList.toggle('hidden', mode !== 3);
   byId('matchCpuSettings').hidden = title || mode !== 3;
@@ -544,17 +555,18 @@ function syncRoyalUi(force = false) {
   royalText(byId('matchPause'), paused ? 'Resume' : 'Pause');
   royalText(byId('matchResume'), title ? 'Close menu' : setup ? 'Back to setup' : gameOver ? 'Retry' :
     paused ? 'Resume' : waitingForServe ? 'Serve' : 'Back to match');
-  royalText(byId('matchSetupHint'), online ? lanRole === 'guest' ? 'Choose your paddle. The host chooses the arena.' :
+  royalText(byId('matchSetupHint'), fixedMatch ? 'Matchmaking uses the same arena and rules for both players.' : online ? lanRole === 'guest' ? 'Choose your paddle. The host chooses the arena.' :
     lanConnected ? 'Both players can choose a paddle before serving.' :
-    'Create a room or join a friend with their room code.' : mode === 3 ?
+    'Find an opponent or create/join a private room.' : mode === 3 ?
     'Choose your paddle and arena, then start the match.' : 'Choose your paddles and arena, then start the match.');
   byId('menuPaddle').hidden = !title && (mode === 4 || online && !waitingForServe);
   byId('menuPaddle2').hidden = title || mode !== 2 || online;
-  byId('menuArena').hidden = title || mode !== 2 && mode !== 3 || lanRole === 'guest' || joining ||
+  byId('menuArena').hidden = fixedMatch || title || mode !== 2 && mode !== 3 || lanRole === 'guest' || joining ||
     online && !waitingForServe;
   restartButton.hidden = title;
   restartButton.disabled = online && !lanConnected;
   syncMatchRulesUi();
+  if (typeof syncOnlineTransportUi === 'function') syncOnlineTransportUi();
   updateRoyalControlHint();
   syncRoyalOrientation();
   syncRoyalFocus();

@@ -273,7 +273,8 @@ namespace KingPongWebView2
                     args.Cancel = !GamePagePolicy.IsAllowed(args.Uri, gameUri);
                     if (!args.Cancel) { batteryPageReady = false; lastBatteryScript = null; }
                 };
-                core.FrameNavigationStarting += (sender, args) => args.Cancel = true;
+                core.FrameNavigationStarting += (sender, args) => args.Cancel =
+                    args.Uri != "https://king-pong-signaling.kingalexgilbert.workers.dev/v1/native-bridge";
                 core.NewWindowRequested += (sender, args) => args.Handled = true;
                 core.DownloadStarting += (sender, args) => args.Cancel = true;
                 core.PermissionRequested += HandlePermissionRequested;

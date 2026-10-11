@@ -51,6 +51,7 @@ function validMatchScores(state) {
 }
 
 function canChooseMatchRules() {
+  if (typeof matchmakingLocked === 'function' && matchmakingLocked()) return false;
   return mode === 2 && lanRole !== 'guest' && waitingForServe && !gameOver && left.score === 0 && right.score === 0;
 }
 

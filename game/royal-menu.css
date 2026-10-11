@@ -341,40 +341,6 @@ textarea:focus-visible {
   text-wrap: balance;
 }
 
-.title-card .primary-online {
-  box-sizing: border-box;
-  width: min(100%, 620px);
-  margin: 0 auto 22px;
-  padding: 18px 16px;
-  min-height: 60px;
-  background: linear-gradient(#251e0f, #141006);
-  border: 2px solid #ffd469;
-  color: #ffe3a0;
-  font-size: clamp(20px, 4vw, 28px);
-  letter-spacing: .14em;
-  box-shadow: 0 0 20px #ffd46924;
-  animation: royalGoldPulse 4s ease-in-out infinite;
-}
-
-.title-card .primary-online:focus-visible:not(:disabled),
-.title-card .primary-online:active:not(:disabled) {
-  color: #fff4d1;
-  border-color: #fff0b3;
-  background: linear-gradient(#4a3715, #2c200b);
-  box-shadow: inset 0 0 0 2px #a57a32, 0 0 18px #ffd46955;
-  animation: none;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .title-card .primary-online:hover:not(:disabled) {
-    color: #fff4d1;
-    border-color: #fff0b3;
-    background: linear-gradient(#4a3715, #2c200b);
-    box-shadow: inset 0 0 0 2px #a57a32, 0 0 18px #ffd46955;
-    animation: none;
-  }
-}
-
 @keyframes royalGoldPulse {
 
   0%,
@@ -1093,11 +1059,7 @@ body.royal-panel-open .match-footer #controlHint {
     margin-bottom: 14px;
   }
 
-  .title-card .primary-online {
-    min-height: 48px;
-    margin-bottom: 12px;
-    padding: 10px;
-  }
+
 
   .title-actions button {
     min-height: 44px;
@@ -1477,4 +1439,48 @@ body.royal-panel-open .match-footer #controlHint {
 #matchSetupBody {
   scrollbar-color: #8c7144 #050406;
   scrollbar-width: thin;
+}
+
+/* Equal primary modes, with distinct arcade colors and one accessible button each. */
+.title-primary-modes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin: 16px 0 20px;
+}
+.title-card .title-primary-modes button {
+  width: 100%;
+  min-height: 112px;
+  padding: 15px 12px;
+  margin: 0;
+  letter-spacing: 1px;
+  background: linear-gradient(var(--mode-fill), #111421);
+  animation: none;
+  border: 2px solid var(--mode-color);
+  color: var(--mode-color);
+  box-shadow: 4px 4px 0 var(--mode-shadow);
+  transition: background-color 100ms, transform 100ms, box-shadow 100ms;
+}
+.title-primary-modes .primary-online { --mode-color: #71caff; --mode-shadow: #244564; --mode-fill: #142638; --mode-hover: #244564; }
+.title-primary-modes .primary-campaign { --mode-color: #ffd469; --mode-shadow: #745323; --mode-fill: #2d2515; --mode-hover: #554120; }
+.title-primary-modes strong { display: block; font-size: clamp(16px, 2.5vw, 23px); }
+.title-primary-modes span { display: block; color: #e0e4ed; font-size: 11px; line-height: 1.65; letter-spacing: 0; margin-top: 10px; }
+.title-card .title-primary-modes button:focus-visible { outline: 2px solid #fff; outline-offset: 4px; color: #fff; background: linear-gradient(var(--mode-hover), #202433); }
+@media (hover: hover) and (pointer: fine) {
+  .title-card .title-primary-modes button:hover { color: #fff; background: linear-gradient(var(--mode-hover), #202433); }
+}
+.title-card .title-primary-modes button:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 var(--mode-shadow); }
+#matchmakingPanel { padding: 4px 0 16px; }
+#matchmakingPanel h3, #onlinePrivateRooms h3 { margin: 10px 0; font-size: 14px; color: #71caff; }
+#matchmakingPanel p, #onlinePrivateRooms p { font-size: 11px; line-height: 1.6; margin: 10px 0; }
+#matchmakingPanel label { display: block; font-size: 11px; margin: 12px 0 8px; }
+#matchArenaPreference { width: 100%; min-height: 40px; padding: 8px; background: #111421; color: #eee; border: 1px solid #576174; font: inherit; font-size: 12px; }
+#onlinePrivateRooms { border-top: 1px solid #45404a; padding-top: 6px; }
+#onlinePrivateRooms button { margin: 4px 8px 4px 0; }
+#onlineRoomCode { margin-left: 10px; }
+.audio-row button:disabled { opacity: .65; background: #15151d; color: #b4b4c2; border-color: #555; box-shadow: none; }
+@media (max-width: 520px) and (orientation: portrait) {
+  .title-primary-modes { grid-template-columns: 1fr; grid-auto-rows: 1fr; gap: 10px; }
+  .title-card .title-primary-modes button { min-height: 86px; }
+  .title-primary-modes span { margin-top: 5px; }
 }

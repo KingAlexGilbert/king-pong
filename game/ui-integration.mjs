@@ -41,10 +41,11 @@ export function synchronizeHooks(source, category, hooks) {
     const [start, end] = functionRange(source, name);
     const original = source.slice(start, end);
     const marker = new RegExp(
-      '^([ \t]*)/\\* ROYAL ' + category + ' \\*/\\n[\\s\\S]*?^\\1/\\* END ROYAL ' + category + ' \\*/',
+      '^([ \t]*)/\\* ROYAL ' + category + ' \\*/\\r?\\n[\\s\\S]*?^\\1/\\* END ROYAL ' + category + ' \\*/',
       'gm'
     );
     const matches = [...original.matchAll(marker)];
+	const newline = original.includes('\r\n') ? '\r\n' : '\n';
     if (matches.length !== bodies.length) {
       throw new Error(
         'Expected ' + bodies.length + ' ROYAL ' + category + ' hooks in ' + name + ', found ' + matches.length
@@ -54,8 +55,8 @@ export function synchronizeHooks(source, category, hooks) {
     const updated = original.replace(marker, (_, indent) => {
       const lines = bodies[index++].replace(/^\n|\n[ \t]*$/g, '').split('\n');
       const margin = Math.min(...lines.filter(line => line.trim()).map(line => line.match(/^[ \t]*/)[0].length));
-      const code = lines.map(line => indent + line.slice(margin)).join('\n');
-      return indent + '/* ROYAL ' + category + ' */\n' + code + '\n' + indent + '/* END ROYAL ' + category + ' */';
+      const code = lines.map(line => indent + line.slice(margin)).join(newline);
+      return indent + '/* ROYAL ' + category + ' */' + newline + code + newline + indent + '/* END ROYAL ' + category + ' */';
     });
     source = source.slice(0, start) + updated + source.slice(end);
   }

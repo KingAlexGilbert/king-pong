@@ -1,4 +1,7 @@
 export { MeteredTurn } from './metered-turn.js';
+export { MatchmakingQueue } from './matchmaking.js';
+import { MATCHMAKING_CONTRACT } from './matchmaking-contract.js';
+import { signalingBridge } from './native-bridge.js';
 
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const CODE = /^[A-HJ-NP-Z2-9]{5}$/;
@@ -26,6 +29,9 @@ function socketError(code) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    if (request.method === 'GET' && url.pathname === '/v1/native-bridge' && !url.search) {
+      return signalingBridge(url);
+    }
     if (request.method === 'GET' && url.pathname === '/v1/turn/ready' && !url.search) {
       if (!(await env.ROOM_LIMITER.limit({ key: request.headers.get('CF-Connecting-IP') || 'local' })).success) {
         return Response.json({ ready: false }, { status: 429, headers: { 'Cache-Control': 'no-store' } });
@@ -40,9 +46,31 @@ export default {
       return new Response('King Pong signaling', { status: 426 });
     }
     const origins = (env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim());
-    if (!origins.includes(request.headers.get('Origin'))) return new Response('Forbidden', { status: 403 });
+    // The packaged file:// game uses our narrowly scoped HTTPS signaling bridge.
+    // Never allow the opaque "null" origin on signaling endpoints.
+    if (!origins.includes(request.headers.get('Origin')) && request.headers.get('Origin') !== url.origin) {
+      return new Response('Forbidden', { status: 403 });
+    }
     if (!(await env.ROOM_LIMITER.limit({ key: request.headers.get('CF-Connecting-IP') || 'local' })).success) {
       return socketError('rate_limited');
+    }
+    if (!url.search && url.pathname.startsWith('/v1/queue/')) {
+      if (url.pathname !== '/v1/queue/' + MATCHMAKING_CONTRACT.protocol) return socketError('incompatible');
+      try {
+        const ip = request.headers.get('CF-Connecting-IP') || 'local';
+        const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(ip));
+        const key = Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, '0')).join('');
+        const response = await env.MATCHMAKING.get(env.MATCHMAKING.idFromName('shared'))
+          .fetch('https://queue/connect', { headers: { Upgrade: 'websocket', 'X-Queue-IP': key } });
+        return response.status === 429 ? socketError('rate_limited') : response;
+      } catch { return socketError('unavailable'); }
+    }
+    const assigned = !url.search && url.pathname.match(/^\/v1\/match\/([a-f0-9-]{36})\/([a-f0-9-]{36})$/);
+    if (assigned) {
+      try {
+        return await env.ROOMS.get(env.ROOMS.idFromName('match:' + assigned[1]))
+          .fetch('https://room/claim/' + assigned[2], { headers: { Upgrade: 'websocket' } });
+      } catch { return socketError('unavailable'); }
     }
     if (url.search || !/^\/v1\/(create|join\/[A-Z0-9]{1,16})$/.test(url.pathname)) {
       return socketError('invalid_code');
@@ -81,28 +109,53 @@ export class PongRoom {
     return this.ctx.blockConcurrencyWhile(async () => {
       const [, action, code] = new URL(request.url).pathname.split('/');
       let room = await this.ctx.storage.get('room');
+      if (action === 'abort' && request.method === 'POST') {
+        if (room?.match && !room.playing) await this.end('opponent_left');
+        return new Response(null, { status: 204 });
+      }
+      if (action === 'reserve' && request.method === 'POST') {
+        if (room || this.sockets().length) return new Response(null, { status: 409 });
+        const { match, tokens } = await request.json();
+        if (match?.protocol !== MATCHMAKING_CONTRACT.protocol || !MATCHMAKING_CONTRACT.arenas.includes(match.arena) ||
+            match.rules !== MATCHMAKING_CONTRACT.rules || !tokens?.host || !tokens?.guest) {
+          return new Response(null, { status: 400 });
+        }
+        room = { code: roomCode(), match, tokens, expiresAt: Date.now() + 60_000, relay: false };
+        await this.ctx.storage.put('room', room);
+        await this.ctx.storage.setAlarm(room.expiresAt);
+        return new Response(null, { status: 201 });
+      }
       if (room && room.expiresAt <= Date.now()) {
         await this.end('expired');
         room = null;
       }
       const sockets = this.sockets();
-      if (action === 'create') {
+      let role;
+      if (action === 'claim') {
+        if (!room?.match) return socketError('not_found');
+        role = code === room.tokens.host ? 'host' : code === room.tokens.guest ? 'guest' : null;
+        if (!role) return socketError('not_found');
+        if (sockets.some(s => s.deserializeAttachment().role === role)) return socketError('full');
+        room.maxAt = Date.now() + SESSION_MS;
+      } else if (action === 'create') {
         if (room || sockets.length) return new Response(null, { status: 409 });
         room = { code, expiresAt: Date.now() + WAIT_MS, relay: false };
+        role = 'host';
       } else {
+        if (action !== 'join' || room?.match) return socketError('not_found');
         if (!room || !sockets.some(s => s.deserializeAttachment().role === 'host')) return socketError('not_found');
         if (sockets.length >= 2) return socketError('full');
         room.maxAt = Date.now() + SESSION_MS;
         room.expiresAt = Date.now() + 60_000;
+        role = 'guest';
       }
-      const role = action === 'create' ? 'host' : 'guest';
       const { 0: client, 1: server } = new WebSocketPair();
       this.ctx.acceptWebSocket(server);
       server.serializeAttachment({ role, joinedAt: Date.now(), count: 0, windowAt: Date.now(), connected: false });
       await this.ctx.storage.put('room', room);
       await this.ctx.storage.setAlarm(Math.min(room.expiresAt, Date.now() + 60_000));
-      send(server, { type: 'welcome', role, code });
-      if (role === 'guest') {
+      send(server, { type: 'welcome', role, code: room.code, ...(room.match ? { match: room.match } : {}) });
+      if (this.sockets().length === 2) {
         for (const socket of this.sockets()) send(socket, { type: 'start', attempt: 0, iceServers: STUN });
       }
       return new Response(null, { status: 101, webSocket: client });

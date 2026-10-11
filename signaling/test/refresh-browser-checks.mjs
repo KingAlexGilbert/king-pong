@@ -71,19 +71,19 @@ export async function refreshBrowserChecks({page, pass}) {
       assert.equal(trace.ticks.length, 121, 'two seconds still execute exactly 120 fixed steps');
       assert.equal(trace.ticks[1].left.score, 1);
       assert.equal(trace.ticks[1].waiting, false, 'a non-winning score still serves automatically');
-      assert.equal(trace.ticks[1].remaining, 60, 'the existing launch ramp is unchanged');
+      assert.equal(trace.ticks[1].remaining, 60, 'the existing one-second ripple counter is unchanged');
       assert.ok(trace.views.every(v => v.error < 1e-7), 'post-score interpolation follows the current rally tick tape');
       const physics = trace.ticks.map(({ball, split, left, right, hazards, remaining, waiting}) =>
         ({ball, split, left, right, hazards, remaining, waiting}));
       if (!reference) reference = physics;
       else assert.deepEqual(physics, reference, 'presentation rate never changes the simulation');
       if (arena === 0) {
-        const target = Math.hypot(trace.ticks[1].ball.vx, trace.ticks[1].ball.vy) / .2;
-        for (let n = 0; n <= 60; n++) {
-          const tick = trace.ticks[n + 1], progress = n / 60;
-          const expectedSpeed = target * (.2 + .8 * progress * progress * (3 - 2 * progress));
+        const target = Math.hypot(trace.ticks[1].ball.vx, trace.ticks[1].ball.vy) / .4;
+        for (let n = 0; n <= 24; n++) {
+          const tick = trace.ticks[n + 1], progress = n / 24;
+          const expectedSpeed = target * (.4 + .6 * progress);
           assert.ok(Math.abs(Math.hypot(tick.ball.vx, tick.ball.vy) - expectedSpeed) < 1e-7,
-            'automatic serving retains the exact one-second slow-to-fast speed curve');
+            'automatic serving uses the chosen 24-tick linear curve with the same target speed');
         }
       }
     }

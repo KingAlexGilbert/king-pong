@@ -945,3 +945,8 @@ Object.entries({
 }).forEach(([code, values]) => ['Music', 'Space', 'Title Screen'].forEach((key, index) => {
   window.KING_PONG_ROYAL_TRANSLATIONS[code][key] = values[index];
 }));
+
+// The packaged shells use the same online and audio phrases as the browser.
+Object.entries(window.KING_PONG_ONLINE_TRANSLATIONS || {}).forEach(([code, phrases]) => {
+  Object.assign(window.KING_PONG_ROYAL_TRANSLATIONS[code], phrases);
+});

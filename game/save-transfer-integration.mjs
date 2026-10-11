@@ -331,7 +331,7 @@ export function integrateSaveTransfer(source, script) {
     source = source.slice(0, end) + '\n' + styles + source.slice(end);
   }
   if (source.includes('id="exportSavesButton"')) {
-    const existing = source.match(/^      <div class="save-actions"[^\n]*>[\s\S]*?^      <div class="save-transfer-status"[^\n]*<\/div>\n/m);
+    const existing = source.match(/^      <div class="save-actions"[^\n]*>[\s\S]*?^      <div class="save-transfer-status"[^\n]*<\/div>\r?\n/m);
     if (!existing) throw new Error('Missing save-transfer actions boundary');
     source = replaceOnce(source, existing[0], actions);
   } else {
@@ -339,7 +339,7 @@ export function integrateSaveTransfer(source, script) {
       '      <button type="button" class="erase-save-button" id="eraseSaveButton">Erase Selected Slot</button>\n', actions);
   }
   if (source.includes('id="saveConfirmOverlay"')) {
-    const existing = source.match(/^  <div class="save-confirm-overlay"[^\n]*>[\s\S]*?^  <\/div>\n/m);
+    const existing = source.match(/^  <div class="save-confirm-overlay"[^\n]*>[\s\S]*?^  <\/div>\r?\n/m);
     if (!existing) throw new Error('Missing save-transfer confirmation boundary');
     source = replaceOnce(source, existing[0], confirmation);
   } else {

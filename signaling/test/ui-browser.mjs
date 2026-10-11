@@ -55,6 +55,8 @@ async function page(platform = 'Browser', options = {}) {
   const p = await context.newPage();
   p.on('pageerror', e => errors.push(platform + ': ' + e.message));
   await p.addInitScript(() => {
+    // UI fixtures stay local; real signaling has its own integration test.
+    Object.defineProperty(window, 'KING_PONG_SIGNALING_URL', {get: () => '', set: () => {}});
     window.requestAnimationFrame = () => 1;
     // Refusal tests without headless fullscreen replacing the emulated viewport.
     document.addEventListener('DOMContentLoaded', () => {
@@ -136,13 +138,13 @@ async function titleMenuState(p) {
 }
 
 async function helpIcons(p) {
-  const icons = await p.locator('#helpPowerups canvas').evaluateAll(canvases => canvases.map(c => {
+  const icons = await p.locator('#helpPowerups img').evaluateAll(images => images.map(c => {
     const style = getComputedStyle(c), bounds = c.getBoundingClientRect();
-    return {width: bounds.width, height: bounds.height, pixels: [c.width, c.height], rendering: style.imageRendering};
+    return {width: bounds.width, height: bounds.height, pixels: [c.naturalWidth, c.naturalHeight], rendering: style.imageRendering};
   }));
-  assert.deepEqual(icons, Array(3).fill({width: 32, height: 32, pixels: [24, 24], rendering: 'pixelated'}));
-  assert.equal(await p.evaluate(() => [...byId('helpPowerups').querySelectorAll('canvas')].every((c, i) =>
-    c.toDataURL() === royalPickupSprite(ROYAL_TYPES[i]).toDataURL())), true, 'help reuses the exact gameplay sprites');
+  assert.deepEqual(icons, Array(3).fill({width: 40, height: 40, pixels: [96, 96], rendering: 'pixelated'}));
+  assert.equal(await p.evaluate(() => [...byId('helpPowerups').querySelectorAll('img')].every((c, i) =>
+    c.src === royalPickupSprite(ROYAL_TYPES[i]).src)), true, 'help reuses the exact gameplay sprites');
 }
 
 async function onlineStyle(p) {
@@ -982,7 +984,7 @@ try {
   const titleRows = await reduced.evaluate(() => [titleCampaignButton, titleCustomButton, byId('titleLocalButton'),
     titleBossButton
   ].map(b => b.getBoundingClientRect().top));
-  assert.equal(titleRows[0], titleRows[1]);
+  assert.ok(titleRows[0] < titleRows[1], 'Campaign remains in the prominent primary row');
   assert.equal(titleRows[1], titleRows[2]);
   assert.ok(titleRows[3] > titleRows[2]);
   await snap(reduced, 'title-secret-boss-reduced-motion');

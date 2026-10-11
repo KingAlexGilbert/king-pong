@@ -65,6 +65,7 @@ function captureVisualState() {
       ...royalGuards
     },
     guardHits: captureGuardHits(),
+    powerupPulse: royalPowerupPulse ? {...royalPowerupPulse} : null,
     launch: {
       remaining: rallyLaunchFramesRemaining,
       x: rallySpawnPulseX,
@@ -106,6 +107,9 @@ function interpolateVisualState(a, b, alpha) {
     ball: mixVisualEntity(a.ball, b.ball, alpha),
     split: mixVisualEntity(a.split, b.split, alpha),
     guardHits: interpolateGuardHits(a.guardHits, b.guardHits, alpha),
+    powerupPulse: a.powerupPulse && b.powerupPulse && a.powerupPulse.x === b.powerupPulse.x &&
+      a.powerupPulse.y === b.powerupPulse.y ? {...b.powerupPulse,
+        remaining: lerp(a.powerupPulse.remaining, b.powerupPulse.remaining, alpha)} : b.powerupPulse,
     launch: a.launch.remaining > 0 && b.launch.remaining > 0 ? {
       ...b.launch,
       remaining: lerp(a.launch.remaining, b.launch.remaining, alpha)
@@ -264,144 +268,25 @@ const ROYAL_SPAWN_X_MARGIN = 112;
 const ROYAL_TYPES = ['split', 'rush', 'guard'];
 const ROYAL_COLORS = {
   split: '#bd7aff',
-  rush: '#ff604d',
+  rush: '#ffd469',
   guard: '#59baff'
 };
-const ROYAL_PICKUP_SIZE = 24; // Source sprite resolution, shared with the help UI.
-const ROYAL_PICKUP_RENDER_SIZE = 30; // Presentation only; collection keeps its 24-unit radius.
-const ROYAL_PICKUP_ART_SYMBOLS = '123456789ABCDEF';
-// Visual-only 24 x 24 pixel sprites, shared by gameplay and help.
-const ROYAL_PICKUP_ART = {
-  split: {
-    // Approved reference: a large left ball forks into two smaller right balls.
-    palette: ['#11001f', '#4a006d', '#250039', '#9000dc', '#f16cff', '#fff7df', '#cf20f1', '#62079c'],
-    pixels: [
-      '........................',
-      '.........111111.........',
-      '......115665444411......',
-      '.....14422222222441.....',
-      '....1542333333332441....',
-      '...162233335333335551...',
-      '..15423333333333566751..',
-      '..14233333333366567451..',
-      '..52355553333366574854..',
-      '.1425566553336633555241.',
-      '.1455667745366333333241.',
-      '.1456677745663333333241.',
-      '.1456777445663333333241.',
-      '.1457774445366333333241.',
-      '.1425444453336633555241.',
-      '..42355553333366566754..',
-      '..14233333333366567451..',
-      '..15423333333333574851..',
-      '...142233334333335551...',
-      '....1542333333332441....',
-      '.....14422222222441.....',
-      '......114565444411......',
-      '.........111111.........',
-      '........................',
-    ]
-  },
-  rush: {
-    palette: ['#000000', '#440c02', '#915b19', '#d6832b', '#df6f10', '#9b3e0b', '#6a3805', '#f8e48e', '#c83e0a', '#a31704', '#d25415', '#e7bc51', '#4d0001', '#e29f3a', '#592007'],
-    pixels: [
-      '........................',
-      '........................',
-      '..........1111..........',
-      '.......1234456721.......',
-      '......248859AA6B31......',
-      '.....2C884AAADDD652.....',
-      '....14E5ABAA552F2631....',
-      '....7BA99B4C833D7667....',
-      '...1B9A636488387F2D61...',
-      '...F9DAAF37C78836F33F...',
-      '..1BBBE83CCF48BE73E76...',
-      '...B4EC8C3CC8CB9EE3F6...',
-      '..1AAA9E8359CBA6597D6...',
-      '...6A795C36AEEA5A62A7...',
-      '...29FABEC35CCE55B291...',
-      '...1654EC8C337F2F7A61...',
-      '....2BDDA5CE9AD22FB2....',
-      '.....35AAAAADC7DA57.....',
-      '.....1759DDDDAA957......',
-      '.......2659999B62.......',
-      '.........1F77F1.........',
-      '........................',
-      '........................',
-      '........................',
-    ]
-  },
-  guard: {
-    palette: ['#000000', '#082f4a', '#021543', '#316296', '#5f88b5', '#5ad5f6', '#3caaed', '#0c81c8', '#d4eef8', '#03549f', '#a9bad8', '#033394', '#214d86', '#000054', '#040000'],
-    pixels: [
-      '........................',
-      '........................',
-      '..........12231.........',
-      '.......1245678421.......',
-      '......359968AAAA821.....',
-      '.....37997A4B3C228D.....',
-      '....15684DD9953D2382....',
-      '....27AD9BB99B4B53AA1...',
-      '...18A4D99B554574AB82...',
-      '...28CA4555BB554DDACA1..',
-      '..1486A99B997A45BD2283..',
-      '..1AAAAB699978CEBDAE83..',
-      '..FA876566997ACCB46783..',
-      '..1AA794B7667CE8556A83..',
-      '...2AC8AB7768CCBD8ACA1..',
-      '...18C484987AC75D6482...',
-      '....2876C598C5B2A78AF...',
-      '....1A7AA2B97B2CCC83....',
-      '.....388CC35B2EC882.....',
-      '......1D888C2A8883......',
-      '........1DA788D21.......',
-      '..........1131..........',
-      '........................',
-      '........................',
-    ]
-  }
-};
+const ROYAL_PICKUP_SIZE = 96;
+const ROYAL_PICKUP_RENDER_SIZE = 36; // Cosmetic only; collection radius remains 24.
 const royalPickupSprites = new Map();
 function royalPickupSprite(type) {
   if (royalPickupSprites.has(type)) return royalPickupSprites.get(type);
-  const sprite = document.createElement('canvas');
-  sprite.width = sprite.height = ROYAL_PICKUP_SIZE;
-  const c = sprite.getContext('2d');
-  const art = ROYAL_PICKUP_ART[type];
-  if (art) {
-    for (let y = 0; y < ROYAL_PICKUP_SIZE; y++) {
-      const row = art.pixels[y];
-      for (let x = 0; x < ROYAL_PICKUP_SIZE; x++) {
-        const symbol = row[x];
-        if (symbol === '.') continue;
-        const paletteIndex = ROYAL_PICKUP_ART_SYMBOLS.indexOf(symbol);
-        if (paletteIndex < 0) continue;
-        c.fillStyle = art.palette[paletteIndex];
-        c.fillRect(x, y, 1, 1);
-      }
-    }
-  } else {
-    // Defensive fallback for an unknown type; normal gameplay only uses ROYAL_TYPES.
-    c.fillStyle = ROYAL_COLORS[type] || '#fff7df';
-    c.fillRect(2, 2, ROYAL_PICKUP_SIZE - 4, ROYAL_PICKUP_SIZE - 4);
-  }
-  // Keep each pickup visually distinct even without its color palette.
-  c.fillStyle = '#fff7df';
-
-  if (type === 'rush') {
-    c.fillRect(11, 2, 2, 2);
-    c.fillRect(8, 4, 2, 1);
-  } else if (type === 'guard') {
-    c.fillRect(19, 3, 2, 2);
-    c.fillRect(20, 6, 1, 2);
-  }
-
+  const sprite = new Image(ROYAL_PICKUP_SIZE, ROYAL_PICKUP_SIZE);
+  sprite.src = ROYAL_APPROVED_ICONS[type];
   royalPickupSprites.set(type, sprite);
   return sprite;
 }
 
 function resetRoyalRally() {
+  if (typeof stopRoyalPowerupSound === 'function') stopRoyalPowerupSound();
   royalSplitBall = royalPickup = null;
+  royalPowerupPulse = null;
+  royalPowerupCues = [];
   royalGuardHits = {left: null, right: null};
   royalCpuTarget = null;
   royalGuards = {
@@ -424,6 +309,7 @@ function royalActive() {
 function updateRoyalPowerups() {
   if (!royalActive()) return;
   royalRallyTick++;
+  if (royalPowerupPulse && --royalPowerupPulse.remaining <= 0) royalPowerupPulse = null;
   for (const side of ['left', 'right']) {
     royalGuards[side] = Math.max(0, royalGuards[side] - 1);
     if (royalGuardHits[side] && --royalGuardHits[side].ttl <= 0) royalGuardHits[side] = null;
@@ -432,11 +318,11 @@ function updateRoyalPowerups() {
   if (!royalPickup && royalRallyTick % 480 === 180) {
     const spot = findRoyalPickupSpot();
     const type = ROYAL_TYPES[royalPickupIndex++ % ROYAL_TYPES.length];
-    if (spot) royalPickup = {
-      type,
-      ...spot,
-      ttl: 480
-    };
+    if (spot) {
+      royalPickup = {type, ...spot, ttl: 480};
+      royalPowerupPulse = {x: spot.x, y: spot.y, remaining: 60};
+      emitRoyalPowerupCue('spawn', type);
+    }
   }
 }
 
@@ -547,8 +433,8 @@ function collectRoyalPickup() {
   if (Math.hypot(ball.prevX + BALL_HALF + dx * t - royalPickup.x, ball.prevY + BALL_HALF + dy * t - royalPickup.y) <=
     ROYAL_COLLECTION_RADIUS) {
     if (awardRoyalPowerup(royalPickup.type)) {
+      emitRoyalPowerupCue('pickup', royalPickup.type);
       royalPickup = null;
-      playImpactSound(660, 0.04);
     }
   }
 }
@@ -659,12 +545,16 @@ function packRoyalState() {
     guards: {
       ...royalGuards
     },
-    guardHits: captureGuardHits()
+    guardHits: captureGuardHits(),
+    powerupPulse: royalPowerupPulse ? {...royalPowerupPulse} : null,
+    cueSeq: royalPowerupCueSequence,
+    cues: royalPowerupCues.map(c => ({seq: c.seq, kind: c.kind, type: c.type, age: royalRallyTick - c.tick}))
   };
 }
 
 function validRoyalState(value) {
   const bounded = (n, min, max) => typeof n === 'number' && Number.isFinite(n) && n >= min && n <= max;
+  if (!validRoyalCueState(value)) return false;
   if (!value || !Number.isSafeInteger(value.rally) || value.rally < 0 || typeof value.rush !== 'boolean') return false;
   if (!value.guards || !['left', 'right'].every(k => Number.isInteger(value.guards[k]) && bounded(value.guards[k], 0,
       600))) return false;
@@ -682,6 +572,8 @@ function validRoyalState(value) {
 }
 
 function applyRoyalState(value) {
+  receiveRoyalPowerupCues(value);
+  royalPowerupPulse = value?.powerupPulse ? {...value.powerupPulse} : null;
   const copy = hit => hit ? {seq: hit.seq, y: hit.y, ttl: hit.ttl} : null;
   royalGuardHits = {left: copy(value?.guardHits?.left), right: copy(value?.guardHits?.right)};
   if (!value) {
@@ -749,6 +641,7 @@ function drawRoyalBall(b, translucent = false) {
 }
 
 function drawRoyalEffects(view) {
+  if (view.powerupPulse) drawSpawnRipple(view.powerupPulse, ROYAL_COLORS[view.pickup?.type] || currentCampaign().accent);
   ctx.save();
   for (const side of ['left', 'right']) {
     if (view.guards[side] <= 0) continue;
@@ -778,8 +671,9 @@ function drawRoyalEffects(view) {
     const p = view.pickup;
     ctx.shadowBlur = 0;
     ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(royalPickupSprite(p.type), p.x - ROYAL_PICKUP_RENDER_SIZE / 2,
-      p.y - ROYAL_PICKUP_RENDER_SIZE / 2, ROYAL_PICKUP_RENDER_SIZE, ROYAL_PICKUP_RENDER_SIZE);
+    const sprite = royalPickupSprite(p.type);
+    if (sprite.complete && sprite.naturalWidth) ctx.drawImage(sprite, Math.round(p.x - ROYAL_PICKUP_RENDER_SIZE / 2),
+      Math.round(p.y - ROYAL_PICKUP_RENDER_SIZE / 2), ROYAL_PICKUP_RENDER_SIZE, ROYAL_PICKUP_RENDER_SIZE);
   }
   ctx.restore();
 }
@@ -908,6 +802,7 @@ function initializeMatchSelections() {
   const arena = saveData && saveData.royalArena;
   matchArenaId = validArenaId(arena) && arenaUnlocked(arena) ? arena : firstAvailableLevelInCurrentPicker();
   if (!validArenaId(matchArenaId)) matchArenaId = 0;
+  if (typeof matchmakingLocked === 'function' && matchmakingLocked()) matchArenaId = onlineMatchAssignment.arena;
 }
 
 function selectionPayload() {
@@ -992,6 +887,9 @@ function receivePaddleSelection(message) {
 }
 
 function resetMatchConnectionState() {
+  guestPowerupCueSequence = -1;
+  royalPowerupPulse = null;
+  royalPowerupCues = [];
   guestGuardSoundSequence = {left: -1, right: -1};
   resetMatchRuleConnection();
   resetVisualHistory();
@@ -1055,6 +953,7 @@ function paddleThumbnail(entry) {
 }
 
 function openRoyalGallery(kind, side = 'left') {
+  if (kind === 'arena' && typeof matchmakingLocked === 'function' && matchmakingLocked()) return;
   if (kind === 'arena' && lanRole === 'guest') return;
   if (isLanActive() && !waitingForServe) return;
   galleryKind = kind;
@@ -1192,7 +1091,6 @@ function pollRoyalGalleryGamepad(now) {
 }
 
 function initRoyalMenus() {
-  const browserOnline = typeof KingPongRoom !== 'undefined';
   const card = document.querySelector('.title-card');
   setLocalizedText(document.querySelector('.title-subtitle'),
     'Choose your paddle. Choose your arena. Claim royal powerups. Take your crown!');
@@ -1209,36 +1107,27 @@ function initRoyalMenus() {
   localChoices.id = 'localPlayChoices';
   localChoices.hidden = true;
   localChoices.append(titleTwoPlayerButton);
-  if (browserOnline) {
-    titleLanButton.classList.add('primary-online');
-    setLocalizedText(titleLanButton, 'PLAY ONLINE');
-    actions.before(titleLanButton);
-    const lanNote = document.createElement('span');
-    setLocalizedText(lanNote, 'LAN Play is available in the native apps.');
-    localChoices.append(lanNote);
-  } else {
-    localChoices.append(titleLanButton);
-    const online = document.createElement('button');
+  const primary = document.createElement('div');
+  primary.className = 'title-primary-modes';
+  const online = onlineNativeTransport ? document.createElement('button') : titleLanButton;
+  if (onlineNativeTransport) {
+    online.id = 'titleOnlineButton';
     online.type = 'button';
-    online.className = 'primary-online';
-    setLocalizedText(online, 'PLAY ONLINE');
-    online.addEventListener('click', () => {
-      const panel = byId('onlineBrowserNotice');
-      panel.hidden = !panel.hidden;
-    });
-    const notice = document.createElement('div');
-    notice.id = 'onlineBrowserNotice';
-    notice.hidden = true;
-    const text = document.createElement('p');
-    setLocalizedText(text, 'Open this address in your browser to play online:');
-    const url = document.createElement('input');
-    url.readOnly = true;
-    url.value = 'https://kingalexgilbert.github.io/king-pong/demo/';
-    url.setAttribute('aria-label', 'Online Multiplayer');
-    url.addEventListener('click', () => url.select());
-    notice.append(text, url);
-    actions.before(online, notice);
+    online.addEventListener('click', () => startOnlineSetup(true));
+    localChoices.append(titleLanButton);
   }
+  for (const [button, heading, subtitle, style] of [
+      [online, 'PLAY ONLINE', 'Challenge real players', 'primary-online'],
+      [titleCampaignButton, 'CAMPAIGN', 'Single Player — Battle Computer Opponents', 'primary-campaign']]) {
+    button.className = style;
+    button.replaceChildren();
+    const title = document.createElement('strong'), hint = document.createElement('span');
+    setLocalizedText(title, heading);
+    setLocalizedText(hint, subtitle);
+    button.append(title, hint);
+    primary.append(button);
+  }
+  actions.before(primary);
   actions.after(localChoices);
   const saves = document.createElement('details');
   saves.className = 'compact-saves';
@@ -1284,7 +1173,7 @@ function initRoyalMenus() {
   gallery.addEventListener('click', e => {
     if (e.target === gallery) closeRoyalGallery();
   });
-  if (browserOnline) {
+  if (!onlineNativeTransport) {
     const help = document.createElement('p');
     help.className = 'royal-help';
     setLocalizedText(help, 'Solid paddle: host confirmed. Faint cursor: your input.');
@@ -1302,5 +1191,67 @@ function initRoyalMenus() {
   if (typeof preventMenuKeyboardActivation === 'undefined') window.addEventListener('keydown', handleRoyalMenuKey,
   true);
   updateRoyalSelectionLabels();
+  initMatchmakingUi();
   initRoyalUi();
+}
+
+// Cosmetic events travel in authoritative snapshots, with monotonic IDs. Keeping
+// the last few events survives snapshot loss without replaying cues on resync.
+let royalPowerupPulse = null;
+let royalPowerupCueSequence = 0;
+let guestPowerupCueSequence = -1;
+let royalPowerupCues = [];
+
+function emitRoyalPowerupCue(kind, type) {
+  royalPowerupCues.push({seq: ++royalPowerupCueSequence, kind, type, tick: royalRallyTick});
+  if (royalPowerupCues.length > 4) royalPowerupCues.shift();
+  if (typeof playRoyalPowerupSound === 'function') playRoyalPowerupSound(kind);
+}
+
+function validRoyalCueState(value) {
+  if (!value) return true;
+  if (value.powerupPulse !== undefined && value.powerupPulse !== null) {
+    const p = value.powerupPulse;
+    if (!Number.isFinite(p.x) || p.x < 0 || p.x > W || !Number.isFinite(p.y) || p.y < 0 || p.y > H ||
+        !Number.isFinite(p.remaining) || p.remaining < 0 || p.remaining > 60) return false;
+  }
+  if (value.cueSeq === undefined && value.cues === undefined) return true;
+  return Number.isSafeInteger(value.cueSeq) && value.cueSeq >= 0 && Array.isArray(value.cues) && value.cues.length <= 4 &&
+    value.cues.every(c => c && Number.isSafeInteger(c.seq) && c.seq > 0 && c.seq <= value.cueSeq &&
+      ['spawn', 'pickup'].includes(c.kind) && ROYAL_TYPES.includes(c.type) && Number.isSafeInteger(c.age) && c.age >= 0);
+}
+
+function receiveRoyalPowerupCues(value) {
+  if (!value || !Number.isSafeInteger(value.cueSeq)) return;
+  if (guestPowerupCueSequence < 0) { guestPowerupCueSequence = value.cueSeq; return; }
+  for (const cue of value.cues || []) {
+    if (cue.seq <= guestPowerupCueSequence) continue;
+    guestPowerupCueSequence = cue.seq;
+    if (cue.age > 30 || paused || gameOver || waitingForServe || document.hidden ||
+        document.body.classList.contains('royal-panel-open') || document.body.classList.contains('title-active')) continue;
+    if (typeof playRoyalPowerupSound === 'function') playRoyalPowerupSound(cue.kind);
+  }
+  guestPowerupCueSequence = Math.max(guestPowerupCueSequence, value.cueSeq);
+}
+
+// Shared by the unchanged ball-spawn animation and the cosmetic pickup pulse.
+function drawSpawnRipple(pulse, color) {
+  const progress = 1 - pulse.remaining / RALLY_LAUNCH_RAMP_FRAMES;
+  const radius = lerp(RALLY_SPAWN_PULSE_START_RADIUS, RALLY_SPAWN_PULSE_END_RADIUS, progress);
+  const alpha = (1 - progress) * 0.82;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.shadowColor = color;
+  ctx.shadowBlur = 14;
+  ctx.beginPath();
+  ctx.arc(pulse.x, pulse.y, radius, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.globalAlpha = alpha * 0.42;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.arc(pulse.x, pulse.y, radius * 0.58, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
 }

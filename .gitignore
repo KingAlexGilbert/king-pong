@@ -33,3 +33,5 @@ android/build/reports/problems/problems-report.html
 /signaling/.wrangler/
 /signaling/.dev.vars*
 /signaling/.env*
+__pycache__/
+*.py[cod]
