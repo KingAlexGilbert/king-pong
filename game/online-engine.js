@@ -4,12 +4,13 @@ function onlineLanSend(payload) {
   /* ROYAL POLISH */
   payload.matchRules = "presets";
   /* END ROYAL POLISH */
-  const channel = (payload.type === "action" || payload.type === "selection" || payload.type === "rules" || payload.type === "match-setup") ?
+  if (payload.type !== 'net-format') negotiateOnlineWire();
+  const channel = (payload.type === "action" || payload.type === "selection" || payload.type === "rules" || payload.type === "match-setup" || payload.type === "net-format") ?
     onlineControlChannel : lanChannel;
   if (!channel || channel.readyState !== "open") return false;
   try {
     if (channel.bufferedAmount > 65536) return false;
-    channel.send(JSON.stringify(payload));
+    channel.send(JSON.stringify(onlineWireReady && ['state', 'input'].includes(payload.type) ? encodeOnlineWire(payload) : payload));
     return true;
   } catch {
     if (onlineSession) onlineSession.fail("connection_lost");
@@ -20,21 +21,31 @@ function onlineLanSend(payload) {
 function onlineSendLanInput(gamepads = null, force = false) {
   if (lanRole !== "guest" || !lanChannel || lanChannel.readyState !== "open") return;
   const localInput = readLocalLanInput(gamepads);
-  if (!force && frame % 2 !== 0 && localInput.axis === onlineLastSentAxis) return;
-  onlineLastSentAxis = localInput.axis;
+  const now = performance.now();
+  // Match snapshot precision (0.01 px), well below a rendered pixel. Keep the
+  // prediction history at its original precision for existing reconciliation.
+  const targetY = onlineHasState && !paused ? Math.round(right.y * 100) / 100 : localInput.targetY;
+  const changed = !onlineLastInput || localInput.axis !== onlineLastInput.axis || targetY !== onlineLastInput.targetY;
+  // Keep the legacy packet cadence when the peer cannot negotiate compact input.
+  const urgent = !onlineLastInput || localInput.axis !== onlineLastInput.axis || onlineWireReady && changed;
+  const acknowledged = onlineLastInput && onlineInputAck >= onlineLastInput.proofSeq;
+  // Changes are sent on this physics tick. Unacknowledged releases/targets keep
+  // retrying at the original 30 Hz; only confirmed idle input uses a 250 ms lease.
+  const idle = !changed && localInput.axis === 0 && acknowledged;
+  if (!force && !urgent && (idle ? now - onlineLastInput.at < 250 : frame % 2 !== 0)) return;
   const seq = ++lanInputSeq;
-  const input = onlineInput(localInput, seq);
-  lanSend({
-    v: LAN_SIGNAL_VERSION,
-    type: "input",
-    room: lanRoomCode,
-    seq,
-    axis: input.axis,
-    targetY: input.targetY
-  });
+  onlineInput(localInput, seq);
+  if (lanSend({v: LAN_SIGNAL_VERSION, type: "input", room: lanRoomCode, seq,
+      axis: localInput.axis, targetY})) {
+    onlineLastSentAxis = localInput.axis;
+    onlineLastInput = {axis: localInput.axis, targetY, seq, at: now,
+      proofSeq: changed ? seq : onlineLastInput.proofSeq};
+  } else onlineInputs.delete(seq);
+
 }
 
 function onlineApplyLanHostState(state) {
+  if (Number.isSafeInteger(state.inputSeq)) onlineInputAck = Math.max(onlineInputAck, state.inputSeq);
   const previousArena = matchArenaId;
   applySelectionState(state.selection);
   const campaignIndex = clamp(Math.round(Number(state.activeCampaign) || 0), 0, CAMPAIGNS.length - 1);
@@ -172,7 +183,8 @@ function onlineSendLanState(force = false) {
     type: "state",
     room: lanRoomCode,
     seq: ++lanStateSeq,
-    inputSeq: onlineAppliedInputSeq,
+    // Paused snapshots acknowledge receipt; reconciliation already clears prediction while paused.
+    inputSeq: paused ? lanLastInputSeq : onlineAppliedInputSeq,
     tick: frame,
     selection: selectionPayload(),
     royal: packRoyalState(),

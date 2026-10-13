@@ -63,8 +63,8 @@ test('empty queue, live counts, duplicate search, delayed opponent, fair metadat
   assert.equal((await a.next(m=>m.type==='queue'&&m.state==='waiting')).waiting,1);
   await observer.next(m=>m.type==='queue'&&m.waiting===1);
   await search(a,6); // Cannot change the existing entry or count it twice.
-  await a.next(m=>m.type==='queue'&&m.waiting===1);
   a.send('ping');assert.equal(await a.next(m=>m==='pong'),'pong');
+  assert.equal(a.messages.some(m=>m.type==='queue'&&m.waiting===1),false,'unchanged count is not rebroadcast');
   const b=await connect();assert.equal((await b.next('queue')).waiting,1);await search(b);
   const [host,guest]=await Promise.all([a.next('matched'),b.next('matched')]);
   assert.equal(host.role,'host');assert.equal(guest.role,'guest');assert.deepEqual(host.match,guest.match);
@@ -171,7 +171,7 @@ test('only two ready peers release their assignment, and queue closure cannot ab
   await hostRoom.next('welcome');await guestRoom.next('welcome');
   await hostRoom.next('start');await guestRoom.next('start');
   a.send({type:'complete'});
-  await a.next(m=>m.type==='queue'&&m.state==='connecting');
+  a.send('ping'); await a.next(m=>m==='pong');
   assert.equal(a.messages.some(m=>m.type==='complete'),false);
   b.send({type:'complete'});
   await a.next('complete');await b.next('complete');
@@ -180,4 +180,20 @@ test('only two ready peers release their assignment, and queue closure cannot ab
   const duplicate=await connect('match/'+host.match.id+'/'+host.token);
   assert.equal((await duplicate.next('error')).code,'full','room survives queue departure');
   await closeAll();
+});
+
+test('unchanged queue broadcasts stay suppressed through hibernation, failed sends retry, and changes notify',()=>{
+  const previous=globalThis.WebSocketRequestResponsePair;globalThis.WebSocketRequestResponsePair=class{};
+  try {
+    let fail=false;const sent=[];
+    const s={a:{joinedAt:Date.now(),state:'waiting'},deserializeAttachment(){return structuredClone(this.a);},
+      serializeAttachment(a){this.a=structuredClone(a);},send(raw){if(fail)throw Error();sent.push(JSON.parse(raw));}};
+    const ctx={setWebSocketAutoResponse(){},getWebSockets:()=>[s],getWebSocketAutoResponseTimestamp:()=>new Date()};
+    new MatchmakingQueue(ctx,{}).broadcast();
+    for(let i=0;i<60;i++)new MatchmakingQueue(ctx,{}).broadcast();
+    assert.equal(sent.length,1,'including thirty minutes of identical 30-second alarm notifications');
+    s.a.state='watching';fail=true;new MatchmakingQueue(ctx,{}).broadcast();assert.equal(sent.length,1);
+    fail=false;new MatchmakingQueue(ctx,{}).broadcast();assert.equal(sent.length,2);
+    assert.deepEqual(sent.at(-1),{type:'queue',state:'watching',waiting:0});
+  } finally {globalThis.WebSocketRequestResponsePair=previous;}
 });

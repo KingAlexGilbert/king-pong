@@ -92,8 +92,17 @@ const hooks = {
     if (!menusVisible) royalMenuRequested = false;
     syncRoyalUi(true);
   `],
+  togglePause: [`
+    // Replace the retained PAUSED canvas before hiding the menu exposes it.
+    // This paints presentation only; the existing RAF owns all simulation steps.
+    renderFrame(accumulatedFrameMs / FIXED_STEP_MS, performance.now());
+  `],
   drawCampaignPlayInfo: ["if (document.body.classList.contains(\"royal-ui-ready\")) return;"],
-  drawOverlay: ["if (document.body.classList.contains(\"royal-panel-open\") || royalDesktopPauseVisible()) return;"],
+  drawOverlay: [`
+    if (document.body.classList.contains("royal-panel-open") || royalDesktopPauseVisible()) return;
+    // Resume needs only its existing 3, 2, 1; retain panels for actual results.
+    if (hasResumeCountdown() && !gameOver && !levelCleared && !campaignCleared) return;
+  `],
 };
 
 export function integrateRoyalUi(source) {

@@ -45,6 +45,12 @@ function installOnlineSupport() {
     if (typeof raw !== 'string' || raw.length > 8192) return;
     let message;
     try { message = JSON.parse(raw); } catch { return; }
+    if (onlineSession && Array.isArray(message)) {
+      message = decodeOnlineWire(message);
+      if (!message) return;
+      raw = JSON.stringify(message);
+    }
+    if (onlineSession && message?.type === 'net-format') { receiveOnlineWireHello(message); return; }
     if (message?.type === 'match-setup') { receiveOnlineMatchSetup(message); return; }
     if (onlineMatchFlowBlocksPlay() && message?.type === 'action') return;
     receive(raw);

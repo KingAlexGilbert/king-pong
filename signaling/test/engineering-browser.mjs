@@ -212,11 +212,13 @@ async function rasterChecks() {
       const samples = [], state = JSON.stringify([ball, royalSplitBall, frame, left, right]);
       const intervals = [.72, 1.31, .93, 1.08, 2, .55, 1.12, .87];
       const sx = canvas.width / W, sy = canvas.height / H;
+      const drawImage = ctx.drawImage;
       // alpha:false makes the cleared background opaque too. Inspect color
       // coverage instead of alpha, allowing the intentional one-pixel edge fringe.
       const size = Math.max(1, Math.round(BALL_SIZE * Math.min(sx, sy)));
       for (const hz of [60, 120, 144, 165, 240]) for (const irregular of [false, true])
-        for (const split of [false, true]) for (const [vx, vy] of [[4.65, 0], [0, -.8], [9.6, 7.2]]) {
+        for (const halo of [false, true]) for (const split of [false, true])
+        for (const [vx, vy] of [[4.65, 0], [0, -.8], [9.6, 7.2]]) {
         let time = 0, previous = null, stepError = 0, maxPositionError = 0;
         let minMass = Infinity, maxMass = 0, maxFringe = 0;
         for (let i = 0; i < 12; i++) {
@@ -225,13 +227,17 @@ async function rasterChecks() {
             y: 100.293 + vy * speedScale * time * 60 / 1000};
           // Clear the ball's full test region, including the prior position.
           ctx.setTransform(1, 0, 0, 1, 0, 0);
-          ctx.clearRect(190 * sx, 80 * sy, 260 * sx, 200 * sy);
+          ctx.clearRect(190 * sx - 28, 80 * sy - 28, 260 * sx + 56, 200 * sy + 56);
           ctx.setTransform(sx, 0, 0, sy, 0, 0);
           ctx.translate(.37, -.23);
           const transform = ctx.getTransform();
           const x = b.x * transform.a + transform.e, y = b.y * transform.d + transform.f;
-          drawRoyalBall(b, split);
-          const bx = Math.floor(x) - 2, by = Math.floor(y) - 2, extent = size + 5;
+          // Measure the core with the same strict old bounds, then the complete
+          // intended halo. No production geometry or motion is stubbed.
+          if (!halo) ctx.drawImage = () => {};
+          try { drawRoyalBall(b, split); } finally { ctx.drawImage = drawImage; }
+          const pad = halo ? 28 : 2;
+          const bx = Math.floor(x) - pad, by = Math.floor(y) - pad, extent = size + pad * 2 + 1;
           const data = ctx.getImageData(bx, by, extent, extent).data;
           let peak = 0, sum = 0, mx = 0, my = 0;
           let minX = extent, minY = extent, maxX = -1, maxY = -1;
@@ -252,7 +258,7 @@ async function rasterChecks() {
           previous = center;
           time += 1000 / hz * (irregular ? intervals[i % intervals.length] : 1);
         }
-        samples.push({hz, irregular, split, vx, vy, size, minMass, maxMass, maxFringe,
+        samples.push({hz, irregular, halo, split, vx, vy, size, minMass, maxMass, maxFringe,
           maxPositionError, stepErrorRms: Math.sqrt(stepError / 11)});
       }
       return {samples, unchanged: state === JSON.stringify([ball, royalSplitBall, frame, left, right]),
@@ -263,6 +269,16 @@ async function rasterChecks() {
     assert.equal(result.height, Math.round(result.cssHeight * result.dpr));
     assert.equal(result.unchanged, true);
     for (const sample of result.samples) {
+      if (sample.halo) {
+        // Low-alpha halo pixels have quantized color coverage. Bound its
+        // centroid to a quarter physical pixel; the core keeps its original
+        // 0.03-pixel motion/size tolerance below.
+        assert.ok(sample.maxPositionError < .25, JSON.stringify(sample));
+        assert.ok(sample.stepErrorRms < .25, JSON.stringify(sample));
+        assert.ok(sample.maxFringe <= 57, JSON.stringify(sample));
+        assert.ok(sample.minMass > sample.size ** 2, 'halo adds light around the unchanged core: ' + JSON.stringify(sample));
+        continue;
+      }
       assert.ok(sample.maxPositionError < .03, JSON.stringify(sample));
       assert.ok(sample.stepErrorRms < .03, 'color centroid follows fractional motion: ' + JSON.stringify(sample));
       assert.ok(sample.maxFringe <= 1, 'no extended blur or trail: ' + JSON.stringify(sample));
@@ -272,7 +288,7 @@ async function rasterChecks() {
     metrics.push({scenario, raster: result});
     await p.context().close();
   }
-  pass('fractional primary/Split color coverage: stable size and motion at 60/120/144/165/240 Hz, desktop/mobile DPR and 4K');
+  pass('fractional primary/Split core and halo coverage: stable size and motion at 60/120/144/165/240 Hz, desktop/mobile DPR and 4K');
 
   const p = await page();
   const erased = await p.evaluate(() => {

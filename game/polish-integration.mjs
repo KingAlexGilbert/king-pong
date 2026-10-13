@@ -128,6 +128,12 @@ export function integrateRoyalPolish(source) {
   for (const [name, code] of [['toggleMusic', `function toggleMusic() {
   if (saveData?.muteAll) return;
   setMusicEnabled(!musicEnabled);
+}`], ['drawBossRallySpawnPulses', `function drawBossRallySpawnPulses() {
+  const color = currentCampaign().accent;
+  for (const bossBall of bossBalls) {
+    drawSpawnRippleAt(bossBall.rallySpawnPulseX, bossBall.rallySpawnPulseY,
+      Number(bossBall.rallyLaunchFramesRemaining) || 0, color);
+  }
 }`], ['simulateHazardStep', predictionStep], ['drawBackground', backgroundDraw], ['drawRallySpawnPulse', `function drawRallySpawnPulse(view = captureVisualState()) {
   if (view.launch.remaining <= 0 || mode === 4) return;
   drawSpawnRipple(view.launch, currentCampaign().accent);

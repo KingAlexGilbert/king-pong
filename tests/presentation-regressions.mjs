@@ -135,11 +135,12 @@ for (const platform of Object.keys(builds)) {
     // Exercise each synchronized build, as well as the shared-source sync checks.
     h.run(functionSource(source(platform), 'drawBallPixels'));
     h.run(functionSource(source(platform), 'drawRoyalBall'));
+    h.run('royalBallGlowSprite=(color,size)=>({width:(size+56)*2,height:(size+56)*2});');
     h.run("ball.lastHit='left';awardRoyalPowerup('split');const before=JSON.stringify([ball,royalSplitBall,frame]);");
     for (const [sx, sy] of [[388 / 640, 290 / 480], [1, 1], [1.25, 1.25],
       [952 / 640, 714 / 480], [2.975, 2.975], [4.4625, 4.4625], [6, 6]]) {
       const transform = {a: sx, d: sy, e: .37, f: -.23};
-      h.context.ctx = {save() {}, restore() {}, getTransform: () => transform,
+      h.context.ctx = {save() {}, restore() {}, drawImage() {}, getTransform: () => transform,
         fillRect(...r) { rectangles.push({r, alpha: this.globalAlpha, blur: this.shadowBlur}); }};
       const size = Math.max(1, Math.round(8 * Math.min(sx, sy)));
       for (const split of [false, true]) {

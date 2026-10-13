@@ -14,7 +14,7 @@ export function chooseArena(a, b, arenas, random = () => crypto.getRandomValues(
 }
 
 function send(socket, value) {
-  try { socket.send(JSON.stringify(value)); } catch { /* Lease/close handlers remove it. */ }
+  try { socket.send(JSON.stringify(value)); return true; } catch { return false; /* Lease/close handlers remove it. */ }
 }
 
 export class MatchmakingQueue {
@@ -46,7 +46,7 @@ export class MatchmakingQueue {
       this.ctx.acceptWebSocket(server);
       server.serializeAttachment({ session: crypto.randomUUID(), ip, joinedAt: Date.now(),
         state: 'watching', preference: null, windowAt: Date.now(), count: 0 });
-      send(server, { type: 'queue', state: 'watching', waiting: this.waiting().length });
+      this.sendQueueState(server, this.waiting().length);
       await this.schedule();
       return new Response(null, { status: 101, webSocket: client });
     });
@@ -57,12 +57,20 @@ export class MatchmakingQueue {
       .sort((a, b) => a.deserializeAttachment().queuedAt - b.deserializeAttachment().queuedAt);
   }
 
+  sendQueueState(socket, waiting) {
+    const a = socket.deserializeAttachment();
+    // Persist the last successful notification with the socket so hibernation
+    // does not turn unchanged counts into broadcasts. Heartbeats/leases stay intact.
+    const key = `${a.state}:${waiting}`;
+    if (a.lastQueueState === key) return;
+    if (send(socket, { type: 'queue', state: a.state, waiting })) {
+      socket.serializeAttachment({...a, lastQueueState: key});
+    }
+  }
+
   broadcast() {
     const waiting = this.waiting().length;
-    for (const socket of this.sockets()) {
-      const a = socket.deserializeAttachment();
-      send(socket, { type: 'queue', state: a.state, waiting });
-    }
+    for (const socket of this.sockets()) this.sendQueueState(socket, waiting);
   }
 
   async webSocketMessage(socket, raw) {

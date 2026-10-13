@@ -612,12 +612,48 @@ function applyRoyalState(value) {
   };
 }
 
+// Restore the original 14px accent glow without running a canvas shadow filter
+// over the playfield every frame. Only a tiny halo is cached; the ball itself
+// remains a directly drawn, opaque square at its interpolated position.
+const ROYAL_BALL_GLOW_PADDING = 28;
+const royalBallGlowSprites = new Map();
+let royalBallGlowSize = 0;
+function royalBallGlowSprite(color, size) {
+  if (size !== royalBallGlowSize) {
+    royalBallGlowSprites.clear();
+    royalBallGlowSize = size;
+  }
+  let sprite = royalBallGlowSprites.get(color);
+  if (!sprite) {
+    sprite = document.createElement('canvas');
+    const pad = ROYAL_BALL_GLOW_PADDING;
+    // Cache at 2x resolution so only the soft halo is resampled, never the core.
+    sprite.width = sprite.height = (size + pad * 2) * 2;
+    const glow = sprite.getContext('2d');
+    glow.setTransform(2, 0, 0, 2, 0, 0);
+    glow.fillStyle = glow.shadowColor = color;
+    glow.shadowBlur = 28;
+    glow.fillRect(pad, pad, size, size);
+    // Keep the core out of the bitmap: resampling a cached ball would soften it.
+    glow.shadowBlur = 0;
+    glow.globalCompositeOperation = 'destination-out';
+    glow.fillRect(pad, pad, size, size);
+    royalBallGlowSprites.set(color, sprite);
+  }
+  return sprite;
+}
+
 // Keep interpolated positions fractional for even motion between display frames.
 // Round only the physical size so the square's dimensions stay constant.
 function drawBallPixels(b) {
   const transform = ctx.getTransform();
   const scaleX = transform.a, scaleY = transform.d;
   const size = Math.max(1, Math.round(BALL_SIZE * Math.min(scaleX, scaleY)));
+  const glow = royalBallGlowSprite(ctx.fillStyle, size);
+  const pad = ROYAL_BALL_GLOW_PADDING;
+  ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(glow, b.x - pad / scaleX, b.y - pad / scaleY, glow.width / (2 * scaleX), glow.height / (2 * scaleY));
+  ctx.imageSmoothingEnabled = false;
   ctx.fillRect(b.x, b.y, size / scaleX, size / scaleY);
 }
 
@@ -1237,24 +1273,38 @@ function receiveRoyalPowerupCues(value) {
   guestPowerupCueSequence = Math.max(guestPowerupCueSequence, value.cueSeq);
 }
 
-// Shared by the unchanged ball-spawn animation and the cosmetic pickup pulse.
-function drawSpawnRipple(pulse, color) {
-  const progress = 1 - pulse.remaining / RALLY_LAUNCH_RAMP_FRAMES;
+// The two rings keep their original radius, fade and lifetime. Three faint
+// strokes approximate the halo without two shadow-blur raster passes per frame.
+// Widths are in backing-store pixels, matching Canvas shadowBlur's scale behavior.
+const ROYAL_RIPPLE_HALO_WIDTHS = [20, 10, 4];
+const ROYAL_RIPPLE_HALO_ALPHA = [0.015, 0.035, 0.05];
+
+function drawSpawnRippleAt(x, y, remaining, color) {
+  if (remaining <= 0) return;
+  const progress = 1 - remaining / RALLY_LAUNCH_RAMP_FRAMES;
   const radius = lerp(RALLY_SPAWN_PULSE_START_RADIUS, RALLY_SPAWN_PULSE_END_RADIUS, progress);
   const alpha = (1 - progress) * 0.82;
+  const scale = Math.max(0.01, Math.min(renderScale, canvas.height / H));
   ctx.save();
-  ctx.globalAlpha = alpha;
   ctx.strokeStyle = color;
-  ctx.lineWidth = 2;
-  ctx.shadowColor = color;
-  ctx.shadowBlur = 14;
-  ctx.beginPath();
-  ctx.arc(pulse.x, pulse.y, radius, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.globalAlpha = alpha * 0.42;
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.arc(pulse.x, pulse.y, radius * 0.58, 0, Math.PI * 2);
-  ctx.stroke();
+  ctx.shadowBlur = 0;
+  for (let ring = 0; ring < 2; ring++) {
+    const line = ring ? 1 : 2;
+    const opacity = alpha * (ring ? 0.42 : 1);
+    ctx.beginPath();
+    ctx.arc(x, y, radius * (ring ? 0.58 : 1), 0, Math.PI * 2);
+    for (let i = 0; i < ROYAL_RIPPLE_HALO_WIDTHS.length; i++) {
+      ctx.globalAlpha = opacity * ROYAL_RIPPLE_HALO_ALPHA[i] * scale * line / 2;
+      ctx.lineWidth = line + ROYAL_RIPPLE_HALO_WIDTHS[i] / scale;
+      ctx.stroke();
+    }
+    ctx.globalAlpha = opacity;
+    ctx.lineWidth = line;
+    ctx.stroke();
+  }
   ctx.restore();
+}
+
+function drawSpawnRipple(pulse, color) {
+  drawSpawnRippleAt(pulse.x, pulse.y, pulse.remaining, color);
 }

@@ -257,6 +257,7 @@ function setOnlineControls(busy, joining = false) {
 
 function closeOnlineConnection(showMessage = true, keepQueue = false) {
   resetOnlineMatchFlow();
+  resetOnlineWire();
   if (!keepQueue) stopMatchmaking();
   onlineMatchAssignment = null;
   if (matchmakingPreviousRules !== null) { matchRuleId = matchmakingPreviousRules; matchmakingPreviousRules = null; }

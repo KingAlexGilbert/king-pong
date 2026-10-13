@@ -16,7 +16,13 @@
     "test:online-flow": "node test/online-flow-browser.mjs",
     "test:powerup-ui": "node test/matchmaking-polish-browser.mjs",
     "test:serve": "node test/serve-browser.mjs",
-    "compare:serve": "node test/serve-comparison.mjs"
+    "compare:serve": "node test/serve-comparison.mjs",
+    "test:network": "node test/network-benchmark.mjs --faults",
+    "benchmark:network": "node test/network-benchmark.mjs",
+    "benchmark:queue": "node test/queue-benchmark.mjs",
+    "test:ripple": "node test/ripple-browser.mjs",
+    "profile:ripple": "node test/ripple-profile.mjs",
+    "test:appearance": "node test/appearance-browser.mjs"
   },
   "devDependencies": {
     "miniflare": "5.20261001.0-alpha",
