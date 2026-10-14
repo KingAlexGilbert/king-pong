@@ -12265,17 +12265,7 @@ function initRoyalMenus() {
     setLocalizedText(titleLanButton, 'LAN Play');
     actions.append(titleLanButton);
   } else {
-    const lan = royalButton('titleNativeLanButton', 'LAN Play', () => {
-      const card = byId('nativeLanHelp') || royalDialog('nativeLanHelp', 'LAN Play').parentElement;
-      if (!byId('nativeLanHelpText')) {
-        const note = document.createElement('p');
-        note.id = 'nativeLanHelpText';
-        setLocalizedText(note, 'LAN Play is available in the native apps.');
-        card.firstElementChild.append(note, royalButton('nativeLanHelpClose', 'Close', () => { card.hidden = true; lan.focus(); }));
-      }
-      card.hidden = false;
-      byId('nativeLanHelpClose').focus();
-    });
+    const lan = royalButton('titleNativeLanButton', 'LAN Play', () => openOfflineLanSetup(true));
     actions.append(lan);
   }
   for (const [button, heading, subtitle, style] of [
@@ -12770,6 +12760,8 @@ function resetRoyalUiForTitle() {
   if (typeof stopRoyalPowerupSound === 'function') stopRoyalPowerupSound();
   royalOnlineSelected = royalMenuRequested = false;
   lanPanelOpen = false;
+  if (typeof onlineManualLanSelected !== 'undefined') onlineManualLanSelected = false;
+  if (byId('classicLanDialog')) byId('classicLanDialog').hidden = true;
   royalRotateDismissed = false;
   royalOrientationAttempted = false;
   royalOrientationGeneration++;
@@ -12784,7 +12776,8 @@ function resetRoyalUiForTitle() {
 function royalModeName() {
   if (mode === 4 || bossIntroActive) return 'Secret Boss';
   if (mode === 3) return 'Custom Game';
-  if (royalOnlineMode()) return typeof onlineTransportSelected !== 'undefined' && onlineTransportSelected ? 'Online Multiplayer' : 'LAN Two Player';
+  if (royalOnlineMode()) return typeof onlineManualLanSelected !== 'undefined' && onlineManualLanSelected ?
+    'LAN Play' : typeof onlineTransportSelected !== 'undefined' && onlineTransportSelected ? 'Online Multiplayer' : 'LAN Two Player';
   if (mode === 2) return 'Local Two Player';
   return 'Campaign';
 }
@@ -12892,7 +12885,8 @@ function initRoyalUi() {
   setup.append(setupHint);
   const setupActions = document.createElement('div');
   setupActions.className = 'match-actions';
-  setupActions.append(royalButton('matchServe', 'Start match', royalContinue, 'match-primary'), royalButton(
+  setupActions.append(royalButton('matchServe', 'Start match', royalContinue, 'match-primary'),
+    royalButton('setupBackButton', 'Back', () => showTitleScreen()), royalButton(
     'setupMenuButton', 'Menu (M)', () => {
       if (royalOnlineMode() && onlineTransportSelected) { showTitleScreen(); return; }
       royalMenuRequested = true;
@@ -12909,6 +12903,7 @@ function initRoyalUi() {
   menuActions.className = 'match-actions';
   menuActions.append(royalButton('matchResume', 'Resume', royalContinue, 'match-primary'), restartButton,
     titleJumpButton);
+  royalText(titleJumpButton, 'Back');
   menu.append(menuActions);
   menu.append(royalDisclosure('Room / connection', 'matchConnection'));
   const configure = document.createElement('div');
@@ -13235,6 +13230,7 @@ function syncRoyalUi(force = false) {
     if (back.parentElement !== setupCard) setupCard.prepend(back);
   } else if (back.parentElement === setupCard) byId('matchServe').parentElement.append(back);
   royalText(back, onlineSetup ? 'Back' : 'Menu (M)');
+  byId('setupBackButton').hidden = onlineSetup;
   byId('matchBar').classList.toggle('match-bar-paused', desktopPause);
   // Keep the toggle inside the current screen or modal's focus/inert boundary.
   if (menu && !royalLastDialog) royalReturnFocus = document.activeElement;
@@ -13391,7 +13387,7 @@ function syncRoyalOrientation() {
 
 function royalActiveDialog() {
   if (galleryKind) return byId('royalGallery');
-  for (const id of ['lanPlayerCount', 'classicLanDialog', 'rotateDevice', 'matchMenu', 'matchSetup'])
+  for (const id of ['classicLanDialog', 'rotateDevice', 'matchMenu', 'matchSetup'])
     if (byId(id) && !byId(id).hidden) return byId(id);
   if (onlineMatchFlowVisible() && onlineMatchFlow.phase !== 'go') return byId('onlineMatchFlow');
   return null;
@@ -13436,7 +13432,7 @@ function handleRoyalUiKey(event) {
       index = controls.indexOf(document.activeElement);
     controls[(index + (event.shiftKey ? -1 : 1) + controls.length) % controls.length]?.focus();
   } else if (dialog && event.key === 'Escape') {
-    if (dialog.id === 'lanPlayerCount' || dialog.id === 'classicLanDialog') {
+    if (dialog.id === 'classicLanDialog') {
       dialog.hidden = true; syncRoyalFocus();
     } else if (dialog.id === 'rotateDevice') {
       royalRotateDismissed = true;
@@ -13555,6 +13551,20 @@ function syncClassicApproval(lobby) {
   }
 
 }
+// Only the browser uses the manual, offline offer/answer screen. Installed
+// apps continue through their existing native LAN setup, unchanged.
+function openOfflineLanSetup(fromTitle = true) {
+  if (onlineNativeTransport) {
+    onlineManualLanSelected = false;
+    startLanTwoPlayerSetup(fromTitle);
+    return;
+  }
+  onlineManualLanSelected = true;
+  royalMenuRequested = false;
+  startOnlineSetup(fromTitle);
+  byId('classicLanDialog').hidden = false;
+  syncRoyalFocus();
+}
 function installMultiplayerSafety() {
   const privateRooms = byId('onlinePrivateRooms');
   const approvalLabel = document.createElement('label'); approvalLabel.className = 'lan-check';
@@ -13603,17 +13613,17 @@ function installMultiplayerSafety() {
   classic.append(note, royalButton('classicLanHost', 'Create invitation', () => { onlineManualLanSelected = true; openOnlineRoom('host'); }),
     input, royalButton('classicLanJoin', 'Create answer', () => { onlineManualLanSelected = true; openOnlineRoom('guest', input.value); }),
     royalButton('classicLanAccept', 'Accept answer', () => onlineSession instanceof KingPongManualRoom && onlineSession.accept(input.value)), output,
-    royalButton('classicLanClose', 'Close', () => { byId('classicLanDialog').hidden = true; }));
-  classic.classList.add('four-lan-exchange');
-  const choices = royalDialog('lanPlayerCount', 'LAN Play');
-  choices.append(royalButton('lanTwoPlayers', 'Two Player', () => {
-    byId('lanPlayerCount').hidden = true;
-    if (onlineNativeTransport) { onlineManualLanSelected = false; startLanTwoPlayerSetup(true); }
-    else { onlineManualLanSelected = true; startOnlineSetup(true); byId('classicLanDialog').hidden = false; }
-  }), royalButton('lanCountBack', 'Back', () => { byId('lanPlayerCount').hidden = true; }));
-  const lanButton = onlineNativeTransport ? titleLanButton : byId('titleNativeLanButton');
-  lanButton.addEventListener('click', e => { e.stopImmediatePropagation(); byId('lanPlayerCount').hidden = false; byId('lanTwoPlayers').focus(); }, true);
-  document.querySelector('.primary-online').addEventListener('click', () => { onlineManualLanSelected = false; byId('classicLanDialog').hidden = true; }, true);
+    royalButton('classicLanClose', 'Back', () => showTitleScreen()));
+  // LAN opens directly. A browser LAN tile opens its offline
+  // invitation/answer screen directly; native LAN already opens its setup.
+  if (!onlineNativeTransport) lanModeButton.addEventListener('click', event => {
+    event.stopImmediatePropagation();
+    openOfflineLanSetup(false);
+  }, true);
+  document.querySelector('.primary-online').addEventListener('click', () => {
+    onlineManualLanSelected = false;
+    byId('classicLanDialog').hidden = true;
+  }, true);
   // Clamp the result of the existing movement code, only for networked paddles.
   // This also bounds combined keyboard/gamepad input and touch targets for both players.
   const updatePaddles = updatePlayerPaddles;

@@ -164,6 +164,41 @@ async function onlineStyle(p) {
 try {
   for (const platform of Object.keys(builds)) {
     const p = await page(platform);
+    assert.equal(await p.locator('#lanPlayerCount').count(), 0, 'obsolete LAN player-count choice is absent');
+    if (platform === 'Browser') {
+      await p.locator('#titleNativeLanButton').click();
+      assert.equal(await p.locator('#classicLanDialog').isVisible(), true, 'browser LAN opens offline exchange');
+      assert.equal(await p.evaluate(() => onlineManualLanSelected && royalModeName() === 'LAN Play'), true);
+      await p.locator('#classicLanClose').click();
+    } else {
+      await p.locator('#titleLanButton').click();
+      assert.equal(await p.locator('#matchSetup').isVisible(), true, 'native LAN opens setup directly');
+      await p.locator('#setupBackButton').click();
+    }
+    assert.equal(await p.evaluate(() => document.body.classList.contains('title-active')), true);
+    await p.locator('.primary-online').click();
+    assert.equal(await p.locator('#setupMenuButton').isVisible(), true, 'online retains its top Back button');
+    await p.locator('#setupMenuButton').click();
+    assert.equal(await p.evaluate(() => document.body.classList.contains('title-active')), true);
+    await p.locator('#titleLocalButton').click();
+    assert.equal(await p.locator('#setupBackButton').isVisible(), true, 'local setup has Back');
+    await p.locator('#setupBackButton').click();
+    assert.equal(await p.evaluate(() => document.body.classList.contains('title-active')), true);
+    await unlock(p);
+    await p.locator('#titleCustomButton').click();
+    assert.equal(await p.locator('#setupBackButton').isVisible(), true, 'Custom Game setup has Back');
+    await p.locator('#setupBackButton').click();
+    assert.equal(await p.evaluate(() => document.body.classList.contains('title-active')), true);
+    await p.locator('#titleCampaignButton').click();
+    await p.locator('#menuToggle').click();
+    assert.equal(await p.locator('#titleJumpButton').innerText(), 'Back', 'campaign menu has Back');
+    await p.locator('#titleJumpButton').click();
+    assert.equal(await p.evaluate(() => document.body.classList.contains('title-active')), true);
+    await p.context().close();
+    pass(platform + ': direct LAN entry and consistent Back navigation across modes');
+  }
+  for (const platform of Object.keys(builds)) {
+    const p = await page(platform);
     await active(p, []);
     await p.locator('.compact-saves summary').click();
     await p.locator('#titleLocalButton').focus();

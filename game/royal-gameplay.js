@@ -1154,17 +1154,7 @@ function initRoyalMenus() {
     setLocalizedText(titleLanButton, 'LAN Play');
     actions.append(titleLanButton);
   } else {
-    const lan = royalButton('titleNativeLanButton', 'LAN Play', () => {
-      const card = byId('nativeLanHelp') || royalDialog('nativeLanHelp', 'LAN Play').parentElement;
-      if (!byId('nativeLanHelpText')) {
-        const note = document.createElement('p');
-        note.id = 'nativeLanHelpText';
-        setLocalizedText(note, 'LAN Play is available in the native apps.');
-        card.firstElementChild.append(note, royalButton('nativeLanHelpClose', 'Close', () => { card.hidden = true; lan.focus(); }));
-      }
-      card.hidden = false;
-      byId('nativeLanHelpClose').focus();
-    });
+    const lan = royalButton('titleNativeLanButton', 'LAN Play', () => openOfflineLanSetup(true));
     actions.append(lan);
   }
   for (const [button, heading, subtitle, style] of [

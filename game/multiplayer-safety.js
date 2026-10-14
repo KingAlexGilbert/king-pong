@@ -63,6 +63,20 @@ function syncClassicApproval(lobby) {
   }
 
 }
+// Only the browser uses the manual, offline offer/answer screen. Installed
+// apps continue through their existing native LAN setup, unchanged.
+function openOfflineLanSetup(fromTitle = true) {
+  if (onlineNativeTransport) {
+    onlineManualLanSelected = false;
+    startLanTwoPlayerSetup(fromTitle);
+    return;
+  }
+  onlineManualLanSelected = true;
+  royalMenuRequested = false;
+  startOnlineSetup(fromTitle);
+  byId('classicLanDialog').hidden = false;
+  syncRoyalFocus();
+}
 function installMultiplayerSafety() {
   const privateRooms = byId('onlinePrivateRooms');
   const approvalLabel = document.createElement('label'); approvalLabel.className = 'lan-check';
@@ -111,17 +125,17 @@ function installMultiplayerSafety() {
   classic.append(note, royalButton('classicLanHost', 'Create invitation', () => { onlineManualLanSelected = true; openOnlineRoom('host'); }),
     input, royalButton('classicLanJoin', 'Create answer', () => { onlineManualLanSelected = true; openOnlineRoom('guest', input.value); }),
     royalButton('classicLanAccept', 'Accept answer', () => onlineSession instanceof KingPongManualRoom && onlineSession.accept(input.value)), output,
-    royalButton('classicLanClose', 'Close', () => { byId('classicLanDialog').hidden = true; }));
-  classic.classList.add('four-lan-exchange');
-  const choices = royalDialog('lanPlayerCount', 'LAN Play');
-  choices.append(royalButton('lanTwoPlayers', 'Two Player', () => {
-    byId('lanPlayerCount').hidden = true;
-    if (onlineNativeTransport) { onlineManualLanSelected = false; startLanTwoPlayerSetup(true); }
-    else { onlineManualLanSelected = true; startOnlineSetup(true); byId('classicLanDialog').hidden = false; }
-  }), royalButton('lanCountBack', 'Back', () => { byId('lanPlayerCount').hidden = true; }));
-  const lanButton = onlineNativeTransport ? titleLanButton : byId('titleNativeLanButton');
-  lanButton.addEventListener('click', e => { e.stopImmediatePropagation(); byId('lanPlayerCount').hidden = false; byId('lanTwoPlayers').focus(); }, true);
-  document.querySelector('.primary-online').addEventListener('click', () => { onlineManualLanSelected = false; byId('classicLanDialog').hidden = true; }, true);
+    royalButton('classicLanClose', 'Back', () => showTitleScreen()));
+  // LAN opens directly. A browser LAN tile opens its offline
+  // invitation/answer screen directly; native LAN already opens its setup.
+  if (!onlineNativeTransport) lanModeButton.addEventListener('click', event => {
+    event.stopImmediatePropagation();
+    openOfflineLanSetup(false);
+  }, true);
+  document.querySelector('.primary-online').addEventListener('click', () => {
+    onlineManualLanSelected = false;
+    byId('classicLanDialog').hidden = true;
+  }, true);
   // Clamp the result of the existing movement code, only for networked paddles.
   // This also bounds combined keyboard/gamepad input and touch targets for both players.
   const updatePaddles = updatePlayerPaddles;
