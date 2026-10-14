@@ -24,7 +24,8 @@ function onlineSendLanInput(gamepads = null, force = false) {
   const now = performance.now();
   // Match snapshot precision (0.01 px), well below a rendered pixel. Keep the
   // prediction history at its original precision for existing reconciliation.
-  const targetY = onlineHasState && !paused ? Math.round(right.y * 100) / 100 : localInput.targetY;
+  // Upgraded peers send a destination/axis intent. Older peers keep position reconciliation.
+  const targetY = onlineIntentReady ? localInput.targetY : onlineHasState && !paused ? Math.round(right.y * 100) / 100 : localInput.targetY;
   const changed = !onlineLastInput || localInput.axis !== onlineLastInput.axis || targetY !== onlineLastInput.targetY;
   // Keep the legacy packet cadence when the peer cannot negotiate compact input.
   const urgent = !onlineLastInput || localInput.axis !== onlineLastInput.axis || onlineWireReady && changed;

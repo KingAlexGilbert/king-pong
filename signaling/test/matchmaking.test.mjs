@@ -7,7 +7,7 @@ import {chooseArena, MatchmakingQueue} from '../src/matchmaking.js';
 
 const origin = 'https://kingalexgilbert.github.io';
 const mf = new Miniflare(convertV4MiniflareOptions({
-  modules:['worker.js','metered-turn.js','matchmaking.js','matchmaking-contract.js','native-bridge.js']
+  modules:['worker.js','metered-turn.js','matchmaking.js','matchmaking-contract.js','native-bridge.js','party-room.js']
     .map(f=>({type:'ESModule',path:fileURLToPath(new URL('../src/'+f,import.meta.url))})),
   modulesRoot:fileURLToPath(new URL('../src/',import.meta.url)), compatibilityDate:'2025-09-06',
   durableObjects:{ROOMS:{className:'PongRoom',useSQLite:true},TURN_CREDENTIALS:{className:'MeteredTurn',useSQLite:true},

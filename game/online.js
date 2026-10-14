@@ -12,6 +12,7 @@ class KingPongRoom {
 
   open(role, code = '', assignment = null) {
     this.assignment = assignment;
+    this.managed = !assignment && (role === 'host' ? Boolean(this.requireApproval) : code.length === 6);
     this.role = role;
     let url;
     try {
@@ -20,6 +21,7 @@ class KingPongRoom {
           !(url.protocol === 'https:' || url.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(url.hostname))) throw new Error();
       url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
       url.pathname = assignment ? `/v1/match/${assignment.match.id}/${assignment.token}` :
+        this.managed ? (role === 'host' ? `/v1/party/create/2/1/${kingPongClientToken()}` : `/v1/party/join/2/${code}/${kingPongClientToken()}`) :
         role === 'host' ? '/v1/create' : `/v1/join/${code}`;
       this.socket = kingPongSignalingSocket(url);
     } catch { this.fail('unavailable'); return; }
@@ -47,20 +49,24 @@ class KingPongRoom {
 
   send(message) {
     if (!this.closed && this.socket?.readyState === WebSocket.OPEN) {
-      this.socket.send(JSON.stringify(message));
+      this.socket.send(JSON.stringify(this.managed && ['description', 'candidate', 'relay', 'connected'].includes(message.type) ?
+        {...message, to: this.role === 'host' ? 1 : 0, attempt: message.attempt ?? this.attempt} : message));
     }
   }
 
   async receive(message) {
+    if (this.managed && message.type === 'lobby') { if (typeof syncClassicApproval === 'function') syncClassicApproval(message); return; }
+    if (this.managed && message.type === 'approved') { this.hooks.status('Connecting...'); return; }
+    if (this.managed && message.type === 'departed') { this.fail(message.reason === 'kicked' ? 'guest_left' : message.reason); return; }
     if (message.type === 'error') { this.fail(message.code); return; }
     if (message.type === 'welcome') {
-      if (message.role !== this.role || !/^[A-HJ-NP-Z2-9]{5}$/.test(message.code)) throw new Error();
+      if (message.role !== this.role || !(this.managed ? message.protocol === 'kp-party-1' && message.capacity === 2 && /^[A-HJ-NP-Z2-9]{6}$/.test(message.code) : /^[A-HJ-NP-Z2-9]{5}$/.test(message.code))) throw new Error();
       if (this.assignment && (message.match?.id !== this.assignment.match.id ||
           message.match?.arena !== this.assignment.match.arena || message.match?.rules !== this.assignment.match.rules ||
           message.match?.protocol !== KING_PONG_MATCHMAKING.protocol)) throw new Error();
       clearTimeout(this.openTimer);
       this.hooks.welcome(message.code);
-      this.hooks.status(this.role === 'host' ? 'Waiting for Player 2...' : 'Connecting...');
+      this.hooks.status(message.pending ? 'Waiting for host approval...' : this.role === 'host' ? 'Waiting for Player 2...' : 'Connecting...');
       return;
     }
     if (message.type === 'start') {
@@ -226,7 +232,14 @@ const onlineInputs = new Map();
 const ONLINE_ERRORS = {
   incompatible: 'Both players must reload the latest game.',
   opponent_left: 'Opponent disconnected. Find another match.',
-  invalid_code: 'Enter a valid five-character room code.',
+  invalid_code: 'Enter a valid five- or six-character room code.',
+  wrong_mode: 'This room uses a different player count. Choose the matching multiplayer menu.',
+  kicked: 'The host removed you from this room.',
+  rejected: 'The host declined your join request.',
+  blocked: 'You cannot rejoin this room. Ask the host for a new room.',
+  unapproved: 'Wait for the host to accept your request.',
+  approval_timeout: 'Join request expired. Ask the host to try again.',
+  unauthorized: 'Room permission denied.',
   not_found: 'Room not found. Check the code or ask for a new room.',
   full: 'Room already full. Ask for a new room.',
   timeout: 'Connection timed out. Please create or join a new room.',
@@ -241,7 +254,7 @@ const ONLINE_ERRORS = {
 };
 
 function sanitizeOnlineRoomCode(value) {
-  return String(value || '').toUpperCase().replace(/\s/g, '').slice(0, 5);
+  return String(value || '').toUpperCase().replace(/\s/g, '').slice(0, 6);
 }
 
 function setOnlineControls(busy, joining = false) {
@@ -298,7 +311,7 @@ function startOnlineSetup(fromTitle = false) {
   }
   setLanPanelOpen(true);
   setMenusVisible(true);
-  observeMatchmaking();
+  if (!(typeof onlineManualLanSelected !== 'undefined' && onlineManualLanSelected)) observeMatchmaking();
 }
 
 function hostOnlineMatch() { openOnlineRoom('host'); }
@@ -312,7 +325,7 @@ function prepareOnlineJoin() {
 }
 function joinOnlineRoom() {
   const code = sanitizeOnlineRoomCode(onlineRoomInput().value);
-  if (!/^[A-HJ-NP-Z2-9]{5}$/.test(code)) { setLanStatus(ONLINE_ERRORS.invalid_code); return; }
+  if (!/^[A-HJ-NP-Z2-9]{5,6}$/.test(code)) { setLanStatus(ONLINE_ERRORS.invalid_code); return; }
   openOnlineRoom('guest', code);
 }
 
@@ -323,7 +336,7 @@ function openOnlineRoom(role, code = '', assignment = null) {
   if (assignment) matchmakingPreviousRules = matchRuleId;
   onlineGameBlocked = true;
   if (!isLanSupported() || typeof WebSocket === 'undefined') { setLanStatus('This browser cannot play online. Try an updated browser.'); return; }
-  if (!window.KING_PONG_SIGNALING_URL) { setLanStatus(ONLINE_ERRORS.unavailable); return; }
+  if (!window.KING_PONG_SIGNALING_URL && !(typeof onlineManualLanSelected !== 'undefined' && onlineManualLanSelected)) { setLanStatus(ONLINE_ERRORS.unavailable); return; }
   lanRole = role;
   startTwoPlayerMode(true, false);
   if (onlineMatchAssignment) applyMatchmakingSettings();
@@ -332,7 +345,8 @@ function openOnlineRoom(role, code = '', assignment = null) {
   setMenusVisible(true);
   setOnlineControls(true);
   if (assignment) beginOnlineMatchFlow();
-  const session = new KingPongRoom(window.KING_PONG_SIGNALING_URL, {
+  const RoomClass = typeof onlineManualLanSelected !== 'undefined' && onlineManualLanSelected && !assignment ? KingPongManualRoom : KingPongRoom;
+  const session = new RoomClass(window.KING_PONG_SIGNALING_URL, {
     status: message => { if (onlineSession === session) setLanStatus(message); },
     welcome: code => {
       if (onlineSession !== session) return;
@@ -361,6 +375,7 @@ function openOnlineRoom(role, code = '', assignment = null) {
     },
     connected: () => {
       if (onlineSession !== session) return;
+      if (typeof onlineManualLanSelected !== 'undefined' && onlineManualLanSelected) byId('classicLanDialog').hidden = true;
       lanConnected = true;
 	  syncMatchmakingUi();
       onlineGameBlocked = false;
@@ -384,6 +399,7 @@ function openOnlineRoom(role, code = '', assignment = null) {
       setLanStatus(assignment ? matchmakingError(code) : ONLINE_ERRORS[code] || ONLINE_ERRORS.connection_lost);
     }
   });
+  session.requireApproval = Boolean(byId('onlineRequireApproval')?.checked);
   onlineSession = session;
   syncMatchmakingUi();
   session.open(role, code, assignment);

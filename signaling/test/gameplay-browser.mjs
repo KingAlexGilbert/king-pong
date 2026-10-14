@@ -106,7 +106,6 @@ try {
     assert.equal(await p.locator('#titleTwoPlayerButton').isVisible(), false);
     await screenshot(p, platform + '-landing');
     await p.locator('#titleLocalButton').click();
-    await p.locator('#titleTwoPlayerButton').click();
     await p.locator('#chooseArenaButton').click();
     assert.equal(await p.locator('.royal-choice').count(), 19);
     assert.equal(await p.locator('.royal-choice:disabled').count(), 1);
@@ -245,11 +244,12 @@ try {
         showTitleScreen();
       });
       await p.locator('.primary-online').click();
+      await p.locator('#onlineTwoPlayers').click();
       assert.equal(await p.locator('#matchmakingPanel').isVisible(), true);
       assert.equal(await p.evaluate(() => onlineTransportSelected), true);
       await p.evaluate(() => showTitleScreen());
-      await p.locator('#titleLocalButton').click();
       await p.locator('#titleLanButton').click();
+      await p.locator('#lanTwoPlayers').click();
       await p.locator('#lanPanel').waitFor({
         state: 'visible'
       });
@@ -280,7 +280,7 @@ try {
       hasTouch: true,
       isMobile: true
     });
-    await p.locator('.title-paddle').tap();
+    await p.evaluate(() => { mode = 1; openRoyalGallery('paddle'); });
     const layout = await p.evaluate(() => {
       const card = document.querySelector('.royal-gallery-card').getBoundingClientRect(),
         list = byId('royalGalleryList');
@@ -314,7 +314,7 @@ try {
     locale: 'es-ES'
   });
   assert.equal(await localized.locator('.primary-online strong').innerText(), 'JUGAR EN LÍNEA');
-  await localized.locator('.title-paddle').click();
+  await localized.evaluate(() => { mode = 1; openRoyalGallery('paddle'); });
   assert.equal(await localized.locator('#royalGalleryTitle').innerText(), 'Elige tu pala');
   await localized.close();
   pass('Spanish localization includes new landing and gallery text');
@@ -334,6 +334,7 @@ try {
         };
       });
       await peer.locator('#titleLanButton').click();
+      await peer.locator('#onlineTwoPlayers').click();
     }
     assert.equal(await roomHost.evaluate(() => lanRole), 'none');
     assert.equal(await roomHost.evaluate(() => onlineSession), null);

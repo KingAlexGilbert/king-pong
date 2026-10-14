@@ -1,0 +1,40 @@
+.four-screen { position: fixed; inset: 0; z-index: 160; overflow: auto; color: #f4f4ff; background: #080a12; padding: 12px max(12px, env(safe-area-inset-right)); font-family: monospace; }
+.four-screen[hidden], .four-screen [hidden] { display: none !important; }
+.four-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; max-width: 980px; margin: 0 auto 12px; }
+.four-header h2 { color: #ffe36b; margin: 0; text-align: center; font-size: clamp(16px, 2.5vw, 24px); }
+.four-screen button, .four-screen select, .four-screen input { font: inherit; }
+.four-screen button { padding: 10px 14px; border: 2px solid #6b6685; background: #151526; color: #fff; border-radius: 8px; cursor: pointer; }
+.four-screen button:hover:not(:disabled), .four-screen button:focus-visible { border-color: #ffe36b; background: #302940; }
+.four-screen button:disabled { opacity: .5; cursor: default; }
+.four-setup { width: min(100%, 840px); margin: auto; }
+.four-settings { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 16px; border: 1px solid #454057; border-radius: 12px; background: #111220; }
+.four-field { display: flex; flex-direction: column; gap: 6px; }
+.four-field select { max-width: 100%; color: #fff; background: #232337; padding: 9px; border: 1px solid #74718b; border-radius: 6px; }
+.four-check { display: flex; align-items: center; gap: 8px; padding: 6px; }
+.four-check input { width: 20px; height: 20px; accent-color: #f4c85c; flex-shrink: 0; }
+.four-rules, .four-note { line-height: 1.6; color: #c6c4d4; }
+.four-actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 12px 0; }
+.four-play { display: flex; align-items: center; justify-content: center; gap: 18px; min-height: 0; }
+#fourCanvas { width: min(72vw, calc(100dvh - 85px), 780px); height: auto; aspect-ratio: 1; display: block; image-rendering: auto; touch-action: none; border-radius: 4px; }
+.four-scoreboard { width: clamp(130px, 20vw, 220px); flex-shrink: 0; }
+.four-scoreboard p { padding: 10px 6px; margin: 6px 0; border-left: 3px solid transparent; line-height: 1.4; overflow-wrap: anywhere; }
+.four-result { color: #ffe36b; font-weight: bold; font-size: 20px; }
+.four-route { font-size: 11px; color: #c6c4d4; }
+.four-pause { position: fixed; z-index: 2; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 20px; border: 2px solid #b5a065; background: #11121ff5; border-radius: 12px; display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; max-width: 90vw; }
+.four-pause h3 { flex: 1 0 100%; text-align: center; margin: 0 0 8px; }
+.four-open > .match-bar, .four-open > .match-overlay, .four-open > .match-footer { visibility: hidden; pointer-events: none; }
+#onlinePlayerCount .match-card { display: flex; flex-direction: column; gap: 14px; max-width: 480px; }
+@media (orientation: portrait) { .four-play { flex-direction: column; } #fourCanvas { width: min(94vw, calc(100dvh - 240px)); } .four-scoreboard { width: 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); } .four-scoreboard p { margin: 0; } }
+@media (max-height: 450px) and (orientation: landscape) { .four-screen { padding: 6px 12px; } .four-header { margin-bottom: 4px; } .four-header button { padding: 6px 10px; } #fourCanvas { width: min(calc(100dvh - 52px), 68vw); } .four-scoreboard p { padding: 5px; font-size: 12px; } }
+@media (max-width: 440px) { .four-settings { grid-template-columns: 1fr; } }
+.four-code {display:block; font-size:1.6rem; letter-spacing:.18em; color:#ffe36b; margin:.4em 0;}
+#fourNetwork {border-top:1px solid #535367; padding-top:12px;}
+#fourNetwork > .four-check {display:block; margin:8px 0;}
+#fourCodeInput {font:inherit; max-width:12em; text-transform:uppercase; padding:8px; background:#10121e; color:#fff; border:1px solid #75778d;}
+.four-slot {display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:5px; border-bottom:1px solid #333448;}
+.four-slot button {padding:5px 10px; margin-left:auto;}
+.four-lan-exchange textarea {display:block; box-sizing:border-box; width:100%; height:80px; margin:8px 0; color:#fff; background:#10121e;}
+.four-route {font-size:11px; overflow-wrap:anywhere;}
+.four-pause .four-actions {flex-wrap:wrap;}
+#twoPlayerRouteLabel {position:fixed; bottom:4px; right:8px; margin:0; padding:2px 5px; background:#080a12; color:#c6c4d4; z-index:90; pointer-events:none;}
+#twoPlayerRouteLabel:empty {display:none;}

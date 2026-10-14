@@ -22,11 +22,13 @@
     "benchmark:queue": "node test/queue-benchmark.mjs",
     "test:ripple": "node test/ripple-browser.mjs",
     "profile:ripple": "node test/ripple-profile.mjs",
-    "test:appearance": "node test/appearance-browser.mjs"
+    "test:appearance": "node test/appearance-browser.mjs",
+    "test:four": "node test/four-browser.mjs",
+    "test:four-network": "node test/four-network-browser.mjs"
   },
   "devDependencies": {
-    "miniflare": "5.20261001.0-alpha",
+    "miniflare": "5.20261006.1-alpha",
     "playwright": "1.55.1",
-    "wrangler": "4.147.0"
+    "wrangler": "^4.149.0"
   }
 }

@@ -662,7 +662,7 @@ function syncRoyalOrientation() {
 
 function royalActiveDialog() {
   if (galleryKind) return byId('royalGallery');
-  for (const id of ['rotateDevice', 'matchMenu', 'matchSetup'])
+  for (const id of ['onlinePlayerCount', 'lanPlayerCount', 'classicLanDialog', 'rotateDevice', 'matchMenu', 'matchSetup'])
     if (byId(id) && !byId(id).hidden) return byId(id);
   if (onlineMatchFlowVisible() && onlineMatchFlow.phase !== 'go') return byId('onlineMatchFlow');
   return null;
@@ -707,7 +707,9 @@ function handleRoyalUiKey(event) {
       index = controls.indexOf(document.activeElement);
     controls[(index + (event.shiftKey ? -1 : 1) + controls.length) % controls.length]?.focus();
   } else if (dialog && event.key === 'Escape') {
-    if (dialog.id === 'rotateDevice') {
+    if (['onlinePlayerCount', 'lanPlayerCount', 'classicLanDialog'].includes(dialog.id)) {
+      dialog.hidden = true; syncRoyalFocus();
+    } else if (dialog.id === 'rotateDevice') {
       royalRotateDismissed = true;
       syncRoyalOrientation();
     } else if (dialog.id === 'matchMenu') setMenusVisible(false);

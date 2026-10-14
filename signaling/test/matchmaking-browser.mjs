@@ -21,7 +21,7 @@ const server = createServer(async (req, res) => {
 await new Promise(r => server.listen(0, '127.0.0.1', r));
 const origin = `http://127.0.0.1:${server.address().port}`;
 const mf = new Miniflare(convertV4MiniflareOptions({
-  modules: ['worker.js','metered-turn.js','matchmaking.js','matchmaking-contract.js','native-bridge.js']
+  modules: ['worker.js','metered-turn.js','matchmaking.js','matchmaking-contract.js','native-bridge.js','party-room.js']
     .map(f => ({type:'ESModule',path:fileURLToPath(new URL('../src/'+f,import.meta.url))})),
   modulesRoot:fileURLToPath(new URL('../src/',import.meta.url)),
   compatibilityDate:'2025-09-06',
@@ -40,6 +40,7 @@ async function page(path = 'docs/demo/') {
   await p.addInitScript(value => Object.defineProperty(window,'KING_PONG_SIGNALING_URL',{get:()=>value,set:()=>{}}),signaling);
   await p.goto(path === 'docs/demo/' ? origin+'/'+path : new URL(path,root).href);
   await p.locator(path === 'docs/demo/' ? '#titleLanButton' : '#titleOnlineButton').click();
+  await p.locator('#onlineTwoPlayers').click();
   await p.waitForFunction(()=>matchmakingWaiting!==null);
   return p;
 }

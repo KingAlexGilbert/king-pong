@@ -13,6 +13,7 @@ function harness() {
   const statuses = [], errors = [], peers = [];
   let ready = 0, interrupted = 0, resumed = 0;
   class Socket {
+    constructor(url) { this.url = new URL(url); }
     static OPEN = 1;
     readyState = 1;
     sent = [];
@@ -38,7 +39,7 @@ function harness() {
     state(value) { this.connectionState = value; this.onconnectionstatechange?.(); }
   }
   const context = vm.createContext({
-    URL, WebSocket: Socket, RTCPeerConnection: Peer, Date,
+    URL, WebSocket: Socket, RTCPeerConnection: Peer, Date, crypto, sessionStorage: {getItem: () => null, setItem() {}},
     setTimeout: (fn, ms) => { const id = ++nextId; timers.set(id, { fn, ms }); return id; },
     clearTimeout: id => timers.delete(id),
     setInterval: fn => { const id = ++nextId; intervals.set(id, fn); return id; },
@@ -159,4 +160,20 @@ test('authoritative state and input reject duplicate/out-of-order packets', () =
     handleLanHostMessage({type:'input',seq:12,axis:1,targetY:200});handleLanHostMessage({type:'input',seq:11,axis:-1,targetY:100});`);
   assert.deepEqual(h.json('applied'), [12]);
   assert.equal(h.run('lanRemoteInput.targetY'), 200);
+});
+
+
+test('optional classic approval uses capacity-two private admission while ordinary rooms keep their original endpoint', async () => {
+  const legacy = harness(); legacy.room.open('host'); assert.equal(legacy.room.socket.url.pathname, '/v1/create'); legacy.room.close();
+  const host = harness(); host.room.requireApproval = true; host.room.open('host');
+  assert.match(host.room.socket.url.pathname, /^\/v1\/party\/create\/2\/1\/[a-f0-9-]{36}$/);
+  await host.message({type: 'welcome', role: 'host', code: 'ABCDEF', protocol: 'kp-party-1', capacity: 2});
+  await host.message(direct); host.room.send({type: 'connected'});
+  assert.deepEqual(host.room.socket.sent.at(-1), {type: 'connected', to: 1, attempt: 0});
+  assert.deepEqual(host.errors, []); host.room.close();
+  const guest = harness(); guest.room.open('guest', 'ABCDEF');
+  assert.match(guest.room.socket.url.pathname, /^\/v1\/party\/join\/2\/ABCDEF\//);
+  await guest.message({type: 'welcome', role: 'guest', code: 'ABCDEF', protocol: 'kp-party-1', capacity: 2, pending: true});
+  assert.equal(guest.peers.length, 0); assert.equal(guest.statuses.at(-1), 'Waiting for host approval...');
+  await guest.message({type: 'error', code: 'rejected'}); assert.deepEqual(guest.errors, ['rejected']);
 });

@@ -701,7 +701,11 @@ function drawRoyalEffects(view) {
     }
     ctx.globalAlpha = 1;
     ctx.fillStyle = '#59baff';
-    drawText(Math.ceil(view.guards[side] / 60) + 's', side === 'left' ? 30 : W - 30, H - 28, 10);
+    const labelX = side === 'left' ? 30 : W - 30;
+    if (typeof twoPlayerViewRotated === 'function' && twoPlayerViewRotated()) {
+      ctx.save(); ctx.translate(labelX, H - 28); ctx.rotate(Math.PI);
+      drawText(Math.ceil(view.guards[side] / 60) + 's', 0, 0, 10); ctx.restore();
+    } else drawText(Math.ceil(view.guards[side] / 60) + 's', labelX, H - 28, 10);
   }
   if (view.pickup) {
     const p = view.pickup;
@@ -1019,7 +1023,7 @@ function openRoyalGallery(kind, side = 'left') {
     setLocalizedText(label, kind === 'arena' ? entry.level.name : entry.profile.name);
     button.append(label);
     const badge = document.createElement('small');
-    setLocalizedText(badge, !unlocked ? 'Locked' : selected ? 'Selected' : kind === 'arena' && entry.id ===
+    setLocalizedText(badge, !unlocked ? kind === 'arena' && entry.id === TOTAL_LEVELS ? 'Complete all 18 campaign levels to unlock this arena.' : 'Locked' : selected ? 'Selected' : kind === 'arena' && entry.id ===
       TOTAL_LEVELS ? 'Secret Boss arena' : '');
     button.append(badge);
     button.addEventListener('click', () => {
@@ -1074,11 +1078,11 @@ function updateRoyalSelectionLabels() {
 }
 
 function showLocalPlay() {
-  byId('localPlayChoices').hidden = !byId('localPlayChoices').hidden;
-  byId('titleLocalButton').setAttribute('aria-expanded', String(!byId('localPlayChoices').hidden));
+  startTwoPlayerFromTitle();
 }
 
 function handleRoyalMenuKey(event) {
+  if (typeof fourView !== 'undefined' && fourView?.visible) { fourView.key(event); return true; }
   if (galleryKind) {
     const controls = [...byId('royalGallery').querySelectorAll('button:not(:disabled)')];
     const index = controls.indexOf(document.activeElement);
@@ -1139,8 +1143,7 @@ function initRoyalMenus() {
   local.type = 'button';
   setLocalizedText(local, 'Local Play');
   local.addEventListener('click', showLocalPlay);
-  local.setAttribute('aria-expanded', 'false');
-  local.setAttribute('aria-controls', 'localPlayChoices');
+  local.setAttribute('aria-haspopup', 'dialog');
   actions.append(local, byId('titleBossButton'));
   const localChoices = document.createElement('div');
   localChoices.id = 'localPlayChoices';
@@ -1153,7 +1156,21 @@ function initRoyalMenus() {
     online.id = 'titleOnlineButton';
     online.type = 'button';
     online.addEventListener('click', () => startOnlineSetup(true));
-    localChoices.append(titleLanButton);
+    setLocalizedText(titleLanButton, 'LAN Play');
+    actions.append(titleLanButton);
+  } else {
+    const lan = royalButton('titleNativeLanButton', 'LAN Play', () => {
+      const card = byId('nativeLanHelp') || royalDialog('nativeLanHelp', 'LAN Play').parentElement;
+      if (!byId('nativeLanHelpText')) {
+        const note = document.createElement('p');
+        note.id = 'nativeLanHelpText';
+        setLocalizedText(note, 'LAN Play is available in the native apps.');
+        card.firstElementChild.append(note, royalButton('nativeLanHelpClose', 'Close', () => { card.hidden = true; lan.focus(); }));
+      }
+      card.hidden = false;
+      byId('nativeLanHelpClose').focus();
+    });
+    actions.append(lan);
   }
   for (const [button, heading, subtitle, style] of [
       [online, 'PLAY ONLINE', 'Challenge real players', 'primary-online'],
@@ -1191,12 +1208,6 @@ function initRoyalMenus() {
     row.append(b);
   }
   customPanel.before(row);
-  const titlePaddle = document.createElement('button');
-  titlePaddle.type = 'button';
-  titlePaddle.className = 'title-paddle';
-  setLocalizedText(titlePaddle, 'Choose your paddle');
-  titlePaddle.addEventListener('click', () => openRoyalGallery('paddle'));
-  actions.after(titlePaddle);
   const gallery = document.createElement('div');
   gallery.id = 'royalGallery';
   gallery.className = 'royal-gallery';
@@ -1232,6 +1243,7 @@ function initRoyalMenus() {
   updateRoyalSelectionLabels();
   initMatchmakingUi();
   initRoyalUi();
+  installFourMenus();
 }
 
 // Cosmetic events travel in authoritative snapshots, with monotonic IDs. Keeping

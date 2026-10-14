@@ -1510,3 +1510,8 @@ body.royal-panel-open .match-footer #controlHint {
   .title-card .title-primary-modes button { min-height: 86px; }
   .title-primary-modes span { margin-top: 5px; }
 }
+
+/* Three secondary choices beneath Campaign and Play Online. */
+.title-card .title-actions { width: min(100%, 620px); grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.title-card .title-actions .secret-boss-button { grid-column: 1 / -1; }
+@media (max-width: 420px) { .title-card .title-actions { gap: 6px; } .title-card .title-actions button { padding: 10px 5px; font-size: 11px; } }

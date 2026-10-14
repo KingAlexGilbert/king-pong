@@ -950,3 +950,42 @@ Object.entries({
 Object.entries(window.KING_PONG_ONLINE_TRANSLATIONS || {}).forEach(([code, phrases]) => {
   Object.assign(window.KING_PONG_ROYAL_TRANSLATIONS[code], phrases);
 });
+
+Object.entries({
+  "es": {
+    "LAN Play": "Juego LAN",
+    "Complete all 18 campaign levels to unlock this arena.": "Completa los 18 niveles de campaña para desbloquear esta arena."
+  },
+  "fr": {
+    "LAN Play": "Jeu LAN",
+    "Complete all 18 campaign levels to unlock this arena.": "Terminez les 18 niveaux de campagne pour débloquer cette arène."
+  },
+  "de": {
+    "LAN Play": "LAN-Spiel",
+    "Complete all 18 campaign levels to unlock this arena.": "Schließe alle 18 Kampagnenlevel ab, um diese Arena freizuschalten."
+  },
+  "pt": {
+    "LAN Play": "Jogo LAN",
+    "Complete all 18 campaign levels to unlock this arena.": "Complete os 18 níveis da campanha para desbloquear esta arena."
+  },
+  "it": {
+    "LAN Play": "Gioco LAN",
+    "Complete all 18 campaign levels to unlock this arena.": "Completa tutti i 18 livelli della campagna per sbloccare questa arena."
+  },
+  "nl": {
+    "LAN Play": "LAN-spel",
+    "Complete all 18 campaign levels to unlock this arena.": "Voltooi alle 18 campagnelevels om deze arena te ontgrendelen."
+  },
+  "ja": {
+    "LAN Play": "LANプレイ",
+    "Complete all 18 campaign levels to unlock this arena.": "キャンペーンの全18レベルをクリアすると解放されます。"
+  },
+  "ko": {
+    "LAN Play": "LAN 플레이",
+    "Complete all 18 campaign levels to unlock this arena.": "캠페인 18개 레벨을 모두 완료하면 해제됩니다."
+  },
+  "zh": {
+    "LAN Play": "局域网游玩",
+    "Complete all 18 campaign levels to unlock this arena.": "完成全部18个战役关卡以解锁此竞技场。"
+  }
+}).forEach(([language, phrases]) => Object.assign(window.KING_PONG_ROYAL_TRANSLATIONS[language], phrases));

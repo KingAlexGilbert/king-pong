@@ -111,7 +111,6 @@ async function bounds(p, selector) {
 }
 async function local(p) {
   await p.locator('#titleLocalButton').click();
-  await p.locator('#titleTwoPlayerButton').click();
 }
 async function unlock(p) {
   await p.evaluate(() => {
@@ -166,7 +165,6 @@ try {
   for (const platform of Object.keys(builds)) {
     const p = await page(platform);
     await active(p, []);
-    await p.locator('#titleLocalButton').click();
     await p.locator('.compact-saves summary').click();
     await p.locator('#titleLocalButton').focus();
     const titleBefore = await titleMenuState(p);
@@ -198,7 +196,6 @@ try {
       assert.equal(await titleMenuState(p), titleBefore);
     }
     await snap(p, platform + '-title-menu-return');
-    await p.locator('#titleLocalButton').click();
     await p.locator('.compact-saves summary').click();
     pass(platform + ': title Menu/M toggles restore state, disclosures, focus and saves without starting a match');
     const online = p.locator('.primary-online'),
@@ -286,7 +283,7 @@ try {
     assert.equal(await p.evaluate(() => document.activeElement.id), 'matchResume');
     await p.locator('#titleJumpButton').click();
     await active(p, []);
-    await p.locator('.title-paddle').click();
+    await p.evaluate(() => { mode = 1; openRoyalGallery('paddle'); });
     assert.equal(await p.locator('[data-choice-id="boss-8"]').isDisabled(), true);
     assert.equal(await p.locator('[data-choice-id="enemy-15"]').isDisabled(), true);
     await p.keyboard.press('Escape');
@@ -507,7 +504,7 @@ try {
     await p.locator('#onlineJoinSubmit').click();
     await bounds(p, '#matchSetup .match-card');
     await snap(p, prefix + '-join-error');
-    assert.match(await p.locator('#lanStatus').innerText(), /valid five-character/);
+    assert.match(await p.locator('#lanStatus').innerText(), /valid five- or six-character/);
     await p.evaluate(() => {
       window.KING_PONG_SIGNALING_URL = '';
       hostLanMatch();
@@ -888,7 +885,6 @@ try {
     isMobile: true
   });
   await touch.locator('#titleLocalButton').tap();
-  await touch.locator('#titleTwoPlayerButton').tap();
   await touch.locator('#choosePaddleButton').tap();
   await touch.locator('[data-choice-id="boss-8"]').tap();
   await touch.locator('#matchRule-endless').tap();
@@ -936,6 +932,7 @@ try {
     await bounds(translated, '.title-subtitle');
     await snap(translated, locale + '-title');
     await translated.locator('#titleLanButton').tap();
+    await translated.locator('#onlineTwoPlayers').tap();
     await bounds(translated, '#matchSetup .match-card');
     await snap(translated, locale + '-online');
     assert.notEqual(await translated.locator('#matchSetupHint').innerText(),
@@ -969,6 +966,7 @@ try {
   await touchOnline.locator('.primary-online').hover();
   assert.deepEqual(await onlineStyle(touchOnline), touchRest, 'coarse pointers do not acquire the desktop hover style');
   await touchOnline.locator('.primary-online').tap();
+  await touchOnline.locator('#onlineTwoPlayers').tap();
   assert.equal(await touchOnline.locator('#lanPanel').isVisible(), true, 'touch still enters online setup');
   await touchOnline.locator('#setupMenuButton').tap();
   assert.equal(await touchOnline.evaluate(() => document.body.classList.contains('title-active')), true);

@@ -57,6 +57,7 @@ function decodeOnlineWire(a) {
 }
 
 let onlineWireReady = false;
+let onlineIntentReady = false;
 let onlineWireAttempts = 0;
 let onlineWireHelloAt = -Infinity;
 let onlineLastInput = null;
@@ -64,6 +65,7 @@ let onlineInputAck = -1;
 
 function resetOnlineWire() {
   onlineWireReady = false;
+  onlineIntentReady = false;
   onlineWireAttempts = 0;
   onlineWireHelloAt = -Infinity;
   onlineLastInput = null;
@@ -72,7 +74,7 @@ function resetOnlineWire() {
 
 function sendOnlineWireHello(ack = false) {
   return onlineLanSend({v: LAN_SIGNAL_VERSION, type: 'net-format', room: lanRoomCode,
-    format: ONLINE_WIRE_VERSION, ack});
+    format: ONLINE_WIRE_VERSION, ack, inputIntent: 1});
 }
 
 function negotiateOnlineWire() {
@@ -86,6 +88,6 @@ function receiveOnlineWireHello(m) {
   if (!onlineSession || !lanRoomCode || m.v !== LAN_SIGNAL_VERSION || m.room !== lanRoomCode ||
       m.gameplay !== 'royal' || m.matchRules !== 'presets' || m.format !== ONLINE_WIRE_VERSION ||
       typeof m.ack !== 'boolean') return;
-  if (m.ack) onlineWireReady = true;
+  if (m.ack) { onlineWireReady = true; onlineIntentReady = m.inputIntent === 1; }
   else sendOnlineWireHello(true);
 }

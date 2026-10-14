@@ -35,7 +35,7 @@ const server = createServer(async (request, response) => {
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 const origin = `http://127.0.0.1:${server.address().port}`;
 const mf = new Miniflare(convertV4MiniflareOptions({
-  modules: ['./worker-fixture.mjs', '../src/worker.js', '../src/metered-turn.js', '../src/matchmaking.js', '../src/matchmaking-contract.js', '../src/native-bridge.js'].map(path => ({
+  modules: ['./worker-fixture.mjs', '../src/worker.js', '../src/metered-turn.js', '../src/matchmaking.js', '../src/matchmaking-contract.js', '../src/native-bridge.js', '../src/party-room.js'].map(path => ({
     type: 'ESModule',
     path: fileURLToPath(new URL(path, import.meta.url))
   })),
@@ -125,6 +125,7 @@ async function page(locale = 'en-US') {
   });
   await page.goto(origin + '/demo/');
   await page.locator('#titleLanButton').click();
+  await page.locator('#onlineTwoPlayers').click();
   return page;
 }
 async function waitFor(page, expression) {
@@ -156,7 +157,7 @@ try {
   await guest.locator('#lanJoinButton').click();
   await guest.locator('#lanRoomCodeInput').fill('OOOOO');
   await guest.locator('#onlineJoinSubmit').click();
-  assert.match(await guest.locator('#lanStatus').textContent(), /valid five-character/);
+  assert.match(await guest.locator('#lanStatus').textContent(), /valid five- or six-character/);
   await guest.locator('#lanRoomCodeInput').fill(code.toLowerCase());
   await guest.locator('#onlineJoinSubmit').click();
   await Promise.all([waitFor(host, 'lanConnected'), waitFor(guest, 'lanConnected && onlineHasState')]);
@@ -283,7 +284,6 @@ try {
   assert.equal(await host.evaluate(() => musicEnabled), false);
   await host.bringToFront();
   await host.locator('#titleLocalButton').click();
-  await host.locator('#titleTwoPlayerButton').click();
   await host.locator('#matchSetup').waitFor({
     state: 'visible'
   });

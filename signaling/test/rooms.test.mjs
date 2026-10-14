@@ -7,7 +7,7 @@ const origin = 'https://kingalexgilbert.github.io';
 let credentialCalls = 0;
 let turnFails = false;
 const mf = new Miniflare(convertV4MiniflareOptions({
-  modules: ['./worker-fixture.mjs', '../src/worker.js', '../src/metered-turn.js', '../src/matchmaking.js', '../src/matchmaking-contract.js', '../src/native-bridge.js'].map(path => ({
+  modules: ['./worker-fixture.mjs', '../src/worker.js', '../src/metered-turn.js', '../src/matchmaking.js', '../src/matchmaking-contract.js', '../src/native-bridge.js', '../src/party-room.js'].map(path => ({
     type: 'ESModule', path: fileURLToPath(new URL(path, import.meta.url))
   })),
   modulesRoot: fileURLToPath(new URL('../', import.meta.url)),

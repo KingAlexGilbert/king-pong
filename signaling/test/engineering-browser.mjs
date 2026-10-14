@@ -383,7 +383,6 @@ try {
   for (const platform of Object.keys(builds)) {
     const p = await page(platform);
     await p.locator('#titleLocalButton').click();
-    await p.locator('#titleTwoPlayerButton').click();
     for (const viewport of [{
         width: 1280,
         height: 800

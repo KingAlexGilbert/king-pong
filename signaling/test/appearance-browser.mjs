@@ -85,6 +85,7 @@ try {
           assert.ok(result.terminal.labels.includes(label)); assert.equal(result.terminal.panels.length, 1);
         } else {
           assert.ok(result.before.labels.includes('PAUSED'));
+          assert.deepEqual(result.before.panels, [], 'closed-menu pause has no legacy rectangle');
           assert.ok(result.immediate.labels.includes('3'), 'Resume replaces the old canvas in the same UI event');
           for (const [i, sample] of result.countdown.entries()) {
             assert.ok(sample.labels.includes(String([3, 2, 1, 1][i])));

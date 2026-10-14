@@ -101,11 +101,15 @@ const hooks = {
   drawOverlay: [`
     if (document.body.classList.contains("royal-panel-open") || royalDesktopPauseVisible()) return;
     // Resume needs only its existing 3, 2, 1; retain panels for actual results.
-    if (hasResumeCountdown() && !gameOver && !levelCleared && !campaignCleared) return;
+    if ((paused || hasResumeCountdown()) && !gameOver && !levelCleared && !campaignCleared) return;
   `],
 };
 
 export function integrateRoyalUi(source) {
+  // Guard the programmatic picker too; a locked request must not select a different arena.
+  const picker = 'function applyCustomLevelPickerChoice(value) {';
+  const guard = '\n  if (Number(value) === TOTAL_LEVELS && !isBossUnlocked()) return;';
+  if (!source.includes(picker + guard)) source = source.replace(picker, picker + guard);
   // Controls stay above the arena; the existing canvas indicator identifies a paused match.
   const oldTitle = '      if (!royalDesktopPauseVisible()) drawText("PAUSED", W / 2, H / 2 - 100, 24);';
   const newTitle = '      drawText("PAUSED", W / 2, H / 2 - 100, 24);';

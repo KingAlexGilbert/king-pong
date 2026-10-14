@@ -1,3 +1,4 @@
+import { PartyRoom, partyRequest } from './party-room.js';
 export { MeteredTurn } from './metered-turn.js';
 export { MatchmakingQueue } from './matchmaking.js';
 import { MATCHMAKING_CONTRACT } from './matchmaking-contract.js';
@@ -54,6 +55,7 @@ export default {
     if (!(await env.ROOM_LIMITER.limit({ key: request.headers.get('CF-Connecting-IP') || 'local' })).success) {
       return socketError('rate_limited');
     }
+    if (url.pathname.startsWith('/v1/party/')) return partyRequest(url, env);
     if (!url.search && url.pathname.startsWith('/v1/queue/')) {
       if (url.pathname !== '/v1/queue/' + MATCHMAKING_CONTRACT.protocol) return socketError('incompatible');
       try {
@@ -97,6 +99,7 @@ export class PongRoom {
   constructor(ctx, env) {
     this.ctx = ctx;
     this.env = env;
+    this.party = new PartyRoom(ctx, env);
     ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping', 'pong'));
   }
 
@@ -105,6 +108,7 @@ export class PongRoom {
   }
 
   async fetch(request) {
+    if (new URL(request.url).pathname.startsWith('/party/')) return this.party.fetch(request);
     // Admission must be atomic even when two guests arrive during a storage await.
     return this.ctx.blockConcurrencyWhile(async () => {
       const [, action, code] = new URL(request.url).pathname.split('/');
@@ -163,6 +167,7 @@ export class PongRoom {
   }
 
   async webSocketMessage(socket, raw) {
+    if (socket.deserializeAttachment()?.party) return this.party.message(socket, raw);
     const attachment = socket.deserializeAttachment();
     if (!attachment || attachment.closed) return;
     if (typeof raw !== 'string' || raw.length > 65_536) return this.end('negotiation_failed');
@@ -244,6 +249,7 @@ export class PongRoom {
   }
 
   async webSocketClose(socket) {
+    if (socket.deserializeAttachment()?.party) return this.party.close(socket);
     const attachment = socket.deserializeAttachment();
     if (!attachment || attachment.closed) return;
     socket.serializeAttachment({ ...attachment, closed: true });
@@ -254,6 +260,7 @@ export class PongRoom {
   async webSocketError(socket) { await this.webSocketClose(socket); }
 
   async alarm() {
+    if ((await this.ctx.storage.get('party-room'))?.capacity) return this.party.alarm();
     const room = await this.ctx.storage.get('room');
     if (!room || room.expiresAt <= Date.now()) return this.end('expired');
     for (const socket of this.sockets()) {
