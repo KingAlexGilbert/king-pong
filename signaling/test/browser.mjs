@@ -156,7 +156,7 @@ try {
   await guest.locator('#lanJoinButton').click();
   await guest.locator('#lanRoomCodeInput').fill('OOOOO');
   await guest.locator('#onlineJoinSubmit').click();
-  assert.match(await guest.locator('#lanStatus').textContent(), /valid five-character/);
+  assert.match(await guest.locator('#lanStatus').textContent(), /valid five- or six-character room code/);
   await guest.locator('#lanRoomCodeInput').fill(code.toLowerCase());
   await guest.locator('#onlineJoinSubmit').click();
   await Promise.all([waitFor(host, 'lanConnected'), waitFor(guest, 'lanConnected && onlineHasState')]);

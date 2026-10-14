@@ -539,7 +539,7 @@ try {
     await p.locator('#onlineJoinSubmit').click();
     await bounds(p, '#matchSetup .match-card');
     await snap(p, prefix + '-join-error');
-    assert.match(await p.locator('#lanStatus').innerText(), /valid five-character/);
+    assert.match(await p.locator('#lanStatus').innerText(), /valid five- or six-character room code/);
     await p.evaluate(() => {
       window.KING_PONG_SIGNALING_URL = '';
       hostLanMatch();
