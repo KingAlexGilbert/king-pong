@@ -701,11 +701,7 @@ function drawRoyalEffects(view) {
     }
     ctx.globalAlpha = 1;
     ctx.fillStyle = '#59baff';
-    const labelX = side === 'left' ? 30 : W - 30;
-    if (typeof twoPlayerViewRotated === 'function' && twoPlayerViewRotated()) {
-      ctx.save(); ctx.translate(labelX, H - 28); ctx.rotate(Math.PI);
-      drawText(Math.ceil(view.guards[side] / 60) + 's', 0, 0, 10); ctx.restore();
-    } else drawText(Math.ceil(view.guards[side] / 60) + 's', labelX, H - 28, 10);
+    drawText(Math.ceil(view.guards[side] / 60) + 's', side === 'left' ? 30 : W - 30, H - 28, 10);
   }
   if (view.pickup) {
     const p = view.pickup;
@@ -1082,7 +1078,6 @@ function showLocalPlay() {
 }
 
 function handleRoyalMenuKey(event) {
-  if (typeof fourView !== 'undefined' && fourView?.visible) { fourView.key(event); return true; }
   if (galleryKind) {
     const controls = [...byId('royalGallery').querySelectorAll('button:not(:disabled)')];
     const index = controls.indexOf(document.activeElement);
@@ -1243,7 +1238,7 @@ function initRoyalMenus() {
   updateRoyalSelectionLabels();
   initMatchmakingUi();
   initRoyalUi();
-  installFourMenus();
+  installMultiplayerSafety();
 }
 
 // Cosmetic events travel in authoritative snapshots, with monotonic IDs. Keeping

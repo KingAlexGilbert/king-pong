@@ -504,7 +504,7 @@ try {
     await p.locator('#onlineJoinSubmit').click();
     await bounds(p, '#matchSetup .match-card');
     await snap(p, prefix + '-join-error');
-    assert.match(await p.locator('#lanStatus').innerText(), /valid five- or six-character/);
+    assert.match(await p.locator('#lanStatus').innerText(), /valid five-character/);
     await p.evaluate(() => {
       window.KING_PONG_SIGNALING_URL = '';
       hostLanMatch();
@@ -932,7 +932,6 @@ try {
     await bounds(translated, '.title-subtitle');
     await snap(translated, locale + '-title');
     await translated.locator('#titleLanButton').tap();
-    await translated.locator('#onlineTwoPlayers').tap();
     await bounds(translated, '#matchSetup .match-card');
     await snap(translated, locale + '-online');
     assert.notEqual(await translated.locator('#matchSetupHint').innerText(),
@@ -966,7 +965,6 @@ try {
   await touchOnline.locator('.primary-online').hover();
   assert.deepEqual(await onlineStyle(touchOnline), touchRest, 'coarse pointers do not acquire the desktop hover style');
   await touchOnline.locator('.primary-online').tap();
-  await touchOnline.locator('#onlineTwoPlayers').tap();
   assert.equal(await touchOnline.locator('#lanPanel').isVisible(), true, 'touch still enters online setup');
   await touchOnline.locator('#setupMenuButton').tap();
   assert.equal(await touchOnline.evaluate(() => document.body.classList.contains('title-active')), true);

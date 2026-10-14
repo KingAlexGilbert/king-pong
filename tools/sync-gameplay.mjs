@@ -1,5 +1,4 @@
 import { readFileSync, writeFileSync } from 'node:fs';
-import { integrateFour } from '../game/four-integration.mjs';
 import { integrateRoyalUi } from '../game/ui-integration.mjs';
 import { integrateRoyalPolish } from '../game/polish-integration.mjs';
 import { integrateServeMotion } from '../game/serve-integration.mjs';
@@ -19,13 +18,10 @@ const script = iconSources() + [
   'royal-rules.js',
   'royal-audio.js',
   'royal-ui.js',
-  'four-core.js',
-  'four-view.js',
-  'four-network.js',
   'multiplayer-safety.js'
 ].map(file => readFileSync(new URL('game/' + file, root), 'utf8')).join('\n');
-const css = readFileSync(new URL('game/royal-menu.css', root), 'utf8') + readFileSync(new URL('game/four.css', root), 'utf8');
-const localization = readFileSync(new URL('game/royal-localization.js', root), 'utf8') + readFileSync(new URL('game/four-localization.js', root), 'utf8');
+const css = readFileSync(new URL('game/royal-menu.css', root), 'utf8');
+const localization = readFileSync(new URL('game/royal-localization.js', root), 'utf8');
 const saveTransfer = readFileSync(new URL('game/save-transfer.js', root), 'utf8');
 
 // The checked-in HTML also owns the legacy engine and platform glue. Replace only
@@ -56,7 +52,6 @@ for (const file of files) {
   updated = integrateRoyalPolish(updated);
   updated = integrateServeMotion(updated);
   updated = integrateOnline(updated, nativeOnlineScript, file !== 'docs/demo/index.html');
-  updated = integrateFour(updated);
   // Normalize generated content, then preserve the original file's line endings.
 updated = updated.replace(/\r\n/g, '\n');
 

@@ -1,9 +1,9 @@
-// Private two/four-player rooms share the existing ROOMS Durable Object binding.
+// Private two-player rooms share the existing ROOMS Durable Object binding.
 // Classic /v1 rooms and the two-player matchmaking queue are untouched.
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const STUN = [{urls: 'stun:stun.cloudflare.com:3478'}];
 const LEASE = 75_000, LIFE = 2 * 60 * 60_000;
-const SLOT = n => Number.isInteger(n) && n >= 0 && n < 4;
+const SLOT = n => n === 0 || n === 1;
 const send = (socket, value) => { try { socket.send(JSON.stringify(value)); } catch {} };
 function error(code) {
   const {0: client, 1: server} = new WebSocketPair(); server.accept();
@@ -12,8 +12,8 @@ function error(code) {
 }
 function code() { return Array.from(crypto.getRandomValues(new Uint8Array(6)), n => ALPHABET[n % 32]).join(''); }
 export async function partyRequest(url, env) {
-  const create = url.pathname.match(/^\/v1\/party\/create\/([24])\/([01])\/([a-f0-9-]{36})$/);
-  const join = url.pathname.match(/^\/v1\/party\/join\/([24])\/([A-HJ-NP-Z2-9]{6})\/([a-f0-9-]{36})$/);
+  const create = url.pathname.match(/^\/v1\/party\/create\/(2)\/([01])\/([a-f0-9-]{36})$/);
+  const join = url.pathname.match(/^\/v1\/party\/join\/(2)\/([A-HJ-NP-Z2-9]{6})\/([a-f0-9-]{36})$/);
   if (url.search || (!create && !join)) return error('incompatible');
   try {
     for (let i = 0; i < 5; i++) {
@@ -39,14 +39,14 @@ export class PartyRoom {
     return this.ctx.blockConcurrencyWhile(async () => {
       const [, , action, code, capacityText, approval, token] = new URL(request.url).pathname.split('/');
       const capacity = Number(capacityText);
-      if (!['create', 'join'].includes(action) || ![2, 4].includes(capacity) || !/^[a-f0-9-]{36}$/.test(token || '')) return error('incompatible');
+      if (!['create', 'join'].includes(action) || capacity !== 2 || !/^[a-f0-9-]{36}$/.test(token || '')) return error('incompatible');
       let room = await this.ctx.storage.get('party-room');
       if (room && room.expiresAt <= Date.now()) { await this.end('expired'); room = null; }
       let slot = 0;
       if (action === 'create') {
         if (room || this.sockets().length) return new Response(null, {status: 409});
         room = {code, capacity, approval: approval === '1', expiresAt: Date.now() + LIFE,
-          blocked: [], peers: {}, started: false, fill: false, waitAt: null, config: null};
+          blocked: [], peers: {}, started: false};
       } else {
         if (!room || !this.at(0)) return error('not_found');
         if (room.capacity !== capacity) return error('wrong_mode');
@@ -58,7 +58,7 @@ export class PartyRoom {
       const {0: client, 1: server} = new WebSocketPair();
       this.ctx.acceptWebSocket(server);
       server.serializeAttachment({party: true, token, slot, request: crypto.randomUUID(), joinedAt: Date.now(),
-        count: 0, windowAt: Date.now(), connected: slot === 0, ready: false, consent: false});
+        count: 0, windowAt: Date.now(), connected: slot === 0});
       await this.save(room);
       await this.ctx.storage.setAlarm(Math.min(room.expiresAt, Date.now() + 30_000));
       send(server, {type: 'welcome', role: slot === 0 ? 'host' : 'guest', code, capacity, slot, pending: slot < 0, protocol: 'kp-party-1'});
@@ -73,14 +73,13 @@ export class PartyRoom {
   }
   roster(room) {
     const players = this.approved().map(s => {
-      const a = s.deserializeAttachment(); return {slot: a.slot, ready: a.ready, connected: a.connected, consent: a.consent};
+      const a = s.deserializeAttachment(); return {slot: a.slot, connected: a.connected};
     }).sort((a, b) => a.slot - b.slot);
     const pending = this.sockets().filter(s => s.deserializeAttachment().slot < 0)
       .map(s => ({request: s.deserializeAttachment().request}));
     for (const s of this.sockets()) {
       const a = s.deserializeAttachment();
-      send(s, {type: 'lobby', players, capacity: room.capacity, fill: room.fill, waitAt: room.waitAt,
-        botAfter: 180000, config: room.config, started: room.started, ...(a.slot === 0 ? {pending} : {})});
+      send(s, {type: 'lobby', players, capacity: 2, started: room.started, ...(a.slot === 0 ? {pending} : {})});
     }
   }
   async connect(room, slot) {
@@ -101,7 +100,7 @@ export class PartyRoom {
     if (!room || room.expiresAt <= Date.now()) return this.end('expired');
     if (typeof raw !== 'string' || raw.length > 65536) return this.remove(socket, room, 'negotiation_failed');
     if (Date.now() - a.windowAt > 10000) { a.windowAt = Date.now(); a.count = 0; }
-    // Host negotiates three peers. Gameplay never crosses this WebSocket.
+    // Signaling only: gameplay data travels over one host/guest WebRTC connection.
     if (++a.count > (a.slot === 0 ? 480 : 160)) return this.remove(socket, room, 'rate_limited');
     socket.serializeAttachment(a);
     let m;
@@ -120,32 +119,6 @@ export class PartyRoom {
       target.serializeAttachment({...target.deserializeAttachment(), slot});
       send(target, {type: 'approved', slot});
       await this.connect(room, slot); this.roster(room); return;
-    }
-    if (m.type === 'configure') {
-      if (a.slot !== 0 || room.started || room.capacity !== 4 || !validRoomConfig(m.config) || typeof m.fill !== 'boolean') return;
-      room.config = {variant: m.config.variant, lives: m.config.lives, goal: m.config.goal, difficulty: m.config.difficulty,
-        powerups: m.config.powerups, hiddenWall: m.config.hiddenWall};
-      room.fill = m.fill; room.waitAt = null;
-      for (const s of this.approved()) s.serializeAttachment({...s.deserializeAttachment(), ready: false, consent: false});
-      await this.save(room); this.roster(room); return;
-    }
-    if (m.type === 'ready' && !room.started && typeof m.ready === 'boolean' && typeof m.consent === 'boolean') {
-      socket.serializeAttachment({...a, ready: m.ready, consent: m.consent}); this.roster(room); return;
-    }
-    if (m.type === 'wait' && a.slot === 0 && !room.started && room.config) {
-      room.waitAt ??= Date.now();
-      socket.serializeAttachment({...a, ready: true, consent: room.fill});
-      await this.save(room); this.roster(room); return;
-    }
-    if (m.type === 'lock' && a.slot === 0 && !room.started && room.config && room.waitAt !== null) {
-      const players = this.approved().map(s => s.deserializeAttachment());
-      if (!players.every(p => p.connected && p.ready)) return;
-      if (players.length < 4 && !(room.fill && Date.now() - room.waitAt >= 180000 && players.every(p => p.consent))) return;
-      room.started = true; await this.save(room);
-      for (const pending of this.sockets().filter(s => s.deserializeAttachment().slot < 0)) await this.remove(pending, room, 'full');
-      const config = {...room.config, bots: Array.from({length: 4}, (_, i) => !players.some(p => p.slot === i))};
-      for (const s of this.approved()) send(s, {type: 'locked', config});
-      this.roster(room); return;
     }
     if (!['description', 'candidate', 'relay', 'connected'].includes(m.type) || !SLOT(m.to) || m.to === a.slot ||
         (a.slot !== 0 && m.to !== 0)) return this.remove(socket, room, 'unauthorized');
@@ -170,7 +143,7 @@ export class PartyRoom {
       pair[a.slot === 0 ? 'host' : 'guest'] = true;
       if (pair.host && pair.guest) {
         const guest = this.at(slot); guest.serializeAttachment({...guest.deserializeAttachment(), connected: true});
-        if (room.capacity === 2) room.started = true;
+        room.started = true;
       }
       await this.save(room); this.roster(room); return;
     }
@@ -232,8 +205,4 @@ export class PartyRoom {
     }
     await this.ctx.storage.setAlarm(Math.min(room.expiresAt, Date.now() + 30_000));
   }
-}
-function validRoomConfig(c) {
-  return !!c && ['ffa', 'teams'].includes(c.variant) && [3, 5, 10].includes(c.lives) && [5, 10, 20].includes(c.goal) &&
-    ['easy', 'normal', 'hard'].includes(c.difficulty) && typeof c.powerups === 'boolean' && typeof c.hiddenWall === 'boolean';
 }

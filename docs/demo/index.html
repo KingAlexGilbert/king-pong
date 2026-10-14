@@ -2764,46 +2764,12 @@ body.royal-panel-open .match-footer #controlHint {
 .title-card .title-actions { width: min(100%, 620px); grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .title-card .title-actions .secret-boss-button { grid-column: 1 / -1; }
 @media (max-width: 420px) { .title-card .title-actions { gap: 6px; } .title-card .title-actions button { padding: 10px 5px; font-size: 11px; } }
-.four-screen { position: fixed; inset: 0; z-index: 160; overflow: auto; color: #f4f4ff; background: #080a12; padding: 12px max(12px, env(safe-area-inset-right)); font-family: monospace; }
-.four-screen[hidden], .four-screen [hidden] { display: none !important; }
-.four-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; max-width: 980px; margin: 0 auto 12px; }
-.four-header h2 { color: #ffe36b; margin: 0; text-align: center; font-size: clamp(16px, 2.5vw, 24px); }
-.four-screen button, .four-screen select, .four-screen input { font: inherit; }
-.four-screen button { padding: 10px 14px; border: 2px solid #6b6685; background: #151526; color: #fff; border-radius: 8px; cursor: pointer; }
-.four-screen button:hover:not(:disabled), .four-screen button:focus-visible { border-color: #ffe36b; background: #302940; }
-.four-screen button:disabled { opacity: .5; cursor: default; }
-.four-setup { width: min(100%, 840px); margin: auto; }
-.four-settings { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 16px; border: 1px solid #454057; border-radius: 12px; background: #111220; }
-.four-field { display: flex; flex-direction: column; gap: 6px; }
-.four-field select { max-width: 100%; color: #fff; background: #232337; padding: 9px; border: 1px solid #74718b; border-radius: 6px; }
-.four-check { display: flex; align-items: center; gap: 8px; padding: 6px; }
-.four-check input { width: 20px; height: 20px; accent-color: #f4c85c; flex-shrink: 0; }
-.four-rules, .four-note { line-height: 1.6; color: #c6c4d4; }
-.four-actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 12px 0; }
-.four-play { display: flex; align-items: center; justify-content: center; gap: 18px; min-height: 0; }
-#fourCanvas { width: min(72vw, calc(100dvh - 85px), 780px); height: auto; aspect-ratio: 1; display: block; image-rendering: auto; touch-action: none; border-radius: 4px; }
-.four-scoreboard { width: clamp(130px, 20vw, 220px); flex-shrink: 0; }
-.four-scoreboard p { padding: 10px 6px; margin: 6px 0; border-left: 3px solid transparent; line-height: 1.4; overflow-wrap: anywhere; }
-.four-result { color: #ffe36b; font-weight: bold; font-size: 20px; }
-.four-route { font-size: 11px; color: #c6c4d4; }
-.four-pause { position: fixed; z-index: 2; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 20px; border: 2px solid #b5a065; background: #11121ff5; border-radius: 12px; display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; max-width: 90vw; }
-.four-pause h3 { flex: 1 0 100%; text-align: center; margin: 0 0 8px; }
-.four-open > .match-bar, .four-open > .match-overlay, .four-open > .match-footer { visibility: hidden; pointer-events: none; }
-#onlinePlayerCount .match-card { display: flex; flex-direction: column; gap: 14px; max-width: 480px; }
-@media (orientation: portrait) { .four-play { flex-direction: column; } #fourCanvas { width: min(94vw, calc(100dvh - 240px)); } .four-scoreboard { width: 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); } .four-scoreboard p { margin: 0; } }
-@media (max-height: 450px) and (orientation: landscape) { .four-screen { padding: 6px 12px; } .four-header { margin-bottom: 4px; } .four-header button { padding: 6px 10px; } #fourCanvas { width: min(calc(100dvh - 52px), 68vw); } .four-scoreboard p { padding: 5px; font-size: 12px; } }
-@media (max-width: 440px) { .four-settings { grid-template-columns: 1fr; } }
-.four-code {display:block; font-size:1.6rem; letter-spacing:.18em; color:#ffe36b; margin:.4em 0;}
-#fourNetwork {border-top:1px solid #535367; padding-top:12px;}
-#fourNetwork > .four-check {display:block; margin:8px 0;}
-#fourCodeInput {font:inherit; max-width:12em; text-transform:uppercase; padding:8px; background:#10121e; color:#fff; border:1px solid #75778d;}
-.four-slot {display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:5px; border-bottom:1px solid #333448;}
-.four-slot button {padding:5px 10px; margin-left:auto;}
-.four-lan-exchange textarea {display:block; box-sizing:border-box; width:100%; height:80px; margin:8px 0; color:#fff; background:#10121e;}
-.four-route {font-size:11px; overflow-wrap:anywhere;}
-.four-pause .four-actions {flex-wrap:wrap;}
-#twoPlayerRouteLabel {position:fixed; bottom:4px; right:8px; margin:0; padding:2px 5px; background:#080a12; color:#c6c4d4; z-index:90; pointer-events:none;}
-#twoPlayerRouteLabel:empty {display:none;}
+
+/* Shared two-player private-room and offline LAN controls. */
+.lan-check { display: flex; align-items: center; gap: .55rem; margin: .6rem 0; }
+.lan-route { position: fixed; z-index: 16; right: .8rem; bottom: .5rem; font-size: .75rem; pointer-events: none; }
+.match-row { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+#classicLanDialog textarea { width: 100%; min-height: 4.5rem; resize: vertical; }
 </style>
 </head>
 
@@ -3898,67 +3864,6 @@ Object.entries({
     "Complete all 18 campaign levels to unlock this arena.": "完成全部18个战役关卡以解锁此竞技场。"
   }
 }).forEach(([language, phrases]) => Object.assign(window.KING_PONG_ROYAL_TRANSLATIONS[language], phrases));
-// English keys use the existing localization cache; every new label has all nine translations.
-(() => {
-  const languages = ['es', 'fr', 'de', 'pt', 'it', 'nl', 'ja', 'ko', 'zh'];
-  const phrases = {
-    'Four Player': ['Cuatro jugadores','Quatre joueurs','Vier Spieler','Quatro jogadores','Quattro giocatori','Vier spelers','4人プレイ','4인 플레이','四人游戏'],
-    'Up to Four Players': ['Hasta cuatro jugadores','Jusqu’à quatre joueurs','Bis zu vier Spieler','Até quatro jogadores','Fino a quattro giocatori','Tot vier spelers','最大4人','최대 4인','最多四人'],
-    'Play Online': ['Jugar en línea','Jouer en ligne','Online spielen','Jogar online','Gioca online','Online spelen','オンラインでプレイ','온라인 플레이','在线游玩'],
-    'Match type': ['Tipo de partida','Type de partie','Spielart','Tipo de partida','Tipo di partita','Speltype','対戦形式','경기 유형','对战类型'],
-    'Free-for-All': ['Todos contra todos','Chacun pour soi','Jeder gegen jeden','Todos contra todos','Tutti contro tutti','Iedereen tegen iedereen','個人戦','개인전','自由混战'],
-    'Two versus Two': ['Dos contra dos','Deux contre deux','Zwei gegen zwei','Dois contra dois','Due contro due','Twee tegen twee','2対2','2 대 2','二对二'],
-    'Lives': ['Vidas','Vies','Leben','Vidas','Vite','Levens','ライフ','목숨','生命'],
-    'Team goal': ['Meta del equipo','Objectif d’équipe','Teamziel','Meta da equipe','Obiettivo squadra','Teamdoel','チーム目標点','팀 목표 점수','团队目标分数'],
-    'Bot difficulty': ['Dificultad del bot','Difficulté des bots','Bot-Schwierigkeit','Dificuldade dos bots','Difficoltà bot','Botmoeilijkheid','ボットの難易度','봇 난이도','电脑难度'],
-    'Easy': ['Fácil','Facile','Leicht','Fácil','Facile','Makkelijk','かんたん','쉬움','简单'],
-    'Normal': ['Normal','Normal','Normal','Normal','Normale','Normaal','ふつう','보통','普通'],
-    'Hard': ['Difícil','Difficile','Schwer','Difícil','Difficile','Moeilijk','むずかしい','어려움','困难'],
-    'My paddle on the left': ['Mi pala a la izquierda','Ma raquette à gauche','Mein Schläger links','Minha raquete à esquerda','La mia racchetta a sinistra','Mijn paddle links','自分のパドルを左に表示','내 패들을 왼쪽에 표시','将我的球拍显示在左侧'],
-    'Same-device players': ['Jugadores en este dispositivo','Joueurs sur cet appareil','Spieler an diesem Gerät','Jogadores neste dispositivo','Giocatori su questo dispositivo','Spelers op dit apparaat','同じ端末の人数','같은 기기의 플레이어 수','同设备玩家数'],
-    'Practice with bots': ['Practicar con bots','S’entraîner avec des bots','Mit Bots üben','Treinar com bots','Allenati con i bot','Oefenen met bots','ボットと練習','봇과 연습','与电脑练习'],
-    'Four-player arena': ['Arena de cuatro jugadores','Arène à quatre joueurs','Vier-Spieler-Arena','Arena de quatro jogadores','Arena per quattro giocatori','Arena voor vier spelers','4人用アリーナ','4인 아레나','四人竞技场'],
-    'You': ['Tú','Vous','Du','Você','Tu','Jij','自分','나','你'],
-    'Bot': ['Bot','Bot','Bot','Bot','Bot','Bot','ボット','봇','电脑'],
-    'Team': ['Equipo','Équipe','Team','Equipe','Squadra','Team','チーム','팀','团队'],
-    'Eliminated': ['Eliminado','Éliminé','Ausgeschieden','Eliminado','Eliminato','Uitgeschakeld','脱落','탈락','已淘汰'],
-    'Winner': ['Ganador','Vainqueur','Sieger','Vencedor','Vincitore','Winnaar','勝者','승자','获胜者'],
-    'Rematch': ['Revancha','Revanche','Revanche','Revanche','Rivincita','Opnieuw spelen','再戦','재대결','再战'],
-    'Lose a life when your wall concedes. Eliminated walls become neutral. Last player wins.': [
-      'Pierdes una vida cuando entra un gol por tu lado. Los lados eliminados se vuelven muros neutrales. Gana el último jugador.',
-      'Vous perdez une vie quand votre côté encaisse. Les côtés éliminés deviennent des murs neutres. Le dernier joueur gagne.',
-      'Ein Tor an deiner Seite kostet ein Leben. Ausgeschiedene Seiten werden neutrale Wände. Der letzte Spieler gewinnt.',
-      'Você perde uma vida ao sofrer um gol. Lados eliminados viram paredes neutras. O último jogador vence.',
-      'Perdi una vita quando subisci un gol. I lati eliminati diventano muri neutrali. Vince l’ultimo giocatore.',
-      'Een tegendoelpunt kost een leven. Uitgeschakelde zijden worden neutrale muren. De laatste speler wint.',
-      '自分の側にゴールされるとライフを失います。脱落した側は中立の壁になります。最後の1人が勝利します。',
-      '자신의 벽으로 실점하면 목숨을 잃습니다. 탈락한 벽은 중립 벽이 됩니다. 마지막 플레이어가 승리합니다.',
-      '球越过你的球拍进入球门时失去一条生命。被淘汰的一侧变为中立墙壁。最后存活的玩家获胜。'],
-    'Opposite walls are teammates. A conceded goal gives the other team a point. First to the team goal wins.': [
-      'Los lados opuestos son compañeros. Cada gol recibido da un punto al otro equipo. Gana quien alcance la meta.',
-      'Les côtés opposés sont coéquipiers. Un but encaissé donne un point à l’autre équipe. Atteignez l’objectif pour gagner.',
-      'Gegenüberliegende Seiten sind ein Team. Ein Gegentor gibt dem anderen Team einen Punkt. Wer das Teamziel erreicht, gewinnt.',
-      'Lados opostos formam uma equipe. Cada gol sofrido dá um ponto à outra equipe. A primeira a atingir a meta vence.',
-      'I lati opposti sono compagni. Un gol subito dà un punto all’altra squadra. Vince chi raggiunge l’obiettivo.',
-      'Tegenoverliggende zijden zijn teamgenoten. Een tegendoelpunt geeft het andere team een punt. Bereik als eerste het teamdoel.',
-      '向かい合う側が同じチームです。失点すると相手チームに1点入ります。目標点に先に到達したチームが勝利します。',
-      '마주 보는 벽이 같은 팀입니다. 실점하면 상대 팀이 1점을 얻습니다. 목표 점수에 먼저 도달하면 승리합니다.',
-      '相对两侧为队友。失球时对方团队得一分。先达到目标分数的团队获胜。'],
-    'Practice: W/S or arrows for P1. Additional players use controllers. Online and LAN use one device per player.': [
-      'Práctica: P1 usa W/S o las flechas. Los demás usan mandos. En línea y LAN: un dispositivo por jugador.',
-      'Entraînement : P1 utilise W/S ou les flèches. Les autres utilisent des manettes. En ligne et LAN : un appareil par joueur.',
-      'Übung: P1 nutzt W/S oder Pfeile. Weitere Spieler nutzen Controller. Online und LAN: ein Gerät pro Spieler.',
-      'Treino: P1 usa W/S ou setas. Outros jogadores usam controles. Online e LAN: um dispositivo por jogador.',
-      'Allenamento: P1 usa W/S o le frecce. Gli altri usano controller. Online e LAN: un dispositivo per giocatore.',
-      'Oefenen: P1 gebruikt W/S of pijlen. Anderen gebruiken controllers. Online en LAN: één apparaat per speler.',
-      '練習：P1はW/Sか矢印キー、他のプレイヤーはコントローラーを使います。オンラインとLANは1人1端末です。',
-      '연습: P1은 W/S 또는 방향키, 다른 플레이어는 컨트롤러를 사용합니다. 온라인과 LAN은 1인 1기기입니다.',
-      '练习：P1使用W/S或方向键，其他玩家使用手柄。在线和局域网模式每人使用一台设备。']
-  };
-  for (const [key, translations] of Object.entries(phrases)) languages.forEach((language, i) => {
-    window.KING_PONG_ROYAL_TRANSLATIONS[language][key] = translations[i];
-  });
-})();
 </script>
   <script>
 const LOCALIZATION = (() => {
@@ -11132,22 +11037,17 @@ function draw(view = captureVisualState()) {
   const offsetY = view.shake.y;
   ctx.save();
   ctx.translate(offsetX, offsetY);
-  /* FOUR PERSPECTIVE */
-  const rotateWorld = twoPlayerViewRotated();
-  const worldStart = () => { ctx.save(); if (rotateWorld) { ctx.translate(W, H); ctx.rotate(Math.PI); } };
-  worldStart();
   drawBackground();
   drawCenterLine();
   drawHazards(view.hazards);
   drawRoyalEffects(view);
-  ctx.restore();
   if (mode === 4) {
     drawBossHud();
   } else {
     ctx.fillStyle = "#fff";
     if (mode === 2) {
-      drawMultiplayerScore(rotateWorld ? view.right.score : view.left.score, W / 2 - 90, 34);
-      drawMultiplayerScore(rotateWorld ? view.left.score : view.right.score, W / 2 + 90, 34);
+      drawMultiplayerScore(view.left.score, W / 2 - 90, 34);
+      drawMultiplayerScore(view.right.score, W / 2 + 90, 34);
     } else {
       drawScore(view.left.score, W / 2 - 112, 34);
       drawScore(view.right.score, W / 2 + 72, 34);
@@ -11155,7 +11055,6 @@ function draw(view = captureVisualState()) {
     drawCampaignPlayInfo();
   }
   ctx.fillStyle = "#fff";
-  worldStart();
   drawPaddleShape(view.left, 1, activePaddleProfile(left), "#ffffff");
   drawPaddleShape(view.right, -1, activePaddleProfile(right), mode === 1 || mode === 3 || mode === 4 ? currentCampaign()
     .accent : "#ffffff");
@@ -11172,7 +11071,6 @@ function draw(view = captureVisualState()) {
     ctx.shadowBlur = 0;
   }
   ctx.fillStyle = "#fff";
-  ctx.restore();
   if (menusVisible && !document.body.classList.contains("royal-ui-ready")) {
     const cfg = getCpuConfig();
     let modeText;
@@ -11914,11 +11812,7 @@ function drawRoyalEffects(view) {
     }
     ctx.globalAlpha = 1;
     ctx.fillStyle = '#59baff';
-    const labelX = side === 'left' ? 30 : W - 30;
-    if (typeof twoPlayerViewRotated === 'function' && twoPlayerViewRotated()) {
-      ctx.save(); ctx.translate(labelX, H - 28); ctx.rotate(Math.PI);
-      drawText(Math.ceil(view.guards[side] / 60) + 's', 0, 0, 10); ctx.restore();
-    } else drawText(Math.ceil(view.guards[side] / 60) + 's', labelX, H - 28, 10);
+    drawText(Math.ceil(view.guards[side] / 60) + 's', side === 'left' ? 30 : W - 30, H - 28, 10);
   }
   if (view.pickup) {
     const p = view.pickup;
@@ -12295,7 +12189,6 @@ function showLocalPlay() {
 }
 
 function handleRoyalMenuKey(event) {
-  if (typeof fourView !== 'undefined' && fourView?.visible) { fourView.key(event); return true; }
   if (galleryKind) {
     const controls = [...byId('royalGallery').querySelectorAll('button:not(:disabled)')];
     const index = controls.indexOf(document.activeElement);
@@ -12456,7 +12349,7 @@ function initRoyalMenus() {
   updateRoyalSelectionLabels();
   initMatchmakingUi();
   initRoyalUi();
-  installFourMenus();
+  installMultiplayerSafety();
 }
 
 // Cosmetic events travel in authoritative snapshots, with monotonic IDs. Keeping
@@ -13498,7 +13391,7 @@ function syncRoyalOrientation() {
 
 function royalActiveDialog() {
   if (galleryKind) return byId('royalGallery');
-  for (const id of ['onlinePlayerCount', 'lanPlayerCount', 'classicLanDialog', 'rotateDevice', 'matchMenu', 'matchSetup'])
+  for (const id of ['lanPlayerCount', 'classicLanDialog', 'rotateDevice', 'matchMenu', 'matchSetup'])
     if (byId(id) && !byId(id).hidden) return byId(id);
   if (onlineMatchFlowVisible() && onlineMatchFlow.phase !== 'go') return byId('onlineMatchFlow');
   return null;
@@ -13543,7 +13436,7 @@ function handleRoyalUiKey(event) {
       index = controls.indexOf(document.activeElement);
     controls[(index + (event.shiftKey ? -1 : 1) + controls.length) % controls.length]?.focus();
   } else if (dialog && event.key === 'Escape') {
-    if (['onlinePlayerCount', 'lanPlayerCount', 'classicLanDialog'].includes(dialog.id)) {
+    if (dialog.id === 'lanPlayerCount' || dialog.id === 'classicLanDialog') {
       dialog.hidden = true; syncRoyalFocus();
     } else if (dialog.id === 'rotateDevice') {
       royalRotateDismissed = true;
@@ -13597,960 +13490,20 @@ function pollRoyalUiGamepad(now) {
   }
 }
 
-// A separate deterministic 60 Hz simulation. It never reads the DOM, a clock,
-// network state or the classic engine. Positions are always in host coordinates.
-const KingPongFour = (() => {
-  'use strict';
-  const SIZE = 480, PADDLE = 64, THICK = 10, INSET = 16, BALL = 8, SPEED = 6;
-  const NORMAL = [[1, 0], [-1, 0], [0, 1], [0, -1]];
-  const TEAM = [0, 0, 1, 1]; // Opposite walls on each team; equal geometry.
-  const clamp = (n, low, high) => Math.max(low, Math.min(high, n));
-  const integer = (n, low, high) => Number.isSafeInteger(n) && n >= low && n <= high;
-  const number = (n, low, high) => typeof n === 'number' && Number.isFinite(n) && n >= low && n <= high;
-  const bool = n => typeof n === 'boolean';
-  function validConfig(c) {
-    return !!c && ['ffa', 'teams'].includes(c.variant) && [3, 5, 10].includes(c.lives) &&
-      [5, 10, 20].includes(c.goal) && ['easy', 'normal', 'hard'].includes(c.difficulty) &&
-      bool(c.powerups) && bool(c.hiddenWall) && Array.isArray(c.bots) && c.bots.length === 4 && c.bots.every(bool);
-  }
-  function config(input = {}) {
-    const c = {variant: 'ffa', lives: 3, goal: 10, difficulty: 'normal', powerups: true,
-      hiddenWall: false, bots: [false, true, true, true], ...input};
-    if (!validConfig(c)) throw new Error('Invalid four-player configuration');
-    return {...c, bots: c.bots.slice()};
-  }
-  function random(s) {
-    let x = s.seed; x ^= x << 13; x ^= x >>> 17; x ^= x << 5;
-    s.seed = x >>> 0;
-    return s.seed / 4294967296;
-  }
-  function obstacleRects() {
-    return [[144, 144], [318, 144], [144, 318], [318, 318]]
-      .map(([x, y]) => ({x, y, w: 18, h: 18})).concat(
-        [[0, 0], [452, 0], [0, 452], [452, 452]].map(([x, y]) => ({x, y, w: 28, h: 28})));
-  }
-  function paddleRect(side, pos) {
-    return side < 2 ? {x: side === 0 ? INSET : SIZE - INSET - THICK, y: pos, w: THICK, h: PADDLE} :
-      {x: pos, y: side === 2 ? INSET : SIZE - INSET - THICK, w: PADDLE, h: THICK};
-  }
-  // World -> screen; quarter turns keep the chosen side on the screen's left.
-  function viewPoint(side, x, y) {
-    return side === 1 ? [SIZE - x, SIZE - y] : side === 2 ? [y, SIZE - x] :
-      side === 3 ? [SIZE - y, x] : [x, y];
-  }
-  function worldPoint(side, x, y) {
-    return side === 1 ? [SIZE - x, SIZE - y] : side === 2 ? [SIZE - y, x] :
-      side === 3 ? [y, SIZE - x] : [x, y];
-  }
-  function viewInput(side, axis, target) {
-    const reversed = side === 1 || side === 2;
-    return {axis: reversed ? -axis : axis, target: target === null ? null :
-      clamp(reversed ? SIZE - PADDLE - target : target, 0, SIZE - PADDLE)};
-  }
-  function create(input, seed = 1) {
-    const c = config(input);
-    const s = {config: c, seed: (seed >>> 0) || 1, tick: 0, activeTick: 0, epoch: 0,
-      paused: false, countdown: 180, winner: -1, scores: [0, 0], rally: 0,
-      paddles: Array.from({length: 4}, (_, side) => ({side, pos: (SIZE - PADDLE) / 2,
-        lives: c.lives, guard: 0, alive: true, target: SIZE / 2, thinkAt: 0})),
-      balls: [], pickup: null, spawnAt: 420, eventSeq: 0, events: []};
-    serve(s);
-    return s;
-  }
-  function emit(s, type, side = -1) {
-    s.events.push([++s.eventSeq, type, side, s.tick]);
-    if (s.events.length > 4) s.events.shift();
-  }
-  function serve(s) {
-    s.epoch++;
-    s.rally++;
-    const available = s.paddles.filter(p => p.alive).map(p => p.side);
-    const target = available[(s.rally - 1) % available.length];
-    const normal = NORMAL[target];
-    const offset = (random(s) - .5) * 1.1;
-    let vx = -normal[0], vy = -normal[1];
-    if (target < 2) vy = offset; else vx = offset;
-    const scale = SPEED / Math.hypot(vx, vy);
-    s.balls = [{id: 0, x: SIZE / 2, y: SIZE / 2, vx: vx * scale, vy: vy * scale,
-      owner: -1, split: false, rush: false, speed: SPEED}];
-    s.pickup = null;
-    s.spawnAt = s.activeTick + 420;
-    for (const p of s.paddles) p.guard = 0;
-    emit(s, 'serve');
-  }
-  function movePaddle(p, input, speed = SPEED) {
-    if (!p.alive || !input) return;
-    if (input.target !== null && input.target !== undefined) {
-      p.pos += clamp(input.target - p.pos, -speed, speed);
-    } else p.pos += clamp(input.axis || 0, -1, 1) * speed;
-    p.pos = clamp(p.pos, 0, SIZE - PADDLE);
-  }
-  function validInput(input) {
-    return !!input && number(input.axis, -1, 1) && (input.target === null || number(input.target, 0, SIZE - PADDLE));
-  }
-  function botInput(s, p) {
-    const difficulty = s.config.difficulty;
-    const delay = difficulty === 'easy' ? 30 : difficulty === 'hard' ? 12 : 20;
-    if (s.activeTick >= p.thinkAt) {
-      p.thinkAt = s.activeTick + delay;
-      // React to visible balls at a bounded cadence. No future collision or RNG access.
-      const normal = NORMAL[p.side];
-      const incoming = s.balls.filter(b => b.vx * normal[0] + b.vy * normal[1] < 0);
-      const b = incoming.sort((a, b) => distanceToSide(a, p.side) - distanceToSide(b, p.side))[0];
-      const error = (random(s) - .5) * (difficulty === 'easy' ? 70 : difficulty === 'hard' ? 20 : 40);
-      p.target = b ? (p.side < 2 ? b.y : b.x) - PADDLE / 2 + error : (SIZE - PADDLE) / 2;
-    }
-    return {axis: 0, target: clamp(p.target, 0, SIZE - PADDLE)};
-  }
-  function distanceToSide(b, side) { return side === 0 ? b.x : side === 1 ? SIZE - b.x : side === 2 ? b.y : SIZE - b.y; }
-  // Swept point against a rectangle expanded by the ball radius (continuous collision).
-  function sweep(x, y, dx, dy, r) {
-    const half = BALL / 2;
-    let enter = -Infinity, exit = Infinity, nx = 0, ny = 0;
-    for (const [p, d, min, max, ax, ay] of [
-      [x, dx, r.x - half, r.x + r.w + half, 1, 0],
-      [y, dy, r.y - half, r.y + r.h + half, 0, 1]]) {
-      if (Math.abs(d) < 1e-9) { if (p < min || p > max) return null; continue; }
-      const a = (min - p) / d, b = (max - p) / d;
-      const near = Math.min(a, b), far = Math.max(a, b);
-      const sign = d > 0 ? -1 : 1;
-      if (near > enter + 1e-8) { enter = near; nx = ax * sign; ny = ay * sign; }
-      else if (Math.abs(near - enter) <= 1e-8) {
-        // An exact corner hits both faces. Reflect both axes so quarter-turns
-        // cannot change which adjacent goal the corner protects.
-        enter = Math.max(enter, near); nx += ax * sign; ny += ay * sign;
-      }
-      exit = Math.min(exit, far);
-    }
-    return enter >= -1e-8 && enter <= 1 && enter <= exit && exit >= 0 ? {t: Math.max(0, enter), nx, ny} : null;
-  }
-  function boundary(side) {
-    return side === 0 ? {x: -16, y: -20, w: 16, h: SIZE + 40} :
-      side === 1 ? {x: SIZE, y: -20, w: 16, h: SIZE + 40} :
-      side === 2 ? {x: -20, y: -16, w: SIZE + 40, h: 16} : {x: -20, y: SIZE, w: SIZE + 40, h: 16};
-  }
-  function advanceBall(s, b) {
-    let remaining = 1;
-    for (let iterations = 0; remaining > 1e-6 && iterations < 8; iterations++) {
-      let nearest = null;
-      const inspect = (rect, kind, side = -1) => {
-        const hit = sweep(b.x, b.y, b.vx * remaining, b.vy * remaining, rect);
-        if (hit && (!nearest || hit.t < nearest.t)) nearest = {...hit, kind, side};
-      };
-      for (const p of s.paddles) {
-        if (!p.alive || p.guard > 0) inspect(boundary(p.side), 'wall', p.side);
-        if (p.alive && b.vx * NORMAL[p.side][0] + b.vy * NORMAL[p.side][1] < 0)
-          inspect(paddleRect(p.side, p.pos), 'paddle', p.side);
-      }
-      for (const rect of obstacleRects()) inspect(rect, 'obstacle');
-      if (!nearest) { b.x += b.vx * remaining; b.y += b.vy * remaining; break; }
-      b.x += b.vx * remaining * nearest.t;
-      b.y += b.vy * remaining * nearest.t;
-      remaining *= 1 - nearest.t;
-      if (nearest.kind === 'paddle') {
-        if (b.split) { emit(s, 'hit', nearest.side); return false; }
-        const p = s.paddles[nearest.side], n = NORMAL[nearest.side];
-        const offset = clamp(((nearest.side < 2 ? b.y : b.x) - p.pos - PADDLE / 2) / (PADDLE / 2), -.9, .9);
-        b.speed = Math.min(10, b.speed + .12);
-        b.rush = false;
-        const tangent = offset * .78;
-        b.vx = (nearest.side < 2 ? n[0] * Math.sqrt(1 - tangent * tangent) : tangent) * b.speed;
-        b.vy = (nearest.side < 2 ? tangent : n[1] * Math.sqrt(1 - tangent * tangent)) * b.speed;
-        b.owner = nearest.side;
-      } else {
-        if (nearest.nx) b.vx *= -1;
-        if (nearest.ny) b.vy *= -1;
-      }
-      b.x += nearest.nx * .001; b.y += nearest.ny * .001;
-      emit(s, nearest.kind === 'wall' && s.paddles[nearest.side]?.guard ? 'guard' : 'hit', nearest.side);
-    }
-    return true;
-  }
-  function goal(s, side) {
-    const p = s.paddles[side];
-    if (!p.alive) return;
-    if (s.config.variant === 'ffa') {
-      p.lives = Math.max(0, p.lives - 1);
-      p.alive = p.lives > 0;
-      const remaining = s.paddles.filter(p => p.alive);
-      if (remaining.length === 1) s.winner = remaining[0].side;
-    } else {
-      const team = 1 - TEAM[side];
-      if (++s.scores[team] >= s.config.goal) s.winner = team;
-    }
-    emit(s, 'goal', side);
-    if (s.winner >= 0) { s.balls = []; s.pickup = null; s.epoch++; emit(s, 'win', s.winner); }
-    else { serve(s); s.countdown = 90; }
-  }
-  function award(s, type, b) {
-    if (!b || !integer(b.owner, 0, 3) || !s.paddles[b.owner].alive) return false;
-    if (type === 'guard') s.paddles[b.owner].guard = 600;
-    else if (type === 'rush') {
-      if (!b.rush) { b.rush = true; b.vx *= 1.3; b.vy *= 1.3; }
-    } else if (type === 'split') {
-      if (s.balls.some(ball => ball.split)) return false;
-      const angle = .38;
-      s.balls.push({...b, id: 1, split: true, rush: false,
-        vx: (b.vx * Math.cos(angle) - b.vy * Math.sin(angle)) * .7,
-        vy: (b.vx * Math.sin(angle) + b.vy * Math.cos(angle)) * .7});
-    } else return false;
-    emit(s, 'pickup', b.owner);
-    return true;
-  }
-  function step(s, inputs = []) {
-    s.tick++;
-    if (s.paused || s.winner >= 0) return;
-    if (s.countdown > 0) { s.countdown--; return; }
-    s.activeTick++;
-    for (const p of s.paddles) {
-      if (p.guard > 0) p.guard--;
-      const input = s.config.bots[p.side] ? botInput(s, p) : inputs[p.side];
-      if (validInput(input)) movePaddle(p, input, s.config.bots[p.side] ? SPEED *
-        (s.config.difficulty === 'easy' ? .55 : s.config.difficulty === 'hard' ? .9 : .75) : SPEED);
-    }
-    for (const b of [...s.balls]) {
-      if (!advanceBall(s, b)) { s.balls = s.balls.filter(ball => ball !== b); continue; }
-      const side = b.x < -BALL ? 0 : b.x > SIZE + BALL ? 1 : b.y < -BALL ? 2 : b.y > SIZE + BALL ? 3 : -1;
-      if (side >= 0) { goal(s, side); return; } // One loss/point per rally, including Split.
-      if (s.pickup && Math.hypot(b.x - s.pickup.x, b.y - s.pickup.y) < 22 && award(s, s.pickup.type, b)) s.pickup = null;
-    }
-    if (s.pickup && --s.pickup.ttl <= 0) s.pickup = null;
-    if (s.config.powerups && !s.pickup && s.activeTick >= s.spawnAt) {
-      // Eight symmetric sites, clear of the bumpers and goals.
-      const sites = [[240, 110], [240, 370], [110, 240], [370, 240], [200, 240], [280, 240], [240, 200], [240, 280]];
-      const [x, y] = sites[Math.floor(random(s) * sites.length)];
-      s.pickup = {x, y, type: ['split', 'rush', 'guard'][Math.floor(random(s) * 3)], ttl: 600, born: s.activeTick};
-      s.spawnAt = s.activeTick + 720;
-      emit(s, 'spawn');
-    }
-  }
-  function pause(s) { if (s.winner < 0) { s.paused = true; s.countdown = 0; } }
-  function resume(s) { if (s.paused && s.winner < 0) { s.paused = false; s.countdown = 180; } }
-  function pack(s) {
-    const q = n => Math.round(n * 1000) / 1000;
-    return [s.tick, s.activeTick, s.epoch, s.paused ? 1 : 0, s.countdown, s.winner, s.scores.slice(),
-      s.paddles.map(p => [q(p.pos), p.lives, p.guard, p.alive ? 1 : 0]),
-      s.balls.map(b => [b.id, q(b.x), q(b.y), q(b.vx), q(b.vy), b.owner, b.split ? 1 : 0, b.rush ? 1 : 0, q(b.speed)]),
-      s.pickup ? [s.pickup.x, s.pickup.y, s.pickup.type, s.pickup.ttl, s.pickup.born] : null,
-      s.eventSeq, s.events.map(e => e.slice())];
-  }
-  function validState(a) {
-    return Array.isArray(a) && a.length === 12 && a.slice(0, 3).every(n => integer(n, 0, 1e9)) &&
-      integer(a[3], 0, 1) && integer(a[4], 0, 180) && integer(a[5], -1, 3) &&
-      Array.isArray(a[6]) && a[6].length === 2 && a[6].every(n => integer(n, 0, 20)) &&
-      Array.isArray(a[7]) && a[7].length === 4 && a[7].every(p => Array.isArray(p) && p.length === 4 &&
-        number(p[0], 0, SIZE - PADDLE) && integer(p[1], 0, 10) && integer(p[2], 0, 600) && integer(p[3], 0, 1)) &&
-      Array.isArray(a[8]) && a[8].length <= 2 && new Set(a[8].map(b => b?.[0])).size === a[8].length && a[8].every(b =>
-        Array.isArray(b) && b.length === 9 && integer(b[0], 0, 1) && b.slice(1, 3).every(n => number(n, -24, SIZE + 24)) &&
-        b.slice(3, 5).every(n => number(n, -14, 14)) && integer(b[5], -1, 3) && integer(b[6], 0, 1) && integer(b[7], 0, 1) && number(b[8], 0, 14)) &&
-      (a[9] === null || Array.isArray(a[9]) && a[9].length === 5 && a[9].slice(0, 2).every(n => number(n, 40, SIZE - 40)) &&
-        ['split', 'rush', 'guard'].includes(a[9][2]) && integer(a[9][3], 0, 600) && integer(a[9][4], 0, a[1])) &&
-      integer(a[10], 0, 1e9) && Array.isArray(a[11]) && a[11].length <= 4 && a[11].every(e => Array.isArray(e) && e.length === 4 &&
-        integer(e[0], 1, a[10]) && ['serve', 'hit', 'guard', 'goal', 'win', 'pickup', 'spawn'].includes(e[1]) && integer(e[2], -1, 3) && integer(e[3], 0, a[0]));
-  }
-  function unpack(a, c) {
-    if (!validState(a) || !validConfig(c)) return null;
-    return {config: c, tick: a[0], activeTick: a[1], epoch: a[2], paused: !!a[3], countdown: a[4], winner: a[5], scores: a[6].slice(),
-      paddles: a[7].map((p, side) => ({side, pos: p[0], lives: p[1], guard: p[2], alive: !!p[3]})),
-      balls: a[8].map(b => ({id: b[0], x: b[1], y: b[2], vx: b[3], vy: b[4], owner: b[5], split: !!b[6], rush: !!b[7], speed: b[8]})),
-      pickup: a[9] ? {x: a[9][0], y: a[9][1], type: a[9][2], ttl: a[9][3], born: a[9][4]} : null,
-      eventSeq: a[10], events: a[11].map(e => e.slice())};
-  }
-  function interpolate(a, b, alpha) {
-    if (!a || a.epoch !== b.epoch || a.paused !== b.paused || a.countdown > 0 || b.countdown > 0) return b;
-    const t = clamp(alpha, 0, 1), mix = (x, y) => x + (y - x) * t;
-    return {...b, paddles: b.paddles.map((p, i) => ({...p, pos: mix(a.paddles[i].pos, p.pos)})),
-      balls: b.balls.map(ball => { const prev = a.balls.find(p => p.id === ball.id);
-        return prev ? {...ball, x: mix(prev.x, ball.x), y: mix(prev.y, ball.y)} : ball; })};
-  }
-  return Object.freeze({SIZE, PADDLE, BALL, SPEED, TEAM, clamp, config, validConfig, create, step, pause, resume,
-    pack, unpack, validState, validInput, movePaddle, paddleRect, obstacleRects, viewPoint, worldPoint,
-    viewInput, interpolate, sweep, award});
-})();
-
-// Presentation and input for the square arena. Networking plugs into the same
-// view through session.tick/action/close; only the host calls the core step.
-let twoPlayerRelativeView = false;
-let fourView = null;
-function twoPlayerViewRotated() { return twoPlayerRelativeView && mode === 2 && isLanGuestActive(); }
-
-class FourPlayerView {
-  constructor() {
-    this.visible = false;
-    this.active = false;
-    this.side = 0;
-    this.relative = true;
-    this.target = null;
-    this.previousAt = null;
-    this.accumulator = 0;
-    this.session = null;
-    this.colors = ['#ffe36b', '#79d6ff', '#ff91c4', '#b4ef8b'];
-    this.screen = document.createElement('section');
-    this.screen.id = 'fourScreen';
-    this.screen.className = 'four-screen';
-    this.screen.hidden = true;
-    this.screen.setAttribute('aria-label', localizeText('Four Player'));
-    document.body.append(this.screen);
-    this.build();
-    window.addEventListener('keyup', e => { if (this.visible) keys.delete(e.key); });
-    window.addEventListener('blur', () => { if (this.active) { this.target = null; this.action('pause'); } });
-    document.addEventListener('visibilitychange', () => {
-      if (document.hidden && this.active) { this.previousAt = null; this.accumulator = 0; this.target = null; this.action('pause'); }
-    });
-  }
-  text(tag, value, className = '') {
-    const el = document.createElement(tag); el.className = className;
-    setLocalizedText(el, value); return el;
-  }
-  button(id, value, action) { return royalButton(id, value, action); }
-  select(id, label, options) {
-    const row = this.text('label', label, 'four-field');
-    const select = document.createElement('select'); select.id = id;
-    for (const [value, label] of options) {
-      const option = this.text('option', label); option.value = value; select.append(option);
-    }
-    row.append(select); this.settings.append(row); return select;
-  }
-  check(id, label, initial = false) {
-    const row = this.text('label', label, 'four-check'), box = document.createElement('input');
-    box.type = 'checkbox'; box.id = id; box.checked = initial; row.prepend(box); this.settings.append(row); return box;
-  }
-  build() {
-    const header = document.createElement('header'); header.className = 'four-header';
-    this.heading = this.text('h2', 'Four Player');
-    header.append(this.button('fourBack', 'Back', () => this.leave()), this.heading,
-      this.button('fourMenu', 'Menu (M)', () => { this.action('pause'); this.menu.hidden = false; }));
-    this.screen.append(header);
-    this.setup = document.createElement('div'); this.setup.className = 'four-setup';
-    this.settings = document.createElement('div'); this.settings.className = 'four-settings';
-    this.setup.append(this.settings);
-    this.variant = this.select('fourVariant', 'Match type', [['ffa', 'Free-for-All'], ['teams', 'Two versus Two']]);
-    this.lives = this.select('fourLives', 'Lives', [[3, '3'], [5, '5'], [10, '10']]);
-    this.goal = this.select('fourGoal', 'Team goal', [[5, '5'], [10, '10'], [20, '20']]); this.goal.value = '10';
-    this.difficulty = this.select('fourDifficulty', 'Bot difficulty', [['easy', 'Easy'], ['normal', 'Normal'], ['hard', 'Hard']]); this.difficulty.value = 'normal';
-    this.powerups = this.check('fourPowerups', 'Royal Powerups', true);
-    this.hiddenWall = this.check('fourHiddenWall', 'The Hidden Wall');
-    this.relativeBox = this.check('fourPerspective', 'My paddle on the left', true);
-    this.relativeBox.addEventListener('change', () => { this.relative = this.relativeBox.checked; this.target = null; });
-    this.paddle = this.select('fourPaddle', 'Choose your paddle', paddleCatalog.map(p => [p.id, p.profile.name]));
-    this.rules = this.text('p', 'Lose a life when your wall concedes. Eliminated walls become neutral. Last player wins.', 'four-rules');
-    this.setup.append(this.rules);
-    this.variant.addEventListener('change', () => this.syncSettings());
-    this.syncSettings();
-    this.networkPanel = document.createElement('div'); this.networkPanel.id = 'fourNetwork';
-    this.setup.append(this.networkPanel);
-    this.localControls = document.createElement('div'); this.localControls.className = 'four-actions';
-    this.localCount = this.select('fourLocalHumans', 'Same-device players', [[1, '1'], [2, '2'], [3, '3'], [4, '4']]);
-    this.localControls.append(this.button('fourPractice', 'Practice with bots', () => this.practice()));
-    this.setup.append(this.localControls, this.text('p', 'Practice: W/S or arrows for P1. Additional players use controllers. Online and LAN use one device per player.', 'four-note'));
-    this.screen.append(this.setup);
-    this.play = document.createElement('div'); this.play.className = 'four-play'; this.play.hidden = true;
-    this.board = document.createElement('canvas'); this.board.id = 'fourCanvas'; this.board.tabIndex = 0;
-    this.board.setAttribute('aria-label', localizeText('Four-player arena'));
-    this.board.width = this.board.height = 960;
-    this.context = this.board.getContext('2d');
-    this.scoreboard = document.createElement('aside'); this.scoreboard.id = 'fourScoreboard'; this.scoreboard.className = 'four-scoreboard';
-    this.scoreRows = Array.from({length: 4}, (_, i) => { const el = document.createElement('p');
-      el.style.borderColor = this.colors[i]; this.scoreboard.append(el); return el; });
-    this.result = this.text('p', '', 'four-result'); this.result.setAttribute('aria-live', 'polite'); this.scoreboard.append(this.result);
-    this.route = this.text('p', '', 'four-route'); this.scoreboard.append(this.route);
-    this.play.append(this.board, this.scoreboard); this.screen.append(this.play);
-    this.menu = document.createElement('div'); this.menu.className = 'four-pause'; this.menu.hidden = true;
-    this.menu.append(this.text('h3', 'PAUSED'), this.button('fourResume', 'Resume', () => this.action('resume')),
-      this.button('fourCloseMenu', 'Close menu', () => { this.menu.hidden = true; this.board.focus(); }),
-      this.button('fourRematch', 'Rematch', () => this.action('rematch')),
-      this.button('fourExit', 'Back', () => this.leave()));
-    this.screen.append(this.menu);
-    this.board.addEventListener('pointerdown', e => { this.board.setPointerCapture(e.pointerId); this.touch(e); });
-    this.board.addEventListener('pointermove', e => { if (this.board.hasPointerCapture(e.pointerId)) this.touch(e); });
-    for (const name of ['pointerup', 'pointercancel', 'lostpointercapture']) this.board.addEventListener(name, () => { this.target = null; });
-  }
-  syncSettings() {
-    const teams = this.variant.value === 'teams';
-    this.lives.parentElement.hidden = teams; this.goal.parentElement.hidden = !teams;
-    setLocalizedText(this.rules || document.createElement('p'), teams ?
-      'Opposite walls are teammates. A conceded goal gives the other team a point. First to the team goal wins.' :
-      'Lose a life when your wall concedes. Eliminated walls become neutral. Last player wins.');
-  }
-  options(bots = [false, true, true, true]) {
-    return KingPongFour.config({variant: this.variant.value, lives: Number(this.lives.value), goal: Number(this.goal.value),
-      difficulty: this.difficulty.value, powerups: this.powerups.checked,
-      hiddenWall: this.hiddenWall.checked && isBossUnlocked(), bots});
-  }
-  open(transport = 'online') {
-    this.leave(false);
-    closeLanConnection(false);
-    stopMatchmaking();
-    this.visible = true; this.transport = transport;
-    this.screen.hidden = false; this.setup.hidden = false; this.play.hidden = true;
-    byId('fourMenu').hidden = true;
-    document.body.classList.add('four-open');
-    this.hiddenWall.disabled = !isBossUnlocked();
-    if (this.hiddenWall.disabled) this.hiddenWall.checked = false;
-    this.hiddenWall.title = localizeText('Complete all 18 campaign levels to unlock this arena.');
-    if (typeof installFourNetworkUi === 'function') installFourNetworkUi(this);
-    this.variant.focus();
-  }
-  practice() {
-    if (this.session) this.session.close(); this.session = null;
-    const humans = Number(this.localCount.value);
-    this.localHumans = humans;
-    this.side = 0;
-    this.start(this.options(Array.from({length: 4}, (_, i) => i >= humans)));
-  }
-  start(options, initial = null) {
-    this.state = initial || KingPongFour.create(options, crypto.getRandomValues(new Uint32Array(1))[0]);
-    this.previous = this.current = KingPongFour.unpack(KingPongFour.pack(this.state), this.state.config);
-    this.active = true; this.visible = true; this.previousAt = null; this.accumulator = 0; this.lastCue = this.state.eventSeq;
-    this.setup.hidden = true; this.play.hidden = false; this.menu.hidden = true; byId('fourMenu').hidden = false;
-    this.screen.hidden = false; document.body.classList.add('four-open');
-    hideTitleScreen(); clearHeldInput(); this.board.focus();
-    requestRoyalLandscape(); this.paint(this.state); this.syncScores();
-  }
-  leave(title = true) {
-    if (this.session) this.session.close();
-    this.session = null; this.visible = this.active = false; this.target = null;
-    stopRoyalPowerupSound();
-    this.screen.hidden = this.menu.hidden = true;
-    document.body.classList.remove('four-open'); clearHeldInput(); resetFrameClock();
-    if (title) showTitleScreen();
-  }
-  action(name) {
-    if (!this.active) return;
-    if (this.session) { this.session.action(name); return; }
-    if (name === 'pause') { KingPongFour.pause(this.state); this.menu.hidden = false; }
-    if (name === 'resume') { KingPongFour.resume(this.state); this.menu.hidden = true; }
-    if (name === 'rematch') this.start(this.state.config);
-    clearHeldInput(); this.target = null;
-  }
-  key(e) {
-    if (!this.visible) return;
-    e.stopImmediatePropagation();
-    if (e.key === 'Tab') {
-      const controls = [...(this.menu.hidden ? this.screen : this.menu).querySelectorAll('button,input,select,textarea,canvas')].filter(el => !el.disabled && el.getClientRects().length);
-      const index = controls.indexOf(document.activeElement);
-      controls[(index + (e.shiftKey ? -1 : 1) + controls.length) % controls.length]?.focus(); e.preventDefault(); return;
-    }
-    if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
-    if (!this.active) { if (e.key === 'Escape') this.leave(); return; }
-    if (['m', 'M', 'Escape', 'p', 'P'].includes(e.key)) {
-      e.preventDefault(); if (!e.repeat) {
-        if (e.key.toLowerCase() === 'p' && this.state.paused) this.action('resume');
-        else if (!this.menu.hidden) { this.menu.hidden = true; this.board.focus(); }
-        else { this.action('pause'); this.menu.hidden = false; }
-      } return;
-    }
-    if (['w', 'W', 's', 'S', 'ArrowUp', 'ArrowDown'].includes(e.key)) { keys.add(e.key); e.preventDefault(); }
-  }
-  touch(e) {
-    const rect = this.board.getBoundingClientRect(), K = KingPongFour;
-    const x = (e.clientX - rect.left) / rect.width * K.SIZE;
-    const y = (e.clientY - rect.top) / rect.height * K.SIZE;
-    const point = K.worldPoint(this.relative ? this.side : 0, x, y);
-    this.target = Math.max(0, Math.min(K.SIZE - K.PADDLE, point[this.side < 2 ? 1 : 0] - K.PADDLE / 2));
-    e.preventDefault();
-  }
-  input(index = this.side, local = false) {
-    const pads = getConnectedGamepads();
-    const pad = local && this.localHumans > 1 ? (index > 0 ? pads[index - 1] : null) : pads[0];
-    const keyboard = index === this.side ? (keys.has('s') || keys.has('S') || keys.has('ArrowDown') ? 1 : 0) -
-      (keys.has('w') || keys.has('W') || keys.has('ArrowUp') ? 1 : 0) : 0;
-    let axis = Math.max(-1, Math.min(1, keyboard + (pad ? gamepadVertical(pad, 1) : 0)));
-    if (index === this.side && this.relative) axis = KingPongFour.viewInput(this.side, axis, null).axis;
-    return {axis: gameWindowFocused && !document.hidden ? axis : 0,
-      target: gameWindowFocused && index === this.side ? this.target : null};
-  }
-  frame(now) {
-    if (!this.active || !Number.isFinite(now)) return;
-    const primary = getConnectedGamepads()[0], menuPressed = Boolean(primary?.buttons?.[9]?.pressed);
-    if (menuPressed && !this.menuPressed) { const show = this.menu.hidden; this.action('pause'); this.menu.hidden = !show; }
-    this.menuPressed = menuPressed;
-    if (document.hidden) { this.previousAt = null; this.accumulator = 0; return; }
-    if (this.previousAt === null) this.previousAt = now;
-    this.accumulator = Math.min(this.accumulator + Math.max(0, now - this.previousAt), 5 * 1000 / 60);
-    this.previousAt = now;
-    while (this.accumulator + 1e-6 >= 1000 / 60) {
-      this.previous = this.current;
-      if (this.session) this.session.tick(this.input(), now);
-      else KingPongFour.step(this.state, Array.from({length: 4}, (_, i) => this.input(i, true)));
-      this.current = KingPongFour.unpack(KingPongFour.pack(this.state), this.state.config);
-      this.accumulator = Math.max(0, this.accumulator - 1000 / 60);
-    }
-    const display = this.session?.visual ? this.session.visual(now) :
-      KingPongFour.interpolate(this.previous, this.current, this.accumulator / (1000 / 60));
-    if (!this.state.paused || this.lastPaint === undefined || now - this.lastPaint >= 100) {
-      this.paint(display || this.state); this.lastPaint = now;
-    }
-    this.syncScores(); this.sounds();
-  }
-  sounds() {
-    for (const e of this.state.events) {
-      if (e[0] <= this.lastCue) continue;
-      if (this.state.tick - e[3] < 30 && !this.state.paused && !document.hidden) {
-        if (e[1] === 'spawn' || e[1] === 'pickup') playRoyalPowerupSound(e[1]);
-        else if (e[1] === 'hit') playImpactSound(320, .035);
-        else if (e[1] === 'guard') playImpactSound(880, .055, .045, 'shield');
-      }
-    }
-    this.lastCue = this.state.eventSeq;
-  }
-  syncScores() {
-    const s = this.state, K = KingPongFour;
-    for (const p of s.paddles) {
-      const label = 'P' + (p.side + 1) + (p.side === this.side ? ' · ' + localizeText('You') : '') +
-        (s.config.bots[p.side] ? ' · ' + localizeText('Bot') : '') + ' · ' +
-        (s.config.variant === 'teams' ? localizeText('Team') + ' ' + (K.TEAM[p.side] ? 'B' : 'A') + ' · ' + s.scores[K.TEAM[p.side]] + '/' + s.config.goal :
-          p.alive ? '♥ ' + p.lives : localizeText('Eliminated'));
-      if (this.scoreRows[p.side].textContent !== label) this.scoreRows[p.side].textContent = label;
-    }
-    const message = this.disconnectedMessage ? localizeText(this.disconnectedMessage) : s.winner >= 0 ? localizeText('Winner') + ': ' + (s.config.variant === 'teams' ? localizeText('Team') + ' ' +
-      (s.winner ? 'B' : 'A') : 'P' + (s.winner + 1)) : s.paused ? localizeText('PAUSED') :
-      s.countdown > 0 ? String(Math.ceil(s.countdown / 60)) : '';
-    if (this.result.textContent !== message) this.result.textContent = message;
-    if (s.winner >= 0) this.menu.hidden = false;
-  }
-  paint(s) {
-    const K = KingPongFour, c = this.context, side = this.relative ? this.side : 0;
-    const scale = Math.min(3, devicePixelRatio || 1), pixels = Math.round(K.SIZE * scale);
-    if (this.board.width !== pixels) this.board.width = this.board.height = pixels;
-    c.setTransform(scale, 0, 0, scale, 0, 0); c.imageSmoothingEnabled = false;
-    c.fillStyle = '#080a12'; c.fillRect(0, 0, K.SIZE, K.SIZE);
-    c.strokeStyle = '#333448'; c.lineWidth = 1; c.strokeRect(.5, .5, K.SIZE - 1, K.SIZE - 1);
-    c.save(); c.translate(K.SIZE / 2, K.SIZE / 2); c.rotate([0, Math.PI, -Math.PI / 2, Math.PI / 2][side]); c.translate(-K.SIZE / 2, -K.SIZE / 2);
-    for (const r of K.obstacleRects()) {
-      const hidden = s.config.hiddenWall && Math.floor(s.activeTick / 90) % 2;
-      c.fillStyle = hidden ? '#151724' : '#747691'; c.fillRect(r.x, r.y, r.w, r.h);
-      c.strokeStyle = hidden ? '#292b3f' : '#b1b3d1'; c.strokeRect(r.x + .5, r.y + .5, r.w - 1, r.h - 1);
-    }
-    for (const p of s.paddles) {
-      const r = K.paddleRect(p.side, p.pos);
-      c.fillStyle = this.colors[p.side];
-      if (p.alive) {
-        // Reuse the selected classic paddle silhouette in its own wall coordinates.
-        c.save();
-        if (p.side === 0) c.translate(r.x, r.y);
-        else if (p.side === 1) { c.translate(r.x + r.w, r.y + r.h); c.rotate(Math.PI); }
-        else if (p.side === 2) { c.translate(r.x + r.w, r.y); c.rotate(Math.PI / 2); }
-        else { c.translate(r.x, r.y + r.h); c.rotate(-Math.PI / 2); }
-        const id = this.session?.paddles?.[p.side] || (p.side === this.side ? this.paddle.value : 'classic');
-        const profile = (paddleCatalog.find(entry => entry.id === id) || paddleCatalog[0]).profile;
-        c.strokeStyle = this.colors[p.side]; c.lineWidth = 1; c.strokeRect(.5, .5, 9, 63);
-        const width = PADDLE_W + Math.max(0, ...(profile.offsets || [0]));
-        c.beginPath(); c.rect(0, 0, 10, 64); c.clip(); c.scale(10 / width, 1);
-        drawPaddleShape({x: 0, y: 0}, 1, profile, this.colors[p.side], c);
-        c.restore();
-      }
-      if (p.guard || !p.alive) {
-        c.fillStyle = p.alive ? this.colors[p.side] : '#6a6b80';
-        if (p.side < 2) c.fillRect(p.side ? K.SIZE - 3 : 0, 0, 3, K.SIZE);
-        else c.fillRect(0, p.side === 3 ? K.SIZE - 3 : 0, K.SIZE, 3);
-      }
-    }
-    if (s.pickup) {
-      const p = s.pickup, icon = royalPickupSprite(p.type);
-      const age = s.activeTick - p.born;
-      if (age < 60) {
-        c.strokeStyle = '#ffd469'; c.lineWidth = 2; c.globalAlpha = (1 - age / 60) * .5;
-        c.beginPath(); c.arc(p.x, p.y, 12 + age * .7, 0, 2 * Math.PI); c.stroke(); c.globalAlpha = 1;
-      }
-      if (icon?.complete) c.drawImage(icon, p.x - 14, p.y - 14, 28, 28);
-    }
-    for (const b of s.balls) {
-      c.globalAlpha = b.split ? .62 : 1;
-      c.fillStyle = b.split ? '#c493ff' : b.rush ? '#ff944f' : '#ffe36b';
-      // Small cached halo, followed by a sharp, directly drawn opaque core.
-      if (!this.halo) {
-        this.halo = document.createElement('canvas'); this.halo.width = this.halo.height = 48;
-        const hc = this.halo.getContext('2d'), gradient = hc.createRadialGradient(24, 24, 4, 24, 24, 24);
-        gradient.addColorStop(0, 'rgba(255,227,107,.55)'); gradient.addColorStop(1, 'rgba(255,227,107,0)');
-        hc.fillStyle = gradient; hc.fillRect(0, 0, 48, 48); hc.clearRect(20, 20, 8, 8);
-      }
-      c.drawImage(this.halo, b.x - 24, b.y - 24); c.fillRect(b.x - 4, b.y - 4, 8, 8);
-    }
-    c.globalAlpha = 1; c.restore();
-    c.font = 'bold 13px monospace'; c.textAlign = 'center'; c.textBaseline = 'middle';
-    for (const p of s.paddles) {
-      const xy = p.side === 0 ? [44, p.pos + 32] : p.side === 1 ? [436, p.pos + 32] : p.side === 2 ? [p.pos + 32, 44] : [p.pos + 32, 436];
-      const point = K.viewPoint(side, ...xy); c.fillStyle = this.colors[p.side]; c.fillText('P' + (p.side + 1) + (p.guard ? ' · ' + Math.ceil(p.guard / 60) : ''), ...point);
-    }
-    if (s.paused || s.countdown > 0) {
-      c.fillStyle = '#fff'; c.font = 'bold 30px monospace';
-      c.fillText(s.paused ? localizeText('PAUSED') : String(Math.ceil(s.countdown / 60)), 240, 240);
-    }
-  }
-}
-
-function installFourMenus() {
-  if (fourView) return;
-  fourView = new FourPlayerView();
-  installMultiplayerSafety();
-  const choices = royalDialog('onlinePlayerCount', 'Play Online');
-  choices.append(royalButton('onlineTwoPlayers', 'Two Player', () => {
-    byId('onlinePlayerCount').hidden = true; startOnlineSetup(true);
-  }), royalButton('onlineFourPlayers', 'Up to Four Players', () => {
-    byId('onlinePlayerCount').hidden = true; fourView.open('online');
-  }), royalButton('onlineCountBack', 'Back', () => { byId('onlinePlayerCount').hidden = true; document.querySelector('.primary-online').focus(); }));
-  document.querySelector('.primary-online').addEventListener('click', e => {
-    e.stopImmediatePropagation(); byId('onlinePlayerCount').hidden = false; byId('onlineTwoPlayers').focus();
-  }, true);
-  const perspective = document.createElement('label'); perspective.className = 'four-check';
-  const checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.id = 'twoPlayerPerspective';
-  const label = document.createElement('span'); setLocalizedText(label, 'My paddle on the left');
-  checkbox.addEventListener('change', () => { twoPlayerRelativeView = checkbox.checked; clearHeldInput(); resetVisualHistory(); });
-  perspective.append(checkbox, label); byId('displaySettings').append(perspective);
-  const localRead = readLocalLanInput;
-  window.readLocalLanInput = (...args) => {
-    const input = localRead(...args);
-    return twoPlayerViewRotated() ? {axis: -input.axis, targetY: input.targetY === null ? null : H - PADDLE_H - input.targetY} : input;
-  };
-}
-
-const FOUR_ERRORS = {
-  ...ONLINE_ERRORS,
-  incompatible: 'Four-player protocol mismatch. Update all players.',
-  invalid_code: 'Enter a valid six-character room code or LAN invitation.',
-  wrong_mode: 'This room uses a different player count. Choose the matching multiplayer menu.',
-  kicked: 'The host removed you from this room.',
-  rejected: 'The host declined your join request.',
-  blocked: 'You cannot rejoin this room. Ask the host for a new room.',
-  unapproved: 'Wait for the host to accept your request.',
-  approval_timeout: 'Join request expired. Ask the host to try again.',
-  unauthorized: 'Room permission denied.',
-  guest_left: 'A player disconnected. Return to the lobby for a new match.'
-};
-function fourConfigValid(c) {
-  return !!c && ['ffa', 'teams'].includes(c.variant) && [3, 5, 10].includes(c.lives) && [5, 10, 20].includes(c.goal) &&
-    ['easy', 'normal', 'hard'].includes(c.difficulty) && typeof c.powerups === 'boolean' && typeof c.hiddenWall === 'boolean' &&
-    Array.isArray(c.bots) && c.bots.length === 4 && c.bots.every(b => typeof b === 'boolean');
-}
-function fourSameConfig(a, b) { return JSON.stringify(KingPongFour.config(a)) === JSON.stringify(KingPongFour.config(b)); }
-
-class FourNetworkSession {
-  constructor(view, host, lan = false) {
-    this.view = view; this.host = host; this.closed = false; this.gates = new Map(); this.inputs = new Map(); this.hellos = new Set();
-    this.paddles = ['classic', 'classic', 'classic', 'classic']; this.snapshots = []; this.history = new Map(); this.sequence = 0; this.packetGates = new Map(); this.packetSequence = 0;
-    this.lastState = -1; this.lastControl = -1; this.controlSequence = 0; this.matchSerial = 0; this.actionAt = new Map(); this.ready = false; this.interruptedPeers = new Set(); this.initializedPeers = new Set();
-    this.stats = {sentInputs: 0, receivedInputs: 0, snapshots: 0, dropped: 0, receivedBytes: 0};
-    const hooks = {
-      welcome: m => { view.side = m.slot; view.networkCode.textContent = m.code; this.status(m.slot < 0 ? 'Waiting for host approval...' : 'Waiting for players...'); this.refresh(); },
-      approved: slot => { view.side = slot; this.status('Connecting...'); this.refresh(); },
-      status: text => this.status(text), error: code => this.failure(code),
-      connected: slot => { this.transport.joined?.(slot); this.hello(slot); this.refresh(); },
-      message: (slot, raw) => this.receive(slot, raw),
-      peerError: (slot, code) => {
-        if (this.transport.lan && this.host) this.transport.drop(slot, code);
-        else if (this.host) { this.transport.send({type: 'kick', slot}); this.departed(slot, code); }
-        else this.failure(code);
-      },
-      interrupted: slot => { this.interruptedPeers.add(slot); this.interrupted = true; this.inputs.delete(slot); if (view.active) { KingPongFour.pause(view.state); this.snapshot(true); } this.status('Connection interrupted. Reconnecting...'); },
-      resumed: slot => { this.interruptedPeers.delete(slot); this.interrupted = this.interruptedPeers.size > 0; this.snapshot(true); this.status(this.interrupted ? 'Connection interrupted. Reconnecting...' : 'Connected!'); },
-      lobby: lobby => { this.lobby = lobby; this.refresh(); if (this.host && !lobby.config) this.configure(); this.maybeStart(); },
-      locked: config => {
-        if (!fourConfigValid(config)) return this.failure('incompatible');
-        this.lockedConfig = config;
-        if (this.host) this.begin(config); else if (this.pendingInit) this.initialize(this.pendingInit);
-      },
-      departed: (slot, reason) => this.departed(slot, reason)
-    };
-    this.transport = lan ? new KingPongLanParty(hooks) : new KingPongParty(window.KING_PONG_SIGNALING_URL, hooks);
-    this.timer = setInterval(() => {
-      if (this.closed) return;
-      for (const [slot, link] of this.transport.peers) if (link.connected && !this.hellos.has(slot)) this.hello(slot);
-      this.maybeStart(); this.refresh(); this.routes();
-      if (this.host && this.startPending) {
-        if (performance.now() - this.startAt > 8000) { this.failure('connection_lost'); return; }
-        for (const slot of this.transport.peers.keys()) if (!this.initializedPeers.has(slot)) this.sendInit(slot);
-      }
-      // A hidden/frozen host pauses, then keeps control and snapshots alive without running physics.
-      if (this.host && view.active && (document.hidden || performance.now() - (this.lastTickAt || 0) > 500)) {
-        KingPongFour.pause(view.state); this.snapshot(true);
-      }
-    }, 500);
-  }
-  open(code = '') { this.transport.open(this.host, code, this.view.approval.checked); }
-  status(text) { setLocalizedText(this.view.networkStatus, text); if (this.view.active) setLocalizedText(this.view.result, text); }
-  hello(slot) { this.transport.data(slot, {k4: 1, type: 'hello', slot: this.view.side, paddle: this.view.paddle.value}, true); }
-  receive(slot, raw) {
-    if (this.closed || typeof raw !== 'string' || raw.length > 8192 || !this.transport.peers.get(slot)?.connected) return;
-    const rate = this.packetGates.get(slot) || new KingPongInputGate(); this.packetGates.set(slot, rate);
-    if (!rate.accept(++this.packetSequence, performance.now())) { this.stats.dropped++; return; }
-    this.stats.receivedBytes += new TextEncoder().encode(raw).length;
-    let m; try { m = JSON.parse(raw); } catch { this.stats.dropped++; return; }
-    if (this.transport.lan && m?.lanLobby === 1) {
-      if (this.host) { if (['ready'].includes(m.type) && this.hellos.has(slot)) this.transport.control(slot, m); }
-      else if (slot === 0) {
-        if (m.type === 'lobby') { this.transport.lobby = m; this.lobby = m; this.refresh(); }
-        else if (m.type === 'locked') this.transport.hooks.locked(m.config);
-        else if (m.type === 'departed') this.departed(m.slot, m.reason);
-        else if (m.type === 'error') this.failure(m.code);
-      }
-      return;
-    }
-    if (m?.k4 === 1 && m.type === 'hello' && m.slot === slot && paddleCatalog.some(p => p.id === m.paddle)) {
-      const first = !this.hellos.has(slot); this.hellos.add(slot); this.paddles[slot] = m.paddle;
-      if (first) this.hello(slot);
-      if (this.host && this.view.active) this.sendInit(slot);
-      this.refresh(); return;
-    }
-    if (!this.hellos.has(slot)) { this.stats.dropped++; return; }
-    if (!Array.isArray(m)) {
-      if (m?.k4 !== 1) return;
-      if (this.host && m.type === 'init-ack' && m.match === this.match && m.serial === this.matchSerial) {
-        this.initializedPeers.add(slot);
-        if ([...this.transport.peers.keys()].every(peerSlot => this.initializedPeers.has(peerSlot))) { this.startPending = false; this.snapshot(true); }
-        return;
-      }
-      if (!this.host && slot === 0 && m.type === 'init') { this.initialize(m); return; }
-      if (m.type === 'action' && this.host && m.match === this.match && ['pause', 'resume', 'rematch'].includes(m.name) &&
-          Number.isSafeInteger(m.seq) && m.seq >= 0) {
-        const record = this.actionAt.get(slot), now = performance.now();
-        if (record && (m.seq <= record.seq || now - record.at < 300)) return;
-        this.actionAt.set(slot, {seq: m.seq, at: now});
-        // Anyone can pause. Only the host resumes or restarts a private match.
-        if (m.name === 'pause') this.action('pause');
-      }
-      return;
-    }
-    if (m[0] !== 'k4' || m[1] !== 1 || m[2] !== this.match || !this.view.active) { this.stats.dropped++; return; }
-    const now = performance.now(), K = KingPongFour;
-    if (this.host && m[3] === 'i' && m.length === 7 && K.validInput({axis: m[5], target: m[6]})) {
-      const gate = this.gates.get(slot) || new KingPongInputGate(); this.gates.set(slot, gate);
-      if (!gate.accept(m[4], now)) { this.stats.dropped++; return; }
-      this.inputs.set(slot, {axis: m[5], target: m[6], at: now, seq: m[4]}); this.stats.receivedInputs++;
-    } else if (!this.host && slot === 0 && m[3] === 's' && m.length === 7 && Number.isSafeInteger(m[4]) && m[4] > this.lastState &&
-        Number.isSafeInteger(m[5]) && m[5] >= -1 && K.validState(m[6], this.view.state.config)) {
-      const next = K.unpack(m[6], this.view.state.config);
-      if (next.tick < this.view.state.tick || next.epoch < this.view.state.epoch) return;
-      const reset = next.epoch !== this.view.state.epoch || next.paused || next.countdown > 0;
-      this.lastState = m[4]; this.inputAck = Math.max(this.inputAck ?? -1, m[5]);
-      const position = next.paddles[this.view.side].pos;
-      if (reset || this.predicted === undefined) this.predicted = position;
-      else if (this.history.has(m[5])) this.predicted = K.clamp(this.predicted + position - this.history.get(m[5]), 0, K.SIZE - K.PADDLE);
-      for (const seq of this.history.keys()) if (seq <= m[5]) this.history.delete(seq);
-      if (reset) { this.snapshots = []; this.history.clear(); }
-      this.view.state = next; this.snapshots.push({at: now, state: next}); this.snapshots = this.snapshots.slice(-12); this.lastReceive = now;
-      this.stats.snapshots++;
-      if (!next.paused) this.view.menu.hidden = true;
-    } else this.stats.dropped++;
-  }
-  initialize(m) {
-    if (!this.lockedConfig) { this.pendingInit = m; return; }
-    if (m.match === this.match && m.serial === this.matchSerial) {
-      this.transport.data(0, {k4: 1, type: 'init-ack', match: this.match, serial: this.matchSerial}, true); return;
-    }
-    if (this.host || !Number.isSafeInteger(m.serial) || m.serial < 1 || m.serial <= this.matchSerial ||
-        typeof m.match !== 'string' || !/^[a-f0-9-]{36}$/.test(m.match) || !fourConfigValid(m.config) || !fourSameConfig(m.config, this.lockedConfig) ||
-        !KingPongFour.validState(m.state, m.config) || !Array.isArray(m.paddles) || m.paddles.length !== 4 || !m.paddles.every(id => paddleCatalog.some(p => p.id === id))) return;
-    this.match = m.match; this.matchSerial = m.serial; this.sequence = 0; this.lastState = -1; this.history.clear(); this.snapshots = [];
-    this.lastInput = null; this.inputAck = -1; this.paddles = m.paddles; this.lastReceive = performance.now(); this.pendingInit = null;
-    this.view.start(m.config, KingPongFour.unpack(m.state, m.config)); this.predicted = this.view.state.paddles[this.view.side].pos;
-    this.transport.data(0, {k4: 1, type: 'init-ack', match: this.match, serial: this.matchSerial}, true); this.refresh();
-  }
-  begin(config) {
-    if (!this.host || this.closed) return;
-    this.match = crypto.randomUUID(); this.matchSerial++; this.sequence = 0; this.gates.clear(); this.inputs.clear(); this.actionAt.clear();
-    this.initializedPeers.clear(); this.startPending = this.transport.peers.size > 0; this.startAt = performance.now();
-    this.paddles[0] = this.view.paddle.value;
-    this.view.start(config); for (const slot of this.transport.peers.keys()) this.sendInit(slot); this.refresh();
-  }
-  sendInit(slot) { this.transport.data(slot, {k4: 1, type: 'init', match: this.match, serial: this.matchSerial, config: this.view.state.config, state: KingPongFour.pack(this.view.state), paddles: this.paddles}, true); }
-  tick(input, now) {
-    if (this.closed) return;
-    this.lastTickAt = now;
-    const K = KingPongFour, s = this.view.state;
-    if (this.host) {
-      if (this.startPending) return;
-      const inputs = [input];
-      for (let side = 1; side < 4; side++) { const record = this.inputs.get(side); inputs[side] = record && now - record.at < 1200 ? record : {axis: 0, target: null}; }
-      K.step(s, inputs); if (s.tick % (s.paused ? 15 : 3) === 0) this.snapshot();
-    } else {
-      if (now - this.lastReceive > 1500) { s.paused = true; this.view.menu.hidden = false; this.status('Connection interrupted. Reconnecting...'); }
-      if (now - this.lastReceive > 8000) { this.failure('connection_lost'); return; }
-      if (!s.paused && !s.countdown && s.winner < 0 && s.paddles[this.view.side].alive) {
-        const delta = input.target === null ? input.axis * K.SPEED : K.clamp(input.target - this.predicted, -K.SPEED, K.SPEED);
-        this.predicted = K.clamp(this.predicted + delta, 0, K.SIZE - K.PADDLE);
-      }
-      const changed = !this.lastInput || input.axis !== this.lastInput.axis || input.target !== this.lastInput.target;
-      const acked = this.lastInput && this.inputAck >= this.lastInput.proof;
-      const delay = input.axis === 0 && acked && !changed ? 250 : 1000 / 30;
-      if (changed || now - (this.lastInput?.at ?? -Infinity) >= delay) {
-        const seq = ++this.sequence;
-        if (this.transport.data(0, ['k4', 1, this.match, 'i', seq, input.axis, input.target])) {
-          this.history.set(seq, this.predicted); if (this.history.size > 120) this.history.delete(this.history.keys().next().value);
-          this.lastInput = {...input, at: now, proof: changed ? seq : this.lastInput.proof}; this.stats.sentInputs++;
-        }
-      }
-    }
-  }
-  snapshot(reliable = false) {
-    if (!this.host || !this.view.active || !this.match || this.closed) return;
-    const seq = ++this.sequence, state = KingPongFour.pack(this.view.state);
-    for (const slot of this.transport.peers.keys()) this.transport.data(slot, ['k4', 1, this.match, 's', seq, this.inputs.get(slot)?.seq ?? -1, state], reliable);
-  }
-  visual(now) {
-    const K = KingPongFour;
-    if (this.host) return K.interpolate(this.view.previous, this.view.current, this.view.accumulator / (1000 / 60));
-    let state = this.view.state;
-    if (this.snapshots.length && !state.paused && !state.countdown) {
-      const target = now - 70;
-      let a = this.snapshots[0], b = a;
-      for (const item of this.snapshots) { if (item.at <= target) a = item; if (item.at >= target) { b = item; break; } b = item; }
-      state = K.interpolate(a.state, b.state, b.at > a.at ? K.clamp((target - a.at) / (b.at - a.at), 0, 1) : 1);
-    } else state = K.unpack(K.pack(state), state.config);
-    if (Number.isFinite(this.predicted)) return {...state, paddles: state.paddles.map((p, side) => side === this.view.side ? {...p, pos: this.predicted} : p)};
-    return state;
-  }
-  action(name) {
-    if (this.closed) return;
-    this.view.target = null; clearHeldInput();
-    if (!this.host) {
-      if (name === 'pause') { this.transport.data(0, {k4: 1, type: 'action', match: this.match, seq: ++this.controlSequence, name}, true); this.view.menu.hidden = false; }
-      return;
-    }
-    if (name === 'pause') { KingPongFour.pause(this.view.state); this.view.menu.hidden = false; }
-    if (name === 'resume' && !this.interrupted && !this.startPending) { KingPongFour.resume(this.view.state); this.view.menu.hidden = true; }
-    if (name === 'rematch' && !this.interrupted && !this.startPending) this.begin(this.view.state.config);
-    this.snapshot(true);
-  }
-  configure() {
-    if (this.host && !this.view.active) this.transport.send({type: 'configure', config: this.view.options(), fill: this.view.fill.checked});
-  }
-  wait() { if (this.host) this.transport.send({type: 'wait'}); }
-  readyUp() {
-    if (this.host || !this.hellos.has(0) || !this.lobby?.config) return;
-    this.ready = !this.ready; this.transport.send({type: 'ready', ready: this.ready, consent: this.view.consent.checked});
-  }
-  maybeStart() {
-    const l = this.lobby;
-    if (!this.host || this.interrupted || !l || l.started || l.waitAt === null || !l.config || !l.players.every(p => p.connected && p.ready && (p.slot === 0 || this.hellos.has(p.slot)))) return;
-    if (l.players.length === 4 || l.fill && Date.now() - l.waitAt >= 180000 && l.players.every(p => p.consent)) this.transport.send({type: 'lock'});
-  }
-  refresh() {
-    const v = this.view, l = this.lobby;
-    for (const input of [v.variant, v.lives, v.goal, v.difficulty, v.powerups, v.hiddenWall, v.fill]) input.disabled = !this.host || v.active || input === v.hiddenWall && !isBossUnlocked();
-    v.paddle.disabled = this.hellos.size > 0 || v.active;
-    v.hostButton.hidden = v.joinButton.hidden = true; v.disconnectButton.hidden = false;
-    v.waitButton.hidden = !this.host || v.active; v.readyButton.hidden = this.host || v.active;
-    v.readyButton.disabled = !this.hellos.has(0) || !l?.config;
-    v.consent.parentElement.hidden = this.host || !l?.fill;
-    v.waitButton.disabled = !l?.config || l?.waitAt !== null && l?.waitAt !== undefined;
-    v.approval.disabled = true; v.practiceButton.disabled = true;
-    byId('fourResume').disabled = !this.host || this.interrupted || this.startPending;
-    byId('fourRematch').disabled = !this.host || this.interrupted || this.startPending;
-    if (l?.config && !this.host) {
-      v.variant.value = l.config.variant; v.lives.value = String(l.config.lives); v.goal.value = String(l.config.goal); v.difficulty.value = l.config.difficulty;
-      v.powerups.checked = l.config.powerups; v.hiddenWall.checked = l.config.hiddenWall; v.fill.checked = l.fill; v.syncSettings();
-      const self = l.players.find(p => p.slot === v.side); this.ready = Boolean(self?.ready);
-    }
-    setLocalizedText(v.readyButton, this.ready ? 'Not ready' : 'Ready');
-    const key = JSON.stringify([l?.players, l?.pending, l?.waitAt, l?.fill, [...this.hellos], v.active]);
-    if (key !== this.rosterKey) {
-      this.rosterKey = key; v.roster.replaceChildren(); v.kicks.replaceChildren();
-      for (let i = 0; i < 4; i++) {
-        const player = l?.players.find(p => p.slot === i), row = document.createElement('div'); row.className = 'four-slot';
-        row.textContent = 'P' + (i + 1) + ' · ' + localizeText(player ? player.connected && (i === 0 || this.hellos.has(this.host ? i : 0)) ? player.ready ? 'Ready' : 'Connected!' : 'Connecting...' : 'Open slot');
-        if (this.host && player && i > 0) {
-          const kick = () => this.transport.send({type: 'kick', slot: i});
-          row.append(v.button('fourKick' + i, 'Kick', kick));
-          const inGame = v.button('fourGameKick' + i, 'Kick', kick); inGame.setAttribute('aria-label', localizeText('Kick') + ' P' + (i + 1));
-          const label = document.createElement('span'); label.textContent = 'P' + (i + 1) + ' '; label.append(inGame); v.kicks.append(label);
-        }
-        v.roster.append(row);
-      }
-      for (const pending of l?.pending || []) {
-        const row = document.createElement('div'); row.className = 'four-slot'; setLocalizedText(row, 'Join request');
-        row.append(v.button('', 'Accept', () => this.transport.send({type: 'approve', request: pending.request})),
-          v.button('', 'Reject', () => this.transport.send({type: 'reject', request: pending.request}))); v.roster.append(row);
-      }
-    }
-    v.waitTime.textContent = l?.waitAt !== null && l?.waitAt !== undefined && !l.started ? localizeText('Waiting for ready players') + (l.fill ? ' · ' + Math.max(0, Math.ceil((180000 - (Date.now() - l.waitAt)) / 1000)) + ' s' : '') : '';
-  }
-  async routes() {
-    const v = this.view;
-    if (!v.showRoute.checked || this.routesBusy || performance.now() - (this.lastRoutesAt || 0) < 2000) { if (!v.showRoute.checked) v.route.textContent = ''; return; }
-    this.routesBusy = true; this.lastRoutesAt = performance.now();
-    try {
-      const labels = await Promise.all([...this.transport.peers].map(async ([slot, link]) => {
-        let label = 'Unknown'; try { if (link.peer) label = kingPongRoute(await link.peer.getStats()); } catch {}
-        return 'P' + (slot + 1) + ': ' + localizeText(label);
-      }));
-      if (!this.closed) v.route.textContent = labels.join(' · ');
-    } finally { this.routesBusy = false; }
-  }
-  departed(slot, reason) {
-    this.interruptedPeers.delete(slot); this.interrupted = this.interruptedPeers.size > 0;
-    this.hellos.delete(slot); this.inputs.delete(slot); this.gates.delete(slot);
-    if (this.view.active) this.failure(reason === 'kicked' ? 'guest_left' : reason);
-    else { this.status(FOUR_ERRORS[reason] || FOUR_ERRORS.guest_left); this.refresh(); }
-  }
-  failure(code) {
-    if (this.closed) return;
-    const message = FOUR_ERRORS[code] || FOUR_ERRORS.connection_lost;
-    if (this.view.active) { KingPongFour.pause(this.view.state); this.view.menu.hidden = false; }
-    this.close(); this.status(message);
-    byId('fourResume').disabled = byId('fourRematch').disabled = true;
-    this.view.networkStatus.hidden = false;
-    // Keep the final paused frame visible; exiting opens a fresh setup without stale peers.
-    if (this.view.active) { this.view.result.textContent = localizeText(message); this.view.disconnectedMessage = message; }
-  }
-  close() { if (this.closed) return; this.closed = true; clearInterval(this.timer); this.transport.close(); }
-}
-
-function installFourNetworkUi(v) {
-  if (!v.networkBuilt) {
-    v.networkBuilt = true;
-    const panel = v.networkPanel;
-    const check = (id, text) => { const label = document.createElement('label'); label.className = 'four-check'; const box = document.createElement('input'); box.type = 'checkbox'; box.id = id; label.append(box, v.text('span', text)); panel.append(label); return box; };
-    v.approval = check('fourApproval', 'Host approval required');
-    v.fill = check('fourFillBots', 'Fill empty slots with bots after 3 minutes');
-    v.consent = check('fourBotConsent', 'I agree to play with bots');
-    v.showRoute = check('fourShowRoute', 'Show connection type');
-    v.networkCode = v.text('strong', '', 'four-code'); v.networkCode.id = 'fourRoomCode';
-    v.codeInput = document.createElement('input'); v.codeInput.id = 'fourCodeInput'; v.codeInput.maxLength = 6;
-    v.codeInput.setAttribute('aria-label', localizeText('Room Code')); v.codeInput.autocomplete = 'off'; v.codeInput.spellcheck = false;
-    v.networkStatus = v.text('p', 'Create or join a private four-player room.'); v.networkStatus.id = 'fourNetworkStatus'; v.networkStatus.setAttribute('aria-live', 'polite');
-    v.waitTime = v.text('p', '');
-    const open = host => {
-      if (v.session) v.session.close();
-      const code = v.codeInput.value.trim().toUpperCase();
-      if (!host && v.transport !== 'lan' && !/^[A-HJ-NP-Z2-9]{6}$/.test(code)) { setLocalizedText(v.networkStatus, FOUR_ERRORS.invalid_code); return; }
-      v.session = new FourNetworkSession(v, host, v.transport === 'lan'); v.side = host ? 0 : -1; v.session.open(code); v.session.refresh();
-      if (v.transport === 'lan') { v.lanExchange.hidden = false; v.lanOffer.hidden = !host; v.lanApply.textContent = localizeText(host ? 'Accept answer' : 'Create answer'); }
-    };
-    const actions = document.createElement('div'); actions.className = 'four-actions';
-    v.hostButton = v.button('fourHost', 'Create Room', () => open(true)); v.joinButton = v.button('fourJoin', 'Join Room', () => open(false));
-    v.disconnectButton = v.button('fourDisconnect', 'Disconnect', () => { v.session?.close(); v.session = null; installFourNetworkUi(v); });
-    v.waitButton = v.button('fourWait', 'Start waiting', () => v.session?.wait());
-    v.readyButton = v.button('fourReady', 'Ready', () => v.session?.readyUp());
-    v.consent.addEventListener('change', () => { if (v.session?.ready) { v.session.ready = false; v.session.transport.send({type: 'ready', ready: false, consent: false}); } });
-    actions.append(v.hostButton, v.joinButton, v.disconnectButton, v.waitButton, v.readyButton);
-    v.roster = document.createElement('div'); v.roster.id = 'fourRoster';
-    v.kicks = document.createElement('div'); v.kicks.className = 'four-actions'; v.menu.append(v.kicks);
-    v.lanExchange = document.createElement('div'); v.lanExchange.className = 'four-lan-exchange';
-    v.lanIn = document.createElement('textarea'); v.lanIn.id = 'fourLanInput'; v.lanIn.setAttribute('aria-label', localizeText('Paste LAN invitation or answer'));
-    v.lanOut = document.createElement('textarea'); v.lanOut.id = 'fourLanOutput'; v.lanOut.readOnly = true; v.lanOut.setAttribute('aria-label', localizeText('Copy LAN invitation or answer'));
-    const operation = async fn => { v.lanOffer.disabled = v.lanApply.disabled = true;
-      try { const result = await fn(); if (result) v.lanOut.value = result; setLocalizedText(v.networkStatus, 'Exchange this text with the other device.'); }
-      catch (e) { setLocalizedText(v.networkStatus, FOUR_ERRORS[e.message] || FOUR_ERRORS.negotiation_failed); }
-      finally { v.lanOffer.disabled = v.lanApply.disabled = false; } };
-    v.lanOffer = v.button('fourLanOffer', 'Create invitation', () => operation(() => v.session.transport.offer()));
-    v.lanApply = v.button('fourLanApply', 'Create answer', () => operation(() => v.session.host ? v.session.transport.accept(v.lanIn.value) : v.session.transport.answer(v.lanIn.value)));
-    v.lanExchange.append(v.text('p', 'LAN: create one invitation per guest. Guest returns an answer; host accepts it. Invitations expire after 5 minutes.'), v.lanOffer, v.lanIn, v.lanApply, v.lanOut);
-    panel.append(v.networkCode, v.codeInput, actions, v.networkStatus, v.waitTime, v.roster, v.lanExchange);
-    v.practiceButton = byId('fourPractice');
-    for (const input of [v.variant, v.lives, v.goal, v.difficulty, v.powerups, v.hiddenWall, v.fill]) input.addEventListener('change', () => v.session?.configure());
-  }
-  v.hostButton.hidden = v.joinButton.hidden = false;
-  v.disconnectButton.hidden = v.waitButton.hidden = v.readyButton.hidden = v.consent.parentElement.hidden = v.lanExchange.hidden = true;
-  v.codeInput.hidden = v.transport === 'lan'; v.codeInput.value = ''; v.networkCode.textContent = ''; v.roster.replaceChildren(); v.kicks.replaceChildren(); v.waitTime.textContent = '';
-  v.approval.parentElement.hidden = v.transport === 'lan'; v.approval.disabled = false;
-  for (const input of [v.variant, v.lives, v.goal, v.difficulty, v.powerups, v.fill, v.paddle, v.practiceButton]) input.disabled = false;
-  byId('fourResume').disabled = byId('fourRematch').disabled = false;
-  v.disconnectedMessage = null; v.consent.checked = false; v.lanIn.value = v.lanOut.value = '';
-  setLocalizedText(v.networkStatus, v.transport === 'lan' ? 'LAN connections stay on your network. No signaling server is used.' : 'Create or join a private four-player room.');
-}
-
 let onlineManualLanSelected = false;
+async function gatherClassicLanDescription(room) {
+  const peer = room.peer;
+  if (!peer) throw Error('connection_lost');
+  if (peer.iceGatheringState !== 'complete') await new Promise(resolve => {
+    const finish = () => { clearTimeout(timer); peer.removeEventListener('icegatheringstatechange', change); resolve(); };
+    const change = () => { if (peer.iceGatheringState === 'complete') finish(); };
+    const timer = setTimeout(finish, 4000); peer.addEventListener('icegatheringstatechange', change);
+  });
+  clearTimeout(room.directTimer); clearTimeout(room.totalTimer); room.totalTimer = null;
+  if (room.role === 'guest') room.totalTimer = setTimeout(() => room.fail('timeout'), 300000);
+  if (room.closed || !peer.localDescription) throw Error('connection_lost');
+  return peer.localDescription.toJSON();
+}
 class KingPongManualRoom extends KingPongRoom {
   async open(role, invitation = '') {
     this.role = role;
@@ -14560,14 +13513,14 @@ class KingPongManualRoom extends KingPongRoom {
         this.hooks.welcome(this.code);
         await this.receive({type: 'start', attempt: 0, iceServers: []});
         this.manualAt = Date.now();
-        const description = await KingPongLanParty.prototype.gather.call(this, this);
+        const description = await gatherClassicLanDescription(this);
         byId('classicLanOutput').value = btoa(JSON.stringify({protocol: 'kp-lan-two-1', room: this.code, nonce: this.manualNonce, description}));
       } else {
         const m = this.decode(invitation, 'offer'); this.code = m.room; this.manualNonce = m.nonce;
         this.hooks.welcome(this.code);
         await this.receive({type: 'start', attempt: 0, iceServers: []});
         await this.receive({type: 'description', attempt: 0, description: m.description});
-        const description = await KingPongLanParty.prototype.gather.call(this, this);
+        const description = await gatherClassicLanDescription(this);
         byId('classicLanOutput').value = btoa(JSON.stringify({...m, description}));
       }
       this.hooks.status('Exchange this text with the other device.');
@@ -14596,7 +13549,7 @@ function syncClassicApproval(lobby) {
   root.replaceChildren();
   if (lanRole !== 'host' || !onlineSession?.managed) return;
   for (const pending of lobby.pending || []) {
-    const row = document.createElement('div'); row.className = 'four-slot'; setLocalizedText(row, 'Join request');
+    const row = document.createElement('div'); row.className = 'match-row'; setLocalizedText(row, 'Join request');
     row.append(royalButton('', 'Accept', () => onlineSession?.send({type: 'approve', request: pending.request})),
       royalButton('', 'Reject', () => onlineSession?.send({type: 'reject', request: pending.request}))); root.append(row);
   }
@@ -14604,7 +13557,7 @@ function syncClassicApproval(lobby) {
 }
 function installMultiplayerSafety() {
   const privateRooms = byId('onlinePrivateRooms');
-  const approvalLabel = document.createElement('label'); approvalLabel.className = 'four-check';
+  const approvalLabel = document.createElement('label'); approvalLabel.className = 'lan-check';
   const approval = document.createElement('input'); approval.type = 'checkbox'; approval.id = 'onlineRequireApproval';
   const text = document.createElement('span'); setLocalizedText(text, 'Host approval required'); approvalLabel.append(approval, text);
   const members = document.createElement('div'); members.id = 'classicRoomMembers';
@@ -14629,10 +13582,10 @@ function installMultiplayerSafety() {
     receive(raw);
   };
   onlineRoomInput().maxLength = 6;
-  const routeLabel = document.createElement('label'); routeLabel.className = 'four-check';
+  const routeLabel = document.createElement('label'); routeLabel.className = 'lan-check';
   const routeBox = document.createElement('input'); routeBox.id = 'twoPlayerRoute'; routeBox.type = 'checkbox';
   const routeText = document.createElement('span'); setLocalizedText(routeText, 'Show connection type'); routeLabel.append(routeBox, routeText); byId('displaySettings').append(routeLabel);
-  const route = document.createElement('p'); route.id = 'twoPlayerRouteLabel'; route.className = 'four-route'; document.body.append(route);
+  const route = document.createElement('p'); route.id = 'twoPlayerRouteLabel'; route.className = 'lan-route'; document.body.append(route);
   let statsBusy = false;
   setInterval(async () => {
     kick.hidden = !isLanHostActive() || Boolean(onlineMatchAssignment);
@@ -14644,7 +13597,7 @@ function installMultiplayerSafety() {
     finally { statsBusy = false; }
   }, 2000);
   const classic = royalDialog('classicLanDialog', 'LAN Play');
-  const note = document.createElement('p'); setLocalizedText(note, 'LAN: create one invitation per guest. Guest returns an answer; host accepts it. Invitations expire after 5 minutes.');
+  const note = document.createElement('p'); setLocalizedText(note, 'LAN: create an invitation. Guest returns an answer; host accepts it. Invitations expire after 5 minutes.');
   const input = document.createElement('textarea'); input.id = 'classicLanInput'; input.setAttribute('aria-label', localizeText('Paste LAN invitation or answer'));
   const output = document.createElement('textarea'); output.id = 'classicLanOutput'; output.readOnly = true; output.setAttribute('aria-label', localizeText('Copy LAN invitation or answer'));
   classic.append(note, royalButton('classicLanHost', 'Create invitation', () => { onlineManualLanSelected = true; openOnlineRoom('host'); }),
@@ -14657,8 +13610,7 @@ function installMultiplayerSafety() {
     byId('lanPlayerCount').hidden = true;
     if (onlineNativeTransport) { onlineManualLanSelected = false; startLanTwoPlayerSetup(true); }
     else { onlineManualLanSelected = true; startOnlineSetup(true); byId('classicLanDialog').hidden = false; }
-  }), royalButton('lanFourPlayers', 'Up to Four Players', () => { byId('lanPlayerCount').hidden = true; fourView.open('lan'); }),
-    royalButton('lanCountBack', 'Back', () => { byId('lanPlayerCount').hidden = true; }));
+  }), royalButton('lanCountBack', 'Back', () => { byId('lanPlayerCount').hidden = true; }));
   const lanButton = onlineNativeTransport ? titleLanButton : byId('titleNativeLanButton');
   lanButton.addEventListener('click', e => { e.stopImmediatePropagation(); byId('lanPlayerCount').hidden = false; byId('lanTwoPlayers').focus(); }, true);
   document.querySelector('.primary-online').addEventListener('click', () => { onlineManualLanSelected = false; byId('classicLanDialog').hidden = true; }, true);
@@ -14713,7 +13665,6 @@ function resetFrameClock() {
 
 function loop(timestamp) {
   requestAnimationFrame(loop);
-  if (typeof fourView !== 'undefined' && fourView?.active) { fourView.frame(timestamp); return; }
   if (document.hidden) {
     resetFrameClock();
     return;

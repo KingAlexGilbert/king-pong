@@ -109,7 +109,6 @@ try {
     const p=await page('Browser',{viewport,hasTouch:true,isMobile:true});
     await tiles(p);await snap(p,'title-'+viewport.width+'x'+viewport.height);
     await p.locator('.primary-online').tap();
-    await p.locator('#onlineTwoPlayers').tap();
     assert.equal(await p.locator('#matchmakingPanel').isVisible(),true);
     assert.equal(await p.locator('#onlinePrivateRooms').isVisible(),true);
     await snap(p,'online-'+viewport.width+'x'+viewport.height);
@@ -133,7 +132,6 @@ try {
     assert.notEqual(await p.locator('.primary-online span').innerText(),'Challenge real players');
     assert.notEqual(await p.locator('.primary-campaign span').innerText(),'Single Player — Battle Computer Opponents');
     await p.locator('.primary-online').click();
-    await p.locator('#onlineTwoPlayers').click();
     assert.notEqual(await p.locator('#findMatchButton').innerText(),'Find Match');
     assert.equal(await p.locator('#matchArenaPreference').count(),0);
     assert.notEqual(await p.locator('.matchmaking-rules').innerText(),'First to 10');

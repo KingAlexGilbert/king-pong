@@ -244,12 +244,10 @@ try {
         showTitleScreen();
       });
       await p.locator('.primary-online').click();
-      await p.locator('#onlineTwoPlayers').click();
       assert.equal(await p.locator('#matchmakingPanel').isVisible(), true);
       assert.equal(await p.evaluate(() => onlineTransportSelected), true);
       await p.evaluate(() => showTitleScreen());
       await p.locator('#titleLanButton').click();
-      await p.locator('#lanTwoPlayers').click();
       await p.locator('#lanPanel').waitFor({
         state: 'visible'
       });
@@ -334,7 +332,6 @@ try {
         };
       });
       await peer.locator('#titleLanButton').click();
-      await peer.locator('#onlineTwoPlayers').click();
     }
     assert.equal(await roomHost.evaluate(() => lanRole), 'none');
     assert.equal(await roomHost.evaluate(() => onlineSession), null);

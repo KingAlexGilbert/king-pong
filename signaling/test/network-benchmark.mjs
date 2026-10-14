@@ -125,17 +125,13 @@ try {
       for(let tick=1;tick<=seconds*60;tick++) {
         now=tick*1000/60;
         const idle=['paused','idle-connected'].includes(scenario);
-        // Leave time to reach a speed-limited target after the one-second blackout.
-        const inputInterval = scenario==='burst-recovery' ? 90 : 45;
-        const target=inputExperiment?(Math.floor((tick-1)/inputInterval)%2?310:105):host.benchBallY();
-        if(inputExperiment&&(tick-1)%inputInterval===0)events.push({at:now,target,response:null,onset:null,startY:host.benchSummary().rightY,previousY:host.benchSummary().rightY,speed:host.eval('PADDLE_SPEED')});
+        const target=inputExperiment?(Math.floor((tick-1)/45)%2?310:105):host.benchBallY();
+        if(inputExperiment&&(tick-1)%45===0)events.push({at:now,target,response:null});
         flush();guest.benchStep(now,idle?{}:{target});flush();
         host.benchStep(now,{score:scenario==='score-serve' && tick%240===0,
           powerup:scenario==='powerups' && tick%120===0?['split','rush','guard'][Math.floor(tick/120)%3]:null});flush();
         if(inputExperiment){
           const hs=host.benchSummary(),gs=guest.benchSummary(),event=events.at(-1);
-          if(event.onset===null && (hs.rightY-event.previousY)*(event.target-event.previousY)>0) event.onset=now-event.at;
-          event.previousY=hs.rightY;
           if(event.response===null&&Math.abs(hs.rightY-event.target)<.02)event.response=now-event.at;
           if(hs.applied>processedSeq){
             if(inputSent.has(hs.applied))inputProcessing.push(now-inputSent.get(hs.applied));
@@ -154,10 +150,7 @@ try {
       const samples=events.filter(e=>e.response!==null).map(e=>e.response).sort((a,b)=>a-b);
       const timing=samples.length?{eventSamples:samples.length,unresolvedEvents:events.length-samples.length,
         meanInputResponseMs:samples.reduce((a,b)=>a+b,0)/samples.length,p95InputResponseMs:samples[Math.floor(samples.length*.95)],
-        maxInputResponseMs:samples.at(-1),
-        maxMovementOnsetMs:Math.max(...events.filter(e=>e.onset!==null).map(e=>e.onset)),
-        maxArrivalOverTravelMs:Math.max(...events.filter(e=>e.response!==null).map(e=>e.response-Math.ceil(Math.abs(e.startY-e.target)/e.speed)*1000/60)),
-        meanInputPacketProcessingMs:inputProcessing.reduce((a,b)=>a+b,0)/inputProcessing.length,
+        maxInputResponseMs:samples.at(-1),meanInputPacketProcessingMs:inputProcessing.reduce((a,b)=>a+b,0)/inputProcessing.length,
         configuredBaseRTT:impaired?80:0,configuredJitterEachWayMs:jitter?40:0,dropped,reordered}:null;
       // Recovery has a fresh self-contained authoritative snapshot, just as reconnect does.
       now+=300;flush();
@@ -171,10 +164,7 @@ try {
     if(!['paused','idle-connected'].includes(scenario)) assert.equal(result.hostState.paused,false,scenario+' must run');
     if(faults) {
       assert.equal(result.timing.unresolvedEvents,0,'every input event recovers');
-      // Networked touch is now speed limited. Measure the first movement separately
-      // from the physically necessary travel time to the requested target.
-      assert.ok(result.timing.maxMovementOnsetMs < (scenario==='burst-recovery'?1200:250), JSON.stringify(result.timing));
-      assert.ok(result.timing.maxArrivalOverTravelMs < (scenario==='burst-recovery'?1200:250), JSON.stringify(result.timing));
+      assert.ok(result.timing.maxInputResponseMs < (scenario==='burst-recovery'?1200:250));
       if(scenario==='jitter-loss') assert.ok(result.timing.dropped>0&&result.timing.reordered>0);
     }
     result.hostState.ball.forEach((n,i)=>assert.ok(Math.abs(n-result.guestState.ball[i])<=.00501,'full state recovery'));
