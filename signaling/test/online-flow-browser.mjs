@@ -118,21 +118,38 @@ try {
     for (const viewport of [{width: 1366, height: 768}, {width: 1920, height: 1080},
       {width: 390, height: 844}, {width: 844, height: 390}]) {
       const p = await page(platform, viewport);
+      const locked = await p.evaluate(() => [...document.querySelectorAll('.title-actions > button:not([hidden])')]
+        .map(button => button.getBoundingClientRect().y));
+      assert.equal(locked.length, 3, 'locked boss leaves three secondary choices');
+      assert.ok(locked.every(y => Math.abs(y - locked[0]) < 2), 'locked choices share one row');
       await p.evaluate(() => {
         saveData.completedLevels.fill(true); saveData.highestUnlockedLevel = 17; saveData.bossUnlocked = true;
         updateModeControls(); syncRoyalUi(true);
       });
       const title = await p.evaluate(() => {
         const box = sel => { const r = document.querySelector(sel).getBoundingClientRect(); return {x:r.x,y:r.y,w:r.width,h:r.height}; };
-        return {primary: box('.title-primary-modes'), secondary: box('.title-actions'), boss: box('#titleBossButton'),
+        const secondaryTiles = [...document.querySelectorAll('.title-actions > button:not([hidden])')].map(button => {
+          const {x,y,width,height} = button.getBoundingClientRect();
+          return {id:button.id,x,y,w:width,h:height};
+        });
+        return {primary: box('.title-primary-modes'), secondary: box('.title-actions'), secondaryTiles,
           tiles: [...document.querySelectorAll('.title-primary-modes button')].map(b => ({
             shadow: getComputedStyle(b).boxShadow, border: getComputedStyle(b).borderColor})),
           overflow: document.documentElement.scrollWidth > innerWidth};
       });
       assert.ok(Math.abs(title.primary.x + title.primary.w/2 - title.secondary.x - title.secondary.w/2) < 2);
       assert.equal(title.overflow, false);
-      assert.ok(Math.abs(title.primary.x + title.primary.w/2 - title.boss.x - title.boss.w/2) < 2);
-      assert.ok(title.boss.w <= 300);
+      const [custom, local, lan, boss] = title.secondaryTiles;
+      assert.equal(title.secondaryTiles.length, 4, 'unlocked boss adds one secondary choice');
+      assert.deepEqual([custom.id, local.id, boss.id], ['titleCustomButton', 'titleLocalButton', 'titleBossButton']);
+      assert.ok(lan.id === 'titleLanButton' || lan.id === 'titleNativeLanButton');
+      assert.ok(Math.abs(custom.y - local.y) < 2 && Math.abs(lan.y - boss.y) < 2,
+        'unlocked choices form two even rows');
+      assert.ok(Math.abs(custom.x - lan.x) < 2 && Math.abs(local.x - boss.x) < 2,
+        'unlocked choices form two aligned columns');
+      assert.ok(Math.abs(custom.w - local.w) < 2 && Math.abs(lan.w - boss.w) < 2,
+        'unlocked choices have equal widths in each row');
+      assert.ok(lan.y >= custom.y + custom.h - 2, 'the lower row does not overlap the upper row');
       assert.notEqual(title.tiles[0].border, title.tiles[1].border);
       for (const tile of title.tiles) assert.ok(!tile.shadow.includes('4px 4px'), 'no offset double edge');
       await paint(p, `${platform}-title-${viewport.width}`);

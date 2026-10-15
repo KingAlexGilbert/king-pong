@@ -274,18 +274,22 @@ try {
   await waitFor(third, "lanStatus.textContent.includes('already full')");
   await third.close();
   await guest.close();
-  await waitFor(host, "lanStatus.textContent.includes('Player 2 disconnected')");
+  // Private rooms deliberately retain the host's signaling socket and room
+  // code after a guest leaves so another guest can join the same room.
+  await waitFor(host, "lanStatus.textContent.includes('Waiting for Player 2')");
   assert.equal(await host.evaluate(() => onlineGameBlocked && paused && !lanPeer && !lanChannel), true);
-  console.log('PASS: room full and guest disconnect leave a clean, stopped match');
+  assert.equal(await host.locator('#onlineRoomCode').textContent(), code);
+  console.log('PASS: room full and guest disconnect leave a paused host room with the same code');
 
-  await host.locator('#lanHostButton').click();
-  await waitFor(host, 'lanRoomCode.length === 6');
-  const secondCode = await host.locator('#onlineRoomCode').textContent();
   const secondGuest = await page();
   await secondGuest.locator('#lanJoinButton').click();
-  await secondGuest.locator('#lanRoomCodeInput').fill(secondCode);
+  await secondGuest.locator('#lanRoomCodeInput').fill(code);
   await secondGuest.locator('#onlineJoinSubmit').click();
-  await Promise.all([waitFor(host, 'lanConnected'), waitFor(secondGuest, 'lanConnected')]);
+  await host.locator('#saveConfirmAccept').click();
+  await Promise.all([waitFor(host, 'lanConnected'), waitFor(secondGuest, 'lanConnected && onlineHasState')]);
+  await Promise.all([waitFor(host, "onlineMatchFlow?.phase === 'ready'"),
+    waitFor(secondGuest, "onlineMatchFlow?.phase === 'ready'")]);
+  console.log('PASS: replacement guest joins the retained private room and reaches Ready');
   await host.keyboard.press('Escape');
   await waitFor(secondGuest, "lanStatus.textContent.includes('Host disconnected')");
   assert.equal(await secondGuest.evaluate(() => onlineGameBlocked && paused), true);

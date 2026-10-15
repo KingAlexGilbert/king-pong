@@ -1152,7 +1152,7 @@ function initRoyalMenus() {
   setLocalizedText(local, 'Local Play');
   local.addEventListener('click', showLocalPlay);
   local.setAttribute('aria-haspopup', 'dialog');
-  actions.append(local, byId('titleBossButton'));
+  actions.append(local);
   const localChoices = document.createElement('div');
   localChoices.id = 'localPlayChoices';
   localChoices.hidden = true;
@@ -1170,6 +1170,9 @@ function initRoyalMenus() {
     const lan = royalButton('titleNativeLanButton', 'LAN Play', () => openOfflineLanSetup(true));
     actions.append(lan);
   }
+  // Keep the optional boss tile last in both DOM/focus order and the grid:
+  // Custom / Local above LAN / Boss when the boss has been unlocked.
+  actions.append(byId('titleBossButton'));
   for (const [button, heading, subtitle, style] of [
       [online, 'PLAY ONLINE', 'Challenge real players', 'primary-online'],
       [titleCampaignButton, 'CAMPAIGN', 'Single Player — Battle Computer Opponents', 'primary-campaign']]) {
