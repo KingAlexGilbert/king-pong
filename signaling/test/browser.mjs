@@ -137,7 +137,14 @@ async function waitFor(page, expression) {
       status: lanStatus.textContent,
       role: lanRole,
       connected: lanConnected,
-      blocked: onlineGameBlocked
+      blocked: onlineGameBlocked,
+      paused,
+      rightY: right.y,
+      receivedInputSeq: lanLastInputSeq,
+      appliedInputSeq: onlineAppliedInputSeq,
+      remoteInput: lanRemoteInput,
+      compactWire: onlineWireReady,
+      inputIntent: onlineIntentReady
     })), errors);
     throw error;
   }
@@ -200,8 +207,11 @@ try {
     keys.add('ArrowDown');
   });
   await waitFor(guest, `right.y > ${before + 10}`);
-  await guest.evaluate(() => keys.clear());
+  // Keep the key held until its movement reaches the authoritative host.
+  // Guest prediction can cross 10px before the deliberately delayed/lossy
+  // packets arrive, making an immediate release an unrealistically short tap.
   await waitFor(host, `right.y > ${before + 10}`);
+  await guest.evaluate(() => keys.clear());
   await guest.waitForTimeout(600);
   const hostY = await host.evaluate(() => right.y);
   const guestY = await guest.evaluate(() => right.y);
