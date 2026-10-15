@@ -534,15 +534,10 @@ try {
     await p.locator('#lanModeButton').click();
     // LAN is an independent offline flow now, not the online room-code screen.
     // Exit it through the visible Back control before checking online rooms.
-    if (platform === 'Browser') {
-      assert.equal(await p.locator('#classicLanDialog').isVisible(), true,
-        'LAN menu opens the offline invitation dialog');
-      await p.locator('#classicLanClose').click();
-    } else {
-      assert.equal(await p.locator('#matchSetup').isVisible(), true,
-        'native LAN menu opens LAN match setup');
-      await p.locator('#setupBackButton').click();
-    }
+    // This viewport loop always uses the Browser build (page('Browser', ...)).
+    assert.equal(await p.locator('#classicLanDialog').isVisible(), true,
+      'LAN menu opens the offline invitation dialog');
+    await p.locator('#classicLanClose').click();
     assert.equal(await p.evaluate(() => document.body.classList.contains('title-active')), true);
     await p.locator('.primary-online').click();
     assert.equal(await p.locator('#classicLanDialog').isVisible(), false,
