@@ -1521,3 +1521,28 @@ body.royal-panel-open .match-footer #controlHint {
 .lan-route { position: fixed; z-index: 16; right: .8rem; bottom: .5rem; font-size: .75rem; pointer-events: none; }
 .match-row { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
 #classicLanDialog textarea { width: 100%; min-height: 4.5rem; resize: vertical; }
+
+/* All mode entry screens use the Online Play back position and spacing. */
+.match-card > .mode-back {
+  align-self: flex-start;
+  margin: 0 0 12px;
+  position: static;
+  min-height: 44px;
+  padding: 8px 12px;
+}
+#matchSetup:has(> .match-card > .mode-back) .match-eyebrow { display: none; }
+#arenaKick { color: #ffd469; font-size: 12px; }
+#onlinePowerups { margin-top: 10px; }
+#onlineFlowConfiguration { color: #e2c681; font-size: 12px; line-height: 1.5; }
+@media (max-width: 540px) {
+  .match-bar { gap: 5px; }
+  .match-bar button { padding: 7px 8px; }
+  .match-bar:has(#arenaKick:not([hidden])) .match-identity { display: none; }
+}
+@media (max-height: 520px) and (min-width: 421px) {
+  /* Keep choices fully visible below the shared top Back row on short screens. */
+  #matchSetup .royal-selection-row button { display: grid; grid-template-columns: minmax(0, 1fr) 56px; gap: 2px 6px; padding: 8px; }
+  #matchSetup .royal-selection-row .setup-caption { grid-column: 1 / -1; }
+  #matchSetup .royal-selection-row canvas { grid-column: 2; grid-row: 2 / span 2; height: 32px; max-width: 56px; margin: 0; }
+  #matchSetup .royal-selection-row .setup-change { grid-column: 1; margin-top: 2px; text-align: left; }
+}

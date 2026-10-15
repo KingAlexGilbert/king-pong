@@ -57,7 +57,7 @@ async function setup(p, role, id = '00000000-0000-4000-8000-000000000001') {
     };
     window.testOut = [];
     startOnlineSetup(true);
-    matchRuleId = 'winTwo';
+    setMatchRule('winTwo'); // The real menu now persists the local preset.
     multiplayerPaddleChoices.left = paddleCatalog[role === 'host' ? 2 : 4].id;
     window.testPaddle = multiplayerPaddleChoices.left;
     openOnlineRoom(role, '', {role, token: id, match: {id, arena: 2, rules: 'classic', protocol: KING_PONG_MATCHMAKING.protocol}});

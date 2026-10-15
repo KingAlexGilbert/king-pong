@@ -154,6 +154,11 @@ function checkedSaveSlot(slot) {
     selections[key] = slot[key];
   }
   if (slot.royalArena !== undefined) selections.royalArena = number('royalArena', 0, TOTAL_LEVELS, true);
+  for (const key of Object.keys(PLAYER_PREFERENCE_DEFAULTS)) {
+    if (slot[key] === undefined) continue; // Older version-2 backups keep their defaults.
+    if (!validPlayerPreference(key, slot[key])) throw new Error('Invalid player preference');
+    selections[key] = slot[key];
+  }
   // Copy only known fields. Imported objects never become game state directly.
   return {
     ...selections,

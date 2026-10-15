@@ -190,7 +190,7 @@ function onlineSendLanState(force = false) {
     selection: selectionPayload(),
     royal: packRoyalState(),
     /* ROYAL POLISH */
-    rules: matchRulePayload(),
+    rules: matchRulePayload(false),
     /* END ROYAL POLISH */
     activeCampaign,
     levelIndex,

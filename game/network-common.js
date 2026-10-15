@@ -1,10 +1,13 @@
 // No addresses or credentials are retained by the optional route indicator.
+let kingPongVolatileToken = null;
 function kingPongClientToken() {
+  if (kingPongVolatileToken) return kingPongVolatileToken;
   try {
-    let token = sessionStorage.getItem('king-pong-room-token');
-    if (!/^[a-f0-9-]{36}$/.test(token || '')) { token = crypto.randomUUID(); sessionStorage.setItem('king-pong-room-token', token); }
-    return token;
-  } catch { return crypto.randomUUID(); }
+    const token = sessionStorage.getItem('king-pong-room-token');
+    kingPongVolatileToken = /^[a-f0-9-]{36}$/.test(token || '') ? token : crypto.randomUUID();
+    if (kingPongVolatileToken !== token) sessionStorage.setItem('king-pong-room-token', kingPongVolatileToken);
+    return kingPongVolatileToken;
+  } catch { return kingPongVolatileToken ||= crypto.randomUUID(); }
 }
 function kingPongRoute(stats) {
   const entries = [...stats.values()];

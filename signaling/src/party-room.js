@@ -50,6 +50,7 @@ export class PartyRoom {
       } else {
         if (!room || !this.at(0)) return error('not_found');
         if (room.capacity !== capacity) return error('wrong_mode');
+        if (room.blocked.length >= 128) return error('full');
         if (room.blocked.includes(token)) return error('blocked');
         if (room.started || this.approved().length >= room.capacity || this.sockets().length >= room.capacity + 4) return error('full');
         if (this.sockets().some(s => s.deserializeAttachment().token === token)) return error('full');
@@ -171,6 +172,7 @@ export class PartyRoom {
     try { socket.close(1000, 'Room membership ended'); } catch {}
     if (a.slot >= 0) {
       delete room.peers[a.slot];
+      room.started = false;
       for (const s of this.approved()) send(s, {type: 'departed', slot: a.slot, reason});
     }
     await this.save(room); this.roster(room);

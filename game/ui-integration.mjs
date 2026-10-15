@@ -73,7 +73,7 @@ const hooks = {
     if (royalOnlineMode() && !lanConnected) return;
     requestRoyalLandscape();
   `],
-  loadSaveSlot: ["if (typeof resetMultiplayerPaddleChoices === \"function\") resetMultiplayerPaddleChoices();"],
+  loadSaveSlot: ["restorePlayerPreferences();"],
   showTitleScreen: ["resetRoyalUiForTitle();", `
     if (typeof FIRST_LAUNCH_HINT_MESSAGE !== "undefined" && message === FIRST_LAUNCH_HINT_MESSAGE) setLocalizedText(
       titleMessage, "Choose a save slot, then choose a game mode.");

@@ -116,6 +116,9 @@ export function audioHarness(platform, initial = new Map()) {
     let customCpuIntel=50,customCpuMaxMove=4.4;
     const activeMusicOscillators=new Set(),musicVolumeSlider={},musicVolumeValue={},musicButton={setAttribute(){}};
     function playMusicStep(){steps++} function currentMusicIntervalMs(){return 100}
+    let matchRuleId='classic',matchPowerupsEnabled=true;
+    function resetMultiplayerPaddleChoices(){} function setPlayInfoVisible(){} function byId(){return null}
+    ${readFileSync(new URL('game/player-preferences.js', root), 'utf8')}
     ${readFileSync(new URL('game/royal-audio.js', root), 'utf8')}
     ${functions.map(name => functionSource(html, name)).join('\n')}
   `);

@@ -70,7 +70,7 @@ try {
     for (const nativeHost of [false,true]) {
       const a = await page(nativeHost ? native : 'docs/demo/');
       const b = await page(nativeHost ? 'docs/demo/' : native);
-      for (const p of [a,b]) await p.evaluate(()=>{matchRuleId='quick';});
+      for (const p of [a,b]) await p.evaluate(()=>{setMatchRule('quick');});
       for (const p of [a,b]) {
         await p.locator('#chooseArenaButton').click();
         await p.locator('[data-choice-id="2"]').click();

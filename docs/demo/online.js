@@ -75,12 +75,15 @@ class PackagedSignalingSocket {
 }
 
 // No addresses or credentials are retained by the optional route indicator.
+let kingPongVolatileToken = null;
 function kingPongClientToken() {
+  if (kingPongVolatileToken) return kingPongVolatileToken;
   try {
-    let token = sessionStorage.getItem('king-pong-room-token');
-    if (!/^[a-f0-9-]{36}$/.test(token || '')) { token = crypto.randomUUID(); sessionStorage.setItem('king-pong-room-token', token); }
-    return token;
-  } catch { return crypto.randomUUID(); }
+    const token = sessionStorage.getItem('king-pong-room-token');
+    kingPongVolatileToken = /^[a-f0-9-]{36}$/.test(token || '') ? token : crypto.randomUUID();
+    if (kingPongVolatileToken !== token) sessionStorage.setItem('king-pong-room-token', kingPongVolatileToken);
+    return kingPongVolatileToken;
+  } catch { return kingPongVolatileToken ||= crypto.randomUUID(); }
 }
 function kingPongRoute(stats) {
   const entries = [...stats.values()];
@@ -134,7 +137,7 @@ class KingPongRoom {
 
   open(role, code = '', assignment = null) {
     this.assignment = assignment;
-    this.managed = !assignment && (role === 'host' ? Boolean(this.requireApproval) : code.length === 6);
+    this.managed = !assignment && (role === 'host' || code.length === 6);
     this.role = role;
     let url;
     try {
@@ -143,7 +146,7 @@ class KingPongRoom {
           !(url.protocol === 'https:' || url.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(url.hostname))) throw new Error();
       url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
       url.pathname = assignment ? `/v1/match/${assignment.match.id}/${assignment.token}` :
-        this.managed ? (role === 'host' ? `/v1/party/create/2/1/${kingPongClientToken()}` : `/v1/party/join/2/${code}/${kingPongClientToken()}`) :
+        this.managed ? (role === 'host' ? `/v1/party/create/2/${this.requireApproval ? 1 : 0}/${kingPongClientToken()}` : `/v1/party/join/2/${code}/${kingPongClientToken()}`) :
         role === 'host' ? '/v1/create' : `/v1/join/${code}`;
       this.socket = kingPongSignalingSocket(url);
     } catch { this.fail('unavailable'); return; }
@@ -176,11 +179,24 @@ class KingPongRoom {
     }
   }
 
+  kickGuest() {
+    if (!this.managed || this.role !== 'host' || !this.connected || this.removingGuest || this.closed) return;
+    this.removingGuest = true;
+    this.send({type: 'kick', slot: 1});
+    // The guest may close RTC before the server's departed acknowledgement
+    // reaches the host. Keep the room socket alive for that acknowledgement.
+    this.removalTimer = setTimeout(() => this.fail('timeout'), 8000);
+  }
+
   async receive(message) {
     if (this.managed && message.type === 'lobby') { if (typeof syncClassicApproval === 'function') syncClassicApproval(message); return; }
     if (this.managed && message.type === 'approved') { this.hooks.status('Connecting...'); return; }
-    if (this.managed && message.type === 'departed') { this.fail(message.reason === 'kicked' ? 'guest_left' : message.reason); return; }
-    if (message.type === 'error') { this.fail(message.code); return; }
+    if (this.managed && message.type === 'departed' && this.role === 'host') {
+      this.dropPeer(); clearTimeout(this.totalTimer); this.totalTimer = null;
+      this.connected = false; this.attempt = -1; this.relayPending = false;
+      this.hooks.departed?.(); return;
+    }
+    if (message.type === 'error') { this.fail(this.managed && message.code === 'invalid_code' ? 'server_outdated' : message.code); return; }
     if (message.type === 'welcome') {
       if (message.role !== this.role || !(this.managed ? message.protocol === 'kp-party-1' && message.capacity === 2 && /^[A-HJ-NP-Z2-9]{6}$/.test(message.code) : /^[A-HJ-NP-Z2-9]{5}$/.test(message.code))) throw new Error();
       if (this.assignment && (message.match?.id !== this.assignment.match.id ||
@@ -211,7 +227,7 @@ class KingPongRoom {
         }
       };
       peer.onconnectionstatechange = () => {
-        if (this.peer !== peer || this.closed) return;
+        if (this.peer !== peer || this.closed || this.removingGuest) return;
         if (peer.connectionState === 'failed') {
           if (this.connected) this.fail(this.role === 'host' ? 'guest_left' : 'host_left');
           else this.relay();
@@ -275,7 +291,7 @@ class KingPongRoom {
     };
     channel.onopen = () => this.maybeConnected(peer);
     channel.onclose = () => {
-      if (this.closed || this.peer !== peer || this.relayPending) return;
+      if (this.closed || this.peer !== peer || this.relayPending || this.removingGuest) return;
       // Freeze immediately, especially if the ready countdown is about to end.
       this.hooks.interrupted?.();
       if (this.closed || this.peer !== peer) return;
@@ -285,7 +301,7 @@ class KingPongRoom {
         if (this.peer === peer) this.fail(this.role === 'host' ? 'guest_left' : 'host_left');
       }, 250);
     };
-    channel.onerror = () => { if (!this.closed && this.peer === peer && !this.relayPending) this.fail(this.connected ? (this.role === 'host' ? 'guest_left' : 'host_left') : 'negotiation_failed'); };
+    channel.onerror = () => { if (!this.closed && this.peer === peer && !this.relayPending && !this.removingGuest) this.fail(this.connected ? (this.role === 'host' ? 'guest_left' : 'host_left') : 'negotiation_failed'); };
   }
 
   maybeConnected(peer) {
@@ -310,6 +326,8 @@ class KingPongRoom {
   }
 
   dropPeer() {
+    clearTimeout(this.removalTimer);
+    this.removingGuest = false;
     clearTimeout(this.directTimer);
     clearTimeout(this.disconnectTimer);
     clearTimeout(this.peerLostTimer);
@@ -352,6 +370,7 @@ let onlineGameBlocked = false;
 let onlineHasState = false;
 const onlineInputs = new Map();
 const ONLINE_ERRORS = {
+  server_outdated: 'The room server is out of date. Please try again later.',
   incompatible: 'Both players must reload the latest game.',
   opponent_left: 'Opponent disconnected. Find another match.',
   invalid_code: 'Enter a valid five- or six-character room code.',
@@ -391,10 +410,13 @@ function setOnlineControls(busy, joining = false) {
 }
 
 function closeOnlineConnection(showMessage = true, keepQueue = false) {
+  if (saveConfirmation?.roomSession === onlineSession) finishSaveConfirmation(false);
   resetOnlineMatchFlow();
   resetOnlineWire();
   if (!keepQueue) stopMatchmaking();
   onlineMatchAssignment = null;
+  if (matchmakingPreviousRules === null) matchRuleId = playerPreference('matchRuleId');
+  matchPowerupsEnabled = playerPreference('royalPowerupsEnabled');
   if (matchmakingPreviousRules !== null) { matchRuleId = matchmakingPreviousRules; matchmakingPreviousRules = null; }
   stopRoyalPowerupSound();
   resetMatchConnectionState();
@@ -476,7 +498,11 @@ function openOnlineRoom(role, code = '', assignment = null) {
       byId('onlineRoomCode').textContent = code;
       byId('onlineCodeDisplay').hidden = Boolean(onlineMatchAssignment);
     },
-    peer: peer => { if (onlineSession === session) { lanPeer = peer; lanConnected = false; onlineGameBlocked = true; } },
+    peer: peer => { if (onlineSession === session) {
+      lanPeer = peer; lanConnected = false; onlineGameBlocked = true;
+      if (!assignment && !(session instanceof KingPongManualRoom)) beginOnlineMatchFlow();
+    } },
+    departed: () => privateGuestDeparted(session),
     channel: (channel, control) => {
       if (onlineSession !== session) return;
       if (control) onlineControlChannel = channel; else lanChannel = channel;
@@ -505,9 +531,9 @@ function openOnlineRoom(role, code = '', assignment = null) {
       setLanStatus('Connected!');
       updateModeControls();
       setMenusVisible(false);
-      if (assignment) onlineMatchTransportReady();
+      if (onlineMatchFlow) onlineMatchTransportReady();
       if (role === 'host') sendLanState(true);
-      else if (!assignment) { sendPaddleSelection(); sendLanInput(null, true); }
+      else if (!onlineMatchFlow) { sendPaddleSelection(); sendLanInput(null, true); }
     },
     error: code => {
       if (onlineSession !== session) return;
@@ -719,6 +745,7 @@ function matchmakingComplete() {
 function applyMatchmakingSettings() {
   if (!onlineMatchAssignment) return;
   matchRuleId = onlineMatchAssignment.rules;
+  matchPowerupsEnabled = true; // Preserve established matchmaking rules.
   matchRuleRevision = 0;
   remoteRuleRevision = -1;
   setLevelByAbsoluteIndex(onlineMatchAssignment.arena, true);
@@ -1120,7 +1147,7 @@ function onlineSendLanState(force = false) {
     selection: selectionPayload(),
     royal: packRoyalState(),
     /* ROYAL POLISH */
-    rules: matchRulePayload(),
+    rules: matchRulePayload(false),
     /* END ROYAL POLISH */
     activeCampaign,
     levelIndex,
@@ -1150,8 +1177,8 @@ function onlineSendLanState(force = false) {
   });
 }
 
-// Automatic matches use the existing reliable channel and host pause countdown.
-// Private rooms and native LAN retain their normal serve controls.
+// Online matches share the reliable ready/countdown flow. Private rooms also
+// acknowledge host configuration before either client can start; LAN keeps its serve controls.
 let onlineMatchFlow = null;
 
 function onlineMatchFlowVisible() {
@@ -1170,7 +1197,8 @@ function resetOnlineMatchFlow() {
 }
 
 function beginOnlineMatchFlow() {
-  onlineMatchFlow = {id: onlineMatchAssignment.id, phase: 'connecting', localReady: false,
+  onlineMatchFlow = {id: onlineMatchAssignment?.id || 'private:' + lanRoomCode,
+    privateRoom: !onlineMatchAssignment, configured: false, peerInitialized: false, phase: 'connecting', localReady: false,
     hostReady: false, guestReady: false, peerHello: false, sequence: 0, remoteSequence: -1,
     localPaddle: matchPaddles[lanRole === 'guest' ? 'right' : 'left'], lastHelloAt: -Infinity};
   onlineGameBlocked = paused = true;
@@ -1212,20 +1240,24 @@ function sendOnlineMatchHello() {
   if (lanRole === 'guest') lanSend({v: LAN_SIGNAL_VERSION, room: lanRoomCode, type: 'selection',
     seq: ++selectionSequence, paddle: flow.localPaddle});
   sendOnlineMatchSetup('hello');
+  if (flow.privateRoom && lanRole === 'host') sendPrivateMatchConfiguration();
+  if (flow.privateRoom && lanRole === 'guest' && flow.configured && onlineHasState) {
+    sendOnlineMatchSetup('initialized', {configuration: flow.configuration});
+  }
 }
 
 function confirmOnlineMatchReady() {
   const flow = onlineMatchFlow;
-  if (!flow || flow.phase !== 'ready' || !lanConnected || flow.localReady) return;
-  flow.localReady = true;
-  if (lanRole === 'host') { flow.hostReady = true; maybeStartOnlineMatchCountdown(); }
-  else sendOnlineMatchSetup('ready');
+  if (!flow || flow.phase !== 'ready' || !lanConnected || flow.localReady && !flow.privateRoom) return;
+  flow.localReady = !flow.localReady;
+  if (lanRole === 'host') { flow.hostReady = flow.localReady; maybeStartOnlineMatchCountdown(); }
+  else sendOnlineMatchSetup('ready', {ready: flow.localReady});
   syncRoyalUi(true);
 }
 
 function maybeStartOnlineMatchCountdown() {
   const flow = onlineMatchFlow;
-  if (flow.phase === 'ready' && flow.hostReady && flow.guestReady) {
+  if (flow.phase === 'ready' && flow.peerHello && (!flow.privateRoom || flow.peerInitialized) && flow.hostReady && flow.guestReady) {
     flow.phase = 'countdown';
     paused = true;
     resumeCountdownEndAt = performance.now() + RESUME_COUNTDOWN_MS;
@@ -1236,20 +1268,47 @@ function maybeStartOnlineMatchCountdown() {
   sendLanState(true);
 }
 
+function privateMatchConfiguration() {
+  return {selection: selectionPayload(), rules: matchRulePayload()};
+}
+
+function sendPrivateMatchConfiguration() {
+  if (!onlineMatchFlow?.privateRoom || lanRole !== 'host') return;
+  sendOnlineMatchSetup('config', privateMatchConfiguration());
+}
+
 function receiveOnlineMatchSetup(message) {
   const flow = onlineMatchFlow;
   if (!flow || !lanConnected || !onlineSession || message.protocol !== 1 || message.match !== flow.id ||
       message.v !== LAN_SIGNAL_VERSION || message.room !== lanRoomCode || !lanRoomCode ||
       message.gameplay !== 'royal' || message.matchRules !== 'presets') return;
-  if (message.kind === 'hello') {
+  if (flow.privateRoom && message.kind === 'config' && lanRole === 'guest') {
+    if (!['connected', 'ready'].includes(flow.phase) || !validSelectionState(message.selection) ||
+        !validMatchRuleState(message.rules) || typeof message.rules.powerups !== 'boolean') return;
+    applySelectionState(message.selection);
+    applyMatchRuleState(message.rules);
+    flow.configuration = JSON.stringify({selection: message.selection, rules: message.rules});
+    flow.configured = true;
+    if (onlineHasState) sendOnlineMatchSetup('initialized', {configuration: flow.configuration});
+  } else if (flow.privateRoom && message.kind === 'initialized' && lanRole === 'host') {
+    if (message.configuration !== JSON.stringify(privateMatchConfiguration())) return;
+    flow.peerInitialized = true;
+  } else if (message.kind === 'hello') {
     if (!flow.peerHello) {
       flow.peerHello = true;
       flow.connectedUntil = Math.max(flow.connectedUntil, performance.now() + 600);
       sendOnlineMatchHello();
     }
-    if (lanRole === 'host') sendOnlineMatchStatus();
-  } else if (lanRole === 'host' && message.kind === 'ready' && flow.phase === 'ready' && flow.peerHello) {
-    flow.guestReady = true;
+    if (lanRole === 'host') {
+      if (flow.privateRoom) sendPrivateMatchConfiguration();
+      sendOnlineMatchStatus();
+    }
+  } else if (lanRole === 'host' && message.kind === 'ready' && (flow.phase === 'ready' || flow.phase === 'countdown' && message.ready === false) && flow.peerHello) {
+    if (flow.privateRoom && !flow.peerInitialized || message.ready !== undefined && typeof message.ready !== 'boolean') return;
+    flow.guestReady = message.ready !== false;
+    if (!flow.guestReady && flow.phase === 'countdown') {
+      flow.phase = 'ready'; resumeCountdownEndAt = 0; lastResumeCountdownNumber = 0;
+    }
     maybeStartOnlineMatchCountdown();
   } else if (lanRole === 'guest' && message.kind === 'status') {
     if (!Number.isSafeInteger(message.seq) || message.seq <= flow.remoteSequence ||
@@ -1258,11 +1317,13 @@ function receiveOnlineMatchSetup(message) {
         !Number.isFinite(message.remainingMs) || message.remainingMs < 0 || message.remainingMs > RESUME_COUNTDOWN_MS) return;
     if (['countdown', 'go'].includes(message.phase) &&
         (!flow.localReady || !message.hostReady || !message.guestReady)) return;
+    if (flow.privateRoom && message.phase !== 'connected' && (!flow.configured || !onlineHasState)) return;
     flow.remoteSequence = message.seq;
     flow.hostReady = message.hostReady;
     flow.guestReady = message.guestReady;
     flow.peerHello = true;
     flow.phase = message.phase;
+    if (flow.phase === 'ready') resumeCountdownEndAt = 0;
     if (flow.phase === 'countdown') {
       paused = true;
       resumeCountdownEndAt = performance.now() + message.remainingMs;
@@ -1285,12 +1346,12 @@ function tickOnlineMatchFlow() {
     return;
   }
   if (flow.phase === 'failed' || flow.phase === 'connecting' || !lanConnected) return;
-  if (!flow.peerHello) {
+  if (!flow.peerHello || flow.privateRoom && (lanRole === 'host' ? !flow.peerInitialized : flow.phase === 'connected')) {
     if (now >= flow.handshakeDeadline) { onlineSession?.fail('incompatible'); return; }
     if (now - flow.lastHelloAt >= 500) sendOnlineMatchHello();
   }
   if (lanRole !== 'host') return;
-  if (flow.phase === 'connected' && flow.peerHello && now >= flow.connectedUntil) {
+  if (flow.phase === 'connected' && flow.peerHello && (!flow.privateRoom || flow.peerInitialized) && now >= flow.connectedUntil) {
     flow.phase = 'ready';
     sendOnlineMatchStatus();
     sendLanState(true);
@@ -1349,12 +1410,14 @@ function initOnlineMatchFlowUi() {
   title.setAttribute('aria-live', 'polite');
   const note = document.createElement('p');
   note.id = 'onlineFlowNote';
+  const configuration = document.createElement('p');
+  configuration.id = 'onlineFlowConfiguration';
   const actions = document.createElement('div');
   actions.className = 'online-flow-actions';
   actions.append(royalButton('onlineReadyButton', "I'm ready", confirmOnlineMatchReady, 'match-primary'),
     royalButton('onlineRetryButton', 'Retry', () => leaveOnlineMatchFlow(true)),
     royalButton('onlineFlowBack', 'Back', () => leaveOnlineMatchFlow()));
-  card.append(title, note, actions);
+  card.append(title, note, configuration, actions);
   overlay.append(card);
   document.body.append(overlay);
 }
@@ -1378,10 +1441,13 @@ function syncOnlineMatchFlowUi() {
   royalText(byId('onlineFlowNote'), countdown || go ? '' : flow.phase === 'failed' ? flow.error :
     flow.phase === 'ready' ? flow.localReady ? 'Waiting for your opponent to be ready.' :
       flow.hostReady || flow.guestReady ? 'Your opponent is ready. Confirm when you are ready.' :
-      'Both players must confirm before the countdown.' : 'Classic Match · First to 10');
+      'Both players must confirm before the countdown.' : flow.privateRoom ? '' : 'Classic Match · First to 10');
   byId('onlineReadyButton').hidden = flow.phase !== 'ready';
-  byId('onlineReadyButton').disabled = Boolean(flow.localReady);
-  royalText(byId('onlineReadyButton'), flow.localReady ? 'Ready!' : "I'm ready");
+  byId('onlineReadyButton').disabled = Boolean(flow.localReady && !flow.privateRoom);
+  royalText(byId('onlineFlowConfiguration'), flow.privateRoom && flow.phase !== 'failed' ?
+    localizeText(currentLevel().name) + ' · ' + localizeText(matchRule().label) + ' · ' +
+    localizeText(matchPowerupsEnabled ? 'Royal Powerups: On' : 'Royal Powerups: Off') : '');
+  royalText(byId('onlineReadyButton'), flow.localReady ? flow.privateRoom ? 'Ready — Undo' : 'Ready!' : "I'm ready");
   byId('onlineRetryButton').hidden = flow.phase !== 'failed';
   byId('onlineFlowBack').hidden = go;
   royalText(byId('onlineFlowBack'), flow.phase === 'failed' ? 'Back' : 'Cancel');

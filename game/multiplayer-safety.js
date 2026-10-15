@@ -53,15 +53,82 @@ class KingPongManualRoom extends KingPongRoom {
   relay() { this.fail('timeout'); }
 }
 function syncClassicApproval(lobby) {
-  const root = byId('classicRoomMembers'); if (!root) return;
-  root.replaceChildren();
-  if (lanRole !== 'host' || !onlineSession?.managed) return;
-  for (const pending of lobby.pending || []) {
-    const row = document.createElement('div'); row.className = 'match-row'; setLocalizedText(row, 'Join request');
-    row.append(royalButton('', 'Accept', () => onlineSession?.send({type: 'approve', request: pending.request})),
-      royalButton('', 'Reject', () => onlineSession?.send({type: 'reject', request: pending.request}))); root.append(row);
-  }
+  const session = onlineSession;
+  if (lanRole !== 'host' || !session?.managed) return;
+  session.pendingRequests = lobby.pending || [];
+  const pending = session.pendingRequests[0];
+  if (saveConfirmation?.roomSession === session && saveConfirmation.request &&
+      !session.pendingRequests.some(p => p.request === saveConfirmation.request)) finishSaveConfirmation(false);
+  if (!pending || saveConfirmation) return;
+  showSaveConfirmation('Join request', 'A player wants to join your private room.', 'Accept', accepted => {
+    if (onlineSession !== session || !session.pendingRequests.some(p => p.request === pending.request)) return;
+    session.send({type: accepted ? 'approve' : 'reject', request: pending.request});
+  });
+  saveConfirmation.roomSession = session;
+  saveConfirmation.request = pending.request;
+  setLocalizedText(saveConfirmCancel, 'Reject');
+}
 
+function canKickPrivatePlayer() {
+  return isLanHostActive() && Boolean(onlineSession?.managed) && !onlineMatchAssignment;
+}
+
+function confirmKickPrivatePlayer() {
+  if (!canKickPrivatePlayer()) return;
+  const session = onlineSession;
+  // Opening moderation cancels an unsafe start, just like withdrawing ready.
+  if (onlineMatchFlowVisible() && onlineMatchFlow.phase !== 'go') {
+    if (onlineMatchFlow.phase === 'countdown') onlineMatchFlow.phase = 'ready';
+    onlineMatchFlow.localReady = onlineMatchFlow.hostReady = false;
+    sendOnlineMatchStatus();
+  }
+  paused = true;
+  resumeCountdownEndAt = 0;
+  clearHeldInput();
+  sendLanState(true);
+  showSaveConfirmation('Kick Player', 'Remove this player from your private room?', 'Kick', confirmed => {
+    if (confirmed && onlineSession === session && canKickPrivatePlayer()) session.kickGuest();
+  });
+  if (saveConfirmation) saveConfirmation.roomSession = session;
+}
+
+function syncPrivateRoomControls() {
+  for (const id of ['classicKick', 'arenaKick']) {
+    const button = byId(id);
+    if (button) button.hidden = !canKickPrivatePlayer();
+  }
+  const approval = byId('onlineRequireApproval');
+  if (approval) approval.disabled = Boolean(onlineSession);
+  const powerups = byId('onlinePowerups');
+  if (powerups) {
+    powerups.disabled = !canChooseMatchRules();
+    powerups.setAttribute('aria-pressed', String(matchPowerupsEnabled));
+    royalText(powerups, matchPowerupsEnabled ? 'Royal Powerups: On' : 'Royal Powerups: Off');
+  }
+}
+
+// Removing a guest releases only that peer. The existing host socket/code and
+// blocked-session list remain alive until the host explicitly closes the room.
+function privateGuestDeparted(session) {
+  if (onlineSession !== session) return;
+  if (saveConfirmation?.roomSession === session) finishSaveConfirmation(false);
+  resetOnlineMatchFlow();
+  resetOnlineWire();
+  lanConnected = false;
+  lanPeer = lanChannel = onlineControlChannel = null;
+  onlineHasState = false;
+  onlineInputs.clear();
+  resetMatchConnectionState();
+  lanLastInputSeq = lanLastStateSeq = -1;
+  lanRemoteInput = {axis: 0, targetY: null, lastAt: 0};
+  startTwoPlayerMode(true, false);
+  onlineGameBlocked = paused = true;
+  document.body.classList.remove('lan-connected');
+  setLanPanelOpen(true);
+  setMenusVisible(true);
+  setOnlineControls(true);
+  setLanStatus('Waiting for Player 2...');
+  syncRoyalUi(true);
 }
 // Only the browser uses the manual, offline offer/answer screen. Installed
 // apps continue through their existing native LAN setup, unchanged.
@@ -81,18 +148,18 @@ function installMultiplayerSafety() {
   const privateRooms = byId('onlinePrivateRooms');
   const approvalLabel = document.createElement('label'); approvalLabel.className = 'lan-check';
   const approval = document.createElement('input'); approval.type = 'checkbox'; approval.id = 'onlineRequireApproval';
+  approval.checked = playerPreference('hostApprovalRequired');
+  approval.addEventListener('change', () => savePlayerPreference('hostApprovalRequired', approval.checked));
   const text = document.createElement('span'); setLocalizedText(text, 'Host approval required'); approvalLabel.append(approval, text);
   const members = document.createElement('div'); members.id = 'classicRoomMembers';
   privateRooms.append(approvalLabel, members);
-  const kick = royalButton('classicKick', 'Kick', () => {
-    if (!isLanHostActive() || onlineMatchAssignment) return;
-    if (onlineSession?.managed) { onlineSession.send({type: 'kick', slot: 1}); return; }
-    const channel = onlineControlChannel || lanChannel;
-    try { channel?.send(JSON.stringify({type: 'room-removed', room: lanRoomCode})); } catch {}
-    setTimeout(() => { closeLanConnection(false); paused = true; setMenusVisible(true); setLanStatus('A player disconnected. Return to the lobby for a new match.'); }, 100);
-  });
-  kick.hidden = true; byId('matchMenu').querySelector('.match-ui-card')?.append(kick);
-  if (!kick.isConnected) byId('matchMenu').firstElementChild.append(kick);
+  const powerups = royalButton('onlinePowerups', 'Royal Powerups: On', () => setMatchPowerups(!matchPowerupsEnabled));
+  privateRooms.append(powerups);
+  const kick = royalButton('classicKick', 'Kick Player', confirmKickPrivatePlayer);
+  kick.hidden = true; byId('matchMenu').firstElementChild.append(kick);
+  const arenaKick = royalButton('arenaKick', 'Kick Player', confirmKickPrivatePlayer);
+  arenaKick.hidden = true;
+  byId('matchBar').prepend(arenaKick);
   const receive = handleLanMessage;
   window.handleLanMessage = raw => {
     if (typeof raw === 'string' && raw.length < 8192 && isLanGuestActive()) {
@@ -106,11 +173,13 @@ function installMultiplayerSafety() {
   onlineRoomInput().maxLength = 6;
   const routeLabel = document.createElement('label'); routeLabel.className = 'lan-check';
   const routeBox = document.createElement('input'); routeBox.id = 'twoPlayerRoute'; routeBox.type = 'checkbox';
+  routeBox.checked = playerPreference('showConnectionType');
+  routeBox.addEventListener('change', () => savePlayerPreference('showConnectionType', routeBox.checked));
   const routeText = document.createElement('span'); setLocalizedText(routeText, 'Show connection type'); routeLabel.append(routeBox, routeText); byId('displaySettings').append(routeLabel);
   const route = document.createElement('p'); route.id = 'twoPlayerRouteLabel'; route.className = 'lan-route'; document.body.append(route);
   let statsBusy = false;
   setInterval(async () => {
-    kick.hidden = !isLanHostActive() || Boolean(onlineMatchAssignment);
+    syncPrivateRoomControls();
     if (!onlineSession?.managed) members.replaceChildren();
     approval.disabled = Boolean(onlineSession);
     if (!routeBox.checked || !lanPeer || !lanConnected || document.hidden) { route.textContent = ''; return; }
@@ -126,6 +195,7 @@ function installMultiplayerSafety() {
     input, royalButton('classicLanJoin', 'Create answer', () => { onlineManualLanSelected = true; openOnlineRoom('guest', input.value); }),
     royalButton('classicLanAccept', 'Accept answer', () => onlineSession instanceof KingPongManualRoom && onlineSession.accept(input.value)), output,
     royalButton('classicLanClose', 'Back', () => showTitleScreen()));
+  const lanBack = byId('classicLanClose'); lanBack.classList.add('mode-back'); classic.prepend(lanBack);
   // LAN opens directly. A browser LAN tile opens its offline
   // invitation/answer screen directly; native LAN already opens its setup.
   if (!onlineNativeTransport) lanModeButton.addEventListener('click', event => {

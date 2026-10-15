@@ -91,7 +91,7 @@ if (forceRelay) {
 }
 const browser = await chromium.launch({
   headless: true,
-  args: ['--no-sandbox', '--disable-background-timer-throttling', '--disable-renderer-backgrounding']
+  args: ['--allow-loopback-in-peer-connection', '--no-sandbox', '--disable-features=WebRtcHideLocalIpsWithMdns', '--disable-background-timer-throttling', '--disable-renderer-backgrounding']
 });
 const errors = [];
 async function page(locale = 'en-US') {
@@ -152,9 +152,9 @@ async function waitFor(page, expression) {
 try {
   const host = await page();
   await host.locator('#lanHostButton').click();
-  await waitFor(host, "lanRoomCode.length === 5");
+  await waitFor(host, "lanRoomCode.length === 6");
   const code = await host.locator('#onlineRoomCode').textContent();
-  assert.match(code, /^[A-HJ-NP-Z2-9]{5}$/);
+  assert.match(code, /^[A-HJ-NP-Z2-9]{6}$/);
   assert.equal(await host.locator('#lanStatus').textContent(), 'Waiting for Player 2...');
   await host.screenshot({
     path: '/tmp/king-pong-host-room.png'
@@ -166,7 +166,12 @@ try {
   assert.match(await guest.locator('#lanStatus').textContent(), /valid five- or six-character room code/);
   await guest.locator('#lanRoomCodeInput').fill(code.toLowerCase());
   await guest.locator('#onlineJoinSubmit').click();
+  await host.locator('#saveConfirmAccept').click();
   await Promise.all([waitFor(host, 'lanConnected'), waitFor(guest, 'lanConnected && onlineHasState')]);
+  await Promise.all([waitFor(host, "onlineMatchFlow?.phase === 'ready'"), waitFor(guest, "onlineMatchFlow?.phase === 'ready'")]);
+  await host.locator('#onlineReadyButton').click();
+  await guest.locator('#onlineReadyButton').click();
+  await Promise.all([waitFor(host, "onlineMatchFlow?.phase === 'playing'"), waitFor(guest, "onlineMatchFlow?.phase === 'playing'")]);
   assert.equal(await host.locator('#lanStatus').textContent(), 'Connected!');
   assert.equal(await guest.evaluate(() => onlineControlChannel.ordered), true);
   assert.equal(await host.evaluate(() => lanChannel.ordered), false);
@@ -181,7 +186,7 @@ try {
     assert.equal(type, 'relay');
     console.log('PASS: failed direct connection automatically falls back to a real TURN relay candidate');
   }
-  console.log('PASS: UI Create Room → five-character code → Join Room → two real WebRTC peers');
+  console.log('PASS: UI Create Room → six-character code → Join Room → two real WebRTC peers');
 
   // Delay outgoing gameplay traffic, with periodic stale state delivery and loss.
   for (const p of [host, guest]) await p.evaluate(() => {
@@ -274,7 +279,7 @@ try {
   console.log('PASS: room full and guest disconnect leave a clean, stopped match');
 
   await host.locator('#lanHostButton').click();
-  await waitFor(host, 'lanRoomCode.length === 5');
+  await waitFor(host, 'lanRoomCode.length === 6');
   const secondCode = await host.locator('#onlineRoomCode').textContent();
   const secondGuest = await page();
   await secondGuest.locator('#lanJoinButton').click();

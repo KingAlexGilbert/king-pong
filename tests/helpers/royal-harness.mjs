@@ -12,7 +12,7 @@ import {
 
 export function harness(platform = 'Browser') {
   const html = source(platform);
-  const shared = ['royal-gameplay.js', 'royal-rules.js'].map(file => readFileSync(new URL('game/' + file, root),
+  const shared = ['royal-gameplay.js', 'royal-rules.js', 'arena-perspective.js'].map(file => readFileSync(new URL('game/' + file, root),
     'utf8')).join('\n');
   const core = ['clamp', 'lerp', 'makePaddleProfile', 'currentCampaign', 'currentLevel', 'absoluteLevelNumber',
     'selectedAbsoluteLevelIndex',

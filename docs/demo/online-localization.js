@@ -621,3 +621,90 @@ Object.entries({
     window.KING_PONG_ONLINE_TRANSLATIONS[language][key] = values[i];
   });
 })();
+
+// Shared private-room controls use the same nine language tables.
+(() => {
+  const languages = ["es", "fr", "de", "pt", "it", "nl", "ja", "ko", "zh"];
+  const phrases = {
+  "Kick Player": [
+    "Expulsar jugador",
+    "Exclure le joueur",
+    "Spieler entfernen",
+    "Expulsar jogador",
+    "Espelli giocatore",
+    "Speler verwijderen",
+    "プレイヤーを退出させる",
+    "플레이어 내보내기",
+    "移出玩家"
+  ],
+  "Remove this player from your private room?": [
+    "¿Expulsar a este jugador de tu sala privada?",
+    "Exclure ce joueur de votre salon privé ?",
+    "Diesen Spieler aus deinem privaten Raum entfernen?",
+    "Remover este jogador da sua sala privada?",
+    "Rimuovere questo giocatore dalla stanza privata?",
+    "Deze speler uit je privéruimte verwijderen?",
+    "このプレイヤーをプライベートルームから退出させますか？",
+    "이 플레이어를 비공개 방에서 내보낼까요?",
+    "要将此玩家移出私人房间吗？"
+  ],
+  "A player wants to join your private room.": [
+    "Un jugador quiere entrar en tu sala privada.",
+    "Un joueur souhaite rejoindre votre salon privé.",
+    "Ein Spieler möchte deinem privaten Raum beitreten.",
+    "Um jogador quer entrar na sua sala privada.",
+    "Un giocatore vuole entrare nella tua stanza privata.",
+    "Een speler wil je privéruimte betreden.",
+    "プレイヤーがプライベートルームへの参加を希望しています。",
+    "플레이어가 비공개 방 참가를 요청했습니다.",
+    "一位玩家想加入你的私人房间。"
+  ],
+  "Royal Powerups: On": [
+    "Poderes reales: Sí",
+    "Bonus royaux : Activés",
+    "Königliche Powerups: An",
+    "Poderes reais: Ligados",
+    "Potenziamenti reali: Attivi",
+    "Koninklijke power-ups: Aan",
+    "ロイヤルパワーアップ：オン",
+    "로열 파워업: 켜짐",
+    "皇家强化：开"
+  ],
+  "Royal Powerups: Off": [
+    "Poderes reales: No",
+    "Bonus royaux : Désactivés",
+    "Königliche Powerups: Aus",
+    "Poderes reais: Desligados",
+    "Potenziamenti reali: Disattivati",
+    "Koninklijke power-ups: Uit",
+    "ロイヤルパワーアップ：オフ",
+    "로열 파워업: 꺼짐",
+    "皇家强化：关"
+  ],
+  "Ready — Undo": [
+    "Listo — Cancelar",
+    "Prêt — Annuler",
+    "Bereit — Zurücknehmen",
+    "Pronto — Cancelar",
+    "Pronto — Annulla",
+    "Klaar — Intrekken",
+    "準備完了 — 取り消す",
+    "준비 완료 — 취소",
+    "已准备 — 撤销"
+  ],
+  "The room server is out of date. Please try again later.": [
+    "El servidor de salas está desactualizado. Inténtalo más tarde.",
+    "Le serveur des salons doit être mis à jour. Réessayez plus tard.",
+    "Der Raumserver ist veraltet. Bitte versuche es später erneut.",
+    "O servidor de salas está desatualizado. Tente mais tarde.",
+    "Il server delle stanze deve essere aggiornato. Riprova più tardi.",
+    "De ruimteserver is verouderd. Probeer het later opnieuw.",
+    "ルームサーバーの更新が必要です。後でもう一度お試しください。",
+    "방 서버 업데이트가 필요합니다. 나중에 다시 시도하세요.",
+    "房间服务器需要更新，请稍后重试。"
+  ]
+};
+  for (const [key, values] of Object.entries(phrases)) languages.forEach((language, i) => {
+    window.KING_PONG_ONLINE_TRANSLATIONS[language][key] = values[i];
+  });
+})();

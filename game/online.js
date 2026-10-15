@@ -12,7 +12,7 @@ class KingPongRoom {
 
   open(role, code = '', assignment = null) {
     this.assignment = assignment;
-    this.managed = !assignment && (role === 'host' ? Boolean(this.requireApproval) : code.length === 6);
+    this.managed = !assignment && (role === 'host' || code.length === 6);
     this.role = role;
     let url;
     try {
@@ -21,7 +21,7 @@ class KingPongRoom {
           !(url.protocol === 'https:' || url.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(url.hostname))) throw new Error();
       url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
       url.pathname = assignment ? `/v1/match/${assignment.match.id}/${assignment.token}` :
-        this.managed ? (role === 'host' ? `/v1/party/create/2/1/${kingPongClientToken()}` : `/v1/party/join/2/${code}/${kingPongClientToken()}`) :
+        this.managed ? (role === 'host' ? `/v1/party/create/2/${this.requireApproval ? 1 : 0}/${kingPongClientToken()}` : `/v1/party/join/2/${code}/${kingPongClientToken()}`) :
         role === 'host' ? '/v1/create' : `/v1/join/${code}`;
       this.socket = kingPongSignalingSocket(url);
     } catch { this.fail('unavailable'); return; }
@@ -54,11 +54,24 @@ class KingPongRoom {
     }
   }
 
+  kickGuest() {
+    if (!this.managed || this.role !== 'host' || !this.connected || this.removingGuest || this.closed) return;
+    this.removingGuest = true;
+    this.send({type: 'kick', slot: 1});
+    // The guest may close RTC before the server's departed acknowledgement
+    // reaches the host. Keep the room socket alive for that acknowledgement.
+    this.removalTimer = setTimeout(() => this.fail('timeout'), 8000);
+  }
+
   async receive(message) {
     if (this.managed && message.type === 'lobby') { if (typeof syncClassicApproval === 'function') syncClassicApproval(message); return; }
     if (this.managed && message.type === 'approved') { this.hooks.status('Connecting...'); return; }
-    if (this.managed && message.type === 'departed') { this.fail(message.reason === 'kicked' ? 'guest_left' : message.reason); return; }
-    if (message.type === 'error') { this.fail(message.code); return; }
+    if (this.managed && message.type === 'departed' && this.role === 'host') {
+      this.dropPeer(); clearTimeout(this.totalTimer); this.totalTimer = null;
+      this.connected = false; this.attempt = -1; this.relayPending = false;
+      this.hooks.departed?.(); return;
+    }
+    if (message.type === 'error') { this.fail(this.managed && message.code === 'invalid_code' ? 'server_outdated' : message.code); return; }
     if (message.type === 'welcome') {
       if (message.role !== this.role || !(this.managed ? message.protocol === 'kp-party-1' && message.capacity === 2 && /^[A-HJ-NP-Z2-9]{6}$/.test(message.code) : /^[A-HJ-NP-Z2-9]{5}$/.test(message.code))) throw new Error();
       if (this.assignment && (message.match?.id !== this.assignment.match.id ||
@@ -89,7 +102,7 @@ class KingPongRoom {
         }
       };
       peer.onconnectionstatechange = () => {
-        if (this.peer !== peer || this.closed) return;
+        if (this.peer !== peer || this.closed || this.removingGuest) return;
         if (peer.connectionState === 'failed') {
           if (this.connected) this.fail(this.role === 'host' ? 'guest_left' : 'host_left');
           else this.relay();
@@ -153,7 +166,7 @@ class KingPongRoom {
     };
     channel.onopen = () => this.maybeConnected(peer);
     channel.onclose = () => {
-      if (this.closed || this.peer !== peer || this.relayPending) return;
+      if (this.closed || this.peer !== peer || this.relayPending || this.removingGuest) return;
       // Freeze immediately, especially if the ready countdown is about to end.
       this.hooks.interrupted?.();
       if (this.closed || this.peer !== peer) return;
@@ -163,7 +176,7 @@ class KingPongRoom {
         if (this.peer === peer) this.fail(this.role === 'host' ? 'guest_left' : 'host_left');
       }, 250);
     };
-    channel.onerror = () => { if (!this.closed && this.peer === peer && !this.relayPending) this.fail(this.connected ? (this.role === 'host' ? 'guest_left' : 'host_left') : 'negotiation_failed'); };
+    channel.onerror = () => { if (!this.closed && this.peer === peer && !this.relayPending && !this.removingGuest) this.fail(this.connected ? (this.role === 'host' ? 'guest_left' : 'host_left') : 'negotiation_failed'); };
   }
 
   maybeConnected(peer) {
@@ -188,6 +201,8 @@ class KingPongRoom {
   }
 
   dropPeer() {
+    clearTimeout(this.removalTimer);
+    this.removingGuest = false;
     clearTimeout(this.directTimer);
     clearTimeout(this.disconnectTimer);
     clearTimeout(this.peerLostTimer);
@@ -230,6 +245,7 @@ let onlineGameBlocked = false;
 let onlineHasState = false;
 const onlineInputs = new Map();
 const ONLINE_ERRORS = {
+  server_outdated: 'The room server is out of date. Please try again later.',
   incompatible: 'Both players must reload the latest game.',
   opponent_left: 'Opponent disconnected. Find another match.',
   invalid_code: 'Enter a valid five- or six-character room code.',
@@ -269,10 +285,13 @@ function setOnlineControls(busy, joining = false) {
 }
 
 function closeOnlineConnection(showMessage = true, keepQueue = false) {
+  if (saveConfirmation?.roomSession === onlineSession) finishSaveConfirmation(false);
   resetOnlineMatchFlow();
   resetOnlineWire();
   if (!keepQueue) stopMatchmaking();
   onlineMatchAssignment = null;
+  if (matchmakingPreviousRules === null) matchRuleId = playerPreference('matchRuleId');
+  matchPowerupsEnabled = playerPreference('royalPowerupsEnabled');
   if (matchmakingPreviousRules !== null) { matchRuleId = matchmakingPreviousRules; matchmakingPreviousRules = null; }
   stopRoyalPowerupSound();
   resetMatchConnectionState();
@@ -354,7 +373,11 @@ function openOnlineRoom(role, code = '', assignment = null) {
       byId('onlineRoomCode').textContent = code;
       byId('onlineCodeDisplay').hidden = Boolean(onlineMatchAssignment);
     },
-    peer: peer => { if (onlineSession === session) { lanPeer = peer; lanConnected = false; onlineGameBlocked = true; } },
+    peer: peer => { if (onlineSession === session) {
+      lanPeer = peer; lanConnected = false; onlineGameBlocked = true;
+      if (!assignment && !(session instanceof KingPongManualRoom)) beginOnlineMatchFlow();
+    } },
+    departed: () => privateGuestDeparted(session),
     channel: (channel, control) => {
       if (onlineSession !== session) return;
       if (control) onlineControlChannel = channel; else lanChannel = channel;
@@ -383,9 +406,9 @@ function openOnlineRoom(role, code = '', assignment = null) {
       setLanStatus('Connected!');
       updateModeControls();
       setMenusVisible(false);
-      if (assignment) onlineMatchTransportReady();
+      if (onlineMatchFlow) onlineMatchTransportReady();
       if (role === 'host') sendLanState(true);
-      else if (!assignment) { sendPaddleSelection(); sendLanInput(null, true); }
+      else if (!onlineMatchFlow) { sendPaddleSelection(); sendLanInput(null, true); }
     },
     error: code => {
       if (onlineSession !== session) return;

@@ -2,7 +2,9 @@
 
 Choose **Play Online → Find Match** to join the shared browser/Android/Windows/Linux queue. Viewing this menu only watches availability; it does not register a player as waiting. Searches stay active while connected, including when an opponent arrives several minutes later. Cancel Search, leaving the mode, closing the app, or backgrounding a waiting app removes the search. After a connection failure, press Find Match to try again. There are no CPU substitutes or estimated wait times.
 
-**Create Room** and **Join Room** still use private five-character room codes. Native **Local Play → LAN Two Player** keeps the existing offline LAN workflow.
+**Create Room** now uses six-character private room codes with Host Approval enabled by default. The approval choice is saved in the selected save slot. Both approval modes use the existing moderated room endpoint, so kicks and rejections block that browser/app session from rejoining the same room. Joining older five-character rooms is still recognized. Native **Local Play → LAN Two Player** keeps the existing offline LAN workflow.
+
+After admission, private peers enter the arena automatically. The guest acknowledges the host's arena, paddles, rule preset and Royal Powerups setting after receiving an initial snapshot; both players then confirm Ready before the synchronized countdown. The host can undo readiness and can confirm **Kick Player** beside **Menu**. A kick releases the guest while retaining the host's room code. The private Royal Powerups preference is saved; automatic matchmaking, offline LAN and same-device matches retain their established powerup rules.
 
 ## Arenas and rules
 
@@ -30,16 +32,37 @@ Packaged games retain their original `file://` page and save origin. A small HTT
 1. From the repository root, run `node tools/sync-gameplay.mjs`. This updates the four HTML builds, browser online files, embedded native transport, optimized icon data, and the generated server compatibility contract.
 2. Run `node tools/sync-gameplay.mjs --check` and `node --test tests/*.mjs`.
 3. In `signaling/`, run `npm ci`, `npm test`, and `npm run check`. The last command is a deployment dry run.
-4. When ready to release, deploy the Worker using the existing Cloudflare account with `npm run deploy`. Keep migrations v1/v2; the new v3 migration adds only `MatchmakingQueue` as a SQLite class. Do not recreate the existing room or TURN bindings, rotate secrets, or add billing information.
+4. When ready to release, deploy the Worker using the existing Cloudflare account with `npm run deploy`. Keep existing migrations v1/v2/v3 and all existing bindings/secrets. This private-room update adds no migration, Durable Object class or service: `PartyRoom` runs inside `PongRoom` through the existing `ROOMS` binding.
 5. Release the synchronized browser files and rebuild the native apps with their existing build commands. Deploy the Worker before distributing the updated clients.
 
 `game/online-config.js` holds the public Worker URL. If using another Worker hostname, also update the exact `/v1/native-bridge` URL allowed by `Program.cs`, `MainActivity.java`, and `Linux/src/king-pong.py`, then synchronize and rebuild. Add browser hosting origins to `ALLOWED_ORIGINS`; never add `null` or a wildcard. Existing Metered secrets remain Worker-side and unchanged.
+
+### Required private-room Worker update
+
+The deployed Worker inspected during this change accepted the WebSocket upgrade for a valid `/v1/party/create/2/1/<session UUID>` request but replied `invalid_code`. Its served `/v1/native-bridge` also omitted the party paths, although both implementations already existed in this repository. This deployment mismatch explains why approval-enabled creation failed while the old unchecked UI used the legacy `/v1/create` route. Do not work around it by silently disabling approval.
+
+Deploy this complete Worker bundle **before** releasing these clients (both new room modes now require party endpoints):
+
+```sh
+cd signaling
+npm ci
+npm test
+npm run check
+npm run deploy
+```
+
+Use the existing Cloudflare account and `wrangler.jsonc`. Deploying only the game HTML is insufficient; `/v1/native-bridge` must come from the same updated Worker. Then verify create/join with approval both on and off, approval/rejection, kick/rejoin blocking and retained host rooms in two current clients. Refresh browser clients and rebuild packaged applications from the synchronized files. Production deployment and physical-device testing are separate release steps; they are not performed by the test commands above.
+
+Room membership uses the existing temporary session token (sessionStorage, with an in-memory fallback when unavailable). Tokens, room details and connection state are excluded from save backups. Blocking covers that room/session, not a person who clears browser state or uses another device; identity tracking or accounts are deliberately not introduced. When the bounded block list is full, new joins fail closed rather than bypassing earlier blocks.
 
 `tools/sync-online.mjs` derives eligible arenas from the existing `CAMPAIGNS` definitions and checks they match in every build. Its fingerprint includes those definitions, rule presets, and `game/matchmaking-version.json`. Increment that compatibility revision when changing gameplay/protocol behavior incompatibly, then regenerate and deploy both sides. Do not edit `matchmaking-contract.js` or embedded copies directly. Old automatic-match clients receive an explicit update/reload error. Existing release version numbers are unchanged.
 
 ## Validation
 
 - `npm test`: queue concurrency, fairness, cancellation, leases, room/token security, private rooms, and TURN credential/fallback tests.
+- `npm run test:private-rooms`: real Worker/WebSocket admission and real WebRTC private matches, approval on/off, rejection/kick, reconnect restrictions, settings, readiness, layout and powerups.
+- `npm run test:private-rooms-controlled`: the same two-browser lifecycle with an explicitly controlled RTC channel transport; real Worker/WebSocket moderation still runs. This does not validate ICE/TURN.
+- `npm run test:preferences`: all four HTML builds, saved preferences across reload/slots/import/export, temporary host/matchmaking settings, Canvas perspective, vertical inputs, goals, rendering order, refresh-rate interpolation and responsive Back controls.
 - `npm run test:matchmaking`: real browser-to-packaged-HTML matches in both roles for Windows, Linux, and Android. Requires a test environment that exposes working WebRTC ICE candidates.
 - `npm run test:matchmaking-ui`: explicit signaling-only mode for restricted environments. Tests real queue WebSockets, file-origin bridge traffic, SDP exchange, cleanup and immutable settings; it does **not** establish or validate a gameplay data channel.
 - `npm run test:powerup-ui`: desktop/mobile title tiles, icon rendering, effective mute controls, translations, and real offline Web Audio samples.

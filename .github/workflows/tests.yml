@@ -68,6 +68,12 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Test real browser peers and existing gameplay
         run: npm run test:browser
+      - name: Test approval, moderation and private ready flow with real WebRTC
+        run: npm run test:private-rooms
+      - name: Test deterministic private-room admission and gameplay lifecycle
+        run: npm run test:private-rooms-controlled
+      - name: Test saved preferences, perspective and layout in every build
+        run: npm run test:preferences
       - name: Test automatic cross-build matchmaking with real WebRTC
         run: npm run test:matchmaking
       - name: Test online menu and synchronized ready flow with controlled channels

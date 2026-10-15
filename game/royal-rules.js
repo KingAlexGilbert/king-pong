@@ -1,4 +1,4 @@
-// Rules are session state. Only the local match or the online host can change them.
+// Match state is distinct from saved local preferences. Only the host changes shared rules.
 const MATCH_RULES = Object.freeze({
   quick: {
     label: 'Quick Match — First to 5',
@@ -23,6 +23,7 @@ const MATCH_RULES = Object.freeze({
 });
 const MATCH_SCORE_MAX = Number.MAX_SAFE_INTEGER;
 let matchRuleId = 'classic';
+let matchPowerupsEnabled = true;
 let matchRuleRevision = 0;
 let remoteRuleRevision = -1;
 let remoteRuleId = null;
@@ -32,15 +33,16 @@ function matchRule() {
   return MATCH_RULES[matchRuleId];
 }
 
-function matchRulePayload() {
+function matchRulePayload(includePowerups = true) {
   return {
     id: matchRuleId,
-    revision: matchRuleRevision
+    revision: matchRuleRevision,
+    ...(includePowerups ? {powerups: matchPowerupsEnabled} : {})
   };
 }
 
 function validMatchRuleState(value) {
-  return Boolean(value && typeof value === 'object' && typeof value.id === 'string' && Object.prototype.hasOwnProperty
+  return Boolean(value && (value.powerups === undefined || typeof value.powerups === 'boolean') && typeof value === 'object' && typeof value.id === 'string' && Object.prototype.hasOwnProperty
     .call(MATCH_RULES, value.id) &&
     Number.isSafeInteger(value.revision) && value.revision >= 0 && value.revision >= remoteRuleRevision &&
     (value.revision !== remoteRuleRevision || value.id === remoteRuleId));
@@ -51,6 +53,7 @@ function validMatchScores(state) {
 }
 
 function canChooseMatchRules() {
+  if (typeof onlineMatchFlowVisible === 'function' && onlineMatchFlowVisible()) return false;
   if (typeof matchmakingLocked === 'function' && matchmakingLocked()) return false;
   return mode === 2 && lanRole !== 'guest' && waitingForServe && !gameOver && left.score === 0 && right.score === 0;
 }
@@ -62,8 +65,22 @@ function setMatchRule(id) {
     matchRuleId = id;
     matchRuleRevision++;
   }
+  if (typeof savePlayerPreference === 'function') savePlayerPreference('matchRuleId', id);
   sendMatchRules();
   if (typeof syncRoyalUi === 'function') syncRoyalUi(true);
+  return true;
+}
+
+function setMatchPowerups(enabled) {
+  if (!canChooseMatchRules() || typeof enabled !== 'boolean' || matchRuleRevision === Number.MAX_SAFE_INTEGER) return false;
+  if (matchPowerupsEnabled !== enabled) {
+    matchPowerupsEnabled = enabled;
+    matchRuleRevision++;
+    resetRoyalRally();
+  }
+  savePlayerPreference('royalPowerupsEnabled', enabled);
+  sendMatchRules();
+  syncRoyalUi(true);
   return true;
 }
 
@@ -81,6 +98,9 @@ function sendMatchRules() {
 function applyMatchRuleState(value) {
   remoteRuleRevision = matchRuleRevision = value.revision;
   remoteRuleId = matchRuleId = value.id;
+  // Compact snapshots carry the preset/revision; the existing reliable rules
+  // channel and setup handshake carry the powerup flag once per configuration.
+  if (typeof value.powerups === 'boolean') matchPowerupsEnabled = value.powerups;
 }
 
 function receiveMatchRules(value) {

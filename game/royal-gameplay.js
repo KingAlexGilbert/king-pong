@@ -302,7 +302,7 @@ function resetRoyalRally() {
 }
 
 function royalActive() {
-  return mode !== 4 && !bossIntroActive && !paused && !waitingForServe && !gameOver && !levelCleared && !
+  return (mode !== 2 || matchPowerupsEnabled) && mode !== 4 && !bossIntroActive && !paused && !waitingForServe && !gameOver && !levelCleared && !
     campaignCleared && !isLanGuestActive();
 }
 
@@ -647,7 +647,7 @@ function royalBallGlowSprite(color, size) {
 // Round only the physical size so the square's dimensions stay constant.
 function drawBallPixels(b) {
   const transform = ctx.getTransform();
-  const scaleX = transform.a, scaleY = transform.d;
+  const scaleX = Math.abs(transform.a), scaleY = Math.abs(transform.d);
   const size = Math.max(1, Math.round(BALL_SIZE * Math.min(scaleX, scaleY)));
   const glow = royalBallGlowSprite(ctx.fillStyle, size);
   const pad = ROYAL_BALL_GLOW_PADDING;
@@ -701,7 +701,7 @@ function drawRoyalEffects(view) {
     }
     ctx.globalAlpha = 1;
     ctx.fillStyle = '#59baff';
-    drawText(Math.ceil(view.guards[side] / 60) + 's', side === 'left' ? 30 : W - 30, H - 28, 10);
+    drawArenaLabel(Math.ceil(view.guards[side] / 60) + 's', side === 'left' ? 30 : W - 30, H - 28, 10);
   }
   if (view.pickup) {
     const p = view.pickup;
@@ -769,7 +769,7 @@ let matchPaddles = {
   left: 'classic',
   right: 'classic'
 };
-// Multiplayer preferences live only in this session; Campaign keeps its own saved choice.
+// Multiplayer choices are saved separately so locked Campaign cosmetics stay unchanged.
 let multiplayerPaddleChoices = {
   left: null,
   right: null
@@ -803,8 +803,8 @@ function paddleAvailable(entry) {
 
 function resetMultiplayerPaddleChoices() {
   multiplayerPaddleChoices = {
-    left: null,
-    right: null
+    left: typeof playerPreference === 'function' ? playerPreference('multiplayerPaddle') : null,
+    right: typeof playerPreference === 'function' ? playerPreference('multiplayerPaddle2') : null
   };
 }
 
@@ -830,6 +830,13 @@ function selectedPaddleProfile(paddle) {
 }
 
 function initializeMatchSelections() {
+  // The new switch belongs to private online rooms. LAN and same-device play
+  // retain their established powerup rules without changing the saved preference.
+  if (typeof playerPreference === 'function') {
+    const privateSetup = typeof onlineTransportSelected !== 'undefined' && onlineTransportSelected &&
+      !(typeof onlineManualLanSelected !== 'undefined' && onlineManualLanSelected);
+    matchPowerupsEnabled = privateSetup ? playerPreference('royalPowerupsEnabled') : true;
+  }
   matchPaddles = {
     left: multiplayerPaddleChoices.left || savedPaddle(),
     right: multiplayerPaddleChoices.right || savedPaddle(true)
@@ -917,6 +924,10 @@ function receivePaddleSelection(message) {
     return;
   // Changes are accepted only before a rally. A guest can never choose the host's arena.
   if (!waitingForServe || gameOver) return;
+  // Readiness acknowledges an exact configuration. Do not let a delayed selection
+  // change it once the private/automatic setup handshake has completed.
+  if (typeof onlineMatchFlowVisible === 'function' && onlineMatchFlowVisible() &&
+      !['connecting', 'connected'].includes(onlineMatchFlow.phase)) return;
   remoteSelectionSequence = message.seq;
   matchPaddles.right = message.paddle;
   // The scheduled 20 Hz snapshot acknowledges the choice without a reply per request.
@@ -1032,7 +1043,9 @@ function openRoyalGallery(kind, side = 'left') {
       } else {
         if (!paddleAvailable(entry)) return;
         if (mode === 2 && !document.body.classList.contains('title-active')) {
-          multiplayerPaddleChoices[lanRole === 'guest' ? 'left' : side] = entry.id;
+          const choice = lanRole === 'guest' ? 'left' : side;
+          multiplayerPaddleChoices[choice] = entry.id;
+          savePlayerPreference(choice === 'right' ? 'multiplayerPaddle2' : 'multiplayerPaddle', entry.id);
         } else {
           saveData[side === 'right' ? 'royalPaddle2' : 'royalPaddle'] = entry.id;
           saveProgressNow();

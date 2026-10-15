@@ -252,7 +252,8 @@ for (const platform of Object.keys(builds)) test(
       scheduleMusicLoop() {},
       updateMusicButton() {},
       stopActiveMusicTones() {},
-      stopMusicAudioKeepAlive() {}
+      stopMusicAudioKeepAlive() {},
+      restorePlayerPreferences() {}
     });
     const run = s => vm.runInContext(s, c);
     const fns = ['clamp', 'finiteNumber', 'createDefaultSaveData', 'saveSlotKey', 'rememberSaveSlot', 'readSaveSlot',

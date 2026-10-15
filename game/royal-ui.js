@@ -185,6 +185,8 @@ function initRoyalUi() {
   menuActions.append(royalButton('matchResume', 'Resume', royalContinue, 'match-primary'), restartButton,
     titleJumpButton);
   royalText(titleJumpButton, 'Back');
+  titleJumpButton.classList.add('mode-back');
+  menu.prepend(titleJumpButton);
   menu.append(menuActions);
   menu.append(royalDisclosure('Room / connection', 'matchConnection'));
   const configure = document.createElement('div');
@@ -483,6 +485,7 @@ function paintRoyalChoice(button, number, label, entry, kind) {
 function syncRoyalUi(force = false) {
   if (!byId('matchSetup')) return;
   syncOnlineMatchFlowUi();
+  syncPrivateRoomControls();
   const title = document.body.classList.contains('title-active');
   const online = royalOnlineMode();
   const fixedMatch = typeof matchmakingLocked === 'function' && matchmakingLocked();
@@ -496,7 +499,7 @@ function syncRoyalUi(force = false) {
     levelCleared, campaignCleared, lanRole, lanConnected, lanLastStatus, matchArenaId, matchPaddles.left, matchPaddles
     .right,
     saveData?.royalPaddle, activeSaveSlot, playInfoVisible, matchRuleId, matchRuleRevision, isBossUnlocked(),
-    touchInputActive, gamepadConnected, joining, onlineMatchFlow?.phase
+    touchInputActive, gamepadConnected, joining, onlineMatchFlow?.phase, matchPowerupsEnabled
   ].join('|');
   if (!force && signature === royalUiSignature) return;
   royalUiSignature = signature;
@@ -510,8 +513,12 @@ function syncRoyalUi(force = false) {
   if (onlineSetup) {
     if (back.parentElement !== setupCard) setupCard.prepend(back);
   } else if (back.parentElement === setupCard) byId('matchServe').parentElement.append(back);
+  const modeBack = byId('setupBackButton');
+  modeBack.classList.add('mode-back');
+  if (modeBack.parentElement !== setupCard) setupCard.prepend(modeBack);
+  back.classList.toggle('mode-back', onlineSetup);
   royalText(back, onlineSetup ? 'Back' : 'Menu (M)');
-  byId('setupBackButton').hidden = onlineSetup;
+  modeBack.hidden = onlineSetup;
   byId('matchBar').classList.toggle('match-bar-paused', desktopPause);
   // Keep the toggle inside the current screen or modal's focus/inert boundary.
   if (menu && !royalLastDialog) royalReturnFocus = document.activeElement;

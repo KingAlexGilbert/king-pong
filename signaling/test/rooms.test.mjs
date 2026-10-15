@@ -221,3 +221,51 @@ test('expired rooms and abandoned sockets delete room data; fresh auto-pongs kee
     }
   } finally { globalThis.WebSocketRequestResponsePair = previous; }
 });
+
+async function untilMessage(client, predicate) {
+  for (let i=0;i<30;i++) { const message=await client.next(); if(predicate(message)) return message; }
+  throw new Error('Expected room message');
+}
+for (const approval of [0,1]) test(`private approval=${approval}: admission, kick, retained host and blocked reconnect`, async () => {
+  const host=await connect(`party/create/2/${approval}/${crypto.randomUUID()}`);
+  const welcome=await host.next();
+  assert.match(welcome.code,/^[A-HJ-NP-Z2-9]{6}$/);
+  assert.equal(welcome.protocol,'kp-party-1');
+  const token=crypto.randomUUID();
+  const guest=await connect(`party/join/2/${welcome.code}/${token}`);
+  assert.equal((await guest.next()).pending,Boolean(approval));
+  if(approval) {
+    const lobby=await untilMessage(host,m=>m.type==='lobby'&&m.pending.length===1);
+    host.send({type:'approve',request:lobby.pending[0].request});
+    assert.equal((await untilMessage(guest,m=>m.type==='approved')).slot,1);
+  }
+  await untilMessage(host,m=>m.type==='start'); await untilMessage(guest,m=>m.type==='start');
+  host.send({type:'connected',to:1,attempt:0});guest.send({type:'connected',to:0,attempt:0});
+  await untilMessage(host,m=>m.type==='lobby'&&m.started);
+  const third=await connect(`party/join/2/${welcome.code}/${crypto.randomUUID()}`);
+  assert.equal((await third.next()).code,'full');third.close();
+  host.send({type:'kick',slot:1});
+  assert.equal((await untilMessage(guest,m=>m.type==='error')).code,'kicked');
+  await untilMessage(host,m=>m.type==='departed');
+  const again=await connect(`party/join/2/${welcome.code}/${token}`);
+  assert.equal((await again.next()).code,'blocked');again.close();
+  const fresh=await connect(`party/join/2/${welcome.code}/${crypto.randomUUID()}`);
+  assert.equal((await fresh.next()).type,'welcome');
+  host.close();guest.close();fresh.close();
+});
+
+test('pending private guest cannot self-approve; rejection blocks its session', async () => {
+  const host=await connect(`party/create/2/1/${crypto.randomUUID()}`);
+  const {code}=await host.next();
+  const rejectedToken=crypto.randomUUID();
+  const guest=await connect(`party/join/2/${code}/${rejectedToken}`);await guest.next();
+  const lobby=await untilMessage(host,m=>m.type==='lobby'&&m.pending.length===1);
+  host.send({type:'reject',request:lobby.pending[0].request});
+  assert.equal((await untilMessage(guest,m=>m.type==='error')).code,'rejected');
+  const retry=await connect(`party/join/2/${code}/${rejectedToken}`);
+  assert.equal((await retry.next()).code,'blocked');retry.close();
+  const malicious=await connect(`party/join/2/${code}/${crypto.randomUUID()}`);await malicious.next();
+  malicious.send({type:'approve',request:lobby.pending[0].request});
+  assert.equal((await untilMessage(malicious,m=>m.type==='error')).code,'unapproved');
+  host.close();guest.close();malicious.close();
+});

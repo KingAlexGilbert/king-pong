@@ -160,6 +160,7 @@ function matchmakingComplete() {
 function applyMatchmakingSettings() {
   if (!onlineMatchAssignment) return;
   matchRuleId = onlineMatchAssignment.rules;
+  matchPowerupsEnabled = true; // Preserve established matchmaking rules.
   matchRuleRevision = 0;
   remoteRuleRevision = -1;
   setLevelByAbsoluteIndex(onlineMatchAssignment.arena, true);

@@ -2770,6 +2770,31 @@ body.royal-panel-open .match-footer #controlHint {
 .lan-route { position: fixed; z-index: 16; right: .8rem; bottom: .5rem; font-size: .75rem; pointer-events: none; }
 .match-row { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
 #classicLanDialog textarea { width: 100%; min-height: 4.5rem; resize: vertical; }
+
+/* All mode entry screens use the Online Play back position and spacing. */
+.match-card > .mode-back {
+  align-self: flex-start;
+  margin: 0 0 12px;
+  position: static;
+  min-height: 44px;
+  padding: 8px 12px;
+}
+#matchSetup:has(> .match-card > .mode-back) .match-eyebrow { display: none; }
+#arenaKick { color: #ffd469; font-size: 12px; }
+#onlinePowerups { margin-top: 10px; }
+#onlineFlowConfiguration { color: #e2c681; font-size: 12px; line-height: 1.5; }
+@media (max-width: 540px) {
+  .match-bar { gap: 5px; }
+  .match-bar button { padding: 7px 8px; }
+  .match-bar:has(#arenaKick:not([hidden])) .match-identity { display: none; }
+}
+@media (max-height: 520px) and (min-width: 421px) {
+  /* Keep choices fully visible below the shared top Back row on short screens. */
+  #matchSetup .royal-selection-row button { display: grid; grid-template-columns: minmax(0, 1fr) 56px; gap: 2px 6px; padding: 8px; }
+  #matchSetup .royal-selection-row .setup-caption { grid-column: 1 / -1; }
+  #matchSetup .royal-selection-row canvas { grid-column: 2; grid-row: 2 / span 2; height: 32px; max-width: 56px; margin: 0; }
+  #matchSetup .royal-selection-row .setup-change { grid-column: 1; margin-top: 2px; text-align: left; }
+}
 </style>
 </head>
 
@@ -7436,7 +7461,7 @@ function sendLanState(force = false) {
     selection: selectionPayload(),
     royal: packRoyalState(),
     /* ROYAL POLISH */
-    rules: matchRulePayload(),
+    rules: matchRulePayload(false),
     /* END ROYAL POLISH */
     activeCampaign,
     levelIndex,
@@ -7976,6 +8001,11 @@ function checkedSaveSlot(slot) {
     selections[key] = slot[key];
   }
   if (slot.royalArena !== undefined) selections.royalArena = number('royalArena', 0, TOTAL_LEVELS, true);
+  for (const key of Object.keys(PLAYER_PREFERENCE_DEFAULTS)) {
+    if (slot[key] === undefined) continue; // Older version-2 backups keep their defaults.
+    if (!validPlayerPreference(key, slot[key])) throw new Error('Invalid player preference');
+    selections[key] = slot[key];
+  }
   // Copy only known fields. Imported objects never become game state directly.
   return {
     ...selections,
@@ -8489,7 +8519,7 @@ function loadSaveSlot(slot) {
   updateHud();
   renderSaveSlots();
   /* ROYAL UI */
-  if (typeof resetMultiplayerPaddleChoices === "function") resetMultiplayerPaddleChoices();
+  restorePlayerPreferences();
   /* END ROYAL UI */
 }
 const FIRST_LAUNCH_HINT_STORAGE_KEY = "kingPongFirstLaunchHintSeenV1";
@@ -9326,7 +9356,7 @@ function startLevel() {
   resetBall(mode === 1 || mode === 3 ? 1 : Math.random() < 0.5 ? -1 : 1);
   setAccent();
   if (mode === 1) {
-    setPlayInfoVisible(true);
+    setPlayInfoVisible(playerPreference('playInfoVisible'));
   }
   updateModeControls();
   updateHud();
@@ -9503,6 +9533,7 @@ function setPlayInfoVisible(visible) {
 
 function togglePlayInfo() {
   setPlayInfoVisible(!playInfoVisible);
+  savePlayerPreference('playInfoVisible', playInfoVisible);
 }
 
 function startBossFight(showIntroFade = false) {
@@ -10998,17 +11029,17 @@ function drawOverlay() {
   ctx.fillStyle = "#fff";
   if (levelCleared) {
     drawText("LEVEL CLEARED", W / 2, H / 2 - 36, 24);
-    drawText(endMessage, W / 2, H / 2 + 2, 14);
+    drawText(arenaResultMessage(endMessage), W / 2, H / 2 + 2, 14);
     drawText("SPACE: next level", W / 2, H / 2 + 38, 14);
   } else if (campaignCleared) {
     drawText("CAMPAIGN COMPLETE", W / 2, H / 2 - 36, 24);
-    drawText(endMessage, W / 2, H / 2 + 2, 14);
+    drawText(arenaResultMessage(endMessage), W / 2, H / 2 + 2, 14);
     drawText("Menus: replay campaigns or open Custom Game", W / 2, H / 2 + 38, 13);
   } else if (gameOver) {
     const title = mode === 4 ? bossEnemyHealth <= 0 ? "SECRET BOSS DEFEATED" : "BOSS FIGHT LOST" : mode === 3 ?
       "CUSTOM MATCH OVER" : mode === 2 ? "MATCH OVER" : "LEVEL FAILED";
     drawText(title, W / 2, H / 2 - 36, mode === 4 ? 21 : 24);
-    drawText(endMessage, W / 2, H / 2 + 2, 14);
+    drawText(arenaResultMessage(endMessage), W / 2, H / 2 + 2, 14);
     drawText(mode === 4 ? "SPACE/R: rematch" : mode === 3 ? "SPACE/R: replay - menus: choose another level" :
       "SPACE or R: retry", W / 2, H / 2 + 38, 14);
   } else if (waitingForServe) {
@@ -11036,24 +11067,30 @@ function draw(view = captureVisualState()) {
   const offsetX = view.shake.x;
   const offsetY = view.shake.y;
   ctx.save();
-  ctx.translate(offsetX, offsetY);
+  ctx.translate(twoPlayerViewMirrored() ? -offsetX : offsetX, offsetY);
+  ctx.save();
+  applyArenaPerspective();
   drawBackground();
   drawCenterLine();
   drawHazards(view.hazards);
-  drawRoyalEffects(view);
+  ctx.restore(); // Scores and interface text remain readable.
   if (mode === 4) {
     drawBossHud();
   } else {
     ctx.fillStyle = "#fff";
     if (mode === 2) {
-      drawMultiplayerScore(view.left.score, W / 2 - 90, 34);
-      drawMultiplayerScore(view.right.score, W / 2 + 90, 34);
+      drawMultiplayerScore(twoPlayerViewMirrored() ? view.right.score : view.left.score, W / 2 - 90, 34);
+      drawMultiplayerScore(twoPlayerViewMirrored() ? view.left.score : view.right.score, W / 2 + 90, 34);
     } else {
       drawScore(view.left.score, W / 2 - 112, 34);
       drawScore(view.right.score, W / 2 + 72, 34);
     }
     drawCampaignPlayInfo();
   }
+  ctx.save();
+  applyArenaPerspective();
+  // Draw once, after scores: pickup sprites and ripples stay in the foreground.
+  drawRoyalEffects(view);
   ctx.fillStyle = "#fff";
   drawPaddleShape(view.left, 1, activePaddleProfile(left), "#ffffff");
   drawPaddleShape(view.right, -1, activePaddleProfile(right), mode === 1 || mode === 3 || mode === 4 ? currentCampaign()
@@ -11070,6 +11107,7 @@ function draw(view = captureVisualState()) {
     drawGuestInputPreview(view);
     ctx.shadowBlur = 0;
   }
+  ctx.restore();
   ctx.fillStyle = "#fff";
   if (menusVisible && !document.body.classList.contains("royal-ui-ready")) {
     const cfg = getCpuConfig();
@@ -11090,7 +11128,9 @@ function draw(view = captureVisualState()) {
       `Health ${bossPlayerHealth}/${BOSS_PLAYER_MAX_HEALTH} vs ${bossEnemyHealth}/${BOSS_ENEMY_MAX_HEALTH}` :
       `Goal ${currentLevel().goal}`, W / 2, H - 18, 12);
   }
-  if (paused && !onlineGameBlocked) {
+  const showGameOverlay = !onlineGameBlocked &&
+    !(typeof onlineMatchFlowVisible === 'function' && onlineMatchFlowVisible());
+  if (paused && showGameOverlay) {
     drawOverlay();
     ctx.fillStyle = "#fff";
     if (hasResumeCountdown()) {
@@ -11099,7 +11139,7 @@ function draw(view = captureVisualState()) {
     } else {
       drawText("PAUSED", W / 2, H / 2 - 100, 24);
     }
-  } else if (!onlineGameBlocked && (waitingForServe || gameOver || levelCleared || campaignCleared)) {
+  } else if (showGameOverlay && (waitingForServe || gameOver || levelCleared || campaignCleared)) {
     drawOverlay();
   }
   ctx.restore();
@@ -11413,7 +11453,7 @@ function resetRoyalRally() {
 }
 
 function royalActive() {
-  return mode !== 4 && !bossIntroActive && !paused && !waitingForServe && !gameOver && !levelCleared && !
+  return (mode !== 2 || matchPowerupsEnabled) && mode !== 4 && !bossIntroActive && !paused && !waitingForServe && !gameOver && !levelCleared && !
     campaignCleared && !isLanGuestActive();
 }
 
@@ -11758,7 +11798,7 @@ function royalBallGlowSprite(color, size) {
 // Round only the physical size so the square's dimensions stay constant.
 function drawBallPixels(b) {
   const transform = ctx.getTransform();
-  const scaleX = transform.a, scaleY = transform.d;
+  const scaleX = Math.abs(transform.a), scaleY = Math.abs(transform.d);
   const size = Math.max(1, Math.round(BALL_SIZE * Math.min(scaleX, scaleY)));
   const glow = royalBallGlowSprite(ctx.fillStyle, size);
   const pad = ROYAL_BALL_GLOW_PADDING;
@@ -11812,7 +11852,7 @@ function drawRoyalEffects(view) {
     }
     ctx.globalAlpha = 1;
     ctx.fillStyle = '#59baff';
-    drawText(Math.ceil(view.guards[side] / 60) + 's', side === 'left' ? 30 : W - 30, H - 28, 10);
+    drawArenaLabel(Math.ceil(view.guards[side] / 60) + 's', side === 'left' ? 30 : W - 30, H - 28, 10);
   }
   if (view.pickup) {
     const p = view.pickup;
@@ -11880,7 +11920,7 @@ let matchPaddles = {
   left: 'classic',
   right: 'classic'
 };
-// Multiplayer preferences live only in this session; Campaign keeps its own saved choice.
+// Multiplayer choices are saved separately so locked Campaign cosmetics stay unchanged.
 let multiplayerPaddleChoices = {
   left: null,
   right: null
@@ -11914,8 +11954,8 @@ function paddleAvailable(entry) {
 
 function resetMultiplayerPaddleChoices() {
   multiplayerPaddleChoices = {
-    left: null,
-    right: null
+    left: typeof playerPreference === 'function' ? playerPreference('multiplayerPaddle') : null,
+    right: typeof playerPreference === 'function' ? playerPreference('multiplayerPaddle2') : null
   };
 }
 
@@ -11941,6 +11981,13 @@ function selectedPaddleProfile(paddle) {
 }
 
 function initializeMatchSelections() {
+  // The new switch belongs to private online rooms. LAN and same-device play
+  // retain their established powerup rules without changing the saved preference.
+  if (typeof playerPreference === 'function') {
+    const privateSetup = typeof onlineTransportSelected !== 'undefined' && onlineTransportSelected &&
+      !(typeof onlineManualLanSelected !== 'undefined' && onlineManualLanSelected);
+    matchPowerupsEnabled = privateSetup ? playerPreference('royalPowerupsEnabled') : true;
+  }
   matchPaddles = {
     left: multiplayerPaddleChoices.left || savedPaddle(),
     right: multiplayerPaddleChoices.right || savedPaddle(true)
@@ -12028,6 +12075,10 @@ function receivePaddleSelection(message) {
     return;
   // Changes are accepted only before a rally. A guest can never choose the host's arena.
   if (!waitingForServe || gameOver) return;
+  // Readiness acknowledges an exact configuration. Do not let a delayed selection
+  // change it once the private/automatic setup handshake has completed.
+  if (typeof onlineMatchFlowVisible === 'function' && onlineMatchFlowVisible() &&
+      !['connecting', 'connected'].includes(onlineMatchFlow.phase)) return;
   remoteSelectionSequence = message.seq;
   matchPaddles.right = message.paddle;
   // The scheduled 20 Hz snapshot acknowledges the choice without a reply per request.
@@ -12143,7 +12194,9 @@ function openRoyalGallery(kind, side = 'left') {
       } else {
         if (!paddleAvailable(entry)) return;
         if (mode === 2 && !document.body.classList.contains('title-active')) {
-          multiplayerPaddleChoices[lanRole === 'guest' ? 'left' : side] = entry.id;
+          const choice = lanRole === 'guest' ? 'left' : side;
+          multiplayerPaddleChoices[choice] = entry.id;
+          savePlayerPreference(choice === 'right' ? 'multiplayerPaddle2' : 'multiplayerPaddle', entry.id);
         } else {
           saveData[side === 'right' ? 'royalPaddle2' : 'royalPaddle'] = entry.id;
           saveProgressNow();
@@ -12417,7 +12470,7 @@ function drawSpawnRipple(pulse, color) {
   drawSpawnRippleAt(pulse.x, pulse.y, pulse.remaining, color);
 }
 
-// Rules are session state. Only the local match or the online host can change them.
+// Match state is distinct from saved local preferences. Only the host changes shared rules.
 const MATCH_RULES = Object.freeze({
   quick: {
     label: 'Quick Match — First to 5',
@@ -12442,6 +12495,7 @@ const MATCH_RULES = Object.freeze({
 });
 const MATCH_SCORE_MAX = Number.MAX_SAFE_INTEGER;
 let matchRuleId = 'classic';
+let matchPowerupsEnabled = true;
 let matchRuleRevision = 0;
 let remoteRuleRevision = -1;
 let remoteRuleId = null;
@@ -12451,15 +12505,16 @@ function matchRule() {
   return MATCH_RULES[matchRuleId];
 }
 
-function matchRulePayload() {
+function matchRulePayload(includePowerups = true) {
   return {
     id: matchRuleId,
-    revision: matchRuleRevision
+    revision: matchRuleRevision,
+    ...(includePowerups ? {powerups: matchPowerupsEnabled} : {})
   };
 }
 
 function validMatchRuleState(value) {
-  return Boolean(value && typeof value === 'object' && typeof value.id === 'string' && Object.prototype.hasOwnProperty
+  return Boolean(value && (value.powerups === undefined || typeof value.powerups === 'boolean') && typeof value === 'object' && typeof value.id === 'string' && Object.prototype.hasOwnProperty
     .call(MATCH_RULES, value.id) &&
     Number.isSafeInteger(value.revision) && value.revision >= 0 && value.revision >= remoteRuleRevision &&
     (value.revision !== remoteRuleRevision || value.id === remoteRuleId));
@@ -12470,6 +12525,7 @@ function validMatchScores(state) {
 }
 
 function canChooseMatchRules() {
+  if (typeof onlineMatchFlowVisible === 'function' && onlineMatchFlowVisible()) return false;
   if (typeof matchmakingLocked === 'function' && matchmakingLocked()) return false;
   return mode === 2 && lanRole !== 'guest' && waitingForServe && !gameOver && left.score === 0 && right.score === 0;
 }
@@ -12481,8 +12537,22 @@ function setMatchRule(id) {
     matchRuleId = id;
     matchRuleRevision++;
   }
+  if (typeof savePlayerPreference === 'function') savePlayerPreference('matchRuleId', id);
   sendMatchRules();
   if (typeof syncRoyalUi === 'function') syncRoyalUi(true);
+  return true;
+}
+
+function setMatchPowerups(enabled) {
+  if (!canChooseMatchRules() || typeof enabled !== 'boolean' || matchRuleRevision === Number.MAX_SAFE_INTEGER) return false;
+  if (matchPowerupsEnabled !== enabled) {
+    matchPowerupsEnabled = enabled;
+    matchRuleRevision++;
+    resetRoyalRally();
+  }
+  savePlayerPreference('royalPowerupsEnabled', enabled);
+  sendMatchRules();
+  syncRoyalUi(true);
   return true;
 }
 
@@ -12500,6 +12570,9 @@ function sendMatchRules() {
 function applyMatchRuleState(value) {
   remoteRuleRevision = matchRuleRevision = value.revision;
   remoteRuleId = matchRuleId = value.id;
+  // Compact snapshots carry the preset/revision; the existing reliable rules
+  // channel and setup handshake carry the powerup flag once per configuration.
+  if (typeof value.powerups === 'boolean') matchPowerupsEnabled = value.powerups;
 }
 
 function receiveMatchRules(value) {
@@ -12717,6 +12790,80 @@ function stopRoyalPowerupSound() {
   royalPowerupVoice = null;
 }
 
+// Preferences belong to the existing save slot. Only explicit local choices write
+// these fields; authoritative remote settings remain temporary match state.
+const PLAYER_PREFERENCE_DEFAULTS = Object.freeze({
+  hostApprovalRequired: true,
+  showConnectionType: false,
+  playInfoVisible: true,
+  matchRuleId: 'classic',
+  royalPowerupsEnabled: true,
+  multiplayerPaddle: null,
+  multiplayerPaddle2: null
+});
+
+function validPlayerPreference(key, value) {
+  if (!Object.hasOwn(PLAYER_PREFERENCE_DEFAULTS, key)) return false;
+  if (key === 'matchRuleId') return ['quick', 'classic', 'winTwo', 'endless'].includes(value);
+  if (key.startsWith('multiplayerPaddle')) return value === null || typeof value === 'string' && /^(classic|(?:player|enemy)-(?:[2-9]|1[0-7])|boss-[0-8])$/.test(value);
+  return typeof value === 'boolean';
+}
+
+function playerPreference(key) {
+  const value = saveData?.[key];
+  return validPlayerPreference(key, value) ? value : PLAYER_PREFERENCE_DEFAULTS[key];
+}
+
+function savePlayerPreference(key, value) {
+  if (!saveData || !validPlayerPreference(key, value)) return;
+  saveData[key] = value;
+  saveProgressNow();
+}
+
+function restorePlayerPreferences() {
+  resetMultiplayerPaddleChoices();
+  matchRuleId = playerPreference('matchRuleId');
+  matchPowerupsEnabled = playerPreference('royalPowerupsEnabled');
+  setPlayInfoVisible(playerPreference('playInfoVisible'));
+  syncPlayerPreferenceControls();
+}
+
+function syncPlayerPreferenceControls() {
+  for (const [id, key] of [['onlineRequireApproval', 'hostApprovalRequired'], ['twoPlayerRoute', 'showConnectionType']]) {
+    const input = byId(id);
+    if (input) input.checked = playerPreference(key);
+  }
+}
+
+// A horizontal reflection changes presentation only. Vertical input, physics,
+// snapshots and interpolation stay in world coordinates on every transport.
+function twoPlayerViewMirrored() {
+  return mode === 2 && isLanGuestActive();
+}
+
+function applyArenaPerspective() {
+  if (!twoPlayerViewMirrored()) return;
+  ctx.translate(W, 0);
+  ctx.scale(-1, 1);
+}
+
+function drawArenaLabel(text, x, y, size) {
+  ctx.save();
+  if (twoPlayerViewMirrored()) {
+    ctx.translate(x * 2, 0);
+    ctx.scale(-1, 1);
+  }
+  drawText(text, x, y, size);
+  ctx.restore();
+}
+
+function arenaResultMessage(message) {
+  if (!twoPlayerViewMirrored()) return message;
+  if (message === 'Left player wins the match. Space to play again.') return 'Right player wins the match. Space to play again.';
+  if (message === 'Right player wins the match. Space to play again.') return 'Left player wins the match. Space to play again.';
+  return message;
+}
+
 // Shared presentation layer. The existing game and network state remain authoritative.
 let royalOnlineSelected = false;
 let royalMenuRequested = false;
@@ -12904,6 +13051,8 @@ function initRoyalUi() {
   menuActions.append(royalButton('matchResume', 'Resume', royalContinue, 'match-primary'), restartButton,
     titleJumpButton);
   royalText(titleJumpButton, 'Back');
+  titleJumpButton.classList.add('mode-back');
+  menu.prepend(titleJumpButton);
   menu.append(menuActions);
   menu.append(royalDisclosure('Room / connection', 'matchConnection'));
   const configure = document.createElement('div');
@@ -13202,6 +13351,7 @@ function paintRoyalChoice(button, number, label, entry, kind) {
 function syncRoyalUi(force = false) {
   if (!byId('matchSetup')) return;
   syncOnlineMatchFlowUi();
+  syncPrivateRoomControls();
   const title = document.body.classList.contains('title-active');
   const online = royalOnlineMode();
   const fixedMatch = typeof matchmakingLocked === 'function' && matchmakingLocked();
@@ -13215,7 +13365,7 @@ function syncRoyalUi(force = false) {
     levelCleared, campaignCleared, lanRole, lanConnected, lanLastStatus, matchArenaId, matchPaddles.left, matchPaddles
     .right,
     saveData?.royalPaddle, activeSaveSlot, playInfoVisible, matchRuleId, matchRuleRevision, isBossUnlocked(),
-    touchInputActive, gamepadConnected, joining, onlineMatchFlow?.phase
+    touchInputActive, gamepadConnected, joining, onlineMatchFlow?.phase, matchPowerupsEnabled
   ].join('|');
   if (!force && signature === royalUiSignature) return;
   royalUiSignature = signature;
@@ -13229,8 +13379,12 @@ function syncRoyalUi(force = false) {
   if (onlineSetup) {
     if (back.parentElement !== setupCard) setupCard.prepend(back);
   } else if (back.parentElement === setupCard) byId('matchServe').parentElement.append(back);
+  const modeBack = byId('setupBackButton');
+  modeBack.classList.add('mode-back');
+  if (modeBack.parentElement !== setupCard) setupCard.prepend(modeBack);
+  back.classList.toggle('mode-back', onlineSetup);
   royalText(back, onlineSetup ? 'Back' : 'Menu (M)');
-  byId('setupBackButton').hidden = onlineSetup;
+  modeBack.hidden = onlineSetup;
   byId('matchBar').classList.toggle('match-bar-paused', desktopPause);
   // Keep the toggle inside the current screen or modal's focus/inert boundary.
   if (menu && !royalLastDialog) royalReturnFocus = document.activeElement;
@@ -13541,15 +13695,82 @@ class KingPongManualRoom extends KingPongRoom {
   relay() { this.fail('timeout'); }
 }
 function syncClassicApproval(lobby) {
-  const root = byId('classicRoomMembers'); if (!root) return;
-  root.replaceChildren();
-  if (lanRole !== 'host' || !onlineSession?.managed) return;
-  for (const pending of lobby.pending || []) {
-    const row = document.createElement('div'); row.className = 'match-row'; setLocalizedText(row, 'Join request');
-    row.append(royalButton('', 'Accept', () => onlineSession?.send({type: 'approve', request: pending.request})),
-      royalButton('', 'Reject', () => onlineSession?.send({type: 'reject', request: pending.request}))); root.append(row);
-  }
+  const session = onlineSession;
+  if (lanRole !== 'host' || !session?.managed) return;
+  session.pendingRequests = lobby.pending || [];
+  const pending = session.pendingRequests[0];
+  if (saveConfirmation?.roomSession === session && saveConfirmation.request &&
+      !session.pendingRequests.some(p => p.request === saveConfirmation.request)) finishSaveConfirmation(false);
+  if (!pending || saveConfirmation) return;
+  showSaveConfirmation('Join request', 'A player wants to join your private room.', 'Accept', accepted => {
+    if (onlineSession !== session || !session.pendingRequests.some(p => p.request === pending.request)) return;
+    session.send({type: accepted ? 'approve' : 'reject', request: pending.request});
+  });
+  saveConfirmation.roomSession = session;
+  saveConfirmation.request = pending.request;
+  setLocalizedText(saveConfirmCancel, 'Reject');
+}
 
+function canKickPrivatePlayer() {
+  return isLanHostActive() && Boolean(onlineSession?.managed) && !onlineMatchAssignment;
+}
+
+function confirmKickPrivatePlayer() {
+  if (!canKickPrivatePlayer()) return;
+  const session = onlineSession;
+  // Opening moderation cancels an unsafe start, just like withdrawing ready.
+  if (onlineMatchFlowVisible() && onlineMatchFlow.phase !== 'go') {
+    if (onlineMatchFlow.phase === 'countdown') onlineMatchFlow.phase = 'ready';
+    onlineMatchFlow.localReady = onlineMatchFlow.hostReady = false;
+    sendOnlineMatchStatus();
+  }
+  paused = true;
+  resumeCountdownEndAt = 0;
+  clearHeldInput();
+  sendLanState(true);
+  showSaveConfirmation('Kick Player', 'Remove this player from your private room?', 'Kick', confirmed => {
+    if (confirmed && onlineSession === session && canKickPrivatePlayer()) session.kickGuest();
+  });
+  if (saveConfirmation) saveConfirmation.roomSession = session;
+}
+
+function syncPrivateRoomControls() {
+  for (const id of ['classicKick', 'arenaKick']) {
+    const button = byId(id);
+    if (button) button.hidden = !canKickPrivatePlayer();
+  }
+  const approval = byId('onlineRequireApproval');
+  if (approval) approval.disabled = Boolean(onlineSession);
+  const powerups = byId('onlinePowerups');
+  if (powerups) {
+    powerups.disabled = !canChooseMatchRules();
+    powerups.setAttribute('aria-pressed', String(matchPowerupsEnabled));
+    royalText(powerups, matchPowerupsEnabled ? 'Royal Powerups: On' : 'Royal Powerups: Off');
+  }
+}
+
+// Removing a guest releases only that peer. The existing host socket/code and
+// blocked-session list remain alive until the host explicitly closes the room.
+function privateGuestDeparted(session) {
+  if (onlineSession !== session) return;
+  if (saveConfirmation?.roomSession === session) finishSaveConfirmation(false);
+  resetOnlineMatchFlow();
+  resetOnlineWire();
+  lanConnected = false;
+  lanPeer = lanChannel = onlineControlChannel = null;
+  onlineHasState = false;
+  onlineInputs.clear();
+  resetMatchConnectionState();
+  lanLastInputSeq = lanLastStateSeq = -1;
+  lanRemoteInput = {axis: 0, targetY: null, lastAt: 0};
+  startTwoPlayerMode(true, false);
+  onlineGameBlocked = paused = true;
+  document.body.classList.remove('lan-connected');
+  setLanPanelOpen(true);
+  setMenusVisible(true);
+  setOnlineControls(true);
+  setLanStatus('Waiting for Player 2...');
+  syncRoyalUi(true);
 }
 // Only the browser uses the manual, offline offer/answer screen. Installed
 // apps continue through their existing native LAN setup, unchanged.
@@ -13569,18 +13790,18 @@ function installMultiplayerSafety() {
   const privateRooms = byId('onlinePrivateRooms');
   const approvalLabel = document.createElement('label'); approvalLabel.className = 'lan-check';
   const approval = document.createElement('input'); approval.type = 'checkbox'; approval.id = 'onlineRequireApproval';
+  approval.checked = playerPreference('hostApprovalRequired');
+  approval.addEventListener('change', () => savePlayerPreference('hostApprovalRequired', approval.checked));
   const text = document.createElement('span'); setLocalizedText(text, 'Host approval required'); approvalLabel.append(approval, text);
   const members = document.createElement('div'); members.id = 'classicRoomMembers';
   privateRooms.append(approvalLabel, members);
-  const kick = royalButton('classicKick', 'Kick', () => {
-    if (!isLanHostActive() || onlineMatchAssignment) return;
-    if (onlineSession?.managed) { onlineSession.send({type: 'kick', slot: 1}); return; }
-    const channel = onlineControlChannel || lanChannel;
-    try { channel?.send(JSON.stringify({type: 'room-removed', room: lanRoomCode})); } catch {}
-    setTimeout(() => { closeLanConnection(false); paused = true; setMenusVisible(true); setLanStatus('A player disconnected. Return to the lobby for a new match.'); }, 100);
-  });
-  kick.hidden = true; byId('matchMenu').querySelector('.match-ui-card')?.append(kick);
-  if (!kick.isConnected) byId('matchMenu').firstElementChild.append(kick);
+  const powerups = royalButton('onlinePowerups', 'Royal Powerups: On', () => setMatchPowerups(!matchPowerupsEnabled));
+  privateRooms.append(powerups);
+  const kick = royalButton('classicKick', 'Kick Player', confirmKickPrivatePlayer);
+  kick.hidden = true; byId('matchMenu').firstElementChild.append(kick);
+  const arenaKick = royalButton('arenaKick', 'Kick Player', confirmKickPrivatePlayer);
+  arenaKick.hidden = true;
+  byId('matchBar').prepend(arenaKick);
   const receive = handleLanMessage;
   window.handleLanMessage = raw => {
     if (typeof raw === 'string' && raw.length < 8192 && isLanGuestActive()) {
@@ -13594,11 +13815,13 @@ function installMultiplayerSafety() {
   onlineRoomInput().maxLength = 6;
   const routeLabel = document.createElement('label'); routeLabel.className = 'lan-check';
   const routeBox = document.createElement('input'); routeBox.id = 'twoPlayerRoute'; routeBox.type = 'checkbox';
+  routeBox.checked = playerPreference('showConnectionType');
+  routeBox.addEventListener('change', () => savePlayerPreference('showConnectionType', routeBox.checked));
   const routeText = document.createElement('span'); setLocalizedText(routeText, 'Show connection type'); routeLabel.append(routeBox, routeText); byId('displaySettings').append(routeLabel);
   const route = document.createElement('p'); route.id = 'twoPlayerRouteLabel'; route.className = 'lan-route'; document.body.append(route);
   let statsBusy = false;
   setInterval(async () => {
-    kick.hidden = !isLanHostActive() || Boolean(onlineMatchAssignment);
+    syncPrivateRoomControls();
     if (!onlineSession?.managed) members.replaceChildren();
     approval.disabled = Boolean(onlineSession);
     if (!routeBox.checked || !lanPeer || !lanConnected || document.hidden) { route.textContent = ''; return; }
@@ -13614,6 +13837,7 @@ function installMultiplayerSafety() {
     input, royalButton('classicLanJoin', 'Create answer', () => { onlineManualLanSelected = true; openOnlineRoom('guest', input.value); }),
     royalButton('classicLanAccept', 'Accept answer', () => onlineSession instanceof KingPongManualRoom && onlineSession.accept(input.value)), output,
     royalButton('classicLanClose', 'Back', () => showTitleScreen()));
+  const lanBack = byId('classicLanClose'); lanBack.classList.add('mode-back'); classic.prepend(lanBack);
   // LAN opens directly. A browser LAN tile opens its offline
   // invitation/answer screen directly; native LAN already opens its setup.
   if (!onlineNativeTransport) lanModeButton.addEventListener('click', event => {

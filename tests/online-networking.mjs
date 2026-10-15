@@ -96,7 +96,7 @@ test('ICE arriving before the offer is queued, then applied before answering', a
 
 test('direct timeout requests TURN once, recreates only the peer, rejects stale candidates, then times out', async () => {
   const h = harness(); h.room.open('host');
-  await h.message({ type: 'welcome', role: 'host', code: 'ABCDE' });
+  await h.message({ type: 'welcome', role: 'host', code: 'ABCDEF', protocol: 'kp-party-1', capacity: 2 });
   assert.equal(h.timers.size, 0);
   await h.message(direct);
   h.fire(8000); h.room.relay();
@@ -134,6 +134,33 @@ test('peer connecting first still waits for the reliable control channel', async
   h.room.close();
 });
 
+test('kicking a private guest preserves the host room when RTC closes before the server acknowledgement', async () => {
+  const h = harness(); h.room.open('host'); await h.message(direct);
+  const peer = h.peers[0];
+  peer.state('connected'); peer.channels.forEach(channel => channel.open());
+  let departed = 0; h.room.hooks.departed = () => departed++;
+  h.room.kickGuest(); h.room.kickGuest();
+  assert.equal(h.room.socket.sent.filter(m => m.type === 'kick').length, 1);
+  peer.channels[0].close(); peer.channels[1].onerror(); peer.state('failed');
+  h.fire(250);
+  assert.deepEqual(h.errors, []); assert.equal(h.room.closed, false);
+  await h.message({type:'departed',slot:1,reason:'kicked'});
+  h.fire(8000);
+  assert.deepEqual(h.errors, []); assert.equal(departed, 1);
+  assert.equal(h.room.connected, false); assert.equal(h.room.socket.readyState, 1);
+  await h.message(direct);
+  assert.equal(h.peers.length, 2, 'another guest can connect using the retained host room');
+  h.room.close();
+});
+
+test('a lost kick acknowledgement times out rather than leaving a stuck moderation state', async () => {
+  const h = harness(); h.room.open('host'); await h.message(direct);
+  const peer=h.peers[0];peer.state('connected');peer.channels.forEach(channel=>channel.open());
+  h.room.kickGuest();h.fire(8000);
+  assert.deepEqual(h.errors,['timeout']);assert.equal(h.room.closed,true);
+  assert.equal(h.timers.size,0);
+});
+
 test('closing during an interruption does not leave a late disconnect timer', async () => {
   const h = harness(); h.room.open('host'); await h.message(direct);
   h.room.hooks.interrupted = () => h.room.close();
@@ -163,8 +190,10 @@ test('authoritative state and input reject duplicate/out-of-order packets', () =
 });
 
 
-test('optional classic approval uses capacity-two private admission while ordinary rooms keep their original endpoint', async () => {
-  const legacy = harness(); legacy.room.open('host'); assert.equal(legacy.room.socket.url.pathname, '/v1/create'); legacy.room.close();
+test('private rooms use capacity-two moderation with approval on or off; legacy room joins remain supported', async () => {
+  const ordinary = harness(); ordinary.room.requireApproval = false; ordinary.room.open('host');
+  assert.match(ordinary.room.socket.url.pathname, /^\/v1\/party\/create\/2\/0\//); ordinary.room.close();
+  const legacy = harness(); legacy.room.open('guest', 'ABCDE'); assert.equal(legacy.room.socket.url.pathname, '/v1/join/ABCDE'); legacy.room.close();
   const host = harness(); host.room.requireApproval = true; host.room.open('host');
   assert.match(host.room.socket.url.pathname, /^\/v1\/party\/create\/2\/1\/[a-f0-9-]{36}$/);
   await host.message({type: 'welcome', role: 'host', code: 'ABCDEF', protocol: 'kp-party-1', capacity: 2});

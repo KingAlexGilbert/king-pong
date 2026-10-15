@@ -110,7 +110,7 @@ for (const platform of Object.keys(builds)) {
 
   test(`${platform}: guest shield sound fires once on its rendered timeline`, () => {
     const h = harness(platform);
-    h.context.ctx = {save() {}, restore() {}, fillRect() {}};
+    h.context.ctx = {save() {}, restore() {}, fillRect() {}, translate() {}, scale() {}};
     h.context.drawText = () => {};
     h.run(`lanRole='guest';let impacts=0;playImpactSound=()=>impacts++;
       royalGuards.left=600;royalGuardHits.left={seq:1,y:40,ttl:8};const view=captureVisualState();

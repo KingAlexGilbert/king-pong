@@ -93,7 +93,7 @@ const hooks = {
   `, "if (!validLanSnapshot(message) || !validMatchRuleState(message.rules) || !validMatchScores(message)) return;",
     "applyMatchRuleState(message.rules);"
   ],
-  sendLanState: ["sendMatchRules();", "rules: matchRulePayload(),"],
+  sendLanState: ["sendMatchRules();", "rules: matchRulePayload(false),"],
   setMusicVolume: ["updateGameAudioGains();"],
   createDefaultSaveData: [`
     muteAll: false,

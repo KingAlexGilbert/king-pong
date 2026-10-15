@@ -207,7 +207,7 @@ try {
     await p.keyboard.press('m');
     assert.equal(await p.locator('#matchMenu').isVisible(), true);
     assert.equal(await p.locator('#menuToggle').getAttribute('aria-expanded'), 'true');
-    assert.equal(await p.evaluate(() => document.activeElement.id), 'matchResume');
+    assert.equal(await p.evaluate(() => document.activeElement.id), 'titleJumpButton');
     assert.equal(await p.locator('#matchResume').innerText(), 'Close menu');
     assert.equal(await p.locator('#restartButton').isVisible(), false);
     assert.equal(await p.evaluate(() => byId('titleScreen').inert), true);
@@ -278,7 +278,14 @@ try {
       left: 'boss-8',
       right: 'enemy-15'
     });
-    assert.equal(await p.evaluate(() => JSON.stringify(saveData)), before);
+    const afterPaddles = await p.evaluate(() => ({...saveData}));
+    assert.equal(afterPaddles.multiplayerPaddle, 'boss-8');
+    assert.equal(afterPaddles.multiplayerPaddle2, 'enemy-15');
+    const previousSave = JSON.parse(before);
+    assert.deepEqual({...afterPaddles, updatedAt: previousSave.updatedAt,
+      multiplayerPaddle: undefined, multiplayerPaddle2: undefined},
+      {...previousSave, multiplayerPaddle: undefined, multiplayerPaddle2: undefined},
+      'saving multiplayer cosmetics preserves campaign progress and all other preferences');
     await p.locator('#chooseArenaButton').click();
     assert.equal(await p.locator('.royal-choice').count(), 19);
     assert.equal(await p.locator('.royal-choice:not(:disabled)').count(), 18);
@@ -315,7 +322,7 @@ try {
     await p.keyboard.press('Tab');
     assert.equal(await p.evaluate(() => document.activeElement.id), 'menuToggle');
     await p.keyboard.press('Tab');
-    assert.equal(await p.evaluate(() => document.activeElement.id), 'matchResume');
+    assert.equal(await p.evaluate(() => document.activeElement.id), 'titleJumpButton');
     await p.locator('#titleJumpButton').click();
     await active(p, []);
     await p.evaluate(() => { mode = 1; openRoyalGallery('paddle'); });
@@ -717,12 +724,19 @@ try {
       showTitleScreen();
       startCampaignFromSave();
     });
-    assert.equal(await p.evaluate(() => JSON.stringify(saveData)), saves[i]);
+    const finalSave = await p.evaluate(() => ({...saveData}));
+    assert.equal(finalSave.multiplayerPaddle, i === 0 ? 'boss-8' : 'enemy-15');
+    assert.equal(finalSave.matchRuleId, i === 0 ? 'endless' : undefined,
+      'remote presets are temporary; only the host changed a local preference');
+    const originalSave = JSON.parse(saves[i]);
+    assert.deepEqual({...finalSave,updatedAt:originalSave.updatedAt,multiplayerPaddle:undefined,matchRuleId:undefined},
+      {...originalSave,multiplayerPaddle:undefined,matchRuleId:undefined},
+      'persistent multiplayer choices leave campaign progress and other settings unchanged');
     assert.equal(await p.evaluate(() => paddleUnlocked(paddleCatalog.find(e => e.id === 'boss-8'))), false);
     await active(p, ['campaign-0']);
     await p.context().close();
   }
-  pass('host/guest session paddles leave saves unchanged; guest cannot browse host arenas');
+  pass('host/guest paddle preferences persist separately; campaign unlocks and guest arena restrictions remain intact');
   const phone = await page('Browser', {
     viewport: {
       width: 390,
@@ -816,7 +830,7 @@ try {
     pollRoyalUiGamepad(1000);
   });
   assert.equal(await titleInput.locator('#matchMenu').isVisible(), true);
-  assert.equal(await titleInput.evaluate(() => document.activeElement.id), 'matchResume');
+  assert.equal(await titleInput.evaluate(() => document.activeElement.id), 'titleJumpButton');
   await titleInput.evaluate(() => {
     testPad.buttons[8].pressed = false;
     pollRoyalUiGamepad(1040);

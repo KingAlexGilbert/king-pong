@@ -132,6 +132,9 @@ function harness(platform, initial = slots, bridge = true) {
     const customIntelSlider = {}, customIntelValue = {}, customMaxMoveSlider = {}, customMaxMoveValue = {};
     const musicVolumeSlider = {}, musicVolumeValue = {};
     ${readFileSync(new URL('../game/royal-audio.js', import.meta.url), 'utf8')}
+    let matchRuleId='classic',matchPowerupsEnabled=true;
+    function resetMultiplayerPaddleChoices(){} function setPlayInfoVisible(){}
+    ${readFileSync(new URL('../game/player-preferences.js', import.meta.url), 'utf8')}
     ${sharedCode(html)}
     ${saveFunctions}
     ${functionSource('eraseActiveSaveSlot')}
@@ -417,5 +420,25 @@ for (const platform of Object.keys(builds)) {
     app.click('import');
     app.created.at(-1).listeners.cancel();
     assert.equal(app.status, 'Import cancelled.');
+  });
+}
+
+for (const platform of Object.keys(builds)) {
+  test(`${platform}: new preference fields round-trip in version-2 slots without importing connection state`, () => {
+    const preferences = {hostApprovalRequired:false,showConnectionType:true,playInfoVisible:false,
+      matchRuleId:'winTwo',royalPowerupsEnabled:false,multiplayerPaddle:'boss-8',multiplayerPaddle2:'enemy-15'};
+    const h = harness(platform, [{...slots[0],...preferences,sessionToken:'discard'},null,slots[2]]);
+    const clean = plain(h.run('parseSaveBackup(makeSaveBackup())'));
+    for (const [key,value] of Object.entries(preferences)) assert.equal(clean.slots[0][key],value);
+    assert.equal(clean.slots[0].sessionToken,undefined);
+    assert.deepEqual(clean.slots[0].completedLevels,slots[0].completedLevels);
+    h.run('applyImportedSaveBackup(parseSaveBackup(makeSaveBackup()));loadSaveSlot(0);');
+    for (const [key,value] of Object.entries(preferences)) assert.equal(h.run(`playerPreference('${key}')`),value);
+    const before=h.snapshot();
+    for(const [key,value] of [['hostApprovalRequired',1],['royalPowerupsEnabled','false'],['matchRuleId','bad'],['multiplayerPaddle','boss-99']]) {
+      const malformed={format:'king-pong-saves',version:1,activeSlot:0,slots:[{...slots[0],...preferences,[key]:value},null,null]};
+      assert.throws(()=>h.run(`parseSaveBackup(${JSON.stringify(JSON.stringify(malformed))});`),/Invalid player preference/);
+      assert.deepEqual(h.snapshot(),before);
+    }
   });
 }

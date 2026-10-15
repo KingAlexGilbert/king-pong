@@ -1,4 +1,5 @@
 import { readFileSync, writeFileSync } from 'node:fs';
+import { integrateMultiplayerPresentation } from '../game/presentation-integration.mjs';
 import { integrateRoyalUi } from '../game/ui-integration.mjs';
 import { integrateRoyalPolish } from '../game/polish-integration.mjs';
 import { integrateServeMotion } from '../game/serve-integration.mjs';
@@ -17,6 +18,8 @@ const script = iconSources() + [
   'royal-gameplay.js',
   'royal-rules.js',
   'royal-audio.js',
+  'player-preferences.js',
+  'arena-perspective.js',
   'royal-ui.js',
   'multiplayer-safety.js'
 ].map(file => readFileSync(new URL('game/' + file, root), 'utf8')).join('\n');
@@ -47,6 +50,7 @@ for (const file of files) {
   );
   updated = replaceBlock(updated, '<style id="royal-menu-style">', '</style>', css);
   updated = replaceBlock(updated, '<script id="royal-localization">', '</script>', localization);
+  updated = integrateMultiplayerPresentation(updated);
   updated = integrateRoyalUi(updated);
   updated = integrateSaveTransfer(updated, saveTransfer);
   updated = integrateRoyalPolish(updated);
