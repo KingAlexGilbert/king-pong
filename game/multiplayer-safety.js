@@ -1,4 +1,17 @@
 let onlineManualLanSelected = false;
+async function gatherClassicLanDescription(room) {
+  const peer = room.peer;
+  if (!peer) throw Error('connection_lost');
+  if (peer.iceGatheringState !== 'complete') await new Promise(resolve => {
+    const finish = () => { clearTimeout(timer); peer.removeEventListener('icegatheringstatechange', change); resolve(); };
+    const change = () => { if (peer.iceGatheringState === 'complete') finish(); };
+    const timer = setTimeout(finish, 4000); peer.addEventListener('icegatheringstatechange', change);
+  });
+  clearTimeout(room.directTimer); clearTimeout(room.totalTimer); room.totalTimer = null;
+  if (room.role === 'guest') room.totalTimer = setTimeout(() => room.fail('timeout'), 300000);
+  if (room.closed || !peer.localDescription) throw Error('connection_lost');
+  return peer.localDescription.toJSON();
+}
 class KingPongManualRoom extends KingPongRoom {
   async open(role, invitation = '') {
     this.role = role;
@@ -8,14 +21,14 @@ class KingPongManualRoom extends KingPongRoom {
         this.hooks.welcome(this.code);
         await this.receive({type: 'start', attempt: 0, iceServers: []});
         this.manualAt = Date.now();
-        const description = await KingPongLanParty.prototype.gather.call(this, this);
+        const description = await gatherClassicLanDescription(this);
         byId('classicLanOutput').value = btoa(JSON.stringify({protocol: 'kp-lan-two-1', room: this.code, nonce: this.manualNonce, description}));
       } else {
         const m = this.decode(invitation, 'offer'); this.code = m.room; this.manualNonce = m.nonce;
         this.hooks.welcome(this.code);
         await this.receive({type: 'start', attempt: 0, iceServers: []});
         await this.receive({type: 'description', attempt: 0, description: m.description});
-        const description = await KingPongLanParty.prototype.gather.call(this, this);
+        const description = await gatherClassicLanDescription(this);
         byId('classicLanOutput').value = btoa(JSON.stringify({...m, description}));
       }
       this.hooks.status('Exchange this text with the other device.');
@@ -44,15 +57,29 @@ function syncClassicApproval(lobby) {
   root.replaceChildren();
   if (lanRole !== 'host' || !onlineSession?.managed) return;
   for (const pending of lobby.pending || []) {
-    const row = document.createElement('div'); row.className = 'four-slot'; setLocalizedText(row, 'Join request');
+    const row = document.createElement('div'); row.className = 'match-row'; setLocalizedText(row, 'Join request');
     row.append(royalButton('', 'Accept', () => onlineSession?.send({type: 'approve', request: pending.request})),
       royalButton('', 'Reject', () => onlineSession?.send({type: 'reject', request: pending.request}))); root.append(row);
   }
 
 }
+// Only the browser uses the manual, offline offer/answer screen. Installed
+// apps continue through their existing native LAN setup, unchanged.
+function openOfflineLanSetup(fromTitle = true) {
+  if (onlineNativeTransport) {
+    onlineManualLanSelected = false;
+    startLanTwoPlayerSetup(fromTitle);
+    return;
+  }
+  onlineManualLanSelected = true;
+  royalMenuRequested = false;
+  startOnlineSetup(fromTitle);
+  byId('classicLanDialog').hidden = false;
+  syncRoyalFocus();
+}
 function installMultiplayerSafety() {
   const privateRooms = byId('onlinePrivateRooms');
-  const approvalLabel = document.createElement('label'); approvalLabel.className = 'four-check';
+  const approvalLabel = document.createElement('label'); approvalLabel.className = 'lan-check';
   const approval = document.createElement('input'); approval.type = 'checkbox'; approval.id = 'onlineRequireApproval';
   const text = document.createElement('span'); setLocalizedText(text, 'Host approval required'); approvalLabel.append(approval, text);
   const members = document.createElement('div'); members.id = 'classicRoomMembers';
@@ -77,10 +104,10 @@ function installMultiplayerSafety() {
     receive(raw);
   };
   onlineRoomInput().maxLength = 6;
-  const routeLabel = document.createElement('label'); routeLabel.className = 'four-check';
+  const routeLabel = document.createElement('label'); routeLabel.className = 'lan-check';
   const routeBox = document.createElement('input'); routeBox.id = 'twoPlayerRoute'; routeBox.type = 'checkbox';
   const routeText = document.createElement('span'); setLocalizedText(routeText, 'Show connection type'); routeLabel.append(routeBox, routeText); byId('displaySettings').append(routeLabel);
-  const route = document.createElement('p'); route.id = 'twoPlayerRouteLabel'; route.className = 'four-route'; document.body.append(route);
+  const route = document.createElement('p'); route.id = 'twoPlayerRouteLabel'; route.className = 'lan-route'; document.body.append(route);
   let statsBusy = false;
   setInterval(async () => {
     kick.hidden = !isLanHostActive() || Boolean(onlineMatchAssignment);
@@ -92,24 +119,23 @@ function installMultiplayerSafety() {
     finally { statsBusy = false; }
   }, 2000);
   const classic = royalDialog('classicLanDialog', 'LAN Play');
-  const note = document.createElement('p'); setLocalizedText(note, 'LAN: create one invitation per guest. Guest returns an answer; host accepts it. Invitations expire after 5 minutes.');
+  const note = document.createElement('p'); setLocalizedText(note, 'LAN: create an invitation. Guest returns an answer; host accepts it. Invitations expire after 5 minutes.');
   const input = document.createElement('textarea'); input.id = 'classicLanInput'; input.setAttribute('aria-label', localizeText('Paste LAN invitation or answer'));
   const output = document.createElement('textarea'); output.id = 'classicLanOutput'; output.readOnly = true; output.setAttribute('aria-label', localizeText('Copy LAN invitation or answer'));
   classic.append(note, royalButton('classicLanHost', 'Create invitation', () => { onlineManualLanSelected = true; openOnlineRoom('host'); }),
     input, royalButton('classicLanJoin', 'Create answer', () => { onlineManualLanSelected = true; openOnlineRoom('guest', input.value); }),
     royalButton('classicLanAccept', 'Accept answer', () => onlineSession instanceof KingPongManualRoom && onlineSession.accept(input.value)), output,
-    royalButton('classicLanClose', 'Close', () => { byId('classicLanDialog').hidden = true; }));
-  classic.classList.add('four-lan-exchange');
-  const choices = royalDialog('lanPlayerCount', 'LAN Play');
-  choices.append(royalButton('lanTwoPlayers', 'Two Player', () => {
-    byId('lanPlayerCount').hidden = true;
-    if (onlineNativeTransport) { onlineManualLanSelected = false; startLanTwoPlayerSetup(true); }
-    else { onlineManualLanSelected = true; startOnlineSetup(true); byId('classicLanDialog').hidden = false; }
-  }), royalButton('lanFourPlayers', 'Up to Four Players', () => { byId('lanPlayerCount').hidden = true; fourView.open('lan'); }),
-    royalButton('lanCountBack', 'Back', () => { byId('lanPlayerCount').hidden = true; }));
-  const lanButton = onlineNativeTransport ? titleLanButton : byId('titleNativeLanButton');
-  lanButton.addEventListener('click', e => { e.stopImmediatePropagation(); byId('lanPlayerCount').hidden = false; byId('lanTwoPlayers').focus(); }, true);
-  document.querySelector('.primary-online').addEventListener('click', () => { onlineManualLanSelected = false; byId('classicLanDialog').hidden = true; }, true);
+    royalButton('classicLanClose', 'Back', () => showTitleScreen()));
+  // LAN opens directly. A browser LAN tile opens its offline
+  // invitation/answer screen directly; native LAN already opens its setup.
+  if (!onlineNativeTransport) lanModeButton.addEventListener('click', event => {
+    event.stopImmediatePropagation();
+    openOfflineLanSetup(false);
+  }, true);
+  document.querySelector('.primary-online').addEventListener('click', () => {
+    onlineManualLanSelected = false;
+    byId('classicLanDialog').hidden = true;
+  }, true);
   // Clamp the result of the existing movement code, only for networked paddles.
   // This also bounds combined keyboard/gamepad input and touch targets for both players.
   const updatePaddles = updatePlayerPaddles;

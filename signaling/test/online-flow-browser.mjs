@@ -137,7 +137,6 @@ try {
       for (const tile of title.tiles) assert.ok(!tile.shadow.includes('4px 4px'), 'no offset double edge');
       await paint(p, `${platform}-title-${viewport.width}`);
       await p.locator('.primary-online').click();
-      await p.locator('#onlineTwoPlayers').click();
       assert.equal(await p.locator('#matchArenaPreference').count(), 0);
       assert.equal(await p.locator('.matchmaking-rules').innerText(), 'First to 10');
       const order = await p.evaluate(() => {

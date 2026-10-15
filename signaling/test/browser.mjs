@@ -125,7 +125,6 @@ async function page(locale = 'en-US') {
   });
   await page.goto(origin + '/demo/');
   await page.locator('#titleLanButton').click();
-  await page.locator('#onlineTwoPlayers').click();
   return page;
 }
 async function waitFor(page, expression) {
@@ -138,7 +137,14 @@ async function waitFor(page, expression) {
       status: lanStatus.textContent,
       role: lanRole,
       connected: lanConnected,
-      blocked: onlineGameBlocked
+      blocked: onlineGameBlocked,
+      paused,
+      rightY: right.y,
+      receivedInputSeq: lanLastInputSeq,
+      appliedInputSeq: onlineAppliedInputSeq,
+      remoteInput: lanRemoteInput,
+      compactWire: onlineWireReady,
+      inputIntent: onlineIntentReady
     })), errors);
     throw error;
   }
@@ -157,7 +163,7 @@ try {
   await guest.locator('#lanJoinButton').click();
   await guest.locator('#lanRoomCodeInput').fill('OOOOO');
   await guest.locator('#onlineJoinSubmit').click();
-  assert.match(await guest.locator('#lanStatus').textContent(), /valid five- or six-character/);
+  assert.match(await guest.locator('#lanStatus').textContent(), /valid five- or six-character room code/);
   await guest.locator('#lanRoomCodeInput').fill(code.toLowerCase());
   await guest.locator('#onlineJoinSubmit').click();
   await Promise.all([waitFor(host, 'lanConnected'), waitFor(guest, 'lanConnected && onlineHasState')]);
@@ -201,12 +207,44 @@ try {
     keys.add('ArrowDown');
   });
   await waitFor(guest, `right.y > ${before + 10}`);
-  await guest.evaluate(() => keys.clear());
+  // Keep the key held until its movement reaches the authoritative host.
+  // Guest prediction can cross 10px before the deliberately delayed/lossy
+  // packets arrive, making an immediate release an unrealistically short tap.
   await waitFor(host, `right.y > ${before + 10}`);
-  await guest.waitForTimeout(600);
-  const hostY = await host.evaluate(() => right.y);
-  const guestY = await guest.evaluate(() => right.y);
-  assert.ok(Math.abs(hostY - guestY) < 2, `paddles converge: ${hostY}, ${guestY}`);
+  // Do not compare positions after an arbitrary delay: the network shim can
+  // reorder or drop the final release. First require authoritative acknowledgment
+  // of the *release* input, then verify positions actually settle.
+  const releaseSeq = await guest.evaluate(() => {
+    keys.clear();
+    sendLanInput(null, true);
+    return lanInputSeq;
+  });
+  const convergenceDeadline = Date.now() + 5000;
+  let observed;
+  let matchingSamples = 0;
+  do {
+    const hostState = await host.evaluate(() => ({
+      y: right.y, receivedSeq: lanLastInputSeq, appliedSeq: onlineAppliedInputSeq,
+      remoteInput: {axis: lanRemoteInput.axis, targetY: lanRemoteInput.targetY},
+      paused, blocked: onlineGameBlocked
+    }));
+    const guestState = await guest.evaluate(() => ({
+      y: right.y, ack: onlineInputAck, sentSeq: lanInputSeq,
+      pending: onlineInputs.size, lastInput: onlineLastInput && {
+        axis: onlineLastInput.axis, targetY: onlineLastInput.targetY,
+        proofSeq: onlineLastInput.proofSeq
+      },
+      lastStateSeq: lanLastStateSeq, intent: onlineIntentReady,
+      paused, blocked: onlineGameBlocked
+    }));
+    observed = {host: hostState, guest: guestState, releaseSeq};
+    if (guestState.ack >= releaseSeq && Math.abs(hostState.y - guestState.y) < 2) {
+      if (++matchingSamples >= 2) break;
+    } else matchingSamples = 0;
+    await new Promise(resolve => setTimeout(resolve, 100));
+  } while (Date.now() < convergenceDeadline);
+  assert.ok(matchingSamples >= 2,
+    'paddles failed to converge after release acknowledgment: ' + JSON.stringify(observed));
   console.log(
     'PASS: responsive guest paddle and convergence with 180 ms RTT, jitter, reordering and ~8% snapshot/input loss');
 

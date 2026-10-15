@@ -88,7 +88,3 @@ jobs:
         run: npm run test:ripple
       - name: Test ball appearance and immediate pause/resume presentation
         run: npm run test:appearance
-      - name: Test four-player geometry, perspectives and responsive rendering
-        run: npm run test:four
-      - name: Test four-player permissions and snapshot recovery across builds
-        run: npm run test:four-network

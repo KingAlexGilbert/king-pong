@@ -40,7 +40,6 @@ async function page(path = 'docs/demo/') {
   await p.addInitScript(value => Object.defineProperty(window,'KING_PONG_SIGNALING_URL',{get:()=>value,set:()=>{}}),signaling);
   await p.goto(path === 'docs/demo/' ? origin+'/'+path : new URL(path,root).href);
   await p.locator(path === 'docs/demo/' ? '#titleLanButton' : '#titleOnlineButton').click();
-  await p.locator('#onlineTwoPlayers').click();
   await p.waitForFunction(()=>matchmakingWaiting!==null);
   return p;
 }

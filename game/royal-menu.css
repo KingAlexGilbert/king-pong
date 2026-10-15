@@ -1515,3 +1515,9 @@ body.royal-panel-open .match-footer #controlHint {
 .title-card .title-actions { width: min(100%, 620px); grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .title-card .title-actions .secret-boss-button { grid-column: 1 / -1; }
 @media (max-width: 420px) { .title-card .title-actions { gap: 6px; } .title-card .title-actions button { padding: 10px 5px; font-size: 11px; } }
+
+/* Shared two-player private-room and offline LAN controls. */
+.lan-check { display: flex; align-items: center; gap: .55rem; margin: .6rem 0; }
+.lan-route { position: fixed; z-index: 16; right: .8rem; bottom: .5rem; font-size: .75rem; pointer-events: none; }
+.match-row { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+#classicLanDialog textarea { width: 100%; min-height: 4.5rem; resize: vertical; }

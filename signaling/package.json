@@ -22,9 +22,7 @@
     "benchmark:queue": "node test/queue-benchmark.mjs",
     "test:ripple": "node test/ripple-browser.mjs",
     "profile:ripple": "node test/ripple-profile.mjs",
-    "test:appearance": "node test/appearance-browser.mjs",
-    "test:four": "node test/four-browser.mjs",
-    "test:four-network": "node test/four-network-browser.mjs"
+    "test:appearance": "node test/appearance-browser.mjs"
   },
   "devDependencies": {
     "miniflare": "5.20261006.1-alpha",

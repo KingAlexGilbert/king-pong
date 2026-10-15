@@ -41,6 +41,8 @@ function resetRoyalUiForTitle() {
   if (typeof stopRoyalPowerupSound === 'function') stopRoyalPowerupSound();
   royalOnlineSelected = royalMenuRequested = false;
   lanPanelOpen = false;
+  if (typeof onlineManualLanSelected !== 'undefined') onlineManualLanSelected = false;
+  if (byId('classicLanDialog')) byId('classicLanDialog').hidden = true;
   royalRotateDismissed = false;
   royalOrientationAttempted = false;
   royalOrientationGeneration++;
@@ -55,7 +57,8 @@ function resetRoyalUiForTitle() {
 function royalModeName() {
   if (mode === 4 || bossIntroActive) return 'Secret Boss';
   if (mode === 3) return 'Custom Game';
-  if (royalOnlineMode()) return typeof onlineTransportSelected !== 'undefined' && onlineTransportSelected ? 'Online Multiplayer' : 'LAN Two Player';
+  if (royalOnlineMode()) return typeof onlineManualLanSelected !== 'undefined' && onlineManualLanSelected ?
+    'LAN Play' : typeof onlineTransportSelected !== 'undefined' && onlineTransportSelected ? 'Online Multiplayer' : 'LAN Two Player';
   if (mode === 2) return 'Local Two Player';
   return 'Campaign';
 }
@@ -163,7 +166,8 @@ function initRoyalUi() {
   setup.append(setupHint);
   const setupActions = document.createElement('div');
   setupActions.className = 'match-actions';
-  setupActions.append(royalButton('matchServe', 'Start match', royalContinue, 'match-primary'), royalButton(
+  setupActions.append(royalButton('matchServe', 'Start match', royalContinue, 'match-primary'),
+    royalButton('setupBackButton', 'Back', () => showTitleScreen()), royalButton(
     'setupMenuButton', 'Menu (M)', () => {
       if (royalOnlineMode() && onlineTransportSelected) { showTitleScreen(); return; }
       royalMenuRequested = true;
@@ -180,6 +184,7 @@ function initRoyalUi() {
   menuActions.className = 'match-actions';
   menuActions.append(royalButton('matchResume', 'Resume', royalContinue, 'match-primary'), restartButton,
     titleJumpButton);
+  royalText(titleJumpButton, 'Back');
   menu.append(menuActions);
   menu.append(royalDisclosure('Room / connection', 'matchConnection'));
   const configure = document.createElement('div');
@@ -506,6 +511,7 @@ function syncRoyalUi(force = false) {
     if (back.parentElement !== setupCard) setupCard.prepend(back);
   } else if (back.parentElement === setupCard) byId('matchServe').parentElement.append(back);
   royalText(back, onlineSetup ? 'Back' : 'Menu (M)');
+  byId('setupBackButton').hidden = onlineSetup;
   byId('matchBar').classList.toggle('match-bar-paused', desktopPause);
   // Keep the toggle inside the current screen or modal's focus/inert boundary.
   if (menu && !royalLastDialog) royalReturnFocus = document.activeElement;
@@ -662,7 +668,7 @@ function syncRoyalOrientation() {
 
 function royalActiveDialog() {
   if (galleryKind) return byId('royalGallery');
-  for (const id of ['onlinePlayerCount', 'lanPlayerCount', 'classicLanDialog', 'rotateDevice', 'matchMenu', 'matchSetup'])
+  for (const id of ['classicLanDialog', 'rotateDevice', 'matchMenu', 'matchSetup'])
     if (byId(id) && !byId(id).hidden) return byId(id);
   if (onlineMatchFlowVisible() && onlineMatchFlow.phase !== 'go') return byId('onlineMatchFlow');
   return null;
@@ -707,7 +713,7 @@ function handleRoyalUiKey(event) {
       index = controls.indexOf(document.activeElement);
     controls[(index + (event.shiftKey ? -1 : 1) + controls.length) % controls.length]?.focus();
   } else if (dialog && event.key === 'Escape') {
-    if (['onlinePlayerCount', 'lanPlayerCount', 'classicLanDialog'].includes(dialog.id)) {
+    if (dialog.id === 'classicLanDialog') {
       dialog.hidden = true; syncRoyalFocus();
     } else if (dialog.id === 'rotateDevice') {
       royalRotateDismissed = true;
