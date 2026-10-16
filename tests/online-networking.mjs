@@ -110,7 +110,7 @@ test('direct timeout requests TURN once, recreates only the peer, rejects stale 
   assert.deepEqual(h.errors, ['timeout']);
 });
 
-test('connection is ready only after the peer and both channels; transient ICE disconnect can recover', async () => {
+test('connection waits for both channels; a departed guest leaves the managed host room open', async () => {
   const h = harness(); h.room.open('host'); await h.message(direct);
   const peer = h.peers[0];
   peer.channels[0].open(); assert.equal(h.ready, 0);
@@ -122,7 +122,44 @@ test('connection is ready only after the peer and both channels; transient ICE d
   peer.state('connected'); assert.equal(h.resumed, 1);
   h.fire(8000); assert.deepEqual(h.errors, []);
   peer.channels[0].close(); h.fire(250);
-  assert.deepEqual(h.errors, ['guest_left']);
+  assert.deepEqual(h.errors, [], 'RTC close must not preempt the server departure event');
+  assert.equal(h.room.closed, false);
+  await h.message({type:'departed', slot:1, reason:'guest_left'});
+  h.fire(8000);
+  assert.deepEqual(h.errors, []);
+  assert.equal(h.room.connected, false);
+  assert.equal(h.room.socket.readyState, 1);
+  await h.message(direct);
+  assert.equal(h.peers.length, 2, 'a replacement guest can use the retained room');
+  h.room.close();
+});
+
+test('RTC channel errors and failed ICE also wait for managed host departure', async () => {
+  for (const failure of ['channel-error', 'ice-failed']) {
+    const h = harness(); h.room.open('host'); await h.message(direct);
+    const peer = h.peers[0]; peer.state('connected'); peer.channels.forEach(channel => channel.open());
+    if (failure === 'channel-error') peer.channels[1].onerror();
+    else peer.state('failed');
+    h.fire(250);
+    assert.deepEqual(h.errors, [], failure + ' prematurely closed the reusable host room');
+    assert.equal(h.interrupted, 1);
+    await h.message({type:'departed', slot:1, reason:'guest_left'});
+    h.fire(8000);
+    assert.equal(h.room.socket.readyState, 1);
+    assert.deepEqual(h.errors, []);
+    h.room.close();
+  }
+});
+
+test('a missing managed-room departure event fails safely after a bounded wait', async () => {
+  const h = harness(); h.room.open('host'); await h.message(direct);
+  const peer = h.peers[0]; peer.state('connected'); peer.channels.forEach(channel => channel.open());
+  peer.channels[0].close(); h.fire(250);
+  assert.deepEqual(h.errors, []);
+  h.fire(8000);
+  assert.deepEqual(h.errors, ['connection_lost']);
+  assert.equal(h.room.closed, true);
+  assert.equal(h.timers.size, 0);
 });
 
 test('peer connecting first still waits for the reliable control channel', async () => {

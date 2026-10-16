@@ -3754,6 +3754,20 @@ class KingPongRoom {
     this.removalTimer = setTimeout(() => this.fail('timeout'), 8000);
   }
 
+  // In a managed private room the signaling server, not WebRTC, decides when
+  // the guest has left. RTC channels often close before its 'departed' event
+  // arrives; tearing down the host socket here would lose the reusable code.
+  waitForGuestDeparture(peer) {
+    if (!this.managed || this.role !== 'host' || !this.connected ||
+        this.closed || this.peer !== peer) return false;
+    clearTimeout(this.disconnectTimer);
+    clearTimeout(this.peerLostTimer);
+    this.peerLostTimer = setTimeout(() => {
+      if (!this.closed && this.peer === peer) this.fail('connection_lost');
+    }, 8000);
+    return true;
+  }
+
   async receive(message) {
     if (this.managed && message.type === 'lobby') { if (typeof syncClassicApproval === 'function') syncClassicApproval(message); return; }
     if (this.managed && message.type === 'approved') { this.hooks.status('Connecting...'); return; }
@@ -3795,7 +3809,11 @@ class KingPongRoom {
       peer.onconnectionstatechange = () => {
         if (this.peer !== peer || this.closed || this.removingGuest) return;
         if (peer.connectionState === 'failed') {
-          if (this.connected) this.fail(this.role === 'host' ? 'guest_left' : 'host_left');
+          if (this.connected) {
+            if (this.managed && this.role === 'host') this.hooks.interrupted?.();
+            if (!this.closed && this.peer === peer && !this.waitForGuestDeparture(peer))
+              this.fail(this.role === 'host' ? 'guest_left' : 'host_left');
+          }
           else this.relay();
         } else if (peer.connectionState === 'disconnected') {
           clearTimeout(this.disconnectTimer);
@@ -3861,13 +3879,19 @@ class KingPongRoom {
       // Freeze immediately, especially if the ready countdown is about to end.
       this.hooks.interrupted?.();
       if (this.closed || this.peer !== peer) return;
+      if (this.waitForGuestDeparture(peer)) return;
       // A room-expiry message may follow the peer's channel close by a few milliseconds.
       clearTimeout(this.peerLostTimer);
       this.peerLostTimer = setTimeout(() => {
         if (this.peer === peer) this.fail(this.role === 'host' ? 'guest_left' : 'host_left');
       }, 250);
     };
-    channel.onerror = () => { if (!this.closed && this.peer === peer && !this.relayPending && !this.removingGuest) this.fail(this.connected ? (this.role === 'host' ? 'guest_left' : 'host_left') : 'negotiation_failed'); };
+    channel.onerror = () => {
+      if (this.closed || this.peer !== peer || this.relayPending || this.removingGuest) return;
+      if (this.managed && this.role === 'host' && this.connected) this.hooks.interrupted?.();
+      if (!this.closed && this.peer === peer && !this.waitForGuestDeparture(peer))
+        this.fail(this.connected ? (this.role === 'host' ? 'guest_left' : 'host_left') : 'negotiation_failed');
+    };
   }
 
   maybeConnected(peer) {
@@ -4076,7 +4100,11 @@ function openOnlineRoom(role, code = '', assignment = null) {
     message: raw => { if (onlineSession === session) handleLanMessage(raw); },
     interrupted: () => {
       if (onlineSession !== session) return;
-      if (onlineMatchFlowBlocksPlay()) { session.fail('opponent_left'); return; }
+      // Matchmaking and guests leave a failed setup; private hosts must keep
+      // their signaling room while the server reports the departing guest.
+      if (onlineMatchFlowBlocksPlay() && !(session.managed && role === 'host')) {
+        session.fail('opponent_left'); return;
+      }
       onlineGameBlocked = true;
       paused = true;
       resumeCountdownEndAt = 0;
