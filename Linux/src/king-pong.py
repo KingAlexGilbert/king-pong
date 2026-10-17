@@ -1,11 +1,13 @@
 #!/usr/bin/python3
 """GTK 3 / WebKitGTK launcher for King Pong 2.0.0."""
 
+import json
 import os
 import sys
 import traceback
 import base64
 import tempfile
+import secrets
 import math
 from pathlib import Path
 from urllib.parse import urldefrag
@@ -310,6 +312,23 @@ def main():
 
     from gi.repository import GLib, Gio
     game_base_uri = GAME_PATH.resolve().as_uri()
+    from king_pong_lan import LanBridge
+    def send_lan_event(event):
+        def deliver():
+            if not battery_closed and urldefrag(webview.get_uri() or "")[0] == game_base_uri:
+                webview.run_javascript("window.KingPongLanReceive && window.KingPongLanReceive(" + json.dumps(event) + ");", None, None, None)
+            return False
+        GLib.idle_add(deliver)
+    lan_bridge = LanBridge(send_lan_event)
+    from king_pong_audio import BossAudioCache
+    def send_boss_audio(request, data):
+        def deliver():
+            if not battery_closed and urldefrag(webview.get_uri() or "")[0] == game_base_uri:
+                webview.run_javascript("window.KingPongBossAudioReceive && window.KingPongBossAudioReceive(" + json.dumps(request) + "," + json.dumps(data) + ");", None, None, None)
+            return False
+        GLib.idle_add(deliver)
+    boss_audio = BossAudioCache(send_boss_audio)
+    native_capability = secrets.token_hex(16)
     manager = WebKit2.UserContentManager.new()
     # Mark this packaged runtime so the shared game HTML can use the Linux WebKitGTK audio keep-alive only here.
     try:
@@ -424,6 +443,12 @@ def main():
                 if text == "kingpong:exit":
                     window.destroy()
                     return
+                if text.startswith("kingpong:boss-audio:" + native_capability + ":"):
+                    boss_audio.load(text[len("kingpong:boss-audio:" + native_capability + ":"):])
+                    return
+                if text.startswith("kingpong:lan:" + native_capability + ":"):
+                    lan_bridge.handle(text[len("kingpong:lan:" + native_capability + ":"): ])
+                    return
                 request_id, operation, payload = parse_save_request(text)
             except (ValueError, TypeError):
                 return
@@ -437,16 +462,20 @@ def main():
         manager.connect("script-message-received::kingpong", on_script_message)
         bridge_js = r"""
             (() => {
+                window.KingPongNativeLan = true;
+                window.KingPongNativeBossAudio = true;
                 window.chrome = window.chrome || {};
                 window.chrome.webview = window.chrome.webview || {};
                 window.chrome.webview.postMessage = function(message) {
-                    window.webkit.messageHandlers.kingpong.postMessage(String(message));
+                    message = String(message);
+                    message = message.replace(/^(kingpong:(?:lan|boss-audio):)/, '$1__NATIVE_CAPABILITY__:');
+                    window.webkit.messageHandlers.kingpong.postMessage(message);
                 };
             })();
         """
         try:
             script = WebKit2.UserScript.new(
-                bridge_js,
+                bridge_js.replace("__NATIVE_CAPABILITY__", native_capability),
                 WebKit2.UserContentInjectedFrames.TOP_FRAME,
                 WebKit2.UserScriptInjectionTime.START,
                 [],
@@ -470,6 +499,7 @@ def main():
             if urldefrag(decision.get_request().get_uri() or "")[0] != game_base_uri:
                 decision.ignore()
                 return True
+            lan_bridge.stop()
         return False
 
     webview.connect("decide-policy", on_decide_policy)
@@ -502,6 +532,7 @@ def main():
     def close_game(*_args):
         nonlocal battery_closed
         battery_closed = True
+        lan_bridge.close()
         battery_monitor.stop()
         try:
             Gtk.main_quit()
@@ -531,6 +562,15 @@ def main():
         print(f"Load failed for {uri}: {error}", file=sys.stderr)
         return False
 
+    def on_window_state(_window, event):
+        if event.changed_mask & Gdk.WindowState.ICONIFIED:
+            minimized = bool(event.new_window_state & Gdk.WindowState.ICONIFIED)
+            if minimized:
+                lan_bridge.stop()
+            webview.run_javascript("window.KingPongBackgrounded=" + ("true" if minimized else "false") + ";document.dispatchEvent(new Event('kingpong-background'));", None, None, None)
+        return False
+
+    window.connect("window-state-event", on_window_state)
     window.connect("destroy", close_game)
     window.connect("key-press-event", on_key_press)
     try:
@@ -567,6 +607,7 @@ def main():
         Gtk.main()
     finally:
         battery_closed = True
+        lan_bridge.close()
         battery_monitor.stop()
     return 0
 

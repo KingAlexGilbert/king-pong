@@ -2776,6 +2776,53 @@ body.royal-panel-open .match-footer #controlHint {
   #matchSetup .royal-selection-row canvas { grid-column: 2; grid-row: 2 / span 2; height: 32px; max-width: 56px; margin: 0; }
   #matchSetup .royal-selection-row .setup-change { grid-column: 1; margin-top: 2px; text-align: left; }
 }
+
+/* Use available CSS pixels, including zoom/scaled desktops. Preserve control,
+   typography and preview sizes; only the containers and flow change. */
+#matchSetup > .match-card, #matchMenu > .match-card { width: min(100%, 1180px); }
+#matchSetup > .match-card { overflow: auto; }
+#matchSetupBody { overflow: visible; flex: none; }
+.royal-gallery-card { width: min(1400px, 94vw); }
+.match-card, .title-card, .royal-gallery-card { overflow-wrap: anywhere; }
+@media (min-width: 960px) {
+  #onlineUiRoot { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 24px; align-items: start; }
+  #onlineUiRoot > :not(#matchmakingPanel):not(#onlinePrivateRooms) { grid-column: 1 / -1; }
+  #onlinePrivateRooms { border-top: 0; border-left: 1px solid #45404a; padding: 4px 0 0 24px; }
+  #onlineUiRoot:has(#matchmakingPanel[hidden]) #onlinePrivateRooms,
+  #onlineUiRoot:has(#onlinePrivateRooms[hidden]) #matchmakingPanel { grid-column: 1 / -1; border-left: 0; padding-left: 0; }
+  #matchSettings .settings-columns { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 0 24px; }
+}
+/* Reserve the browser toggle's hit area without changing the native toolbar. */
+body:has(#browserFullscreen) .match-bar { padding-right: 50px; }
+#matchSetup.online-setup #lanPanel { margin-bottom: 0; padding-bottom: 0; }
+#localLanSetup { display: grid; gap: 12px; }
+#localLanSetup .match-actions { margin-top: 0; }
+#localLanSetup input:not([type=checkbox]), #localLanRooms { min-height: 44px; box-sizing: border-box; width: 100%; color: #e8decb; background: #08060b; border: 1px solid #67543b; padding: 10px; }
+#localLanAddress { overflow-wrap: anywhere; color: #ffd469; }
+#classicLanDialog > .match-card { width: min(100%, 1000px); }
+@media (min-width: 960px) {
+ #localLanSetup { grid-template-columns: 1fr 1fr; column-gap: 24px; }
+ #localLanSetup > .match-actions, #localLanHint, #localLanAddress, #localLanApproval { grid-column: 1 / -1; }
+}
+
+#localLanRoomCode { font-size: 28px; color: #ffd469; letter-spacing: .2em; grid-column: 1 / -1; }
+#localLanRoomCode:empty { display: none; }
+
+@media (min-width: 1360px) {
+ .title-card:has(.secret-boss-button:not([hidden])) { width: min(94vw, 1320px); }
+ .title-card .title-actions:has(> .secret-boss-button:not([hidden])) { width: 100%; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+#pairingDialog { z-index: 90; }
+#pairingPin { display: block; color: #ffd76b; font-size: 28px; letter-spacing: .18em; margin: 18px 0; text-align: center; }
+
+/* Fullscreen controls share the existing toolbar without adding outer width. */
+body:has(#browserFullscreen) .match-bar { box-sizing: border-box; }
+.room-approval-options { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; }
+
+#onlineMatchOptions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; }
+#onlineMatchOptions #onlinePowerups { margin: 0; }
+#onlineMatchOptions p { flex: 1 1 260px; margin: 0; }
 </style>
 </head>
 
@@ -3564,6 +3611,26 @@ Object.entries({
     window.KING_PONG_ONLINE_TRANSLATIONS[language][key] = values[i];
   });
 })();
+
+// Optional anonymous connection verification; English remains the source key.
+(() => {
+  const languages = ['es','fr','de','pt','it','nl','ja','ko','zh'];
+  const phrases = {
+    'Verify pairing PIN (host)': ['Verificar PIN de conexión (anfitrión)','Vérifier le code d’association (hôte)','Kopplungs-PIN prüfen (Host)','Verificar PIN de conexão (anfitrião)','Verifica PIN di abbinamento (host)','Koppelingscode controleren (host)','接続PINを確認（ホスト）','연결 PIN 확인 (호스트)','验证配对码（房主）'],
+    'Verify pairing': ['Verificar conexión','Vérifier l’association','Kopplung prüfen','Verificar conexão','Verifica abbinamento','Koppeling controleren','接続を確認','연결 확인','验证配对'],
+    'Compare PIN': ['Comparar PIN','Comparer le code','PIN vergleichen','Comparar PIN','Confronta PIN','Code vergelijken','PINを比較','PIN 비교','比较配对码'],
+    'Compare this PIN on both devices before accepting.': ['Compara este PIN en ambos dispositivos antes de aceptar.','Comparez ce code sur les deux appareils avant d’accepter.','Vor dem Bestätigen diese PIN auf beiden Geräten vergleichen.','Compare este PIN nos dois dispositivos antes de aceitar.','Confronta questo PIN sui due dispositivi prima di accettare.','Vergelijk deze code op beide apparaten voordat je accepteert.','承認する前に両方の端末でこのPINを比較してください。','수락하기 전에 두 기기의 PIN을 비교하세요.','接受前，请比较两台设备上的配对码。'],
+    'PINs match — Accept': ['Los PIN coinciden — Aceptar','Codes identiques — Accepter','PINs stimmen überein — Annehmen','PINs iguais — Aceitar','PIN uguali — Accetta','Codes gelijk — Accepteren','PINが一致 — 承認','PIN 일치 — 수락','配对码一致 — 接受'],
+    'Reject / Cancel': ['Rechazar / Cancelar','Refuser / Annuler','Ablehnen / Abbrechen','Rejeitar / Cancelar','Rifiuta / Annulla','Weigeren / Annuleren','拒否／キャンセル','거절 / 취소','拒绝 / 取消'],
+    'Pairing verification failed or expired.': ['La verificación falló o caducó.','La vérification a échoué ou expiré.','Die Kopplungsprüfung ist fehlgeschlagen oder abgelaufen.','A verificação falhou ou expirou.','Verifica fallita o scaduta.','De verificatie is mislukt of verlopen.','接続の確認に失敗したか、有効期限が切れました。','연결 확인에 실패했거나 만료되었습니다.','配对验证失败或已过期。'],
+    'Verification unavailable. Cancel and reconnect with verification off.': ['Verificación no disponible. Cancela y vuelve a conectar sin verificación.','Vérification indisponible. Annulez et reconnectez-vous sans vérification.','Prüfung nicht verfügbar. Abbrechen und ohne Prüfung neu verbinden.','Verificação indisponível. Cancele e reconecte sem verificação.','Verifica non disponibile. Annulla e riconnettiti senza verifica.','Verificatie niet beschikbaar. Annuleer en verbind opnieuw zonder verificatie.','確認できません。キャンセルして確認をオフにして再接続してください。','확인할 수 없습니다. 취소하고 확인을 끈 뒤 다시 연결하세요.','无法验证。请取消并关闭验证后重新连接。']
+  };
+  for(const [key,values] of Object.entries(phrases))languages.forEach((language,i)=>window.KING_PONG_ONLINE_TRANSLATIONS[language][key]=values[i]);
+})();
+
+['es','fr','de','pt','it','nl','ja','ko','zh'].forEach((language,i)=> {
+ window.KING_PONG_ONLINE_TRANSLATIONS[language]["Public matches use powerups only when both players choose On. Private rooms use the host’s choice."] = ["Las partidas públicas usan poderes solo si ambos jugadores eligen Sí. En salas privadas decide el anfitrión.", "Les pouvoirs sont activés en partie publique si les deux joueurs le souhaitent. En privé, l’hôte décide.", "Öffentliche Spiele nutzen Powerups nur, wenn beide sie einschalten. In privaten Räumen entscheidet der Host.", "Partidas públicas usam poderes somente se ambos ativarem. Nas salas privadas, o anfitrião decide.", "Le partite pubbliche usano i poteri solo se entrambi li attivano. Nelle stanze private decide l’host.", "Openbare wedstrijden gebruiken powerups als beide spelers ze inschakelen. In privéruimtes beslist de host.", "公開対戦では両者がオンを選んだ場合のみパワーアップが有効です。非公開ルームではホストが決定します。", "공개 경기에서는 두 플레이어가 모두 켜기를 선택해야 파워업이 활성화됩니다. 비공개 방에서는 호스트가 결정합니다.", "公开对战仅在双方均选择开启时启用强化。私人房间由房主决定。"][i];
+});
 // Generated by tools/sync-gameplay.mjs from the existing arenas/rules and compatibility revision.
 const KING_PONG_MATCHMAKING = Object.freeze({
   "protocol": "royal-bca5c4f7ce3770e1",
@@ -3835,7 +3902,7 @@ class KingPongRoom {
         const offer = await peer.createOffer();
         if (this.peer !== peer || this.closed) return;
         await peer.setLocalDescription(offer);
-        if (this.peer === peer && !this.closed) this.send({ type: 'description', attempt, description: peer.localDescription.toJSON() });
+        if (this.peer === peer && !this.closed) this.send({ type: 'description', attempt, description: pairingDescription(this, peer.localDescription.toJSON()) });
       } else {
         peer.ondatachannel = event => {
           if (event.channel.label === 'pong-lan-input-v1') this.wire(event.channel, false, peer);
@@ -3850,13 +3917,14 @@ class KingPongRoom {
     if (message.type === 'description') {
       const expected = this.role === 'host' ? 'answer' : 'offer';
       if (message.description?.type !== expected) throw new Error();
+      if (!this.assignment && this.role === 'guest') this.pairingRequired = /(?:^|\r?\n)a=x-kingpong-pairing:1(?:\r?\n|$)/.test(message.description.sdp);
       await peer.setRemoteDescription(message.description);
       if (this.peer !== peer || this.closed) return;
       for (const candidate of this.candidates) await peer.addIceCandidate(candidate);
       this.candidates = [];
       if (this.role === 'guest') {
         await peer.setLocalDescription(await peer.createAnswer());
-        if (this.peer === peer && !this.closed) this.send({ type: 'description', attempt: this.attempt, description: peer.localDescription.toJSON() });
+        if (this.peer === peer && !this.closed) this.send({ type: 'description', attempt: this.attempt, description: pairingDescription(this, peer.localDescription.toJSON()) });
       }
     } else if (message.type === 'candidate') {
       if (peer.remoteDescription) await peer.addIceCandidate(message.candidate);
@@ -3871,7 +3939,9 @@ class KingPongRoom {
     else this.data = channel;
     this.hooks.channel(channel, control);
     channel.onmessage = event => {
-      if (!this.closed && this.connected && this.peer === peer) this.hooks.message(event.data);
+      if (this.closed || this.peer !== peer) return;
+      if (control && receivePairingFrame(this, event.data)) return;
+      if (this.connected && (!this.pairingRequired || this.pairingAccepted)) this.hooks.message(event.data);
     };
     channel.onopen = () => this.maybeConnected(peer);
     channel.onclose = () => {
@@ -3903,7 +3973,8 @@ class KingPongRoom {
     clearTimeout(this.totalTimer);
     this.totalTimer = null;
     this.send({ type: 'connected' });
-    this.hooks.connected();
+    if (this.pairingRequired && !this.assignment) beginPairingVerification(this);
+    else this.hooks.connected();
   }
 
   relay() {
@@ -3916,6 +3987,8 @@ class KingPongRoom {
   }
 
   dropPeer() {
+    closePairingUi(this);
+    this.pairingAccepted = false;
     clearTimeout(this.removalTimer);
     this.removingGuest = false;
     clearTimeout(this.directTimer);
@@ -4032,7 +4105,8 @@ function closeOnlineConnection(showMessage = true, keepQueue = false) {
   updateModeControls();
 }
 
-function startOnlineSetup(fromTitle = false) {
+function startOnlineSetup(fromTitle = false, offline = false) {
+  if (!offline) { onlineManualLanSelected = false; onlineLocalLanSelected = false; }
   closeLanConnection(false);
   onlineTransportSelected = true;
   if (fromTitle) hideTitleScreen();
@@ -4079,7 +4153,7 @@ function openOnlineRoom(role, code = '', assignment = null) {
   setMenusVisible(true);
   setOnlineControls(true);
   if (assignment) beginOnlineMatchFlow();
-  const RoomClass = typeof onlineManualLanSelected !== 'undefined' && onlineManualLanSelected && !assignment ? KingPongManualRoom : KingPongRoom;
+  const RoomClass = typeof onlineLocalLanSelected !== 'undefined' && onlineLocalLanSelected && !assignment ? KingPongLocalRoom : typeof onlineManualLanSelected !== 'undefined' && onlineManualLanSelected && !assignment ? KingPongManualRoom : KingPongRoom;
   const session = new RoomClass(window.KING_PONG_SIGNALING_URL, {
     status: message => { if (onlineSession === session) setLanStatus(message); },
     welcome: code => {
@@ -4111,7 +4185,7 @@ function openOnlineRoom(role, code = '', assignment = null) {
       lanRemoteInput = { axis: 0, targetY: null, lastAt: 0 };
     },
     resumed: () => {
-      if (onlineSession !== session) return;
+      if (onlineSession !== session || session.pairingRequired && !session.pairingAccepted) return;
       onlineGameBlocked = false;
       if (role === 'host') sendLanState(true);
     },
@@ -4141,6 +4215,7 @@ function openOnlineRoom(role, code = '', assignment = null) {
       setLanStatus(assignment ? matchmakingError(code) : ONLINE_ERRORS[code] || ONLINE_ERRORS.connection_lost);
     }
   });
+  session.pairingRequired = role === 'host' && !assignment && playerPreference('verifyPairing');
   session.requireApproval = Boolean(byId('onlineRequireApproval')?.checked);
   onlineSession = session;
   syncMatchmakingUi();
@@ -4177,6 +4252,119 @@ function onlinePaddleState(state, levelChanged) {
 
 window.addEventListener('pagehide', () => { stopMatchmaking(); if (onlineSession) onlineSession.close(); });
 
+// Optional human comparison of one encrypted WebRTC channel. Nothing identifying is saved.
+async function pairingHash(text) {
+  return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text))),b=>b.toString(16).padStart(2,'0')).join('');
+}
+function pairingFingerprint(sdp) {
+  const values=[...new Set(Array.from(String(sdp).matchAll(/^a=fingerprint:sha-256 ([A-Fa-f0-9:]+)\r?$/gm),m=>m[1].replaceAll(':','').toLowerCase()))];
+  if(values.length!==1 || !/^[a-f0-9]{64}$/.test(values[0]))throw Error('certificate unavailable');
+  return values[0];
+}
+function pairingBinding(peer,role,room) {
+  const local=pairingFingerprint(peer.localDescription?.sdp),remote=pairingFingerprint(peer.remoteDescription?.sdp);
+  return JSON.stringify(['King Pong pairing v1',room,...(role==='host'?[local,remote]:[remote,local])]);
+}
+class KingPongPairing {
+  constructor({role,binding,send,pin,accepted,failed}) {
+    this.role=role;this.binding=binding;this.send=send;this.onPin=pin;this.onAccepted=accepted;this.onFailed=failed;
+    this.closed=false;this.remoteCommit=null;this.remoteNonce=null;this.remoteShown=false;this.pin=null;this.count=0;
+    this.queue=Promise.resolve();this.timer=setTimeout(()=>this.fail(),60000);
+    this.ready=this.start().catch(()=>this.fail());
+  }
+  async start() {
+    const bytes=crypto.getRandomValues(new Uint8Array(16));
+    this.nonce=Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('');
+    this.commit=await this.commitment(this.role,this.nonce);
+    if(!this.closed)this.send({kind:'commit',value:this.commit});
+  }
+  commitment(role,nonce){return pairingHash(JSON.stringify(['King Pong commitment v1',this.binding,role,nonce]));}
+  receive(message) {
+    this.queue=this.queue.then(async()=>{
+      await this.ready;if(this.closed)return;if(++this.count>12)throw Error('rate');
+      const other=this.role==='host'?'guest':'host';
+      if(message.kind==='commit') {
+        if(!/^[a-f0-9]{64}$/.test(message.value||'') || this.remoteCommit && this.remoteCommit!==message.value)throw Error('commit');
+        if(this.remoteCommit)return;
+        this.remoteCommit=message.value;this.send({kind:'reveal',value:this.nonce});
+      } else if(message.kind==='reveal') {
+        if(!this.remoteCommit || this.remoteNonce || !/^[a-f0-9]{32}$/.test(message.value||''))throw Error('reveal');
+        if(await this.commitment(other,message.value)!==this.remoteCommit)throw Error('commit mismatch');
+        if(this.closed)return;this.remoteNonce=message.value;
+        const nonces=this.role==='host'?[this.nonce,this.remoteNonce]:[this.remoteNonce,this.nonce];
+        const digest=await pairingHash(JSON.stringify([this.binding,...nonces]));if(this.closed)return;
+        this.pin=String(parseInt(digest.slice(0,8),16)%1000000).padStart(6,'0');
+        this.onPin(this.pin,false);this.send({kind:'shown'});
+      } else if(message.kind==='shown') {
+        if(!this.pin)throw Error('not ready');this.remoteShown=true;this.onPin(this.pin,true);
+      } else if(message.kind==='accept' && this.role==='guest' && this.pin && this.remoteShown) this.finish();
+      else throw Error('unexpected');
+    }).catch(()=>this.fail());
+  }
+  accept(){if(this.closed || this.role!=='host' || !this.pin || !this.remoteShown)return false;this.send({kind:'accept'});this.finish();return true;}
+  finish(){if(this.closed)return;this.close();this.onAccepted();}
+  fail(){if(this.closed)return;this.close();this.onFailed();}
+  close(){this.closed=true;clearTimeout(this.timer);this.nonce=this.remoteNonce=this.pin=null;}
+}
+function pairingDescription(session,description) {
+  return session.pairingRequired && session.role==='host' && description.type==='offer' ?
+    {...description,sdp:description.sdp+'\r\na=x-kingpong-pairing:1\r\n'} : description;
+}
+function receivePairingFrame(session,raw) {
+  if(session.assignment || typeof raw!=='string' || !raw.startsWith('{"kpPair":1,'))return false;
+  if(!session.pairingRequired)return true;
+  if(raw.length>512){session.fail('negotiation_failed');return true;}
+  try {const message=JSON.parse(raw);if(session.pairing)session.pairing.receive(message);
+    else if((session.pairingEarly||=[]).length<4)session.pairingEarly.push(message);
+    else session.fail('negotiation_failed');
+  }catch{session.fail('negotiation_failed');}return true;
+}
+function closePairingUi(session) {
+  clearTimeout(session.pairingTimer);session.pairing?.close();session.pairing=null;session.pairingEarly=[];
+  const panel=byId('pairingDialog');if(panel?.session!==session)return;
+  panel.hidden=true;panel.session=null;byId('pairingPin').textContent='';syncRoyalFocus();
+}
+function rejectPairing(session) {
+  closePairingUi(session);if(session.closed)return;
+  if(session.managed && session.role==='host')session.kickGuest();else session.fail('rejected');
+}
+function beginPairingVerification(session) {
+  const panel=byId('pairingDialog');panel.session=session;panel.hidden=false;
+  byId('pairingAccept').hidden=session.role!=='host';byId('pairingAccept').disabled=true;
+  byId('pairingPin').textContent='';setLocalizedText(byId('pairingNote'),'Compare this PIN on both devices before accepting.');syncRoyalFocus();
+  try {
+    if(!crypto?.subtle)throw Error('unsupported');
+    const peer=session.peer;
+    session.pairing=new KingPongPairing({role:session.role,binding:pairingBinding(peer,session.role,lanRoomCode),
+      send:message=>{if(!session.closed && session.peer===peer)session.control.send(JSON.stringify({kpPair:1,...message}));},
+      pin:(pin,ready)=>{if(panel.session!==session)return;byId('pairingPin').textContent=pin.slice(0,3)+' '+pin.slice(3);byId('pairingAccept').disabled=!ready;},
+      accepted:()=>{if(session.closed || session.peer!==peer)return;session.pairingAccepted=true;closePairingUi(session);session.hooks.connected();},
+      failed:()=>{if(!session.closed && session.peer===peer){setLanStatus('Pairing verification failed or expired.');rejectPairing(session);}}
+    });
+    for(const message of session.pairingEarly||[])session.pairing.receive(message);session.pairingEarly=[];
+  }catch{
+    setLocalizedText(byId('pairingNote'),'Verification unavailable. Cancel and reconnect with verification off.');
+    session.pairingTimer=setTimeout(()=>rejectPairing(session),60000);
+  }
+}
+function installPairingUi(privateRooms) {
+  for(let [parent,id] of [[privateRooms,'privatePairing'],[byId('classicLanDialog').firstElementChild,'localPairing']]) {
+    const label=document.createElement('label');label.className='lan-check';const input=document.createElement('input');input.type='checkbox';input.id=id;
+    if(id==='privatePairing'){
+      const checks=document.createElement('div');checks.className='room-approval-options';
+      checks.append(byId('onlineRequireApproval').closest('label'));
+      parent.append(checks);parent=checks;
+    }
+    input.checked=playerPreference('verifyPairing');const text=document.createElement('span');setLocalizedText(text,'Verify pairing PIN (host)');label.append(input,text);parent.append(label);
+    input.addEventListener('change',()=>{savePlayerPreference('verifyPairing',input.checked);for(const other of ['privatePairing','localPairing'])byId(other).checked=input.checked;});
+  }
+  const card=royalDialog('pairingDialog','Verify pairing'),panel=byId('pairingDialog');
+  const note=document.createElement('p');note.id='pairingNote';note.className='match-note';
+  const pin=document.createElement('output');pin.id='pairingPin';pin.setAttribute('aria-live','polite');
+  card.append(note,pin,royalButton('pairingAccept','PINs match — Accept',()=>panel.session?.pairing?.accept()),
+    royalButton('pairingReject','Reject / Cancel',()=>{if(panel.session)rejectPairing(panel.session);}));
+}
+
 let matchmakingSocket = null;
 let matchmakingState = 'offline';
 let matchmakingWaiting = null;
@@ -4185,6 +4373,7 @@ let matchmakingHeartbeat = null;
 let matchmakingOpenTimer = null;
 let matchmakingWaitTimer = null;
 let matchmakingLastPong = 0;
+let matchmakingPowerupsPreference = null;
 
 function onlineRoomInput() { return byId('onlineRoomInput') || lanRoomCodeInput; }
 function onlineHostControl() { return byId('onlineHostButton') || lanHostButton; }
@@ -4205,6 +4394,7 @@ function syncMatchmakingUi() {
       'Opponent available — Find Match!' : searching ?
       "No opponents waiting. You'll be matched when someone joins." : '0 players waiting — Be the first to search!';
   royalText(byId('matchmakingAvailability'), status);
+  byId('onlinePowerups')?.toggleAttribute('disabled', searching || connecting || !canChooseMatchRules());
   byId('onlinePrivateRooms').hidden = searching || connecting;
   byId('matchmakingPanel').hidden = Boolean(onlineSession && !onlineMatchAssignment);
 }
@@ -4216,6 +4406,7 @@ function stopMatchmaking() {
   clearTimeout(matchmakingOpenTimer);
   clearTimeout(matchmakingWaitTimer);
   matchmakingRequested = false;
+  matchmakingPowerupsPreference = null;
   matchmakingState = 'offline';
   matchmakingWaiting = null;
   if (socket) {
@@ -4311,6 +4502,7 @@ function findOnlineMatch() {
   }
   onlineTransportSelected = true;
   onlineGameBlocked = true;
+  matchmakingPowerupsPreference = playerPreference('royalPowerupsEnabled');
   matchmakingRequested = true;
   setLanStatus('Searching for an opponent...');
   if (matchmakingSocket?.readyState === 1) sendMatchSearch();
@@ -4339,7 +4531,8 @@ function matchmakingComplete() {
 function applyMatchmakingSettings() {
   if (!onlineMatchAssignment) return;
   matchRuleId = onlineMatchAssignment.rules;
-  matchPowerupsEnabled = true; // Preserve established matchmaking rules.
+  // Provisional local value; the reliable hello/config handshake resolves AND.
+  matchPowerupsEnabled = matchmakingPowerupsPreference ?? playerPreference('royalPowerupsEnabled');
   matchRuleRevision = 0;
   remoteRuleRevision = -1;
   setLevelByAbsoluteIndex(onlineMatchAssignment.arena, true);
@@ -4348,6 +4541,10 @@ function applyMatchmakingSettings() {
 function validMatchmakingState(message) {
   if (!onlineMatchAssignment) return true;
   const match = onlineMatchAssignment;
+  if (onlineMatchFlow?.configured && message.rules?.powerups !== undefined &&
+      message.rules.powerups !== onlineMatchFlow.agreedPowerups) {
+    onlineSession?.fail('incompatible'); return false;
+  }
   if (message.type === 'rules') {
     if (message.rules?.id === match.rules) return true;
     onlineSession?.fail('incompatible');
@@ -4771,8 +4968,8 @@ function onlineSendLanState(force = false) {
   });
 }
 
-// Online matches share the reliable ready/countdown flow. Private rooms also
-// acknowledge host configuration before either client can start; LAN keeps its serve controls.
+// Online matches share reliable ready/countdown and configuration acknowledgement.
+// Public matches resolve preferences after matching, without changing the queue.
 let onlineMatchFlow = null;
 
 function onlineMatchFlowVisible() {
@@ -4792,6 +4989,8 @@ function resetOnlineMatchFlow() {
 
 function beginOnlineMatchFlow() {
   onlineMatchFlow = {id: onlineMatchAssignment?.id || 'private:' + lanRoomCode,
+    localPowerups: onlineMatchAssignment ? (matchmakingPowerupsPreference ?? playerPreference('royalPowerupsEnabled')) : null,
+    peerPowerups: null, agreedPowerups: null,
     privateRoom: !onlineMatchAssignment, configured: false, peerInitialized: false, phase: 'connecting', localReady: false,
     hostReady: false, guestReady: false, peerHello: false, sequence: 0, remoteSequence: -1,
     localPaddle: matchPaddles[lanRole === 'guest' ? 'right' : 'left'], lastHelloAt: -Infinity};
@@ -4833,9 +5032,9 @@ function sendOnlineMatchHello() {
   // Re-send the locally selected paddle before hello, in reliable channel order.
   if (lanRole === 'guest') lanSend({v: LAN_SIGNAL_VERSION, room: lanRoomCode, type: 'selection',
     seq: ++selectionSequence, paddle: flow.localPaddle});
-  sendOnlineMatchSetup('hello');
-  if (flow.privateRoom && lanRole === 'host') sendPrivateMatchConfiguration();
-  if (flow.privateRoom && lanRole === 'guest' && flow.configured && onlineHasState) {
+  sendOnlineMatchSetup('hello', flow.privateRoom ? {} : {powerupAgreement: 1, powerupsPreference: flow.localPowerups});
+  if (lanRole === 'host') sendPrivateMatchConfiguration();
+  if (lanRole === 'guest' && flow.configured && onlineHasState) {
     sendOnlineMatchSetup('initialized', {configuration: flow.configuration});
   }
 }
@@ -4851,7 +5050,7 @@ function confirmOnlineMatchReady() {
 
 function maybeStartOnlineMatchCountdown() {
   const flow = onlineMatchFlow;
-  if (flow.phase === 'ready' && flow.peerHello && (!flow.privateRoom || flow.peerInitialized) && flow.hostReady && flow.guestReady) {
+  if (flow.phase === 'ready' && flow.peerHello && flow.peerInitialized && flow.hostReady && flow.guestReady) {
     flow.phase = 'countdown';
     paused = true;
     resumeCountdownEndAt = performance.now() + RESUME_COUNTDOWN_MS;
@@ -4867,8 +5066,9 @@ function privateMatchConfiguration() {
 }
 
 function sendPrivateMatchConfiguration() {
-  if (!onlineMatchFlow?.privateRoom || lanRole !== 'host') return;
+  if (!onlineMatchFlow || lanRole !== 'host' || !onlineMatchFlow.privateRoom && !onlineMatchFlow.configured) return;
   sendOnlineMatchSetup('config', privateMatchConfiguration());
+  sendLanState(true);
 }
 
 function receiveOnlineMatchSetup(message) {
@@ -4876,29 +5076,43 @@ function receiveOnlineMatchSetup(message) {
   if (!flow || !lanConnected || !onlineSession || message.protocol !== 1 || message.match !== flow.id ||
       message.v !== LAN_SIGNAL_VERSION || message.room !== lanRoomCode || !lanRoomCode ||
       message.gameplay !== 'royal' || message.matchRules !== 'presets') return;
-  if (flow.privateRoom && message.kind === 'config' && lanRole === 'guest') {
+  if (message.kind === 'config' && lanRole === 'guest') {
     if (!['connected', 'ready'].includes(flow.phase) || !validSelectionState(message.selection) ||
         !validMatchRuleState(message.rules) || typeof message.rules.powerups !== 'boolean') return;
+    if (!flow.privateRoom && (!flow.peerHello || flow.peerPowerups === null ||
+        message.selection.arena !== onlineMatchAssignment.arena || message.rules.id !== onlineMatchAssignment.rules ||
+        message.rules.powerups !== (flow.localPowerups && flow.peerPowerups))) { onlineSession.fail('incompatible'); return; }
     applySelectionState(message.selection);
     applyMatchRuleState(message.rules);
     flow.configuration = JSON.stringify({selection: message.selection, rules: message.rules});
     flow.configured = true;
+    flow.agreedPowerups = message.rules.powerups;
     if (onlineHasState) sendOnlineMatchSetup('initialized', {configuration: flow.configuration});
-  } else if (flow.privateRoom && message.kind === 'initialized' && lanRole === 'host') {
+  } else if (message.kind === 'initialized' && lanRole === 'host') {
     if (message.configuration !== JSON.stringify(privateMatchConfiguration())) return;
     flow.peerInitialized = true;
   } else if (message.kind === 'hello') {
+    if (!flow.privateRoom) {
+      if (message.powerupAgreement !== 1 || typeof message.powerupsPreference !== 'boolean' ||
+          flow.peerPowerups !== null && flow.peerPowerups !== message.powerupsPreference) { onlineSession.fail('incompatible'); return; }
+      flow.peerPowerups = message.powerupsPreference;
+      if (lanRole === 'host' && !flow.configured) {
+        flow.agreedPowerups = flow.localPowerups && flow.peerPowerups;
+        if (matchPowerupsEnabled !== flow.agreedPowerups) { matchPowerupsEnabled = flow.agreedPowerups; matchRuleRevision++; resetRoyalRally(); }
+        flow.configured = true;
+      }
+    }
     if (!flow.peerHello) {
       flow.peerHello = true;
       flow.connectedUntil = Math.max(flow.connectedUntil, performance.now() + 600);
       sendOnlineMatchHello();
     }
     if (lanRole === 'host') {
-      if (flow.privateRoom) sendPrivateMatchConfiguration();
+      sendPrivateMatchConfiguration();
       sendOnlineMatchStatus();
     }
   } else if (lanRole === 'host' && message.kind === 'ready' && (flow.phase === 'ready' || flow.phase === 'countdown' && message.ready === false) && flow.peerHello) {
-    if (flow.privateRoom && !flow.peerInitialized || message.ready !== undefined && typeof message.ready !== 'boolean') return;
+    if (!flow.peerInitialized || message.ready !== undefined && typeof message.ready !== 'boolean') return;
     flow.guestReady = message.ready !== false;
     if (!flow.guestReady && flow.phase === 'countdown') {
       flow.phase = 'ready'; resumeCountdownEndAt = 0; lastResumeCountdownNumber = 0;
@@ -4911,7 +5125,7 @@ function receiveOnlineMatchSetup(message) {
         !Number.isFinite(message.remainingMs) || message.remainingMs < 0 || message.remainingMs > RESUME_COUNTDOWN_MS) return;
     if (['countdown', 'go'].includes(message.phase) &&
         (!flow.localReady || !message.hostReady || !message.guestReady)) return;
-    if (flow.privateRoom && message.phase !== 'connected' && (!flow.configured || !onlineHasState)) return;
+    if (message.phase !== 'connected' && (!flow.configured || !onlineHasState)) return;
     flow.remoteSequence = message.seq;
     flow.hostReady = message.hostReady;
     flow.guestReady = message.guestReady;
@@ -4940,12 +5154,12 @@ function tickOnlineMatchFlow() {
     return;
   }
   if (flow.phase === 'failed' || flow.phase === 'connecting' || !lanConnected) return;
-  if (!flow.peerHello || flow.privateRoom && (lanRole === 'host' ? !flow.peerInitialized : flow.phase === 'connected')) {
+  if (!flow.peerHello || (lanRole === 'host' ? !flow.peerInitialized : flow.phase === 'connected')) {
     if (now >= flow.handshakeDeadline) { onlineSession?.fail('incompatible'); return; }
     if (now - flow.lastHelloAt >= 500) sendOnlineMatchHello();
   }
   if (lanRole !== 'host') return;
-  if (flow.phase === 'connected' && flow.peerHello && (!flow.privateRoom || flow.peerInitialized) && now >= flow.connectedUntil) {
+  if (flow.phase === 'connected' && flow.peerHello && flow.peerInitialized && now >= flow.connectedUntil) {
     flow.phase = 'ready';
     sendOnlineMatchStatus();
     sendLanState(true);
@@ -5038,7 +5252,7 @@ function syncOnlineMatchFlowUi() {
       'Both players must confirm before the countdown.' : flow.privateRoom ? '' : 'Classic Match · First to 10');
   byId('onlineReadyButton').hidden = flow.phase !== 'ready';
   byId('onlineReadyButton').disabled = Boolean(flow.localReady && !flow.privateRoom);
-  royalText(byId('onlineFlowConfiguration'), flow.privateRoom && flow.phase !== 'failed' ?
+  royalText(byId('onlineFlowConfiguration'), (flow.privateRoom || flow.configured) && flow.phase !== 'failed' ?
     localizeText(currentLevel().name) + ' · ' + localizeText(matchRule().label) + ' · ' +
     localizeText(matchPowerupsEnabled ? 'Royal Powerups: On' : 'Royal Powerups: Off') : '');
   royalText(byId('onlineReadyButton'), flow.localReady ? flow.privateRoom ? 'Ready — Undo' : 'Ready!' : "I'm ready");
@@ -5104,7 +5318,11 @@ function installOnlineSupport() {
     if (onlineSession && message?.type === 'net-format') { receiveOnlineWireHello(message); return; }
     if (message?.type === 'match-setup') { receiveOnlineMatchSetup(message); return; }
     if (onlineMatchFlowBlocksPlay() && message?.type === 'action') return;
+    const needsState = onlineMatchFlow?.configured && !onlineHasState;
     receive(raw);
+    // Acknowledge the first accepted snapshot immediately; no extra retry delay.
+    if (needsState && onlineHasState && lanRole === 'guest' && onlineMatchFlow)
+      sendOnlineMatchSetup('initialized', {configuration: onlineMatchFlow.configuration});
   };
   const levelChoice = applyCustomLevelPickerChoice;
   window.applyCustomLevelPickerChoice = value => { if (!matchmakingLocked()) levelChoice(value); };
@@ -6106,6 +6324,35 @@ Object.entries({
     "Complete all 18 campaign levels to unlock this arena.": "完成全部18个战役关卡以解锁此竞技场。"
   }
 }).forEach(([language, phrases]) => Object.assign(window.KING_PONG_ROYAL_TRANSLATIONS[language], phrases));
+
+Object.entries({
+  es: ['Pantalla completa', 'Salir de pantalla completa'],
+  fr: ['Plein écran', 'Quitter le plein écran'],
+  de: ['Vollbild', 'Vollbild verlassen'],
+  pt: ['Tela cheia', 'Sair da tela cheia'],
+  it: ['Schermo intero', 'Esci da schermo intero'],
+  nl: ['Volledig scherm', 'Volledig scherm verlaten'],
+  ja: ['全画面表示', '全画面表示を終了'],
+  ko: ['전체 화면', '전체 화면 종료'],
+  zh: ['全屏', '退出全屏']
+}).forEach(([code, values]) => ['Enter fullscreen', 'Exit fullscreen'].forEach((key, i) => {
+  window.KING_PONG_ROYAL_TRANSLATIONS[code][key] = values[i];
+}));
+
+Object.entries({
+ es: ['Crear LAN','Unirse a LAN / Buscar','Salas locales','Sala local','Código o invitación','Cerrar sala','Conexión manual','Introduce el código que muestra el anfitrión.','Buscando en la red local...','No se encontraron salas. Pega una invitación o conecta manualmente.','Descubrimiento no disponible. Pega una invitación o conecta manualmente.','Selecciona una sala e introduce su código, o pega una invitación.'],
+ fr: ['Héberger en LAN','Rejoindre en LAN / Chercher','Salons locaux','Salon local','Code ou invitation','Fermer le salon','Connexion manuelle','Saisissez le code affiché par l’hôte.','Recherche sur le réseau local...','Aucun salon trouvé. Collez une invitation ou connectez-vous manuellement.','Découverte indisponible. Collez une invitation ou connectez-vous manuellement.','Sélectionnez un salon et saisissez son code, ou collez une invitation.'],
+ de: ['LAN hosten','LAN beitreten / Suchen','Lokale Räume','Lokaler Raum','Code oder Einladung','Raum schließen','Manuell verbinden','Gib den beim Host angezeigten Code ein.','Lokales Netzwerk wird durchsucht...','Keine Räume gefunden. Füge eine Einladung ein oder verbinde manuell.','Suche nicht verfügbar. Füge eine Einladung ein oder verbinde manuell.','Wähle einen Raum und gib seinen Code ein, oder füge eine Einladung ein.'],
+ pt: ['Criar LAN','Entrar na LAN / Buscar','Salas locais','Sala local','Código ou convite','Fechar sala','Conexão manual','Digite o código exibido pelo anfitrião.','Buscando na rede local...','Nenhuma sala encontrada. Cole um convite ou conecte manualmente.','Descoberta indisponível. Cole um convite ou conecte manualmente.','Selecione uma sala e digite seu código, ou cole um convite.'],
+ it: ['Ospita LAN','Entra in LAN / Cerca','Stanze locali','Stanza locale','Codice o invito','Chiudi stanza','Connessione manuale','Inserisci il codice mostrato dall’host.','Ricerca nella rete locale...','Nessuna stanza trovata. Incolla un invito o connettiti manualmente.','Ricerca non disponibile. Incolla un invito o connettiti manualmente.','Seleziona una stanza e inserisci il codice, oppure incolla un invito.'],
+ nl: ['LAN hosten','LAN zoeken / Deelnemen','Lokale kamers','Lokale kamer','Code of uitnodiging','Kamer sluiten','Handmatig verbinden','Voer de code in die de host toont.','Lokaal netwerk doorzoeken...','Geen kamers gevonden. Plak een uitnodiging of verbind handmatig.','Zoeken niet beschikbaar. Plak een uitnodiging of verbind handmatig.','Kies een kamer en voer de code in, of plak een uitnodiging.'],
+ ja: ['LANを作成','LANに参加 / 検索','ローカルルーム','ローカルルーム','コードまたは招待','ルームを閉じる','手動接続','ホストに表示されたコードを入力してください。','ローカルネットワークを検索中...','ルームが見つかりません。招待を貼り付けるか、手動で接続してください。','検索できません。招待を貼り付けるか、手動で接続してください。','ルームを選んでコードを入力するか、招待を貼り付けてください。'],
+ ko: ['LAN 호스트','LAN 참가 / 검색','로컬 방','로컬 방','코드 또는 초대','방 닫기','수동 연결','호스트에게 표시된 코드를 입력하세요.','로컬 네트워크 검색 중...','방을 찾을 수 없습니다. 초대를 붙여넣거나 수동으로 연결하세요.','검색할 수 없습니다. 초대를 붙여넣거나 수동으로 연결하세요.','방을 선택하고 코드를 입력하거나 초대를 붙여넣으세요.'],
+ zh: ['创建局域网房间','加入局域网 / 搜索','本地房间','本地房间','代码或邀请','关闭房间','手动连接','输入主机上显示的代码。','正在搜索局域网...','未找到房间。请粘贴邀请或使用手动连接。','无法搜索。请粘贴邀请或使用手动连接。','选择房间并输入代码，或粘贴邀请。']
+}).forEach(([language, values]) => ['Host LAN','Join LAN / Search','Local rooms','Local room','Room code or invitation','Close room','Manual pairing','Enter the code shown on the host.','Searching local network...','No local rooms found. Paste an invitation, or use manual pairing.','Discovery unavailable. Paste an invitation, or use manual pairing.','Select a room and enter its code, or paste an invitation.'].forEach((key,i) => {
+ window.KING_PONG_ROYAL_TRANSLATIONS[language][key] = values[i];
+}));
+Object.entries({es:'Música original del jefe (descarga opcional)',fr:'Musique originale du boss (téléchargement facultatif)',de:'Originale Bossmusik (optionaler Download)',pt:'Música original do chefe (download opcional)',it:'Musica originale del boss (download facoltativo)',nl:'Originele eindbaasmuziek (optionele download)',ja:'オリジナルボス曲（任意ダウンロード）',ko:'오리지널 보스 음악 (선택 다운로드)',zh:'原版首领音乐（可选下载）'}).forEach(([language,value])=>{window.KING_PONG_ROYAL_TRANSLATIONS[language]['Original boss music (optional download)']=value;});
 </script>
   <script>
 const LOCALIZATION = (() => {
@@ -8804,6 +9051,7 @@ function stopActiveMusicTones() {
 }
 
 function playMusicTone(freq, startTime, duration, volume, type = "square") {
+  if (bossAudioOverridesMusic()) return;
   /* ROYAL POLISH */
   if (!gameAudioEnabled("music")) return;
   /* END ROYAL POLISH */
@@ -8845,6 +9093,7 @@ function currentMusicIntervalMs() {
 }
 
 function playMusicStep(startTime = null) {
+  if (bossAudioOverridesMusic()) return;
   if (!musicEnabled) return;
   const activeAudio = ensureAudioContext();
   if (!activeAudio) return;
@@ -10295,6 +10544,7 @@ function finishSaveConfirmation(confirmed) {
 }
 
 function handleSaveConfirmationKey(event) {
+  if (event.key === 'Escape' && window.KingPongFullscreen?.consumesEscape()) return;
   if (!saveConfirmation) return;
   event.preventDefault();
   event.stopImmediatePropagation();
@@ -14459,6 +14709,7 @@ function showLocalPlay() {
 }
 
 function handleRoyalMenuKey(event) {
+  if (event.key === 'Escape' && window.KingPongFullscreen?.consumesEscape()) return false;
   if (galleryKind) {
     const controls = [...byId('royalGallery').querySelectorAll('button:not(:disabled)')];
     const index = controls.indexOf(document.activeElement);
@@ -14746,6 +14997,7 @@ function validMatchScores(state) {
 
 function canChooseMatchRules() {
   if (typeof onlineMatchFlowVisible === 'function' && onlineMatchFlowVisible()) return false;
+  if (typeof matchmakingRequested !== 'undefined' && matchmakingRequested) return false;
   if (typeof matchmakingLocked === 'function' && matchmakingLocked()) return false;
   return mode === 2 && lanRole !== 'guest' && waitingForServe && !gameOver && left.score === 0 && right.score === 0;
 }
@@ -14792,7 +15044,10 @@ function applyMatchRuleState(value) {
   remoteRuleId = matchRuleId = value.id;
   // Compact snapshots carry the preset/revision; the existing reliable rules
   // channel and setup handshake carry the powerup flag once per configuration.
-  if (typeof value.powerups === 'boolean') matchPowerupsEnabled = value.powerups;
+  if (typeof value.powerups === 'boolean') {
+    if (!value.powerups && matchPowerupsEnabled) resetRoyalRally();
+    matchPowerupsEnabled = value.powerups;
+  }
 }
 
 function receiveMatchRules(value) {
@@ -14903,6 +15158,7 @@ function connectGameAudio(gain, context, kind) {
 }
 
 function updateGameAudioGains(context = audioCtx) {
+  syncBossAudio();
   const buses = context && gameAudioBuses.get(context);
   if (!buses) return;
   buses.master.gain.value = saveData?.muteAll === true ? 0 : 1;
@@ -14957,11 +15213,12 @@ function updateAudioControls() {
   for (const [id, enabled] of [
       ['muteAllButton', muted],
       ['musicButton', musicEnabled],
+      ['originalBossMusicButton', playerPreference('originalBossMusic')],
       ['soundEffectsButton', saveData?.soundEffectsEnabled !== false]
     ]) {
     const button = document.getElementById(id);
     if (!button) continue;
-    const suppressed = muted && id !== 'muteAllButton';
+    const suppressed = muted && id !== 'muteAllButton' && id !== 'originalBossMusicButton';
     button.disabled = suppressed;
     button.setAttribute('aria-pressed', String(enabled && !suppressed));
     setLocalizedText(button, suppressed ? 'Muted by Mute All' : enabled ? 'ON' : 'OFF');
@@ -15010,10 +15267,106 @@ function stopRoyalPowerupSound() {
   royalPowerupVoice = null;
 }
 
+// Optional Pages asset: never embed this recording in generated HTML/installers.
+const BOSS_AUDIO_ASSET = Object.freeze({url:'https://kingalexgilbert.github.io/king-pong/audio/secret-boss-v1.ogg',bytes:684920,
+  sha256:'2e88685119d386d9597cf62930a9335a4e894f599f4d580770cad7b4e2734167'});
+const bossAudio = {element:null,url:null,bytes:null,loading:null,failed:false,entered:false,active:false,pending:false,epoch:0,nativeRequest:null};
+function bossAudioEligible() {
+  return (mode===4 || bossIntroActive) && !creditsActive && !document.body.classList.contains('title-active') && playerPreference('originalBossMusic');
+}
+function bossAudioAudible() { return bossAudioEligible() && gameAudioEnabled('music') && !document.hidden && !window.KingPongBackgrounded; }
+function bossAudioOverridesMusic() { return bossAudio.active && bossAudioAudible(); }
+async function verifyBossAudio(bytes) {
+  if(bytes.byteLength!==BOSS_AUDIO_ASSET.bytes)throw Error('audio size');
+  if(window.crypto?.subtle) {
+    const digest=await crypto.subtle.digest('SHA-256',bytes);
+    if(Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join('')!==BOSS_AUDIO_ASSET.sha256)throw Error('audio hash');
+  }
+  return bytes;
+}
+window.KingPongBossAudioReceive=(id,base64)=>{
+  const request=bossAudio.nativeRequest;if(!request || request.id!==id)return;
+  bossAudio.nativeRequest=null;clearTimeout(request.timer);
+  try {
+    if(typeof base64!=='string' || base64.length>Math.ceil(BOSS_AUDIO_ASSET.bytes/3)*4)throw Error('audio unavailable');
+    request.resolve(Uint8Array.from(atob(base64),c=>c.charCodeAt(0)).buffer);
+  }catch(error){request.reject(error);}
+};
+async function loadBossAudio() {
+  if(window.KingPongNativeBossAudio || window.KingPongBossAudio?.load) {
+    const bytes=await new Promise((resolve,reject)=>{
+      const id='boss-'+bossAudio.epoch;
+      const timer=setTimeout(()=>{bossAudio.nativeRequest=null;reject(Error('audio timeout'));},15000);
+      bossAudio.nativeRequest={id,resolve,reject,timer};
+      if(window.KingPongBossAudio?.load)window.KingPongBossAudio.load(id,window.KingPongLanToken);
+      else window.chrome.webview.postMessage('kingpong:boss-audio:'+id);
+    });return verifyBossAudio(bytes);
+  }
+  let cache;
+  try {
+    cache=await caches.open('king-pong-optional-audio-v1');const hit=await cache.match(BOSS_AUDIO_ASSET.url);
+    if(hit){try{return await verifyBossAudio(await hit.arrayBuffer());}catch{await cache.delete(BOSS_AUDIO_ASSET.url);}}
+  }catch{} // Denied/evicted storage does not prevent playback.
+  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),12000);
+  try {
+    const response=await fetch(BOSS_AUDIO_ASSET.url,{signal:controller.signal,credentials:'omit',referrerPolicy:'no-referrer'});
+    if(!response.ok)throw Error('audio unavailable');
+    const reader=response.body.getReader(),chunks=[];let length=0;
+    for(;;){const {done,value}=await reader.read();if(done)break;length+=value.byteLength;
+      if(length>BOSS_AUDIO_ASSET.bytes){await reader.cancel();throw Error('audio size');}chunks.push(value);}
+    const bytes=new Uint8Array(length);let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.byteLength;}
+    await verifyBossAudio(bytes.buffer);
+    try{await cache?.put(BOSS_AUDIO_ASSET.url,new Response(bytes,{headers:{'Content-Type':'audio/ogg'}}));}catch{}
+    return bytes.buffer;
+  }finally{clearTimeout(timer);}
+}
+function stopBossAudio() {
+  bossAudio.epoch++;bossAudio.active=bossAudio.pending=false;
+  if(bossAudio.element){bossAudio.element.pause();bossAudio.element.removeAttribute('src');bossAudio.element.load();bossAudio.element=null;}
+  if(bossAudio.url)URL.revokeObjectURL(bossAudio.url);bossAudio.url=null;
+}
+function syncBossAudio() {
+  if(!bossAudioEligible()){if(bossAudio.entered)stopBossAudio();bossAudio.entered=false;return;}
+  if(!bossAudio.entered){bossAudio.entered=true;bossAudio.failed=false;bossAudio.epoch++;}
+  if(!bossAudioAudible()){bossAudio.element?.pause();bossAudio.active=false;return;}
+  if(bossAudio.failed)return;
+  if(!bossAudio.bytes){
+    if(!bossAudio.loading){
+      if(!document.createElement('audio').canPlayType('audio/ogg; codecs="opus"')){bossAudio.failed=true;return;}
+      // One attempt per entry. Completion only fills the cache; current game
+      // and preference state always determines whether playback can begin.
+      bossAudio.loading=loadBossAudio().then(bytes=>{bossAudio.bytes=bytes;}).catch(()=>{bossAudio.failed=true;}).finally(()=>{bossAudio.loading=null;});
+    }return;
+  }
+  if(!bossAudio.element){
+    const element=new Audio();element.loop=true;element.preload='auto';
+    bossAudio.url=URL.createObjectURL(new Blob([bossAudio.bytes],{type:'audio/ogg'}));element.src=bossAudio.url;bossAudio.element=element;
+    element.addEventListener('error',()=>{if(bossAudio.element!==element)return;bossAudio.failed=true;stopBossAudio();});
+    element.addEventListener('playing',()=>{if(bossAudio.element!==element || !bossAudioAudible()){element.pause();return;}stopActiveMusicTones();bossAudio.active=true;});
+    element.addEventListener('waiting',()=>{bossAudio.active=false;});
+  }
+  const element=bossAudio.element;
+  // Existing procedural music ducks, rather than stops, under pause/serve/results.
+  element.volume=Math.max(0,Math.min(1,musicVolumeLevel*.36*(paused||waitingForServe||gameOver||levelCleared||campaignCleared ? 0.37 : 1)));
+  if(element.paused && !bossAudio.pending){
+    const epoch=bossAudio.epoch;bossAudio.pending=true;
+    Promise.resolve(element.play()).catch(()=>{if(epoch===bossAudio.epoch){bossAudio.failed=true;bossAudio.active=false;}}).finally(()=>{
+      if(epoch===bossAudio.epoch)bossAudio.pending=false;
+      if(bossAudio.element!==element || !bossAudioAudible())element.pause();
+    });
+  }
+}
+function toggleOriginalBossMusic(){savePlayerPreference('originalBossMusic',!playerPreference('originalBossMusic'));syncBossAudio();updateAudioControls();}
+document.addEventListener('visibilitychange',syncBossAudio);
+document.addEventListener('kingpong-background',()=>{bossAudio.element?.pause();bossAudio.active=false;});
+window.addEventListener('pagehide',stopBossAudio);
+
 // Preferences belong to the existing save slot. Only explicit local choices write
 // these fields; authoritative remote settings remain temporary match state.
 const PLAYER_PREFERENCE_DEFAULTS = Object.freeze({
   hostApprovalRequired: true,
+  verifyPairing: false,
+  originalBossMusic: true,
   showConnectionType: false,
   playInfoVisible: true,
   matchRuleId: 'classic',
@@ -15049,7 +15402,7 @@ function restorePlayerPreferences() {
 }
 
 function syncPlayerPreferenceControls() {
-  for (const [id, key] of [['onlineRequireApproval', 'hostApprovalRequired'], ['twoPlayerRoute', 'showConnectionType']]) {
+  for (const [id, key] of [['onlineRequireApproval', 'hostApprovalRequired'], ['privatePairing', 'verifyPairing'], ['localPairing', 'verifyPairing'], ['twoPlayerRoute', 'showConnectionType']]) {
     const input = byId(id);
     if (input) input.checked = playerPreference(key);
   }
@@ -15122,12 +15475,14 @@ function resetRoyalLocalSetup() {
 }
 
 function resetRoyalUiForTitle() {
+  if (typeof KingPongLocalRoom !== 'undefined' && onlineSession instanceof KingPongLocalRoom) closeLanConnection(false);
   if (typeof onlineMatchFlowVisible === 'function' && onlineMatchFlowVisible()) closeLanConnection(false);
   if (typeof stopMatchmaking === 'function') stopMatchmaking();
   if (typeof stopRoyalPowerupSound === 'function') stopRoyalPowerupSound();
   royalOnlineSelected = royalMenuRequested = false;
   lanPanelOpen = false;
   if (typeof onlineManualLanSelected !== 'undefined') onlineManualLanSelected = false;
+  if (typeof onlineLocalLanSelected !== 'undefined') onlineLocalLanSelected = false;
   if (byId('classicLanDialog')) byId('classicLanDialog').hidden = true;
   royalRotateDismissed = false;
   royalOrientationAttempted = false;
@@ -15311,6 +15666,7 @@ function initRoyalUi() {
   for (const [label, button] of [
       ['Mute All', royalButton('muteAllButton', 'OFF', () => setGameMuteAll(!saveData.muteAll))],
       ['Music', musicButton],
+      ['Original boss music (optional download)', royalButton('originalBossMusicButton', 'ON', toggleOriginalBossMusic)],
       ['Sound Effects', royalButton('soundEffectsButton', 'ON', () => setSoundEffectsEnabled(saveData
         .soundEffectsEnabled === false))]
     ]) {
@@ -15327,10 +15683,12 @@ function initRoyalUi() {
   volume.classList.add('audio-volume');
   setLocalizedText(volume.querySelector('span'), 'Music volume');
   audio.append(audioRows, volume);
-  settings.append(audio);
+  const settingsColumns = document.createElement('div');
+  settingsColumns.className = 'settings-columns';
   const display = royalHelpSection('displaySettings', 'Display');
   display.append(playInfoToggle);
-  settings.append(display);
+  settingsColumns.append(audio, display);
+  settings.append(settingsColumns);
   menu.append(settings);
   const help = royalDisclosure('Controls & royal powerups', 'matchHelp');
   document.querySelector('.royal-selection-row .royal-help')?.remove();
@@ -15569,6 +15927,7 @@ function paintRoyalChoice(button, number, label, entry, kind) {
 }
 
 function syncRoyalUi(force = false) {
+  syncBossAudio();
   if (!byId('matchSetup')) return;
   syncOnlineMatchFlowUi();
   syncPrivateRoomControls();
@@ -15731,12 +16090,16 @@ async function requestRoyalLandscape() {
   if (typeof KingPongRoom === 'undefined' || !royalPhoneViewport() || royalOrientationAttempted || !navigator
     .userActivation?.isActive) return;
   royalOrientationAttempted = true;
+  if (window.KingPongFullscreen?.exited) return;
   const orientation = window.screen.orientation;
   if (!orientation || typeof orientation.lock !== 'function') return;
   const generation = royalOrientationGeneration;
   try {
-    if (!document.fullscreenElement && document.documentElement.requestFullscreen) await document.documentElement
-      .requestFullscreen();
+    if (!document.fullscreenElement) {
+      if (window.KingPongFullscreen) {
+        if (!await window.KingPongFullscreen.enter()) return;
+      } else if (document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen();
+    }
     if (generation !== royalOrientationGeneration) return;
     await orientation.lock('landscape');
     if (generation !== royalOrientationGeneration) {
@@ -15760,6 +16123,7 @@ function syncRoyalOrientation() {
 }
 
 function royalActiveDialog() {
+  if (byId('pairingDialog') && !byId('pairingDialog').hidden) return byId('pairingDialog');
   if (galleryKind) return byId('royalGallery');
   for (const id of ['classicLanDialog', 'rotateDevice', 'matchMenu', 'matchSetup'])
     if (byId(id) && !byId(id).hidden) return byId(id);
@@ -15770,12 +16134,16 @@ function royalActiveDialog() {
 function royalFocusables(panel) {
   return [...panel.querySelectorAll(
       'button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),summary')]
+    .concat(byId('browserFullscreen') ? [byId('browserFullscreen')] : [])
     .filter(element => element.getClientRects().length && !element.closest('[hidden]'));
 }
 
 function syncRoyalFocus() {
   const dialog = royalActiveDialog();
-  for (const id of ['matchBar', 'matchSetup', 'matchMenu', 'titleScreen', 'onlineMatchFlow']) {
+  // The gallery covers the toolbar; its Close button must stay unobstructed.
+  const fullscreen = byId('browserFullscreen');
+  if (fullscreen) fullscreen.hidden = dialog?.id === 'royalGallery';
+  for (const id of ['matchBar', 'matchSetup', 'matchMenu', 'titleScreen', 'onlineMatchFlow', 'classicLanDialog', 'pairingDialog']) {
     const node = byId(id);
     if (node) node.inert = Boolean(dialog && node !== dialog);
   }
@@ -15798,6 +16166,7 @@ function syncRoyalFocus() {
 }
 
 function handleRoyalUiKey(event) {
+  if (event.key === 'Escape' && window.KingPongFullscreen?.consumesEscape()) return;
   const dialog = royalActiveDialog();
   const form = event.target instanceof HTMLInputElement || event.target instanceof HTMLSelectElement || event
     .target instanceof HTMLTextAreaElement;
@@ -15806,7 +16175,9 @@ function handleRoyalUiKey(event) {
       index = controls.indexOf(document.activeElement);
     controls[(index + (event.shiftKey ? -1 : 1) + controls.length) % controls.length]?.focus();
   } else if (dialog && event.key === 'Escape') {
-    if (dialog.id === 'classicLanDialog') {
+    if (dialog.id === 'pairingDialog') {
+      if (dialog.session) rejectPairing(dialog.session);
+    } else if (dialog.id === 'classicLanDialog') {
       dialog.hidden = true; syncRoyalFocus();
     } else if (dialog.id === 'rotateDevice') {
       royalRotateDismissed = true;
@@ -15872,7 +16243,7 @@ async function gatherClassicLanDescription(room) {
   clearTimeout(room.directTimer); clearTimeout(room.totalTimer); room.totalTimer = null;
   if (room.role === 'guest') room.totalTimer = setTimeout(() => room.fail('timeout'), 300000);
   if (room.closed || !peer.localDescription) throw Error('connection_lost');
-  return peer.localDescription.toJSON();
+  return pairingDescription(room, peer.localDescription.toJSON());
 }
 class KingPongManualRoom extends KingPongRoom {
   async open(role, invitation = '') {
@@ -15922,7 +16293,7 @@ function syncClassicApproval(lobby) {
   if (saveConfirmation?.roomSession === session && saveConfirmation.request &&
       !session.pendingRequests.some(p => p.request === saveConfirmation.request)) finishSaveConfirmation(false);
   if (!pending || saveConfirmation) return;
-  showSaveConfirmation('Join request', 'A player wants to join your private room.', 'Accept', accepted => {
+  showSaveConfirmation('Join request', 'A player wants to join your private room.', session.pairingRequired ? 'Compare PIN' : 'Accept', accepted => {
     if (onlineSession !== session || !session.pendingRequests.some(p => p.request === pending.request)) return;
     session.send({type: accepted ? 'approve' : 'reject', request: pending.request});
   });
@@ -15961,6 +16332,8 @@ function syncPrivateRoomControls() {
   }
   const approval = byId('onlineRequireApproval');
   if (approval) approval.disabled = Boolean(onlineSession);
+  for (const id of ['privatePairing', 'localPairing']) if (byId(id)) byId(id).disabled = Boolean(onlineSession);
+  if (byId('localLanApproval')) byId('localLanApproval').disabled = Boolean(onlineSession);
   const powerups = byId('onlinePowerups');
   if (powerups) {
     powerups.disabled = !canChooseMatchRules();
@@ -15992,18 +16365,15 @@ function privateGuestDeparted(session) {
   setLanStatus('Waiting for Player 2...');
   syncRoyalUi(true);
 }
-// Only the browser uses the manual, offline offer/answer screen. Installed
-// apps continue through their existing native LAN setup, unchanged.
+// Native discovery and browser/manual pairing share the existing WebRTC engine.
 function openOfflineLanSetup(fromTitle = true) {
-  if (onlineNativeTransport) {
-    onlineManualLanSelected = false;
-    startLanTwoPlayerSetup(fromTitle);
-    return;
-  }
   onlineManualLanSelected = true;
+  onlineLocalLanSelected = false;
   royalMenuRequested = false;
-  startOnlineSetup(fromTitle);
+  startOnlineSetup(fromTitle, true);
   byId('classicLanDialog').hidden = false;
+  byId('localLanApproval').checked = playerPreference('hostApprovalRequired');
+  byId('onlineRequireApproval').checked = playerPreference('hostApprovalRequired');
   syncRoyalFocus();
 }
 function installMultiplayerSafety() {
@@ -16016,7 +16386,10 @@ function installMultiplayerSafety() {
   const members = document.createElement('div'); members.id = 'classicRoomMembers';
   privateRooms.append(approvalLabel, members);
   const powerups = royalButton('onlinePowerups', 'Royal Powerups: On', () => setMatchPowerups(!matchPowerupsEnabled));
-  privateRooms.append(powerups);
+  const options = document.createElement('div'); options.id = 'onlineMatchOptions';
+  const powerupNote = document.createElement('p'); powerupNote.className = 'match-note';
+  setLocalizedText(powerupNote, 'Public matches use powerups only when both players choose On. Private rooms use the host’s choice.');
+  options.append(powerups, powerupNote); byId('onlineUiRoot').prepend(options);
   const kick = royalButton('classicKick', 'Kick Player', confirmKickPrivatePlayer);
   kick.hidden = true; byId('matchMenu').firstElementChild.append(kick);
   const arenaKick = royalButton('arenaKick', 'Kick Player', confirmKickPrivatePlayer);
@@ -16050,19 +16423,26 @@ function installMultiplayerSafety() {
     finally { statsBusy = false; }
   }, 2000);
   const classic = royalDialog('classicLanDialog', 'LAN Play');
+  const status = document.createElement('p'); status.id = 'classicLanStatus'; status.className = 'match-note'; status.setAttribute('role', 'status'); classic.append(status);
+  const previousStatus = setLanStatus;
+  window.setLanStatus = message => { previousStatus(message); setLocalizedText(status, message); };
   const note = document.createElement('p'); setLocalizedText(note, 'LAN: create an invitation. Guest returns an answer; host accepts it. Invitations expire after 5 minutes.');
   const input = document.createElement('textarea'); input.id = 'classicLanInput'; input.setAttribute('aria-label', localizeText('Paste LAN invitation or answer'));
   const output = document.createElement('textarea'); output.id = 'classicLanOutput'; output.readOnly = true; output.setAttribute('aria-label', localizeText('Copy LAN invitation or answer'));
-  classic.append(note, royalButton('classicLanHost', 'Create invitation', () => { onlineManualLanSelected = true; openOnlineRoom('host'); }),
-    input, royalButton('classicLanJoin', 'Create answer', () => { onlineManualLanSelected = true; openOnlineRoom('guest', input.value); }),
-    royalButton('classicLanAccept', 'Accept answer', () => onlineSession instanceof KingPongManualRoom && onlineSession.accept(input.value)), output,
+  const manual = installLocalLanUi(classic);
+  installPairingUi(privateRooms);
+  manual.append(note, royalButton('classicLanHost', 'Create invitation', () => { onlineManualLanSelected = true; onlineLocalLanSelected = false; openOnlineRoom('host'); }),
+    input, royalButton('classicLanJoin', 'Create answer', () => { onlineManualLanSelected = true; onlineLocalLanSelected = false; openOnlineRoom('guest', input.value); }),
+    royalButton('classicLanAccept', 'Accept answer', () => onlineSession instanceof KingPongManualRoom && onlineSession.accept(input.value)), output, royalButton('classicLanCopy', 'Copy', copyLanText),
     royalButton('classicLanClose', 'Back', () => showTitleScreen()));
   const lanBack = byId('classicLanClose'); lanBack.classList.add('mode-back'); classic.prepend(lanBack);
-  // LAN opens directly. A browser LAN tile opens its offline
-  // invitation/answer screen directly; native LAN already opens its setup.
-  if (!onlineNativeTransport) lanModeButton.addEventListener('click', event => {
+  // Keep LAN separate from online matchmaking in every packaged build.
+  lanModeButton.addEventListener('click', event => {
     event.stopImmediatePropagation();
     openOfflineLanSetup(false);
+  }, true);
+  if (onlineNativeTransport) titleLanButton.addEventListener('click', event => {
+    event.stopImmediatePropagation(); openOfflineLanSetup(true);
   }, true);
   document.querySelector('.primary-online').addEventListener('click', () => {
     onlineManualLanSelected = false;
@@ -16099,6 +16479,174 @@ function installMultiplayerSafety() {
   };
   const send = lanSend;
   window.lanSend = payload => { if (payload.type === 'action') payload.actionSeq = ++sentAction; return send(payload); };
+}
+
+// Native sockets exchange signaling only. KingPongRoom still owns both WebRTC
+// channels, input validation, prediction, reliable commands and snapshots.
+let onlineLocalLanSelected = false;
+let localLanGeneration = 0;
+let localLanScan = 0;
+let localLanRooms = [];
+function hasNativeLan() { return Boolean(window.KingPongLan?.postMessage || window.KingPongNativeLan); }
+function nativeLanCommand(op, generation, fields = {}) {
+  const message = JSON.stringify({op, generation, ...fields});
+  if (window.KingPongLan?.postMessage) window.KingPongLan.postMessage(message, window.KingPongLanToken);
+  else window.chrome?.webview?.postMessage('kingpong:lan:' + message);
+}
+class KingPongLocalRoom extends KingPongRoom {
+  open(role, target) {
+    this.role = role; this.managed = true; this.generation = ++localLanGeneration;
+    this.hooks.status('Connecting...');
+    if (role === 'host') nativeLanCommand('host', this.generation);
+    else nativeLanCommand('join', this.generation, {...target, token: kingPongClientToken().replaceAll('-', '')});
+    this.openTimer = setTimeout(() => this.fail('timeout'), 12000);
+  }
+  async localEvent(event) {
+    if (this.closed) return;
+    if (event.type === 'hosting' || event.type === 'joined') {
+      clearTimeout(this.openTimer); this.code = event.code;
+      this.hooks.welcome(this.code);
+      this.hooks.status(this.role === 'host' ? 'Waiting for Player 2...' : 'Waiting for host approval...');
+      byId('localLanRoomCode').textContent = event.code;
+      const address = byId('localLanAddress');
+      if (this.role === 'host' && address) {
+        address.textContent = (event.addresses || []).map(ip => localLanInvitation(ip, event.port, event.room, event.code)).join('\n');
+        byId('localLanHint').textContent = `${localizeText('Local room')} ${event.room.slice(0, 4).toUpperCase()}`;
+      }
+      if (this.role === 'host' && !event.discovery) setLocalizedText(byId('localLanHint'), 'Discovery unavailable. Paste an invitation, or use manual pairing.');
+    } else if (event.type === 'peer') {
+      this.pendingRequests = [{request: event.request}];
+      if (this.requireApproval) syncClassicApproval({pending: this.pendingRequests});
+      else this.send({type: 'approve', request: event.request});
+    } else if (event.type === 'admitted') {
+      this.pendingRequests = []; syncClassicApproval({pending: []});
+      const start = {type: 'start', attempt: 0, iceServers: []};
+      nativeLanCommand('send', this.generation, {message: start});
+      await this.receive(start);
+      clearTimeout(this.directTimer); // No internet relay in LAN mode.
+    } else if (event.type === 'signal') {
+      await this.receive(event.message);
+      clearTimeout(this.directTimer);
+    } else if (event.type === 'departed') {
+      this.pendingRequests = []; syncClassicApproval({pending: []});
+      await this.receive({type: 'departed'});
+      byId('classicLanDialog').hidden = false; syncRoyalFocus();
+    } else if (event.type === 'error') this.fail(event.code === 'room_full' ? 'full' : event.code);
+  }
+  send(message) {
+    if (this.closed) return;
+    if (message.type === 'approve' || message.type === 'reject') {
+      nativeLanCommand('approve', this.generation, {request: message.request, accept: message.type === 'approve'});
+    } else if (['description', 'candidate', 'connected'].includes(message.type)) nativeLanCommand('send', this.generation, {message});
+  }
+  kickGuest() { if (this.role === 'host' && !this.closed) nativeLanCommand('release', this.generation, {block: true}); }
+  waitForGuestDeparture() {
+    if (this.role !== 'host' || this.closed) return false;
+    nativeLanCommand('release', this.generation); return true;
+  }
+  relay() { // RTC failures never contact the online signaling/relay service.
+    if (this.role === 'host') nativeLanCommand('release', this.generation);
+    else this.fail('timeout');
+  }
+  close() {
+    if (this.closed) return;
+    super.close(); nativeLanCommand('close', this.generation);
+  }
+}
+window.KingPongLanReceive = event => {
+  if (!event || typeof event !== 'object') return;
+  if (event.type === 'rooms' && event.generation === localLanScan && !byId('classicLanDialog')?.hidden) {
+    localLanRooms = Array.isArray(event.rooms) ? event.rooms.slice(0, 32) : [];
+    const select = byId('localLanRooms'); select.replaceChildren();
+    for (const room of localLanRooms) {
+      const option = document.createElement('option'); option.value = String(select.children.length);
+      option.textContent = `${localizeText('Local room')} ${room.room.slice(0, 4).toUpperCase()}${room.full ? ' · ' + localizeText('Room full') : ''}`;
+      option.disabled = Boolean(room.full); select.append(option);
+    }
+    const first = localLanRooms.findIndex(room => !room.full); select.value = String(first);
+    setLocalizedText(byId('localLanHint'), localLanRooms.length ? 'Enter the code shown on the host.' : 'No local rooms found. Paste an invitation, or use manual pairing.');
+    byId('localLanScan').disabled = false;
+  }
+  const session = onlineSession;
+  if (session instanceof KingPongLocalRoom && event.generation === session.generation) {
+    session.queue = session.queue.then(() => session.localEvent(event)).catch(() => session.fail('negotiation_failed'));
+  }
+};
+function scanLocalLan() {
+  if (!hasNativeLan() || byId('localLanScan').disabled) return;
+  localLanScan = ++localLanGeneration; byId('localLanScan').disabled = true;
+  nativeLanCommand('discover', localLanScan);
+  setLocalizedText(byId('localLanHint'), 'Searching local network...');
+  const generation = localLanScan;
+  setTimeout(() => { if (localLanScan === generation) byId('localLanScan').disabled = false; }, 4000);
+}
+function joinLocalLan() {
+  const raw = byId('localLanCode').value.trim();
+  const text = raw.toUpperCase();
+  const direct = parseLocalLanInvitation(raw);
+  const room = localLanRooms[Number(byId('localLanRooms').value)];
+  const target = direct || (room && /^[A-HJ-NP-Z2-9]{6}$/.test(text) ? {...room, code: text} : null);
+  if (!target) { setLocalizedText(byId('localLanHint'), 'Select a room and enter its code, or paste an invitation.'); return; }
+  onlineManualLanSelected = onlineLocalLanSelected = true;
+  openOnlineRoom('guest', target);
+}
+function installLocalLanUi(classic) {
+  const auto = document.createElement('section'); auto.id = 'localLanSetup'; auto.hidden = !hasNativeLan();
+  const actions = document.createElement('div'); actions.className = 'match-actions';
+  actions.append(royalButton('localLanHost', 'Host LAN', () => { onlineManualLanSelected = onlineLocalLanSelected = true; openOnlineRoom('host'); }),
+    royalButton('localLanScan', 'Join LAN / Search', scanLocalLan));
+  const hint = document.createElement('p'); hint.id = 'localLanHint'; hint.className = 'match-note';
+  setLocalizedText(hint, 'Enter the code shown on the host.');
+  const label = document.createElement('label'); setLocalizedText(label, 'Local rooms');
+  const rooms = document.createElement('select'); rooms.id = 'localLanRooms'; label.htmlFor = rooms.id;
+  const code = document.createElement('input'); code.id = 'localLanCode'; code.maxLength = 64; code.autocomplete = 'off'; code.spellcheck = false;
+  code.setAttribute('aria-label', localizeText('Room code or invitation'));
+  const output = document.createElement('output'); output.id = 'localLanAddress'; output.style.whiteSpace = 'pre-wrap'; output.style.userSelect = 'text';
+  const approvalLabel = document.createElement('label'); approvalLabel.className = 'lan-check';
+  const approval = document.createElement('input'); approval.id='localLanApproval'; approval.type='checkbox'; approval.checked=playerPreference('hostApprovalRequired');
+  const approvalText=document.createElement('span');setLocalizedText(approvalText,'Host approval required');
+  approval.addEventListener('change',()=>{byId('onlineRequireApproval').checked=approval.checked;savePlayerPreference('hostApprovalRequired',approval.checked);});
+  approvalLabel.append(approval,approvalText);
+  auto.append(actions,approvalLabel,hint,label,rooms,code,royalButton('localLanJoin','Join',joinLocalLan),output,
+    royalButton('localLanClose','Close room',()=>{closeLanConnection(false);output.textContent='';}));
+  const roomCode = document.createElement('output'); roomCode.id='localLanRoomCode'; roomCode.setAttribute('aria-label',localizeText('Room Code')); auto.prepend(roomCode);
+  classic.append(auto);
+  const manual = royalDisclosure('Manual pairing', 'manualLanPairing'); manual.open = !hasNativeLan(); classic.append(manual);
+  return manual;
+}
+async function copyLanText() {
+  const output = byId('classicLanOutput'); output.focus(); output.select();
+  try { await navigator.clipboard.writeText(output.value); }
+  catch { try { document.execCommand('copy'); } catch {} }
+}
+// Backgrounded native hosts cannot maintain reliable WebRTC while their WebView
+// is suspended. Close explicitly; return to setup instead of resuming stale play.
+document.addEventListener('kingpong-background', () => {
+  if (onlineSession instanceof KingPongLocalRoom) onlineSession.fail('connection_lost');
+});
+window.addEventListener('pagehide', () => {
+  if (onlineSession instanceof KingPongLocalRoom) onlineSession.close();
+});
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && onlineSession instanceof KingPongLocalRoom) onlineSession.fail('connection_lost');
+});
+
+// Compact direct fallback; the UI never displays addresses or device names.
+function localLanInvitation(address, port, room, code) {
+  const bytes = [...address.split('.').map(Number), port >> 8, port & 255,
+    ...room.match(/../g).map(n => parseInt(n, 16)), ...Array.from(code, c => c.charCodeAt(0))];
+  return 'KP1-' + btoa(String.fromCharCode(...bytes)).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '');
+}
+function parseLocalLanInvitation(text) {
+  if (!/^KP1-[A-Za-z0-9_-]{38}$/.test(text)) return null;
+  try {
+    const bytes = Uint8Array.from(atob(text.slice(4).replaceAll('-', '+').replaceAll('_', '/')+'=='), c => c.charCodeAt(0));
+    const code = String.fromCharCode(...bytes.slice(22));
+    if (bytes.length !== 28 || !/^[A-HJ-NP-Z2-9]{6}$/.test(code)) return null;
+    return {address: [...bytes.slice(0, 4)].join('.'), port: bytes[4]*256+bytes[5],
+      room: [...bytes.slice(6,22)].map(n=>n.toString(16).padStart(2,'0')).join(''), code};
+  } catch { return null; }
 }
 
 // END SHARED ROYAL GAMEPLAY

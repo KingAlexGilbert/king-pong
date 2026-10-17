@@ -25,6 +25,8 @@ install -m 0755 "$ROOT_DIR/debian/postinst" "$PKG_DIR/DEBIAN/postinst"
 install -m 0755 "$ROOT_DIR/debian/postrm" "$PKG_DIR/DEBIAN/postrm"
 install -m 0755 "$ROOT_DIR/src/king-pong" "$PKG_DIR/usr/bin/king-pong"
 install -m 0755 "$ROOT_DIR/src/king-pong.py" "$PKG_DIR/usr/lib/king-pong/king-pong.py"
+install -m 0644 "$ROOT_DIR/src/king_pong_lan.py" "$PKG_DIR/usr/lib/king-pong/king_pong_lan.py"
+install -m 0644 "$ROOT_DIR/src/king_pong_audio.py" "$PKG_DIR/usr/lib/king-pong/king_pong_audio.py"
 install -m 0644 "$ROOT_DIR/src/com.kingalexgilbert.KingPong.desktop" \
   "$PKG_DIR/usr/share/applications/com.kingalexgilbert.KingPong.desktop"
 install -m 0644 "$ROOT_DIR/assets/index.html" "$PKG_DIR/usr/share/king-pong/index.html"

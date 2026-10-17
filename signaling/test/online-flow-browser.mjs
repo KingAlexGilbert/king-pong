@@ -143,13 +143,15 @@ try {
       assert.equal(title.secondaryTiles.length, 4, 'unlocked boss adds one secondary choice');
       assert.deepEqual([custom.id, local.id, boss.id], ['titleCustomButton', 'titleLocalButton', 'titleBossButton']);
       assert.ok(lan.id === 'titleLanButton' || lan.id === 'titleNativeLanButton');
-      assert.ok(Math.abs(custom.y - local.y) < 2 && Math.abs(lan.y - boss.y) < 2,
-        'unlocked choices form two even rows');
-      assert.ok(Math.abs(custom.x - lan.x) < 2 && Math.abs(local.x - boss.x) < 2,
-        'unlocked choices form two aligned columns');
-      assert.ok(Math.abs(custom.w - local.w) < 2 && Math.abs(lan.w - boss.w) < 2,
-        'unlocked choices have equal widths in each row');
-      assert.ok(lan.y >= custom.y + custom.h - 2, 'the lower row does not overlap the upper row');
+      if (viewport.width >= 1360) {
+        assert.ok([local, lan, boss].every(tile => Math.abs(tile.y-custom.y)<2), 'wide title uses one row');
+        assert.ok(local.x >= custom.x+custom.w && lan.x >= local.x+local.w && boss.x >= lan.x+lan.w, 'wide choices do not overlap');
+      } else {
+        assert.ok(Math.abs(custom.y-local.y)<2 && Math.abs(lan.y-boss.y)<2, 'narrow title uses two rows');
+        assert.ok(Math.abs(custom.x-lan.x)<2 && Math.abs(local.x-boss.x)<2, 'narrow columns align');
+        assert.ok(lan.y >= custom.y+custom.h-2, 'narrow rows do not overlap');
+      }
+      assert.ok(title.secondaryTiles.every(tile => Math.abs(tile.w-custom.w)<2), 'secondary choices have equal width');
       assert.notEqual(title.tiles[0].border, title.tiles[1].border);
       for (const tile of title.tiles) assert.ok(!tile.shadow.includes('4px 4px'), 'no offset double edge');
       await paint(p, `${platform}-title-${viewport.width}`);

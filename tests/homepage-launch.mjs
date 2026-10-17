@@ -15,7 +15,7 @@ test('preview and dedicated browser link share a repository-relative standalone 
   const dedicated = links.find(link => link[2].includes('Open Browser Demo in a New Tab'));
   for (const link of [preview, dedicated]) {
     assert.ok(link);
-    assert.match(link[1], /href="demo\/"/);
+    assert.match(link[1], /href="demo\/\?kingpong_fullscreen=1"/);
     assert.match(link[1], /target="_blank"/);
     assert.match(link[1], /rel="noopener noreferrer"/);
   }

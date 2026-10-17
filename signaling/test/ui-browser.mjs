@@ -172,8 +172,8 @@ try {
       await p.locator('#classicLanClose').click();
     } else {
       await p.locator('#titleLanButton').click();
-      assert.equal(await p.locator('#matchSetup').isVisible(), true, 'native LAN opens setup directly');
-      await p.locator('#setupBackButton').click();
+      assert.equal(await p.locator('#classicLanDialog').isVisible(), true, 'native LAN opens the local room dialog');
+      await p.locator('#classicLanClose').click();
     }
     assert.equal(await p.evaluate(() => document.body.classList.contains('title-active')), true);
     await p.locator('.primary-online').click();
@@ -322,6 +322,10 @@ try {
     await p.keyboard.press('Tab');
     assert.equal(await p.evaluate(() => document.activeElement.id), 'menuToggle');
     await p.keyboard.press('Tab');
+    if (platform === 'Browser') {
+      assert.equal(await p.evaluate(() => document.activeElement.id), 'browserFullscreen');
+      await p.keyboard.press('Tab');
+    }
     assert.equal(await p.evaluate(() => document.activeElement.id), 'titleJumpButton');
     await p.locator('#titleJumpButton').click();
     await active(p, []);
@@ -491,6 +495,7 @@ try {
     assert.equal(await titleMenuState(p), titleBefore);
     await local(p);
     await bounds(p, '#matchSetup .match-card');
+    await p.locator('#matchServe').scrollIntoViewIfNeeded();
     await bounds(p, '#matchServe');
     if (viewport.width > viewport.height && viewport.height < 520) {
       assert.equal(await p.locator('.setup-change').evaluateAll(labels => labels.every(label => label
@@ -817,7 +822,7 @@ try {
   await phone.evaluate(() => showTitleScreen());
   assert.equal(await phone.evaluate(() => royalOrientationAttempted), false);
   await phone.locator('#titleCampaignButton').tap();
-  assert.equal(await phone.evaluate(() => window.fullscreenAttempts), 2);
+  assert.equal(await phone.evaluate(() => window.fullscreenAttempts), 1, 'returning to the title must not retry a refused fullscreen request');
   await phone.context().close();
   pass('portrait prompt, navigation, dismissal, one lock attempt, listener lifetime and local/online rotation state');
   const titleInput = await page();

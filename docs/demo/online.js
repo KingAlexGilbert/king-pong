@@ -269,7 +269,7 @@ class KingPongRoom {
         const offer = await peer.createOffer();
         if (this.peer !== peer || this.closed) return;
         await peer.setLocalDescription(offer);
-        if (this.peer === peer && !this.closed) this.send({ type: 'description', attempt, description: peer.localDescription.toJSON() });
+        if (this.peer === peer && !this.closed) this.send({ type: 'description', attempt, description: pairingDescription(this, peer.localDescription.toJSON()) });
       } else {
         peer.ondatachannel = event => {
           if (event.channel.label === 'pong-lan-input-v1') this.wire(event.channel, false, peer);
@@ -284,13 +284,14 @@ class KingPongRoom {
     if (message.type === 'description') {
       const expected = this.role === 'host' ? 'answer' : 'offer';
       if (message.description?.type !== expected) throw new Error();
+      if (!this.assignment && this.role === 'guest') this.pairingRequired = /(?:^|\r?\n)a=x-kingpong-pairing:1(?:\r?\n|$)/.test(message.description.sdp);
       await peer.setRemoteDescription(message.description);
       if (this.peer !== peer || this.closed) return;
       for (const candidate of this.candidates) await peer.addIceCandidate(candidate);
       this.candidates = [];
       if (this.role === 'guest') {
         await peer.setLocalDescription(await peer.createAnswer());
-        if (this.peer === peer && !this.closed) this.send({ type: 'description', attempt: this.attempt, description: peer.localDescription.toJSON() });
+        if (this.peer === peer && !this.closed) this.send({ type: 'description', attempt: this.attempt, description: pairingDescription(this, peer.localDescription.toJSON()) });
       }
     } else if (message.type === 'candidate') {
       if (peer.remoteDescription) await peer.addIceCandidate(message.candidate);
@@ -305,7 +306,9 @@ class KingPongRoom {
     else this.data = channel;
     this.hooks.channel(channel, control);
     channel.onmessage = event => {
-      if (!this.closed && this.connected && this.peer === peer) this.hooks.message(event.data);
+      if (this.closed || this.peer !== peer) return;
+      if (control && receivePairingFrame(this, event.data)) return;
+      if (this.connected && (!this.pairingRequired || this.pairingAccepted)) this.hooks.message(event.data);
     };
     channel.onopen = () => this.maybeConnected(peer);
     channel.onclose = () => {
@@ -337,7 +340,8 @@ class KingPongRoom {
     clearTimeout(this.totalTimer);
     this.totalTimer = null;
     this.send({ type: 'connected' });
-    this.hooks.connected();
+    if (this.pairingRequired && !this.assignment) beginPairingVerification(this);
+    else this.hooks.connected();
   }
 
   relay() {
@@ -350,6 +354,8 @@ class KingPongRoom {
   }
 
   dropPeer() {
+    closePairingUi(this);
+    this.pairingAccepted = false;
     clearTimeout(this.removalTimer);
     this.removingGuest = false;
     clearTimeout(this.directTimer);
@@ -466,7 +472,8 @@ function closeOnlineConnection(showMessage = true, keepQueue = false) {
   updateModeControls();
 }
 
-function startOnlineSetup(fromTitle = false) {
+function startOnlineSetup(fromTitle = false, offline = false) {
+  if (!offline) { onlineManualLanSelected = false; onlineLocalLanSelected = false; }
   closeLanConnection(false);
   onlineTransportSelected = true;
   if (fromTitle) hideTitleScreen();
@@ -513,7 +520,7 @@ function openOnlineRoom(role, code = '', assignment = null) {
   setMenusVisible(true);
   setOnlineControls(true);
   if (assignment) beginOnlineMatchFlow();
-  const RoomClass = typeof onlineManualLanSelected !== 'undefined' && onlineManualLanSelected && !assignment ? KingPongManualRoom : KingPongRoom;
+  const RoomClass = typeof onlineLocalLanSelected !== 'undefined' && onlineLocalLanSelected && !assignment ? KingPongLocalRoom : typeof onlineManualLanSelected !== 'undefined' && onlineManualLanSelected && !assignment ? KingPongManualRoom : KingPongRoom;
   const session = new RoomClass(window.KING_PONG_SIGNALING_URL, {
     status: message => { if (onlineSession === session) setLanStatus(message); },
     welcome: code => {
@@ -545,7 +552,7 @@ function openOnlineRoom(role, code = '', assignment = null) {
       lanRemoteInput = { axis: 0, targetY: null, lastAt: 0 };
     },
     resumed: () => {
-      if (onlineSession !== session) return;
+      if (onlineSession !== session || session.pairingRequired && !session.pairingAccepted) return;
       onlineGameBlocked = false;
       if (role === 'host') sendLanState(true);
     },
@@ -575,6 +582,7 @@ function openOnlineRoom(role, code = '', assignment = null) {
       setLanStatus(assignment ? matchmakingError(code) : ONLINE_ERRORS[code] || ONLINE_ERRORS.connection_lost);
     }
   });
+  session.pairingRequired = role === 'host' && !assignment && playerPreference('verifyPairing');
   session.requireApproval = Boolean(byId('onlineRequireApproval')?.checked);
   onlineSession = session;
   syncMatchmakingUi();
@@ -611,6 +619,119 @@ function onlinePaddleState(state, levelChanged) {
 
 window.addEventListener('pagehide', () => { stopMatchmaking(); if (onlineSession) onlineSession.close(); });
 
+// Optional human comparison of one encrypted WebRTC channel. Nothing identifying is saved.
+async function pairingHash(text) {
+  return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text))),b=>b.toString(16).padStart(2,'0')).join('');
+}
+function pairingFingerprint(sdp) {
+  const values=[...new Set(Array.from(String(sdp).matchAll(/^a=fingerprint:sha-256 ([A-Fa-f0-9:]+)\r?$/gm),m=>m[1].replaceAll(':','').toLowerCase()))];
+  if(values.length!==1 || !/^[a-f0-9]{64}$/.test(values[0]))throw Error('certificate unavailable');
+  return values[0];
+}
+function pairingBinding(peer,role,room) {
+  const local=pairingFingerprint(peer.localDescription?.sdp),remote=pairingFingerprint(peer.remoteDescription?.sdp);
+  return JSON.stringify(['King Pong pairing v1',room,...(role==='host'?[local,remote]:[remote,local])]);
+}
+class KingPongPairing {
+  constructor({role,binding,send,pin,accepted,failed}) {
+    this.role=role;this.binding=binding;this.send=send;this.onPin=pin;this.onAccepted=accepted;this.onFailed=failed;
+    this.closed=false;this.remoteCommit=null;this.remoteNonce=null;this.remoteShown=false;this.pin=null;this.count=0;
+    this.queue=Promise.resolve();this.timer=setTimeout(()=>this.fail(),60000);
+    this.ready=this.start().catch(()=>this.fail());
+  }
+  async start() {
+    const bytes=crypto.getRandomValues(new Uint8Array(16));
+    this.nonce=Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('');
+    this.commit=await this.commitment(this.role,this.nonce);
+    if(!this.closed)this.send({kind:'commit',value:this.commit});
+  }
+  commitment(role,nonce){return pairingHash(JSON.stringify(['King Pong commitment v1',this.binding,role,nonce]));}
+  receive(message) {
+    this.queue=this.queue.then(async()=>{
+      await this.ready;if(this.closed)return;if(++this.count>12)throw Error('rate');
+      const other=this.role==='host'?'guest':'host';
+      if(message.kind==='commit') {
+        if(!/^[a-f0-9]{64}$/.test(message.value||'') || this.remoteCommit && this.remoteCommit!==message.value)throw Error('commit');
+        if(this.remoteCommit)return;
+        this.remoteCommit=message.value;this.send({kind:'reveal',value:this.nonce});
+      } else if(message.kind==='reveal') {
+        if(!this.remoteCommit || this.remoteNonce || !/^[a-f0-9]{32}$/.test(message.value||''))throw Error('reveal');
+        if(await this.commitment(other,message.value)!==this.remoteCommit)throw Error('commit mismatch');
+        if(this.closed)return;this.remoteNonce=message.value;
+        const nonces=this.role==='host'?[this.nonce,this.remoteNonce]:[this.remoteNonce,this.nonce];
+        const digest=await pairingHash(JSON.stringify([this.binding,...nonces]));if(this.closed)return;
+        this.pin=String(parseInt(digest.slice(0,8),16)%1000000).padStart(6,'0');
+        this.onPin(this.pin,false);this.send({kind:'shown'});
+      } else if(message.kind==='shown') {
+        if(!this.pin)throw Error('not ready');this.remoteShown=true;this.onPin(this.pin,true);
+      } else if(message.kind==='accept' && this.role==='guest' && this.pin && this.remoteShown) this.finish();
+      else throw Error('unexpected');
+    }).catch(()=>this.fail());
+  }
+  accept(){if(this.closed || this.role!=='host' || !this.pin || !this.remoteShown)return false;this.send({kind:'accept'});this.finish();return true;}
+  finish(){if(this.closed)return;this.close();this.onAccepted();}
+  fail(){if(this.closed)return;this.close();this.onFailed();}
+  close(){this.closed=true;clearTimeout(this.timer);this.nonce=this.remoteNonce=this.pin=null;}
+}
+function pairingDescription(session,description) {
+  return session.pairingRequired && session.role==='host' && description.type==='offer' ?
+    {...description,sdp:description.sdp+'\r\na=x-kingpong-pairing:1\r\n'} : description;
+}
+function receivePairingFrame(session,raw) {
+  if(session.assignment || typeof raw!=='string' || !raw.startsWith('{"kpPair":1,'))return false;
+  if(!session.pairingRequired)return true;
+  if(raw.length>512){session.fail('negotiation_failed');return true;}
+  try {const message=JSON.parse(raw);if(session.pairing)session.pairing.receive(message);
+    else if((session.pairingEarly||=[]).length<4)session.pairingEarly.push(message);
+    else session.fail('negotiation_failed');
+  }catch{session.fail('negotiation_failed');}return true;
+}
+function closePairingUi(session) {
+  clearTimeout(session.pairingTimer);session.pairing?.close();session.pairing=null;session.pairingEarly=[];
+  const panel=byId('pairingDialog');if(panel?.session!==session)return;
+  panel.hidden=true;panel.session=null;byId('pairingPin').textContent='';syncRoyalFocus();
+}
+function rejectPairing(session) {
+  closePairingUi(session);if(session.closed)return;
+  if(session.managed && session.role==='host')session.kickGuest();else session.fail('rejected');
+}
+function beginPairingVerification(session) {
+  const panel=byId('pairingDialog');panel.session=session;panel.hidden=false;
+  byId('pairingAccept').hidden=session.role!=='host';byId('pairingAccept').disabled=true;
+  byId('pairingPin').textContent='';setLocalizedText(byId('pairingNote'),'Compare this PIN on both devices before accepting.');syncRoyalFocus();
+  try {
+    if(!crypto?.subtle)throw Error('unsupported');
+    const peer=session.peer;
+    session.pairing=new KingPongPairing({role:session.role,binding:pairingBinding(peer,session.role,lanRoomCode),
+      send:message=>{if(!session.closed && session.peer===peer)session.control.send(JSON.stringify({kpPair:1,...message}));},
+      pin:(pin,ready)=>{if(panel.session!==session)return;byId('pairingPin').textContent=pin.slice(0,3)+' '+pin.slice(3);byId('pairingAccept').disabled=!ready;},
+      accepted:()=>{if(session.closed || session.peer!==peer)return;session.pairingAccepted=true;closePairingUi(session);session.hooks.connected();},
+      failed:()=>{if(!session.closed && session.peer===peer){setLanStatus('Pairing verification failed or expired.');rejectPairing(session);}}
+    });
+    for(const message of session.pairingEarly||[])session.pairing.receive(message);session.pairingEarly=[];
+  }catch{
+    setLocalizedText(byId('pairingNote'),'Verification unavailable. Cancel and reconnect with verification off.');
+    session.pairingTimer=setTimeout(()=>rejectPairing(session),60000);
+  }
+}
+function installPairingUi(privateRooms) {
+  for(let [parent,id] of [[privateRooms,'privatePairing'],[byId('classicLanDialog').firstElementChild,'localPairing']]) {
+    const label=document.createElement('label');label.className='lan-check';const input=document.createElement('input');input.type='checkbox';input.id=id;
+    if(id==='privatePairing'){
+      const checks=document.createElement('div');checks.className='room-approval-options';
+      checks.append(byId('onlineRequireApproval').closest('label'));
+      parent.append(checks);parent=checks;
+    }
+    input.checked=playerPreference('verifyPairing');const text=document.createElement('span');setLocalizedText(text,'Verify pairing PIN (host)');label.append(input,text);parent.append(label);
+    input.addEventListener('change',()=>{savePlayerPreference('verifyPairing',input.checked);for(const other of ['privatePairing','localPairing'])byId(other).checked=input.checked;});
+  }
+  const card=royalDialog('pairingDialog','Verify pairing'),panel=byId('pairingDialog');
+  const note=document.createElement('p');note.id='pairingNote';note.className='match-note';
+  const pin=document.createElement('output');pin.id='pairingPin';pin.setAttribute('aria-live','polite');
+  card.append(note,pin,royalButton('pairingAccept','PINs match — Accept',()=>panel.session?.pairing?.accept()),
+    royalButton('pairingReject','Reject / Cancel',()=>{if(panel.session)rejectPairing(panel.session);}));
+}
+
 let matchmakingSocket = null;
 let matchmakingState = 'offline';
 let matchmakingWaiting = null;
@@ -619,6 +740,7 @@ let matchmakingHeartbeat = null;
 let matchmakingOpenTimer = null;
 let matchmakingWaitTimer = null;
 let matchmakingLastPong = 0;
+let matchmakingPowerupsPreference = null;
 
 function onlineRoomInput() { return byId('onlineRoomInput') || lanRoomCodeInput; }
 function onlineHostControl() { return byId('onlineHostButton') || lanHostButton; }
@@ -639,6 +761,7 @@ function syncMatchmakingUi() {
       'Opponent available — Find Match!' : searching ?
       "No opponents waiting. You'll be matched when someone joins." : '0 players waiting — Be the first to search!';
   royalText(byId('matchmakingAvailability'), status);
+  byId('onlinePowerups')?.toggleAttribute('disabled', searching || connecting || !canChooseMatchRules());
   byId('onlinePrivateRooms').hidden = searching || connecting;
   byId('matchmakingPanel').hidden = Boolean(onlineSession && !onlineMatchAssignment);
 }
@@ -650,6 +773,7 @@ function stopMatchmaking() {
   clearTimeout(matchmakingOpenTimer);
   clearTimeout(matchmakingWaitTimer);
   matchmakingRequested = false;
+  matchmakingPowerupsPreference = null;
   matchmakingState = 'offline';
   matchmakingWaiting = null;
   if (socket) {
@@ -745,6 +869,7 @@ function findOnlineMatch() {
   }
   onlineTransportSelected = true;
   onlineGameBlocked = true;
+  matchmakingPowerupsPreference = playerPreference('royalPowerupsEnabled');
   matchmakingRequested = true;
   setLanStatus('Searching for an opponent...');
   if (matchmakingSocket?.readyState === 1) sendMatchSearch();
@@ -773,7 +898,8 @@ function matchmakingComplete() {
 function applyMatchmakingSettings() {
   if (!onlineMatchAssignment) return;
   matchRuleId = onlineMatchAssignment.rules;
-  matchPowerupsEnabled = true; // Preserve established matchmaking rules.
+  // Provisional local value; the reliable hello/config handshake resolves AND.
+  matchPowerupsEnabled = matchmakingPowerupsPreference ?? playerPreference('royalPowerupsEnabled');
   matchRuleRevision = 0;
   remoteRuleRevision = -1;
   setLevelByAbsoluteIndex(onlineMatchAssignment.arena, true);
@@ -782,6 +908,10 @@ function applyMatchmakingSettings() {
 function validMatchmakingState(message) {
   if (!onlineMatchAssignment) return true;
   const match = onlineMatchAssignment;
+  if (onlineMatchFlow?.configured && message.rules?.powerups !== undefined &&
+      message.rules.powerups !== onlineMatchFlow.agreedPowerups) {
+    onlineSession?.fail('incompatible'); return false;
+  }
   if (message.type === 'rules') {
     if (message.rules?.id === match.rules) return true;
     onlineSession?.fail('incompatible');
@@ -1205,8 +1335,8 @@ function onlineSendLanState(force = false) {
   });
 }
 
-// Online matches share the reliable ready/countdown flow. Private rooms also
-// acknowledge host configuration before either client can start; LAN keeps its serve controls.
+// Online matches share reliable ready/countdown and configuration acknowledgement.
+// Public matches resolve preferences after matching, without changing the queue.
 let onlineMatchFlow = null;
 
 function onlineMatchFlowVisible() {
@@ -1226,6 +1356,8 @@ function resetOnlineMatchFlow() {
 
 function beginOnlineMatchFlow() {
   onlineMatchFlow = {id: onlineMatchAssignment?.id || 'private:' + lanRoomCode,
+    localPowerups: onlineMatchAssignment ? (matchmakingPowerupsPreference ?? playerPreference('royalPowerupsEnabled')) : null,
+    peerPowerups: null, agreedPowerups: null,
     privateRoom: !onlineMatchAssignment, configured: false, peerInitialized: false, phase: 'connecting', localReady: false,
     hostReady: false, guestReady: false, peerHello: false, sequence: 0, remoteSequence: -1,
     localPaddle: matchPaddles[lanRole === 'guest' ? 'right' : 'left'], lastHelloAt: -Infinity};
@@ -1267,9 +1399,9 @@ function sendOnlineMatchHello() {
   // Re-send the locally selected paddle before hello, in reliable channel order.
   if (lanRole === 'guest') lanSend({v: LAN_SIGNAL_VERSION, room: lanRoomCode, type: 'selection',
     seq: ++selectionSequence, paddle: flow.localPaddle});
-  sendOnlineMatchSetup('hello');
-  if (flow.privateRoom && lanRole === 'host') sendPrivateMatchConfiguration();
-  if (flow.privateRoom && lanRole === 'guest' && flow.configured && onlineHasState) {
+  sendOnlineMatchSetup('hello', flow.privateRoom ? {} : {powerupAgreement: 1, powerupsPreference: flow.localPowerups});
+  if (lanRole === 'host') sendPrivateMatchConfiguration();
+  if (lanRole === 'guest' && flow.configured && onlineHasState) {
     sendOnlineMatchSetup('initialized', {configuration: flow.configuration});
   }
 }
@@ -1285,7 +1417,7 @@ function confirmOnlineMatchReady() {
 
 function maybeStartOnlineMatchCountdown() {
   const flow = onlineMatchFlow;
-  if (flow.phase === 'ready' && flow.peerHello && (!flow.privateRoom || flow.peerInitialized) && flow.hostReady && flow.guestReady) {
+  if (flow.phase === 'ready' && flow.peerHello && flow.peerInitialized && flow.hostReady && flow.guestReady) {
     flow.phase = 'countdown';
     paused = true;
     resumeCountdownEndAt = performance.now() + RESUME_COUNTDOWN_MS;
@@ -1301,8 +1433,9 @@ function privateMatchConfiguration() {
 }
 
 function sendPrivateMatchConfiguration() {
-  if (!onlineMatchFlow?.privateRoom || lanRole !== 'host') return;
+  if (!onlineMatchFlow || lanRole !== 'host' || !onlineMatchFlow.privateRoom && !onlineMatchFlow.configured) return;
   sendOnlineMatchSetup('config', privateMatchConfiguration());
+  sendLanState(true);
 }
 
 function receiveOnlineMatchSetup(message) {
@@ -1310,29 +1443,43 @@ function receiveOnlineMatchSetup(message) {
   if (!flow || !lanConnected || !onlineSession || message.protocol !== 1 || message.match !== flow.id ||
       message.v !== LAN_SIGNAL_VERSION || message.room !== lanRoomCode || !lanRoomCode ||
       message.gameplay !== 'royal' || message.matchRules !== 'presets') return;
-  if (flow.privateRoom && message.kind === 'config' && lanRole === 'guest') {
+  if (message.kind === 'config' && lanRole === 'guest') {
     if (!['connected', 'ready'].includes(flow.phase) || !validSelectionState(message.selection) ||
         !validMatchRuleState(message.rules) || typeof message.rules.powerups !== 'boolean') return;
+    if (!flow.privateRoom && (!flow.peerHello || flow.peerPowerups === null ||
+        message.selection.arena !== onlineMatchAssignment.arena || message.rules.id !== onlineMatchAssignment.rules ||
+        message.rules.powerups !== (flow.localPowerups && flow.peerPowerups))) { onlineSession.fail('incompatible'); return; }
     applySelectionState(message.selection);
     applyMatchRuleState(message.rules);
     flow.configuration = JSON.stringify({selection: message.selection, rules: message.rules});
     flow.configured = true;
+    flow.agreedPowerups = message.rules.powerups;
     if (onlineHasState) sendOnlineMatchSetup('initialized', {configuration: flow.configuration});
-  } else if (flow.privateRoom && message.kind === 'initialized' && lanRole === 'host') {
+  } else if (message.kind === 'initialized' && lanRole === 'host') {
     if (message.configuration !== JSON.stringify(privateMatchConfiguration())) return;
     flow.peerInitialized = true;
   } else if (message.kind === 'hello') {
+    if (!flow.privateRoom) {
+      if (message.powerupAgreement !== 1 || typeof message.powerupsPreference !== 'boolean' ||
+          flow.peerPowerups !== null && flow.peerPowerups !== message.powerupsPreference) { onlineSession.fail('incompatible'); return; }
+      flow.peerPowerups = message.powerupsPreference;
+      if (lanRole === 'host' && !flow.configured) {
+        flow.agreedPowerups = flow.localPowerups && flow.peerPowerups;
+        if (matchPowerupsEnabled !== flow.agreedPowerups) { matchPowerupsEnabled = flow.agreedPowerups; matchRuleRevision++; resetRoyalRally(); }
+        flow.configured = true;
+      }
+    }
     if (!flow.peerHello) {
       flow.peerHello = true;
       flow.connectedUntil = Math.max(flow.connectedUntil, performance.now() + 600);
       sendOnlineMatchHello();
     }
     if (lanRole === 'host') {
-      if (flow.privateRoom) sendPrivateMatchConfiguration();
+      sendPrivateMatchConfiguration();
       sendOnlineMatchStatus();
     }
   } else if (lanRole === 'host' && message.kind === 'ready' && (flow.phase === 'ready' || flow.phase === 'countdown' && message.ready === false) && flow.peerHello) {
-    if (flow.privateRoom && !flow.peerInitialized || message.ready !== undefined && typeof message.ready !== 'boolean') return;
+    if (!flow.peerInitialized || message.ready !== undefined && typeof message.ready !== 'boolean') return;
     flow.guestReady = message.ready !== false;
     if (!flow.guestReady && flow.phase === 'countdown') {
       flow.phase = 'ready'; resumeCountdownEndAt = 0; lastResumeCountdownNumber = 0;
@@ -1345,7 +1492,7 @@ function receiveOnlineMatchSetup(message) {
         !Number.isFinite(message.remainingMs) || message.remainingMs < 0 || message.remainingMs > RESUME_COUNTDOWN_MS) return;
     if (['countdown', 'go'].includes(message.phase) &&
         (!flow.localReady || !message.hostReady || !message.guestReady)) return;
-    if (flow.privateRoom && message.phase !== 'connected' && (!flow.configured || !onlineHasState)) return;
+    if (message.phase !== 'connected' && (!flow.configured || !onlineHasState)) return;
     flow.remoteSequence = message.seq;
     flow.hostReady = message.hostReady;
     flow.guestReady = message.guestReady;
@@ -1374,12 +1521,12 @@ function tickOnlineMatchFlow() {
     return;
   }
   if (flow.phase === 'failed' || flow.phase === 'connecting' || !lanConnected) return;
-  if (!flow.peerHello || flow.privateRoom && (lanRole === 'host' ? !flow.peerInitialized : flow.phase === 'connected')) {
+  if (!flow.peerHello || (lanRole === 'host' ? !flow.peerInitialized : flow.phase === 'connected')) {
     if (now >= flow.handshakeDeadline) { onlineSession?.fail('incompatible'); return; }
     if (now - flow.lastHelloAt >= 500) sendOnlineMatchHello();
   }
   if (lanRole !== 'host') return;
-  if (flow.phase === 'connected' && flow.peerHello && (!flow.privateRoom || flow.peerInitialized) && now >= flow.connectedUntil) {
+  if (flow.phase === 'connected' && flow.peerHello && flow.peerInitialized && now >= flow.connectedUntil) {
     flow.phase = 'ready';
     sendOnlineMatchStatus();
     sendLanState(true);
@@ -1472,7 +1619,7 @@ function syncOnlineMatchFlowUi() {
       'Both players must confirm before the countdown.' : flow.privateRoom ? '' : 'Classic Match · First to 10');
   byId('onlineReadyButton').hidden = flow.phase !== 'ready';
   byId('onlineReadyButton').disabled = Boolean(flow.localReady && !flow.privateRoom);
-  royalText(byId('onlineFlowConfiguration'), flow.privateRoom && flow.phase !== 'failed' ?
+  royalText(byId('onlineFlowConfiguration'), (flow.privateRoom || flow.configured) && flow.phase !== 'failed' ?
     localizeText(currentLevel().name) + ' · ' + localizeText(matchRule().label) + ' · ' +
     localizeText(matchPowerupsEnabled ? 'Royal Powerups: On' : 'Royal Powerups: Off') : '');
   royalText(byId('onlineReadyButton'), flow.localReady ? flow.privateRoom ? 'Ready — Undo' : 'Ready!' : "I'm ready");
@@ -1538,7 +1685,11 @@ function installOnlineSupport() {
     if (onlineSession && message?.type === 'net-format') { receiveOnlineWireHello(message); return; }
     if (message?.type === 'match-setup') { receiveOnlineMatchSetup(message); return; }
     if (onlineMatchFlowBlocksPlay() && message?.type === 'action') return;
+    const needsState = onlineMatchFlow?.configured && !onlineHasState;
     receive(raw);
+    // Acknowledge the first accepted snapshot immediately; no extra retry delay.
+    if (needsState && onlineHasState && lanRole === 'guest' && onlineMatchFlow)
+      sendOnlineMatchSetup('initialized', {configuration: onlineMatchFlow.configuration});
   };
   const levelChoice = applyCustomLevelPickerChoice;
   window.applyCustomLevelPickerChoice = value => { if (!matchmakingLocked()) levelChoice(value); };

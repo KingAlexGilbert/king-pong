@@ -119,6 +119,7 @@ export function audioHarness(platform, initial = new Map()) {
     let matchRuleId='classic',matchPowerupsEnabled=true;
     function resetMultiplayerPaddleChoices(){} function setPlayInfoVisible(){} function byId(){return null}
     ${readFileSync(new URL('game/player-preferences.js', root), 'utf8')}
+    function syncBossAudio() {} function bossAudioOverridesMusic() { return false; }
     ${readFileSync(new URL('game/royal-audio.js', root), 'utf8')}
     ${functions.map(name => functionSource(html, name)).join('\n')}
   `);

@@ -1556,3 +1556,50 @@ body.royal-panel-open .match-footer #controlHint {
   #matchSetup .royal-selection-row canvas { grid-column: 2; grid-row: 2 / span 2; height: 32px; max-width: 56px; margin: 0; }
   #matchSetup .royal-selection-row .setup-change { grid-column: 1; margin-top: 2px; text-align: left; }
 }
+
+/* Use available CSS pixels, including zoom/scaled desktops. Preserve control,
+   typography and preview sizes; only the containers and flow change. */
+#matchSetup > .match-card, #matchMenu > .match-card { width: min(100%, 1180px); }
+#matchSetup > .match-card { overflow: auto; }
+#matchSetupBody { overflow: visible; flex: none; }
+.royal-gallery-card { width: min(1400px, 94vw); }
+.match-card, .title-card, .royal-gallery-card { overflow-wrap: anywhere; }
+@media (min-width: 960px) {
+  #onlineUiRoot { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 24px; align-items: start; }
+  #onlineUiRoot > :not(#matchmakingPanel):not(#onlinePrivateRooms) { grid-column: 1 / -1; }
+  #onlinePrivateRooms { border-top: 0; border-left: 1px solid #45404a; padding: 4px 0 0 24px; }
+  #onlineUiRoot:has(#matchmakingPanel[hidden]) #onlinePrivateRooms,
+  #onlineUiRoot:has(#onlinePrivateRooms[hidden]) #matchmakingPanel { grid-column: 1 / -1; border-left: 0; padding-left: 0; }
+  #matchSettings .settings-columns { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 0 24px; }
+}
+/* Reserve the browser toggle's hit area without changing the native toolbar. */
+body:has(#browserFullscreen) .match-bar { padding-right: 50px; }
+#matchSetup.online-setup #lanPanel { margin-bottom: 0; padding-bottom: 0; }
+#localLanSetup { display: grid; gap: 12px; }
+#localLanSetup .match-actions { margin-top: 0; }
+#localLanSetup input:not([type=checkbox]), #localLanRooms { min-height: 44px; box-sizing: border-box; width: 100%; color: #e8decb; background: #08060b; border: 1px solid #67543b; padding: 10px; }
+#localLanAddress { overflow-wrap: anywhere; color: #ffd469; }
+#classicLanDialog > .match-card { width: min(100%, 1000px); }
+@media (min-width: 960px) {
+ #localLanSetup { grid-template-columns: 1fr 1fr; column-gap: 24px; }
+ #localLanSetup > .match-actions, #localLanHint, #localLanAddress, #localLanApproval { grid-column: 1 / -1; }
+}
+
+#localLanRoomCode { font-size: 28px; color: #ffd469; letter-spacing: .2em; grid-column: 1 / -1; }
+#localLanRoomCode:empty { display: none; }
+
+@media (min-width: 1360px) {
+ .title-card:has(.secret-boss-button:not([hidden])) { width: min(94vw, 1320px); }
+ .title-card .title-actions:has(> .secret-boss-button:not([hidden])) { width: 100%; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+#pairingDialog { z-index: 90; }
+#pairingPin { display: block; color: #ffd76b; font-size: 28px; letter-spacing: .18em; margin: 18px 0; text-align: center; }
+
+/* Fullscreen controls share the existing toolbar without adding outer width. */
+body:has(#browserFullscreen) .match-bar { box-sizing: border-box; }
+.room-approval-options { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; }
+
+#onlineMatchOptions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; }
+#onlineMatchOptions #onlinePowerups { margin: 0; }
+#onlineMatchOptions p { flex: 1 1 260px; margin: 0; }

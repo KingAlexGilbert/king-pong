@@ -2,6 +2,8 @@
 // these fields; authoritative remote settings remain temporary match state.
 const PLAYER_PREFERENCE_DEFAULTS = Object.freeze({
   hostApprovalRequired: true,
+  verifyPairing: false,
+  originalBossMusic: true,
   showConnectionType: false,
   playInfoVisible: true,
   matchRuleId: 'classic',
@@ -37,7 +39,7 @@ function restorePlayerPreferences() {
 }
 
 function syncPlayerPreferenceControls() {
-  for (const [id, key] of [['onlineRequireApproval', 'hostApprovalRequired'], ['twoPlayerRoute', 'showConnectionType']]) {
+  for (const [id, key] of [['onlineRequireApproval', 'hostApprovalRequired'], ['privatePairing', 'verifyPairing'], ['localPairing', 'verifyPairing'], ['twoPlayerRoute', 'showConnectionType']]) {
     const input = byId(id);
     if (input) input.checked = playerPreference(key);
   }

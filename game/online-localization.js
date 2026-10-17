@@ -708,3 +708,23 @@ Object.entries({
     window.KING_PONG_ONLINE_TRANSLATIONS[language][key] = values[i];
   });
 })();
+
+// Optional anonymous connection verification; English remains the source key.
+(() => {
+  const languages = ['es','fr','de','pt','it','nl','ja','ko','zh'];
+  const phrases = {
+    'Verify pairing PIN (host)': ['Verificar PIN de conexión (anfitrión)','Vérifier le code d’association (hôte)','Kopplungs-PIN prüfen (Host)','Verificar PIN de conexão (anfitrião)','Verifica PIN di abbinamento (host)','Koppelingscode controleren (host)','接続PINを確認（ホスト）','연결 PIN 확인 (호스트)','验证配对码（房主）'],
+    'Verify pairing': ['Verificar conexión','Vérifier l’association','Kopplung prüfen','Verificar conexão','Verifica abbinamento','Koppeling controleren','接続を確認','연결 확인','验证配对'],
+    'Compare PIN': ['Comparar PIN','Comparer le code','PIN vergleichen','Comparar PIN','Confronta PIN','Code vergelijken','PINを比較','PIN 비교','比较配对码'],
+    'Compare this PIN on both devices before accepting.': ['Compara este PIN en ambos dispositivos antes de aceptar.','Comparez ce code sur les deux appareils avant d’accepter.','Vor dem Bestätigen diese PIN auf beiden Geräten vergleichen.','Compare este PIN nos dois dispositivos antes de aceitar.','Confronta questo PIN sui due dispositivi prima di accettare.','Vergelijk deze code op beide apparaten voordat je accepteert.','承認する前に両方の端末でこのPINを比較してください。','수락하기 전에 두 기기의 PIN을 비교하세요.','接受前，请比较两台设备上的配对码。'],
+    'PINs match — Accept': ['Los PIN coinciden — Aceptar','Codes identiques — Accepter','PINs stimmen überein — Annehmen','PINs iguais — Aceitar','PIN uguali — Accetta','Codes gelijk — Accepteren','PINが一致 — 承認','PIN 일치 — 수락','配对码一致 — 接受'],
+    'Reject / Cancel': ['Rechazar / Cancelar','Refuser / Annuler','Ablehnen / Abbrechen','Rejeitar / Cancelar','Rifiuta / Annulla','Weigeren / Annuleren','拒否／キャンセル','거절 / 취소','拒绝 / 取消'],
+    'Pairing verification failed or expired.': ['La verificación falló o caducó.','La vérification a échoué ou expiré.','Die Kopplungsprüfung ist fehlgeschlagen oder abgelaufen.','A verificação falhou ou expirou.','Verifica fallita o scaduta.','De verificatie is mislukt of verlopen.','接続の確認に失敗したか、有効期限が切れました。','연결 확인에 실패했거나 만료되었습니다.','配对验证失败或已过期。'],
+    'Verification unavailable. Cancel and reconnect with verification off.': ['Verificación no disponible. Cancela y vuelve a conectar sin verificación.','Vérification indisponible. Annulez et reconnectez-vous sans vérification.','Prüfung nicht verfügbar. Abbrechen und ohne Prüfung neu verbinden.','Verificação indisponível. Cancele e reconecte sem verificação.','Verifica non disponibile. Annulla e riconnettiti senza verifica.','Verificatie niet beschikbaar. Annuleer en verbind opnieuw zonder verificatie.','確認できません。キャンセルして確認をオフにして再接続してください。','확인할 수 없습니다. 취소하고 확인을 끈 뒤 다시 연결하세요.','无法验证。请取消并关闭验证后重新连接。']
+  };
+  for(const [key,values] of Object.entries(phrases))languages.forEach((language,i)=>window.KING_PONG_ONLINE_TRANSLATIONS[language][key]=values[i]);
+})();
+
+['es','fr','de','pt','it','nl','ja','ko','zh'].forEach((language,i)=> {
+ window.KING_PONG_ONLINE_TRANSLATIONS[language]["Public matches use powerups only when both players choose On. Private rooms use the host’s choice."] = ["Las partidas públicas usan poderes solo si ambos jugadores eligen Sí. En salas privadas decide el anfitrión.", "Les pouvoirs sont activés en partie publique si les deux joueurs le souhaitent. En privé, l’hôte décide.", "Öffentliche Spiele nutzen Powerups nur, wenn beide sie einschalten. In privaten Räumen entscheidet der Host.", "Partidas públicas usam poderes somente se ambos ativarem. Nas salas privadas, o anfitrião decide.", "Le partite pubbliche usano i poteri solo se entrambi li attivano. Nelle stanze private decide l’host.", "Openbare wedstrijden gebruiken powerups als beide spelers ze inschakelen. In privéruimtes beslist de host.", "公開対戦では両者がオンを選んだ場合のみパワーアップが有効です。非公開ルームではホストが決定します。", "공개 경기에서는 두 플레이어가 모두 켜기를 선택해야 파워업이 활성화됩니다. 비공개 방에서는 호스트가 결정합니다.", "公开对战仅在双方均选择开启时启用强化。私人房间由房主决定。"][i];
+});

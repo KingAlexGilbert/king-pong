@@ -65,7 +65,7 @@ export async function homepageBrowserChecks({browser, pass, artifacts, docsRoot 
           else await link.click();
           const game = await popupEvent;
           await game.waitForLoadState('load');
-          assert.equal(game.url(), home + 'demo/');
+          assert.equal(game.url(), home + 'demo/?kingpong_fullscreen=1');
           assert.equal(await game.evaluate(() => window.top === window.self && window.opener === null), true);
           await game.locator('#titleScreen').waitFor({state: 'visible'});
           assert.equal(context.pages().length, 2, 'one activation opens exactly one game tab');

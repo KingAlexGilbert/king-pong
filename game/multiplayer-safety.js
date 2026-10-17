@@ -10,7 +10,7 @@ async function gatherClassicLanDescription(room) {
   clearTimeout(room.directTimer); clearTimeout(room.totalTimer); room.totalTimer = null;
   if (room.role === 'guest') room.totalTimer = setTimeout(() => room.fail('timeout'), 300000);
   if (room.closed || !peer.localDescription) throw Error('connection_lost');
-  return peer.localDescription.toJSON();
+  return pairingDescription(room, peer.localDescription.toJSON());
 }
 class KingPongManualRoom extends KingPongRoom {
   async open(role, invitation = '') {
@@ -60,7 +60,7 @@ function syncClassicApproval(lobby) {
   if (saveConfirmation?.roomSession === session && saveConfirmation.request &&
       !session.pendingRequests.some(p => p.request === saveConfirmation.request)) finishSaveConfirmation(false);
   if (!pending || saveConfirmation) return;
-  showSaveConfirmation('Join request', 'A player wants to join your private room.', 'Accept', accepted => {
+  showSaveConfirmation('Join request', 'A player wants to join your private room.', session.pairingRequired ? 'Compare PIN' : 'Accept', accepted => {
     if (onlineSession !== session || !session.pendingRequests.some(p => p.request === pending.request)) return;
     session.send({type: accepted ? 'approve' : 'reject', request: pending.request});
   });
@@ -99,6 +99,8 @@ function syncPrivateRoomControls() {
   }
   const approval = byId('onlineRequireApproval');
   if (approval) approval.disabled = Boolean(onlineSession);
+  for (const id of ['privatePairing', 'localPairing']) if (byId(id)) byId(id).disabled = Boolean(onlineSession);
+  if (byId('localLanApproval')) byId('localLanApproval').disabled = Boolean(onlineSession);
   const powerups = byId('onlinePowerups');
   if (powerups) {
     powerups.disabled = !canChooseMatchRules();
@@ -130,18 +132,15 @@ function privateGuestDeparted(session) {
   setLanStatus('Waiting for Player 2...');
   syncRoyalUi(true);
 }
-// Only the browser uses the manual, offline offer/answer screen. Installed
-// apps continue through their existing native LAN setup, unchanged.
+// Native discovery and browser/manual pairing share the existing WebRTC engine.
 function openOfflineLanSetup(fromTitle = true) {
-  if (onlineNativeTransport) {
-    onlineManualLanSelected = false;
-    startLanTwoPlayerSetup(fromTitle);
-    return;
-  }
   onlineManualLanSelected = true;
+  onlineLocalLanSelected = false;
   royalMenuRequested = false;
-  startOnlineSetup(fromTitle);
+  startOnlineSetup(fromTitle, true);
   byId('classicLanDialog').hidden = false;
+  byId('localLanApproval').checked = playerPreference('hostApprovalRequired');
+  byId('onlineRequireApproval').checked = playerPreference('hostApprovalRequired');
   syncRoyalFocus();
 }
 function installMultiplayerSafety() {
@@ -154,7 +153,10 @@ function installMultiplayerSafety() {
   const members = document.createElement('div'); members.id = 'classicRoomMembers';
   privateRooms.append(approvalLabel, members);
   const powerups = royalButton('onlinePowerups', 'Royal Powerups: On', () => setMatchPowerups(!matchPowerupsEnabled));
-  privateRooms.append(powerups);
+  const options = document.createElement('div'); options.id = 'onlineMatchOptions';
+  const powerupNote = document.createElement('p'); powerupNote.className = 'match-note';
+  setLocalizedText(powerupNote, 'Public matches use powerups only when both players choose On. Private rooms use the host’s choice.');
+  options.append(powerups, powerupNote); byId('onlineUiRoot').prepend(options);
   const kick = royalButton('classicKick', 'Kick Player', confirmKickPrivatePlayer);
   kick.hidden = true; byId('matchMenu').firstElementChild.append(kick);
   const arenaKick = royalButton('arenaKick', 'Kick Player', confirmKickPrivatePlayer);
@@ -188,19 +190,26 @@ function installMultiplayerSafety() {
     finally { statsBusy = false; }
   }, 2000);
   const classic = royalDialog('classicLanDialog', 'LAN Play');
+  const status = document.createElement('p'); status.id = 'classicLanStatus'; status.className = 'match-note'; status.setAttribute('role', 'status'); classic.append(status);
+  const previousStatus = setLanStatus;
+  window.setLanStatus = message => { previousStatus(message); setLocalizedText(status, message); };
   const note = document.createElement('p'); setLocalizedText(note, 'LAN: create an invitation. Guest returns an answer; host accepts it. Invitations expire after 5 minutes.');
   const input = document.createElement('textarea'); input.id = 'classicLanInput'; input.setAttribute('aria-label', localizeText('Paste LAN invitation or answer'));
   const output = document.createElement('textarea'); output.id = 'classicLanOutput'; output.readOnly = true; output.setAttribute('aria-label', localizeText('Copy LAN invitation or answer'));
-  classic.append(note, royalButton('classicLanHost', 'Create invitation', () => { onlineManualLanSelected = true; openOnlineRoom('host'); }),
-    input, royalButton('classicLanJoin', 'Create answer', () => { onlineManualLanSelected = true; openOnlineRoom('guest', input.value); }),
-    royalButton('classicLanAccept', 'Accept answer', () => onlineSession instanceof KingPongManualRoom && onlineSession.accept(input.value)), output,
+  const manual = installLocalLanUi(classic);
+  installPairingUi(privateRooms);
+  manual.append(note, royalButton('classicLanHost', 'Create invitation', () => { onlineManualLanSelected = true; onlineLocalLanSelected = false; openOnlineRoom('host'); }),
+    input, royalButton('classicLanJoin', 'Create answer', () => { onlineManualLanSelected = true; onlineLocalLanSelected = false; openOnlineRoom('guest', input.value); }),
+    royalButton('classicLanAccept', 'Accept answer', () => onlineSession instanceof KingPongManualRoom && onlineSession.accept(input.value)), output, royalButton('classicLanCopy', 'Copy', copyLanText),
     royalButton('classicLanClose', 'Back', () => showTitleScreen()));
   const lanBack = byId('classicLanClose'); lanBack.classList.add('mode-back'); classic.prepend(lanBack);
-  // LAN opens directly. A browser LAN tile opens its offline
-  // invitation/answer screen directly; native LAN already opens its setup.
-  if (!onlineNativeTransport) lanModeButton.addEventListener('click', event => {
+  // Keep LAN separate from online matchmaking in every packaged build.
+  lanModeButton.addEventListener('click', event => {
     event.stopImmediatePropagation();
     openOfflineLanSetup(false);
+  }, true);
+  if (onlineNativeTransport) titleLanButton.addEventListener('click', event => {
+    event.stopImmediatePropagation(); openOfflineLanSetup(true);
   }, true);
   document.querySelector('.primary-online').addEventListener('click', () => {
     onlineManualLanSelected = false;

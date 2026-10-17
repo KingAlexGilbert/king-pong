@@ -39,13 +39,13 @@ function harness() {
     state(value) { this.connectionState = value; this.onconnectionstatechange?.(); }
   }
   const context = vm.createContext({
-    URL, WebSocket: Socket, RTCPeerConnection: Peer, Date, crypto, sessionStorage: {getItem: () => null, setItem() {}},
+    byId: () => null, URL, WebSocket: Socket, RTCPeerConnection: Peer, Date, crypto, sessionStorage: {getItem: () => null, setItem() {}},
     setTimeout: (fn, ms) => { const id = ++nextId; timers.set(id, { fn, ms }); return id; },
     clearTimeout: id => timers.delete(id),
     setInterval: fn => { const id = ++nextId; intervals.set(id, fn); return id; },
     clearInterval: id => intervals.delete(id)
   });
-  const Room = vm.runInContext(transport + '\nKingPongRoom', context);
+  const Room = vm.runInContext(transport + readFileSync(new URL('../game/pairing.js', import.meta.url), 'utf8') + '\nKingPongRoom', context);
   const room = new Room('https://signal.example', {
     status: value => statuses.push(value), error: value => errors.push(value), welcome() {}, peer() {}, channel() {}, message() {},
     connected: () => ready++, interrupted: () => interrupted++, resumed: () => resumed++

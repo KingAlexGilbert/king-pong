@@ -4,6 +4,9 @@
     <!-- Needed for WebRTC/LAN data-channel support inside the WebView. -->
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- Held only during LAN hosting or a bounded discovery scan. -->
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
+
     <application
         android:allowBackup="false"
         android:hardwareAccelerated="true"

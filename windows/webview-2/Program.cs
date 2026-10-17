@@ -194,10 +194,14 @@ namespace KingPongWebView2
             Controls.Add(webView);
 
             // Drives document.visibilitychange in the unchanged HTML when minimized.
-            // Its existing code pauses rendering/audio; do not suspend LAN connections.
+            // Existing online behavior stays intact; native offline listeners stop while minimized.
             Resize += (sender, args) =>
             {
-                if (!isClosing) webView.Visible = WindowState != FormWindowState.Minimized;
+                if (!isClosing)
+                {
+                    if (WindowState == FormWindowState.Minimized) localLan?.Stop();
+                    webView.Visible = WindowState != FormWindowState.Minimized;
+                }
             };
             Load += async (sender, args) => await InitializeWebViewAsync();
             Shown += (sender, args) => ApplyFullscreen();
@@ -271,13 +275,15 @@ namespace KingPongWebView2
                 core.NavigationStarting += (sender, args) =>
                 {
                     args.Cancel = !GamePagePolicy.IsAllowed(args.Uri, gameUri);
-                    if (!args.Cancel) { batteryPageReady = false; lastBatteryScript = null; }
+                    if (!args.Cancel) { localLan?.Stop(); batteryPageReady = false; lastBatteryScript = null; }
                 };
                 core.FrameNavigationStarting += (sender, args) => args.Cancel =
                     args.Uri != "https://king-pong-signaling.kingalexgilbert.workers.dev/v1/native-bridge";
                 core.NewWindowRequested += (sender, args) => args.Handled = true;
                 core.DownloadStarting += (sender, args) => args.Cancel = true;
                 core.PermissionRequested += HandlePermissionRequested;
+                localLan = new LocalLanBridge(ReceiveLocalLan);
+                await core.AddScriptToExecuteOnDocumentCreatedAsync("window.KingPongNativeLan = true;");
                 core.WebMessageReceived += HandleWebMessageReceived;
                 core.WindowCloseRequested += (sender, args) =>
                 {
@@ -364,6 +370,25 @@ namespace KingPongWebView2
             }));
         }
 
+        private LocalLanBridge localLan;
+        private readonly BossAudioCache bossAudio = new BossAudioCache();
+        private void ReceiveBossAudio(string id, string data)
+        {
+            if (isClosing || IsDisposed || !IsHandleCreated) return;
+            try { BeginInvoke(new Action(async () => {
+                if (!isClosing && webView.CoreWebView2 != null && GamePagePolicy.IsAllowed(webView.CoreWebView2.Source, gameUri))
+                    await webView.CoreWebView2.ExecuteScriptAsync("window.KingPongBossAudioReceive && window.KingPongBossAudioReceive(" + LocalLanBridge.Json(id) + "," + (data == null ? "null" : "\"" + data + "\"") + ");");
+            })); } catch (InvalidOperationException) { }
+        }
+        private void ReceiveLocalLan(string json)
+        {
+            if (isClosing || IsDisposed || !IsHandleCreated) return;
+            try { BeginInvoke(new Action(async () => {
+                if (!isClosing && webView.CoreWebView2 != null && GamePagePolicy.IsAllowed(webView.CoreWebView2.Source, gameUri))
+                    await webView.CoreWebView2.ExecuteScriptAsync("window.KingPongLanReceive && window.KingPongLanReceive(" + json + ");");
+            })); } catch (InvalidOperationException) { }
+        }
+
         private void HandleWebMessageReceived(object sender, CoreWebView2WebMessageReceivedEventArgs args)
         {
             if (isClosing || !GamePagePolicy.IsAllowed(args.Source, gameUri)) return;
@@ -379,6 +404,16 @@ namespace KingPongWebView2
                 return;
             }
 
+            if (message != null && message.StartsWith("kingpong:boss-audio:", StringComparison.Ordinal))
+            {
+                bossAudio.Load(message.Substring("kingpong:boss-audio:".Length), ReceiveBossAudio);
+                return;
+            }
+            if (message != null && message.StartsWith("kingpong:lan:", StringComparison.Ordinal))
+            {
+                localLan?.Handle(message.Substring("kingpong:lan:".Length));
+                return;
+            }
             if (string.Equals(message, "kingpong:exit", StringComparison.Ordinal))
             {
                 RequestExitFromGame();
@@ -566,6 +601,7 @@ namespace KingPongWebView2
             if (disposing)
             {
                 isClosing = true;
+                localLan?.Dispose();
                 // Controls are disposed by Form; do not dispose the web view twice.
                 Icon = null;
                 if (ownedIcon != null) ownedIcon.Dispose();

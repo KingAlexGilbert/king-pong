@@ -36,12 +36,14 @@ function resetRoyalLocalSetup() {
 }
 
 function resetRoyalUiForTitle() {
+  if (typeof KingPongLocalRoom !== 'undefined' && onlineSession instanceof KingPongLocalRoom) closeLanConnection(false);
   if (typeof onlineMatchFlowVisible === 'function' && onlineMatchFlowVisible()) closeLanConnection(false);
   if (typeof stopMatchmaking === 'function') stopMatchmaking();
   if (typeof stopRoyalPowerupSound === 'function') stopRoyalPowerupSound();
   royalOnlineSelected = royalMenuRequested = false;
   lanPanelOpen = false;
   if (typeof onlineManualLanSelected !== 'undefined') onlineManualLanSelected = false;
+  if (typeof onlineLocalLanSelected !== 'undefined') onlineLocalLanSelected = false;
   if (byId('classicLanDialog')) byId('classicLanDialog').hidden = true;
   royalRotateDismissed = false;
   royalOrientationAttempted = false;
@@ -225,6 +227,7 @@ function initRoyalUi() {
   for (const [label, button] of [
       ['Mute All', royalButton('muteAllButton', 'OFF', () => setGameMuteAll(!saveData.muteAll))],
       ['Music', musicButton],
+      ['Original boss music (optional download)', royalButton('originalBossMusicButton', 'ON', toggleOriginalBossMusic)],
       ['Sound Effects', royalButton('soundEffectsButton', 'ON', () => setSoundEffectsEnabled(saveData
         .soundEffectsEnabled === false))]
     ]) {
@@ -241,10 +244,12 @@ function initRoyalUi() {
   volume.classList.add('audio-volume');
   setLocalizedText(volume.querySelector('span'), 'Music volume');
   audio.append(audioRows, volume);
-  settings.append(audio);
+  const settingsColumns = document.createElement('div');
+  settingsColumns.className = 'settings-columns';
   const display = royalHelpSection('displaySettings', 'Display');
   display.append(playInfoToggle);
-  settings.append(display);
+  settingsColumns.append(audio, display);
+  settings.append(settingsColumns);
   menu.append(settings);
   const help = royalDisclosure('Controls & royal powerups', 'matchHelp');
   document.querySelector('.royal-selection-row .royal-help')?.remove();
@@ -483,6 +488,7 @@ function paintRoyalChoice(button, number, label, entry, kind) {
 }
 
 function syncRoyalUi(force = false) {
+  syncBossAudio();
   if (!byId('matchSetup')) return;
   syncOnlineMatchFlowUi();
   syncPrivateRoomControls();
@@ -645,12 +651,16 @@ async function requestRoyalLandscape() {
   if (typeof KingPongRoom === 'undefined' || !royalPhoneViewport() || royalOrientationAttempted || !navigator
     .userActivation?.isActive) return;
   royalOrientationAttempted = true;
+  if (window.KingPongFullscreen?.exited) return;
   const orientation = window.screen.orientation;
   if (!orientation || typeof orientation.lock !== 'function') return;
   const generation = royalOrientationGeneration;
   try {
-    if (!document.fullscreenElement && document.documentElement.requestFullscreen) await document.documentElement
-      .requestFullscreen();
+    if (!document.fullscreenElement) {
+      if (window.KingPongFullscreen) {
+        if (!await window.KingPongFullscreen.enter()) return;
+      } else if (document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen();
+    }
     if (generation !== royalOrientationGeneration) return;
     await orientation.lock('landscape');
     if (generation !== royalOrientationGeneration) {
@@ -674,6 +684,7 @@ function syncRoyalOrientation() {
 }
 
 function royalActiveDialog() {
+  if (byId('pairingDialog') && !byId('pairingDialog').hidden) return byId('pairingDialog');
   if (galleryKind) return byId('royalGallery');
   for (const id of ['classicLanDialog', 'rotateDevice', 'matchMenu', 'matchSetup'])
     if (byId(id) && !byId(id).hidden) return byId(id);
@@ -684,12 +695,16 @@ function royalActiveDialog() {
 function royalFocusables(panel) {
   return [...panel.querySelectorAll(
       'button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),summary')]
+    .concat(byId('browserFullscreen') ? [byId('browserFullscreen')] : [])
     .filter(element => element.getClientRects().length && !element.closest('[hidden]'));
 }
 
 function syncRoyalFocus() {
   const dialog = royalActiveDialog();
-  for (const id of ['matchBar', 'matchSetup', 'matchMenu', 'titleScreen', 'onlineMatchFlow']) {
+  // The gallery covers the toolbar; its Close button must stay unobstructed.
+  const fullscreen = byId('browserFullscreen');
+  if (fullscreen) fullscreen.hidden = dialog?.id === 'royalGallery';
+  for (const id of ['matchBar', 'matchSetup', 'matchMenu', 'titleScreen', 'onlineMatchFlow', 'classicLanDialog', 'pairingDialog']) {
     const node = byId(id);
     if (node) node.inert = Boolean(dialog && node !== dialog);
   }
@@ -712,6 +727,7 @@ function syncRoyalFocus() {
 }
 
 function handleRoyalUiKey(event) {
+  if (event.key === 'Escape' && window.KingPongFullscreen?.consumesEscape()) return;
   const dialog = royalActiveDialog();
   const form = event.target instanceof HTMLInputElement || event.target instanceof HTMLSelectElement || event
     .target instanceof HTMLTextAreaElement;
@@ -720,7 +736,9 @@ function handleRoyalUiKey(event) {
       index = controls.indexOf(document.activeElement);
     controls[(index + (event.shiftKey ? -1 : 1) + controls.length) % controls.length]?.focus();
   } else if (dialog && event.key === 'Escape') {
-    if (dialog.id === 'classicLanDialog') {
+    if (dialog.id === 'pairingDialog') {
+      if (dialog.session) rejectPairing(dialog.session);
+    } else if (dialog.id === 'classicLanDialog') {
       dialog.hidden = true; syncRoyalFocus();
     } else if (dialog.id === 'rotateDevice') {
       royalRotateDismissed = true;

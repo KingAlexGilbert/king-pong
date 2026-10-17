@@ -54,6 +54,7 @@ function validMatchScores(state) {
 
 function canChooseMatchRules() {
   if (typeof onlineMatchFlowVisible === 'function' && onlineMatchFlowVisible()) return false;
+  if (typeof matchmakingRequested !== 'undefined' && matchmakingRequested) return false;
   if (typeof matchmakingLocked === 'function' && matchmakingLocked()) return false;
   return mode === 2 && lanRole !== 'guest' && waitingForServe && !gameOver && left.score === 0 && right.score === 0;
 }
@@ -100,7 +101,10 @@ function applyMatchRuleState(value) {
   remoteRuleId = matchRuleId = value.id;
   // Compact snapshots carry the preset/revision; the existing reliable rules
   // channel and setup handshake carry the powerup flag once per configuration.
-  if (typeof value.powerups === 'boolean') matchPowerupsEnabled = value.powerups;
+  if (typeof value.powerups === 'boolean') {
+    if (!value.powerups && matchPowerupsEnabled) resetRoyalRally();
+    matchPowerupsEnabled = value.powerups;
+  }
 }
 
 function receiveMatchRules(value) {

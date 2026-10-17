@@ -53,7 +53,11 @@ function installOnlineSupport() {
     if (onlineSession && message?.type === 'net-format') { receiveOnlineWireHello(message); return; }
     if (message?.type === 'match-setup') { receiveOnlineMatchSetup(message); return; }
     if (onlineMatchFlowBlocksPlay() && message?.type === 'action') return;
+    const needsState = onlineMatchFlow?.configured && !onlineHasState;
     receive(raw);
+    // Acknowledge the first accepted snapshot immediately; no extra retry delay.
+    if (needsState && onlineHasState && lanRole === 'guest' && onlineMatchFlow)
+      sendOnlineMatchSetup('initialized', {configuration: onlineMatchFlow.configuration});
   };
   const levelChoice = applyCustomLevelPickerChoice;
   window.applyCustomLevelPickerChoice = value => { if (!matchmakingLocked()) levelChoice(value); };

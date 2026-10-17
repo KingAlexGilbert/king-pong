@@ -144,7 +144,7 @@ class KingPongRoom {
         const offer = await peer.createOffer();
         if (this.peer !== peer || this.closed) return;
         await peer.setLocalDescription(offer);
-        if (this.peer === peer && !this.closed) this.send({ type: 'description', attempt, description: peer.localDescription.toJSON() });
+        if (this.peer === peer && !this.closed) this.send({ type: 'description', attempt, description: pairingDescription(this, peer.localDescription.toJSON()) });
       } else {
         peer.ondatachannel = event => {
           if (event.channel.label === 'pong-lan-input-v1') this.wire(event.channel, false, peer);
@@ -159,13 +159,14 @@ class KingPongRoom {
     if (message.type === 'description') {
       const expected = this.role === 'host' ? 'answer' : 'offer';
       if (message.description?.type !== expected) throw new Error();
+      if (!this.assignment && this.role === 'guest') this.pairingRequired = /(?:^|\r?\n)a=x-kingpong-pairing:1(?:\r?\n|$)/.test(message.description.sdp);
       await peer.setRemoteDescription(message.description);
       if (this.peer !== peer || this.closed) return;
       for (const candidate of this.candidates) await peer.addIceCandidate(candidate);
       this.candidates = [];
       if (this.role === 'guest') {
         await peer.setLocalDescription(await peer.createAnswer());
-        if (this.peer === peer && !this.closed) this.send({ type: 'description', attempt: this.attempt, description: peer.localDescription.toJSON() });
+        if (this.peer === peer && !this.closed) this.send({ type: 'description', attempt: this.attempt, description: pairingDescription(this, peer.localDescription.toJSON()) });
       }
     } else if (message.type === 'candidate') {
       if (peer.remoteDescription) await peer.addIceCandidate(message.candidate);
@@ -180,7 +181,9 @@ class KingPongRoom {
     else this.data = channel;
     this.hooks.channel(channel, control);
     channel.onmessage = event => {
-      if (!this.closed && this.connected && this.peer === peer) this.hooks.message(event.data);
+      if (this.closed || this.peer !== peer) return;
+      if (control && receivePairingFrame(this, event.data)) return;
+      if (this.connected && (!this.pairingRequired || this.pairingAccepted)) this.hooks.message(event.data);
     };
     channel.onopen = () => this.maybeConnected(peer);
     channel.onclose = () => {
@@ -212,7 +215,8 @@ class KingPongRoom {
     clearTimeout(this.totalTimer);
     this.totalTimer = null;
     this.send({ type: 'connected' });
-    this.hooks.connected();
+    if (this.pairingRequired && !this.assignment) beginPairingVerification(this);
+    else this.hooks.connected();
   }
 
   relay() {
@@ -225,6 +229,8 @@ class KingPongRoom {
   }
 
   dropPeer() {
+    closePairingUi(this);
+    this.pairingAccepted = false;
     clearTimeout(this.removalTimer);
     this.removingGuest = false;
     clearTimeout(this.directTimer);
@@ -341,7 +347,8 @@ function closeOnlineConnection(showMessage = true, keepQueue = false) {
   updateModeControls();
 }
 
-function startOnlineSetup(fromTitle = false) {
+function startOnlineSetup(fromTitle = false, offline = false) {
+  if (!offline) { onlineManualLanSelected = false; onlineLocalLanSelected = false; }
   closeLanConnection(false);
   onlineTransportSelected = true;
   if (fromTitle) hideTitleScreen();
@@ -388,7 +395,7 @@ function openOnlineRoom(role, code = '', assignment = null) {
   setMenusVisible(true);
   setOnlineControls(true);
   if (assignment) beginOnlineMatchFlow();
-  const RoomClass = typeof onlineManualLanSelected !== 'undefined' && onlineManualLanSelected && !assignment ? KingPongManualRoom : KingPongRoom;
+  const RoomClass = typeof onlineLocalLanSelected !== 'undefined' && onlineLocalLanSelected && !assignment ? KingPongLocalRoom : typeof onlineManualLanSelected !== 'undefined' && onlineManualLanSelected && !assignment ? KingPongManualRoom : KingPongRoom;
   const session = new RoomClass(window.KING_PONG_SIGNALING_URL, {
     status: message => { if (onlineSession === session) setLanStatus(message); },
     welcome: code => {
@@ -420,7 +427,7 @@ function openOnlineRoom(role, code = '', assignment = null) {
       lanRemoteInput = { axis: 0, targetY: null, lastAt: 0 };
     },
     resumed: () => {
-      if (onlineSession !== session) return;
+      if (onlineSession !== session || session.pairingRequired && !session.pairingAccepted) return;
       onlineGameBlocked = false;
       if (role === 'host') sendLanState(true);
     },
@@ -450,6 +457,7 @@ function openOnlineRoom(role, code = '', assignment = null) {
       setLanStatus(assignment ? matchmakingError(code) : ONLINE_ERRORS[code] || ONLINE_ERRORS.connection_lost);
     }
   });
+  session.pairingRequired = role === 'host' && !assignment && playerPreference('verifyPairing');
   session.requireApproval = Boolean(byId('onlineRequireApproval')?.checked);
   onlineSession = session;
   syncMatchmakingUi();

@@ -1,5 +1,5 @@
-// Online matches share the reliable ready/countdown flow. Private rooms also
-// acknowledge host configuration before either client can start; LAN keeps its serve controls.
+// Online matches share reliable ready/countdown and configuration acknowledgement.
+// Public matches resolve preferences after matching, without changing the queue.
 let onlineMatchFlow = null;
 
 function onlineMatchFlowVisible() {
@@ -19,6 +19,8 @@ function resetOnlineMatchFlow() {
 
 function beginOnlineMatchFlow() {
   onlineMatchFlow = {id: onlineMatchAssignment?.id || 'private:' + lanRoomCode,
+    localPowerups: onlineMatchAssignment ? (matchmakingPowerupsPreference ?? playerPreference('royalPowerupsEnabled')) : null,
+    peerPowerups: null, agreedPowerups: null,
     privateRoom: !onlineMatchAssignment, configured: false, peerInitialized: false, phase: 'connecting', localReady: false,
     hostReady: false, guestReady: false, peerHello: false, sequence: 0, remoteSequence: -1,
     localPaddle: matchPaddles[lanRole === 'guest' ? 'right' : 'left'], lastHelloAt: -Infinity};
@@ -60,9 +62,9 @@ function sendOnlineMatchHello() {
   // Re-send the locally selected paddle before hello, in reliable channel order.
   if (lanRole === 'guest') lanSend({v: LAN_SIGNAL_VERSION, room: lanRoomCode, type: 'selection',
     seq: ++selectionSequence, paddle: flow.localPaddle});
-  sendOnlineMatchSetup('hello');
-  if (flow.privateRoom && lanRole === 'host') sendPrivateMatchConfiguration();
-  if (flow.privateRoom && lanRole === 'guest' && flow.configured && onlineHasState) {
+  sendOnlineMatchSetup('hello', flow.privateRoom ? {} : {powerupAgreement: 1, powerupsPreference: flow.localPowerups});
+  if (lanRole === 'host') sendPrivateMatchConfiguration();
+  if (lanRole === 'guest' && flow.configured && onlineHasState) {
     sendOnlineMatchSetup('initialized', {configuration: flow.configuration});
   }
 }
@@ -78,7 +80,7 @@ function confirmOnlineMatchReady() {
 
 function maybeStartOnlineMatchCountdown() {
   const flow = onlineMatchFlow;
-  if (flow.phase === 'ready' && flow.peerHello && (!flow.privateRoom || flow.peerInitialized) && flow.hostReady && flow.guestReady) {
+  if (flow.phase === 'ready' && flow.peerHello && flow.peerInitialized && flow.hostReady && flow.guestReady) {
     flow.phase = 'countdown';
     paused = true;
     resumeCountdownEndAt = performance.now() + RESUME_COUNTDOWN_MS;
@@ -94,8 +96,9 @@ function privateMatchConfiguration() {
 }
 
 function sendPrivateMatchConfiguration() {
-  if (!onlineMatchFlow?.privateRoom || lanRole !== 'host') return;
+  if (!onlineMatchFlow || lanRole !== 'host' || !onlineMatchFlow.privateRoom && !onlineMatchFlow.configured) return;
   sendOnlineMatchSetup('config', privateMatchConfiguration());
+  sendLanState(true);
 }
 
 function receiveOnlineMatchSetup(message) {
@@ -103,29 +106,43 @@ function receiveOnlineMatchSetup(message) {
   if (!flow || !lanConnected || !onlineSession || message.protocol !== 1 || message.match !== flow.id ||
       message.v !== LAN_SIGNAL_VERSION || message.room !== lanRoomCode || !lanRoomCode ||
       message.gameplay !== 'royal' || message.matchRules !== 'presets') return;
-  if (flow.privateRoom && message.kind === 'config' && lanRole === 'guest') {
+  if (message.kind === 'config' && lanRole === 'guest') {
     if (!['connected', 'ready'].includes(flow.phase) || !validSelectionState(message.selection) ||
         !validMatchRuleState(message.rules) || typeof message.rules.powerups !== 'boolean') return;
+    if (!flow.privateRoom && (!flow.peerHello || flow.peerPowerups === null ||
+        message.selection.arena !== onlineMatchAssignment.arena || message.rules.id !== onlineMatchAssignment.rules ||
+        message.rules.powerups !== (flow.localPowerups && flow.peerPowerups))) { onlineSession.fail('incompatible'); return; }
     applySelectionState(message.selection);
     applyMatchRuleState(message.rules);
     flow.configuration = JSON.stringify({selection: message.selection, rules: message.rules});
     flow.configured = true;
+    flow.agreedPowerups = message.rules.powerups;
     if (onlineHasState) sendOnlineMatchSetup('initialized', {configuration: flow.configuration});
-  } else if (flow.privateRoom && message.kind === 'initialized' && lanRole === 'host') {
+  } else if (message.kind === 'initialized' && lanRole === 'host') {
     if (message.configuration !== JSON.stringify(privateMatchConfiguration())) return;
     flow.peerInitialized = true;
   } else if (message.kind === 'hello') {
+    if (!flow.privateRoom) {
+      if (message.powerupAgreement !== 1 || typeof message.powerupsPreference !== 'boolean' ||
+          flow.peerPowerups !== null && flow.peerPowerups !== message.powerupsPreference) { onlineSession.fail('incompatible'); return; }
+      flow.peerPowerups = message.powerupsPreference;
+      if (lanRole === 'host' && !flow.configured) {
+        flow.agreedPowerups = flow.localPowerups && flow.peerPowerups;
+        if (matchPowerupsEnabled !== flow.agreedPowerups) { matchPowerupsEnabled = flow.agreedPowerups; matchRuleRevision++; resetRoyalRally(); }
+        flow.configured = true;
+      }
+    }
     if (!flow.peerHello) {
       flow.peerHello = true;
       flow.connectedUntil = Math.max(flow.connectedUntil, performance.now() + 600);
       sendOnlineMatchHello();
     }
     if (lanRole === 'host') {
-      if (flow.privateRoom) sendPrivateMatchConfiguration();
+      sendPrivateMatchConfiguration();
       sendOnlineMatchStatus();
     }
   } else if (lanRole === 'host' && message.kind === 'ready' && (flow.phase === 'ready' || flow.phase === 'countdown' && message.ready === false) && flow.peerHello) {
-    if (flow.privateRoom && !flow.peerInitialized || message.ready !== undefined && typeof message.ready !== 'boolean') return;
+    if (!flow.peerInitialized || message.ready !== undefined && typeof message.ready !== 'boolean') return;
     flow.guestReady = message.ready !== false;
     if (!flow.guestReady && flow.phase === 'countdown') {
       flow.phase = 'ready'; resumeCountdownEndAt = 0; lastResumeCountdownNumber = 0;
@@ -138,7 +155,7 @@ function receiveOnlineMatchSetup(message) {
         !Number.isFinite(message.remainingMs) || message.remainingMs < 0 || message.remainingMs > RESUME_COUNTDOWN_MS) return;
     if (['countdown', 'go'].includes(message.phase) &&
         (!flow.localReady || !message.hostReady || !message.guestReady)) return;
-    if (flow.privateRoom && message.phase !== 'connected' && (!flow.configured || !onlineHasState)) return;
+    if (message.phase !== 'connected' && (!flow.configured || !onlineHasState)) return;
     flow.remoteSequence = message.seq;
     flow.hostReady = message.hostReady;
     flow.guestReady = message.guestReady;
@@ -167,12 +184,12 @@ function tickOnlineMatchFlow() {
     return;
   }
   if (flow.phase === 'failed' || flow.phase === 'connecting' || !lanConnected) return;
-  if (!flow.peerHello || flow.privateRoom && (lanRole === 'host' ? !flow.peerInitialized : flow.phase === 'connected')) {
+  if (!flow.peerHello || (lanRole === 'host' ? !flow.peerInitialized : flow.phase === 'connected')) {
     if (now >= flow.handshakeDeadline) { onlineSession?.fail('incompatible'); return; }
     if (now - flow.lastHelloAt >= 500) sendOnlineMatchHello();
   }
   if (lanRole !== 'host') return;
-  if (flow.phase === 'connected' && flow.peerHello && (!flow.privateRoom || flow.peerInitialized) && now >= flow.connectedUntil) {
+  if (flow.phase === 'connected' && flow.peerHello && flow.peerInitialized && now >= flow.connectedUntil) {
     flow.phase = 'ready';
     sendOnlineMatchStatus();
     sendLanState(true);
@@ -265,7 +282,7 @@ function syncOnlineMatchFlowUi() {
       'Both players must confirm before the countdown.' : flow.privateRoom ? '' : 'Classic Match · First to 10');
   byId('onlineReadyButton').hidden = flow.phase !== 'ready';
   byId('onlineReadyButton').disabled = Boolean(flow.localReady && !flow.privateRoom);
-  royalText(byId('onlineFlowConfiguration'), flow.privateRoom && flow.phase !== 'failed' ?
+  royalText(byId('onlineFlowConfiguration'), (flow.privateRoom || flow.configured) && flow.phase !== 'failed' ?
     localizeText(currentLevel().name) + ' · ' + localizeText(matchRule().label) + ' · ' +
     localizeText(matchPowerupsEnabled ? 'Royal Powerups: On' : 'Royal Powerups: Off') : '');
   royalText(byId('onlineReadyButton'), flow.localReady ? flow.privateRoom ? 'Ready — Undo' : 'Ready!' : "I'm ready");

@@ -70,6 +70,7 @@ function connectGameAudio(gain, context, kind) {
 }
 
 function updateGameAudioGains(context = audioCtx) {
+  syncBossAudio();
   const buses = context && gameAudioBuses.get(context);
   if (!buses) return;
   buses.master.gain.value = saveData?.muteAll === true ? 0 : 1;
@@ -124,11 +125,12 @@ function updateAudioControls() {
   for (const [id, enabled] of [
       ['muteAllButton', muted],
       ['musicButton', musicEnabled],
+      ['originalBossMusicButton', playerPreference('originalBossMusic')],
       ['soundEffectsButton', saveData?.soundEffectsEnabled !== false]
     ]) {
     const button = document.getElementById(id);
     if (!button) continue;
-    const suppressed = muted && id !== 'muteAllButton';
+    const suppressed = muted && id !== 'muteAllButton' && id !== 'originalBossMusicButton';
     button.disabled = suppressed;
     button.setAttribute('aria-pressed', String(enabled && !suppressed));
     setLocalizedText(button, suppressed ? 'Muted by Mute All' : enabled ? 'ON' : 'OFF');

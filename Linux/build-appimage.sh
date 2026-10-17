@@ -27,6 +27,8 @@ mkdir -p \
 
 install -m 0755 "$ROOT_DIR/src/king-pong" "$APPDIR/usr/bin/king-pong"
 install -m 0755 "$ROOT_DIR/src/king-pong.py" "$APPDIR/usr/lib/king-pong/king-pong.py"
+install -m 0644 "$ROOT_DIR/src/king_pong_lan.py" "$APPDIR/usr/lib/king-pong/king_pong_lan.py"
+install -m 0644 "$ROOT_DIR/src/king_pong_audio.py" "$APPDIR/usr/lib/king-pong/king_pong_audio.py"
 install -m 0644 "$ROOT_DIR/assets/index.html" "$APPDIR/usr/share/king-pong/index.html"
 install -m 0644 "$ROOT_DIR/assets/king-pong.png" "$APPDIR/king-pong.png"
 ln "$APPDIR/king-pong.png" "$APPDIR/usr/share/pixmaps/king-pong.png"

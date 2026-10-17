@@ -42,6 +42,11 @@ public final class MainActivity extends Activity {
     private int saveFileRequestId;
     private String pendingSaveExport;
     private WebView webView;
+    private LocalLan localLan;
+    private BossAudioCache bossAudio;
+    private final String lanBridgeToken = LocalLan.randomHex(16);
+    private android.net.wifi.WifiManager.MulticastLock lanMulticast;
+    private boolean lanHosting, lanScanning, lanBackgrounded;
     private boolean batteryReceiverRegistered;
     private boolean batteryPageReady;
     private int batteryLevel = -1;
@@ -99,6 +104,13 @@ public final class MainActivity extends Activity {
         }
         WebView.setWebContentsDebuggingEnabled(false);
 
+        bossAudio = new BossAudioCache(getCacheDir());
+        webView.addJavascriptInterface(new BossAudioBridge(), "KingPongBossAudio");
+        localLan = new LocalLan(json -> runOnUiThread(() -> {
+            if (webView != null && isGameUrl(Uri.parse(webView.getUrl() == null ? "" : webView.getUrl())))
+                webView.evaluateJavascript("window.KingPongLanReceive && window.KingPongLanReceive(" + json + ");", null);
+        }));
+        webView.addJavascriptInterface(new LanBridge(), "KingPongLan");
         webView.addJavascriptInterface(new SaveFileBridge(), "KingPongSaveFiles");
         webView.setWebChromeClient(new WebChromeClient());
         webView.setWebViewClient(new LocalOnlyWebViewClient());
@@ -115,6 +127,10 @@ public final class MainActivity extends Activity {
         if (webView != null) {
             webView.onResume();
             webView.resumeTimers();
+            if (lanBackgrounded) {
+                lanBackgrounded = false;
+                webView.evaluateJavascript("window.KingPongBackgrounded=false;document.dispatchEvent(new Event('kingpong-background'));", null);
+            }
             webView.requestFocus();
         }
         startBatteryMonitoring();
@@ -124,8 +140,12 @@ public final class MainActivity extends Activity {
     @Override
     protected void onPause() {
         stopBatteryMonitoring();
+        lanBackgrounded = true;
+        if (localLan != null) localLan.stop();
+        lanHosting = lanScanning = false;
+        updateLanMulticast();
         if (webView != null) {
-            webView.evaluateJavascript("document.dispatchEvent(new Event('kingpong-background'));", null);
+            webView.evaluateJavascript("window.KingPongBackgrounded=true;document.dispatchEvent(new Event('kingpong-background'));", null);
             webView.onPause();
             webView.pauseTimers();
         }
@@ -136,9 +156,14 @@ public final class MainActivity extends Activity {
     protected void onDestroy() {
         stopBatteryMonitoring();
         saveFileExecutor.shutdown();
+        if (localLan != null) localLan.close();
+        lanHosting = lanScanning = false;
+        updateLanMulticast();
         if (webView != null) {
             webView.stopLoading();
             webView.removeJavascriptInterface("KingPongSaveFiles");
+            webView.removeJavascriptInterface("KingPongLan");
+            webView.removeJavascriptInterface("KingPongBossAudio");
             if (webView.getParent() instanceof ViewGroup) {
                 ((ViewGroup) webView.getParent()).removeView(webView);
             }
@@ -148,6 +173,57 @@ public final class MainActivity extends Activity {
             webView = null;
         }
         super.onDestroy();
+    }
+
+    private void updateLanMulticast() {
+        try {
+            if (lanHosting || lanScanning) {
+                if (lanMulticast == null) {
+                    android.net.wifi.WifiManager wifi = (android.net.wifi.WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+                    if (wifi == null) return;
+                    lanMulticast = wifi.createMulticastLock("KingPong LAN");
+                    lanMulticast.setReferenceCounted(false);
+                }
+                if (!lanMulticast.isHeld()) lanMulticast.acquire();
+            } else if (lanMulticast != null && lanMulticast.isHeld()) lanMulticast.release();
+        } catch (RuntimeException ignored) { /* Direct IP and manual pairing remain available. */ }
+    }
+
+    private final class BossAudioBridge {
+        @JavascriptInterface public void load(String id, String capability) {
+            if (!lanBridgeToken.equals(capability)) return;
+            runOnUiThread(() -> {
+                if (webView == null || !isGameUrl(Uri.parse(webView.getUrl() == null ? "" : webView.getUrl()))) return;
+                bossAudio.load(id, (request, data) -> runOnUiThread(() -> {
+                    if (webView != null && isGameUrl(Uri.parse(webView.getUrl() == null ? "" : webView.getUrl())))
+                        webView.evaluateJavascript("window.KingPongBossAudioReceive && window.KingPongBossAudioReceive(" + org.json.JSONObject.quote(request) + "," + (data == null ? "null" : org.json.JSONObject.quote(data)) + ");", null);
+                }));
+            });
+        }
+    }
+
+    private final class LanBridge {
+        @JavascriptInterface public void postMessage(String text, String capability) {
+            if (!lanBridgeToken.equals(capability)) return;
+            if (text == null || text.length() > LocalLan.LIMIT) return;
+            runOnUiThread(() -> {
+                if (webView == null || !isGameUrl(Uri.parse(webView.getUrl() == null ? "" : webView.getUrl()))) return;
+                try {
+                    org.json.JSONObject command = new org.json.JSONObject(text);
+                    String op = command.optString("op");
+                    // Target SDK 36: INTERNET grants LAN access. Do not request
+                    // ACCESS_LOCAL_NETWORK before raising targetSdk to 37.
+                    if ("host".equals(op)) lanHosting = true;
+                    if ("join".equals(op) || "close".equals(op)) lanHosting = false;
+                    if ("discover".equals(op)) {
+                        lanScanning = true;
+                        webView.postDelayed(() -> { lanScanning = false; updateLanMulticast(); }, 3000);
+                    }
+                    updateLanMulticast();
+                    localLan.handle(text);
+                } catch (org.json.JSONException ignored) { }
+            });
+        }
     }
 
     private void startBatteryMonitoring() {
@@ -363,12 +439,14 @@ public final class MainActivity extends Activity {
         @Override
         public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
             batteryPageReady = false;
+            if (localLan != null) localLan.stop();
             lastBatteryScript = null;
         }
 
         @Override
         public void onPageFinished(WebView view, String url) {
             batteryPageReady = isGameUrl(url == null ? null : Uri.parse(url));
+            if (batteryPageReady) view.evaluateJavascript("window.KingPongLanToken=" + org.json.JSONObject.quote(lanBridgeToken) + ";", null);
             sendBatteryState();
         }
 

@@ -76,6 +76,7 @@ function finishSaveConfirmation(confirmed) {
 }
 
 function handleSaveConfirmationKey(event) {
+  if (event.key === 'Escape' && window.KingPongFullscreen?.consumesEscape()) return;
   if (!saveConfirmation) return;
   event.preventDefault();
   event.stopImmediatePropagation();

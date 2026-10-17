@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {publicPowerupCases} from './public-powerups-cases.mjs';
 import {
   createServer
 } from 'node:http';
@@ -91,7 +92,7 @@ const browser = await chromium.launch({
   headless: true,
   args: ['--allow-loopback-in-peer-connection', '--no-sandbox', '--disable-features=WebRtcHideLocalIpsWithMdns', '--disable-background-timer-throttling', '--disable-renderer-backgrounding']
 });
-const errors = [];
+const errors = [], queueTraffic = [];
 // This explicit fallback keeps real Worker/WebSocket admission and real pages,
 // but replaces RTC channels. The default mode still requires actual WebRTC.
 const controlledChannels = process.argv.includes('--controlled-channels');
@@ -110,6 +111,7 @@ async function page(locale = 'en-US') {
   });
   const page = await context.newPage();
   page.on('pageerror', error => errors.push(error.message));
+  page.on('websocket', socket => { if(socket.url().includes('/v1/queue/'))socket.on('framesent',e=>{if(e.payload!=='ping')queueTraffic.push({url:socket.url(),message:JSON.parse(e.payload)});}); });
   page.on('dialog', async dialog => {
     errors.push('Unexpected dialog: ' + dialog.type());
     await dialog.dismiss();
@@ -143,7 +145,7 @@ async function installControlledChannels(page) {
       for (const target of testPages) {
         if (target === page || target.isClosed()) continue;
         await target.evaluate(({raw,state}) => {
-          if (lanConnected && lanRoomCode === state.room && lanRole !== state.role) handleLanMessage(raw);
+          if (onlineSession && lanRoomCode === state.room && lanRole !== state.role) onlineSession.control?.onmessage?.({data:raw});
         }, {raw,state});
       }
     }).catch(error => { if (!browserClosing) errors.push(error.message); });
@@ -157,8 +159,8 @@ async function installControlledChannels(page) {
           send(raw){window.deliverTestChannel(raw)},close(){this.readyState='closed'}};
         this.channels.push(c); return c;
       }
-      async createOffer(){return {type:'offer',sdp:'controlled-offer'}}
-      async createAnswer(){return {type:'answer',sdp:'controlled-answer'}}
+      async createOffer(){return {type:'offer',sdp:'v=0\r\na=fingerprint:sha-256 '+Array(32).fill('AA').join(':')+'\r\n'}}
+      async createAnswer(){return {type:'answer',sdp:'v=0\r\na=fingerprint:sha-256 '+Array(32).fill('BB').join(':')+'\r\n'}}
       async setLocalDescription(d){this.localDescription={...d,toJSON:()=>d};if(d.type==='answer')this.openChannels()}
       async setRemoteDescription(d){
         this.remoteDescription=d;
@@ -195,9 +197,22 @@ async function waitFor(page, expression) {
     throw error;
   }
 }
+const verify=process.argv.includes('--verify-pairing');
+async function comparePin(host,guest,accept=true) {
+  if(!verify)return;
+  await host.waitForFunction(()=>onlineSession?.pairing?.remoteShown);
+  await guest.waitForFunction(()=>onlineSession?.pairing?.remoteShown);
+  assert.equal(await host.locator('#pairingPin').innerText(),await guest.locator('#pairingPin').innerText());
+  for(const p of [host,guest])assert.deepEqual(await p.evaluate(()=>[lanConnected,onlineGameBlocked]),[false,true]);
+  await host.locator(accept?'#pairingAccept':'#pairingReject').click();
+  console.log('PASS PIN display, gameplay gate and '+(accept?'confirmation':'rejection')+' (controlled certificates when RTC is controlled)');
+}
 try {
+  if(process.argv.includes('--public-powerups'))await publicPowerupCases({page,waitFor,queueTraffic,errors});
+  else {
   console.log(controlledChannels ? 'MODE controlled RTC channels, real Worker and WebSockets' : 'MODE actual WebRTC');
   const host = await page();
+  if(verify)await host.locator('#privatePairing').check();
   assert.equal(await host.locator('#onlineRequireApproval').isChecked(), true);
   await host.evaluate(() => {
     setMatchRule('quick'); setMatchPowerups(false);saveData.royalArena=7;
@@ -222,6 +237,7 @@ try {
   assert.equal(await host.evaluate(() => onlineSession.pendingRequests.length), 0);
   console.log('PASS approval default, rejection, and same-session rejoin block');
 
+  if(verify){const refused=await page();await join(refused);await host.locator('#saveConfirmAccept').click();await comparePin(host,refused,false);await waitFor(refused,'!onlineSession');await waitFor(host,'!onlineSession.peer');assert.equal(await host.evaluate(()=>lanRoomCode),code);}
   const peer = await page();
   await peer.evaluate(()=>{
     savePlayerPreference('multiplayerPaddle','enemy-15');resetMultiplayerPaddleChoices();
@@ -229,6 +245,7 @@ try {
   });
   await join(peer);
   await host.locator('#saveConfirmAccept').click();
+  await comparePin(host,peer);
   await Promise.all([waitFor(host, "onlineMatchFlow?.phase === 'ready'"),waitFor(peer, "onlineMatchFlow?.phase === 'ready'")]);
   for (const p of [host, peer]) {
     assert.equal(await p.locator('#matchSetup').isVisible(), false);
@@ -283,7 +300,7 @@ try {
 
   // Another approved participant can use the retained room; cancellation during
   // countdown cannot leave a queued serve or old powerup state in that room.
-  const replacement=await page();await join(replacement);await host.locator('#saveConfirmAccept').click();
+  const replacement=await page();await join(replacement);await host.locator('#saveConfirmAccept').click();await comparePin(host,replacement);
   await Promise.all([waitFor(host,"onlineMatchFlow?.phase === 'ready'"),waitFor(replacement,"onlineMatchFlow?.phase === 'ready'")]);
   await host.locator('#onlineReadyButton').click();await replacement.locator('#onlineReadyButton').click();
   await waitFor(replacement,"onlineMatchFlow?.phase === 'countdown'");
@@ -304,6 +321,7 @@ try {
   await waitFor(host,'lanRoomCode.length === 6');
   const next = await page();
   await next.evaluate(code => openOnlineRoom('guest',code), await host.evaluate(() => lanRoomCode));
+  await comparePin(host,next);
   await Promise.all([waitFor(host, "onlineMatchFlow?.phase === 'ready'"),waitFor(next, "onlineMatchFlow?.phase === 'ready'")]);
   assert.equal(await host.locator('#saveConfirmOverlay').isVisible(), false);
   await host.locator('#onlineReadyButton').click(); await next.locator('#onlineReadyButton').click();
@@ -316,6 +334,7 @@ try {
   assert.deepEqual(await next.evaluate(()=>[royalPickup.type,royalPickup.x,royalPickup.y]),spawned);
   console.log('PASS approval off, reload persistence and peer powerup spawn synchronization');
   assert.deepEqual(errors, []);
+  }
 } catch (error) {
   console.error(error);
   process.exitCode = 1;

@@ -6,6 +6,7 @@ let matchmakingHeartbeat = null;
 let matchmakingOpenTimer = null;
 let matchmakingWaitTimer = null;
 let matchmakingLastPong = 0;
+let matchmakingPowerupsPreference = null;
 
 function onlineRoomInput() { return byId('onlineRoomInput') || lanRoomCodeInput; }
 function onlineHostControl() { return byId('onlineHostButton') || lanHostButton; }
@@ -26,6 +27,7 @@ function syncMatchmakingUi() {
       'Opponent available — Find Match!' : searching ?
       "No opponents waiting. You'll be matched when someone joins." : '0 players waiting — Be the first to search!';
   royalText(byId('matchmakingAvailability'), status);
+  byId('onlinePowerups')?.toggleAttribute('disabled', searching || connecting || !canChooseMatchRules());
   byId('onlinePrivateRooms').hidden = searching || connecting;
   byId('matchmakingPanel').hidden = Boolean(onlineSession && !onlineMatchAssignment);
 }
@@ -37,6 +39,7 @@ function stopMatchmaking() {
   clearTimeout(matchmakingOpenTimer);
   clearTimeout(matchmakingWaitTimer);
   matchmakingRequested = false;
+  matchmakingPowerupsPreference = null;
   matchmakingState = 'offline';
   matchmakingWaiting = null;
   if (socket) {
@@ -132,6 +135,7 @@ function findOnlineMatch() {
   }
   onlineTransportSelected = true;
   onlineGameBlocked = true;
+  matchmakingPowerupsPreference = playerPreference('royalPowerupsEnabled');
   matchmakingRequested = true;
   setLanStatus('Searching for an opponent...');
   if (matchmakingSocket?.readyState === 1) sendMatchSearch();
@@ -160,7 +164,8 @@ function matchmakingComplete() {
 function applyMatchmakingSettings() {
   if (!onlineMatchAssignment) return;
   matchRuleId = onlineMatchAssignment.rules;
-  matchPowerupsEnabled = true; // Preserve established matchmaking rules.
+  // Provisional local value; the reliable hello/config handshake resolves AND.
+  matchPowerupsEnabled = matchmakingPowerupsPreference ?? playerPreference('royalPowerupsEnabled');
   matchRuleRevision = 0;
   remoteRuleRevision = -1;
   setLevelByAbsoluteIndex(onlineMatchAssignment.arena, true);
@@ -169,6 +174,10 @@ function applyMatchmakingSettings() {
 function validMatchmakingState(message) {
   if (!onlineMatchAssignment) return true;
   const match = onlineMatchAssignment;
+  if (onlineMatchFlow?.configured && message.rules?.powerups !== undefined &&
+      message.rules.powerups !== onlineMatchFlow.agreedPowerups) {
+    onlineSession?.fail('incompatible'); return false;
+  }
   if (message.type === 'rules') {
     if (message.rules?.id === match.rules) return true;
     onlineSession?.fail('incompatible');

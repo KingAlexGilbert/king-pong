@@ -131,6 +131,7 @@ function harness(platform, initial = slots, bridge = true) {
     const eraseSaveButton = byId('eraseSaveButton');
     const customIntelSlider = {}, customIntelValue = {}, customMaxMoveSlider = {}, customMaxMoveValue = {};
     const musicVolumeSlider = {}, musicVolumeValue = {};
+    function syncBossAudio() {} function bossAudioOverridesMusic() { return false; }
     ${readFileSync(new URL('../game/royal-audio.js', import.meta.url), 'utf8')}
     let matchRuleId='classic',matchPowerupsEnabled=true;
     function resetMultiplayerPaddleChoices(){} function setPlayInfoVisible(){}

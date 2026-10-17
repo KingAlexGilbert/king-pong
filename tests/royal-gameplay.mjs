@@ -264,6 +264,7 @@ for (const platform of Object.keys(builds)) test(
     let activeSaveSlot=0,saveData=null,loadingSaveSlot=false,saveImportRecoveryBlocked=false,saveConfirmation=null;
     let customCpuIntel=50,customCpuMaxMove=4.4,musicVolumeLevel=.75,musicEnabled=true,musicTimer=null,musicNextStepTime=0;
     let audioCtx=null; const document={hidden:true,getElementById:()=>null},customIntelSlider={},customIntelValue={},customMaxMoveSlider={},customMaxMoveValue={},musicVolumeSlider={},musicVolumeValue={};
+    function syncBossAudio() {} function bossAudioOverridesMusic() { return false; }
     ${readFileSync(new URL('game/royal-audio.js', root), 'utf8')}
     ${fns.map(n=>functionSource(html,n)).join('\n')}`);
     for (const [slot, volume, enabled] of [

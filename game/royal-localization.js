@@ -989,3 +989,32 @@ Object.entries({
     "Complete all 18 campaign levels to unlock this arena.": "完成全部18个战役关卡以解锁此竞技场。"
   }
 }).forEach(([language, phrases]) => Object.assign(window.KING_PONG_ROYAL_TRANSLATIONS[language], phrases));
+
+Object.entries({
+  es: ['Pantalla completa', 'Salir de pantalla completa'],
+  fr: ['Plein écran', 'Quitter le plein écran'],
+  de: ['Vollbild', 'Vollbild verlassen'],
+  pt: ['Tela cheia', 'Sair da tela cheia'],
+  it: ['Schermo intero', 'Esci da schermo intero'],
+  nl: ['Volledig scherm', 'Volledig scherm verlaten'],
+  ja: ['全画面表示', '全画面表示を終了'],
+  ko: ['전체 화면', '전체 화면 종료'],
+  zh: ['全屏', '退出全屏']
+}).forEach(([code, values]) => ['Enter fullscreen', 'Exit fullscreen'].forEach((key, i) => {
+  window.KING_PONG_ROYAL_TRANSLATIONS[code][key] = values[i];
+}));
+
+Object.entries({
+ es: ['Crear LAN','Unirse a LAN / Buscar','Salas locales','Sala local','Código o invitación','Cerrar sala','Conexión manual','Introduce el código que muestra el anfitrión.','Buscando en la red local...','No se encontraron salas. Pega una invitación o conecta manualmente.','Descubrimiento no disponible. Pega una invitación o conecta manualmente.','Selecciona una sala e introduce su código, o pega una invitación.'],
+ fr: ['Héberger en LAN','Rejoindre en LAN / Chercher','Salons locaux','Salon local','Code ou invitation','Fermer le salon','Connexion manuelle','Saisissez le code affiché par l’hôte.','Recherche sur le réseau local...','Aucun salon trouvé. Collez une invitation ou connectez-vous manuellement.','Découverte indisponible. Collez une invitation ou connectez-vous manuellement.','Sélectionnez un salon et saisissez son code, ou collez une invitation.'],
+ de: ['LAN hosten','LAN beitreten / Suchen','Lokale Räume','Lokaler Raum','Code oder Einladung','Raum schließen','Manuell verbinden','Gib den beim Host angezeigten Code ein.','Lokales Netzwerk wird durchsucht...','Keine Räume gefunden. Füge eine Einladung ein oder verbinde manuell.','Suche nicht verfügbar. Füge eine Einladung ein oder verbinde manuell.','Wähle einen Raum und gib seinen Code ein, oder füge eine Einladung ein.'],
+ pt: ['Criar LAN','Entrar na LAN / Buscar','Salas locais','Sala local','Código ou convite','Fechar sala','Conexão manual','Digite o código exibido pelo anfitrião.','Buscando na rede local...','Nenhuma sala encontrada. Cole um convite ou conecte manualmente.','Descoberta indisponível. Cole um convite ou conecte manualmente.','Selecione uma sala e digite seu código, ou cole um convite.'],
+ it: ['Ospita LAN','Entra in LAN / Cerca','Stanze locali','Stanza locale','Codice o invito','Chiudi stanza','Connessione manuale','Inserisci il codice mostrato dall’host.','Ricerca nella rete locale...','Nessuna stanza trovata. Incolla un invito o connettiti manualmente.','Ricerca non disponibile. Incolla un invito o connettiti manualmente.','Seleziona una stanza e inserisci il codice, oppure incolla un invito.'],
+ nl: ['LAN hosten','LAN zoeken / Deelnemen','Lokale kamers','Lokale kamer','Code of uitnodiging','Kamer sluiten','Handmatig verbinden','Voer de code in die de host toont.','Lokaal netwerk doorzoeken...','Geen kamers gevonden. Plak een uitnodiging of verbind handmatig.','Zoeken niet beschikbaar. Plak een uitnodiging of verbind handmatig.','Kies een kamer en voer de code in, of plak een uitnodiging.'],
+ ja: ['LANを作成','LANに参加 / 検索','ローカルルーム','ローカルルーム','コードまたは招待','ルームを閉じる','手動接続','ホストに表示されたコードを入力してください。','ローカルネットワークを検索中...','ルームが見つかりません。招待を貼り付けるか、手動で接続してください。','検索できません。招待を貼り付けるか、手動で接続してください。','ルームを選んでコードを入力するか、招待を貼り付けてください。'],
+ ko: ['LAN 호스트','LAN 참가 / 검색','로컬 방','로컬 방','코드 또는 초대','방 닫기','수동 연결','호스트에게 표시된 코드를 입력하세요.','로컬 네트워크 검색 중...','방을 찾을 수 없습니다. 초대를 붙여넣거나 수동으로 연결하세요.','검색할 수 없습니다. 초대를 붙여넣거나 수동으로 연결하세요.','방을 선택하고 코드를 입력하거나 초대를 붙여넣으세요.'],
+ zh: ['创建局域网房间','加入局域网 / 搜索','本地房间','本地房间','代码或邀请','关闭房间','手动连接','输入主机上显示的代码。','正在搜索局域网...','未找到房间。请粘贴邀请或使用手动连接。','无法搜索。请粘贴邀请或使用手动连接。','选择房间并输入代码，或粘贴邀请。']
+}).forEach(([language, values]) => ['Host LAN','Join LAN / Search','Local rooms','Local room','Room code or invitation','Close room','Manual pairing','Enter the code shown on the host.','Searching local network...','No local rooms found. Paste an invitation, or use manual pairing.','Discovery unavailable. Paste an invitation, or use manual pairing.','Select a room and enter its code, or paste an invitation.'].forEach((key,i) => {
+ window.KING_PONG_ROYAL_TRANSLATIONS[language][key] = values[i];
+}));
+Object.entries({es:'Música original del jefe (descarga opcional)',fr:'Musique originale du boss (téléchargement facultatif)',de:'Originale Bossmusik (optionaler Download)',pt:'Música original do chefe (download opcional)',it:'Musica originale del boss (download facoltativo)',nl:'Originele eindbaasmuziek (optionele download)',ja:'オリジナルボス曲（任意ダウンロード）',ko:'오리지널 보스 음악 (선택 다운로드)',zh:'原版首领音乐（可选下载）'}).forEach(([language,value])=>{window.KING_PONG_ROYAL_TRANSLATIONS[language]['Original boss music (optional download)']=value;});

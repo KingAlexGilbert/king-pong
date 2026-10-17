@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 import {audioHarness} from './helpers/audio-harness.mjs';
 import {harness} from './helpers/royal-harness.mjs';
-import {builds, root} from './helpers/game-source.mjs';
+import {builds, root, functionSource} from './helpers/game-source.mjs';
 
 test('the existing room-session token is stable when sessionStorage is unavailable or changes mid-session', () => {
   for (const access of ['unavailable','read-only','available']) {
@@ -27,6 +27,8 @@ for (const platform of Object.keys(builds)) {
     h.run('loadSaveSlot(0);');
     assert.equal(h.run("playerPreference('hostApprovalRequired')"), true);
     h.run(`savePlayerPreference('hostApprovalRequired', false);
+      savePlayerPreference('verifyPairing', true);
+      savePlayerPreference('originalBossMusic', false);
       savePlayerPreference('royalPowerupsEnabled', false);
       savePlayerPreference('matchRuleId', 'winTwo');
       savePlayerPreference('showConnectionType', true);
@@ -36,7 +38,7 @@ for (const platform of Object.keys(builds)) {
     const again = audioHarness(platform, h.data);
     again.run('loadSaveSlot(0);');
     assert.deepEqual(again.json("Object.keys(PLAYER_PREFERENCE_DEFAULTS).map(playerPreference)"),
-      [false, true, false, 'winTwo', false, 'boss-8', null]);
+      [false, true, false, true, false, 'winTwo', false, 'boss-8', null]);
     assert.deepEqual(again.json('[musicVolumeLevel,saveData.muteAll]'), [.29, true]);
     const before = again.json('saveData');
     for (const [key, value] of [['hostApprovalRequired', 0], ['matchRuleId', 'invalid'], ['multiplayerPaddle', 'boss-99'], ['token', 'not-a-preference']]) {
@@ -75,9 +77,10 @@ for (const platform of Object.keys(builds)) {
   });
 }
 
-function setupGame(role = 'host') {
+function setupGame(role = 'host', publicPreference = null) {
   const h = harness();
-  h.run(`let onlineSession={fail(code){failed.push(code)}}, onlineMatchAssignment=null,
+  h.run(`let onlineSession={fail(code){failed.push(code)}}, onlineMatchAssignment=${publicPreference === null ? 'null' : JSON.stringify({id:'test',arena:0,rules:'classic'})},
+    matchmakingPowerupsPreference=${publicPreference},
     onlineGameBlocked=false,onlineHasState=false,lanConnected=true,
     resumeCountdownEndAt=0,lastResumeCountdownNumber=0;
     const RESUME_COUNTDOWN_MS=3000, failed=[];let now=1000;
@@ -130,4 +133,48 @@ test('private guest waits for both configuration and authoritative snapshot, rej
   assert.equal(h.run('onlineMatchFlow.phase'), 'countdown');
   h.run("incoming('status',{phase:'go',seq:4,hostReady:true,guestReady:true,remainingMs:0});");
   assert.equal(h.run('onlineMatchFlow.phase'), 'go');
+});
+
+for(const local of [true,false])for(const remote of [true,false]) {
+  test(`public host resolves ${local}/${remote}, waits for config acknowledgement, and locks agreement`,()=>{
+    const h=setupGame('host',local);
+    h.run(`matchPowerupsEnabled=${local};incoming('hello',{powerupAgreement:1,powerupsPreference:${remote}});now+=700;tickOnlineMatchFlow();`);
+    assert.equal(h.run('matchPowerupsEnabled'),local&&remote);
+    assert.equal(h.run('onlineMatchFlow.phase'),'connected');
+    h.run("incoming('ready',{ready:true});incoming('initialized',{configuration:'wrong'});tickOnlineMatchFlow();");
+    assert.equal(h.run('onlineMatchFlow.phase'),'connected');
+    h.run("incoming('initialized',{configuration:JSON.stringify(privateMatchConfiguration())});tickOnlineMatchFlow();");
+    assert.equal(h.run('onlineMatchFlow.phase'),'ready');
+    assert.equal(h.run('setMatchPowerups(true)'),false);
+    h.run("confirmOnlineMatchReady();incoming('ready',{ready:true});");
+    assert.equal(h.run('onlineMatchFlow.phase'),'countdown');
+    h.run(`incoming('hello',{powerupAgreement:1,powerupsPreference:${!remote}});`);
+    assert.deepEqual(h.json('failed'),['incompatible']);
+  });
+  test(`public guest validates ${local}/${remote} before ready and never overwrites preference`,()=>{
+    const h=setupGame('guest',local);
+    h.run(`saveData.royalPowerupsEnabled=${local};incoming('hello',{powerupAgreement:1,powerupsPreference:${remote}});`);
+    h.run(`incoming('config',{selection:selectionPayload(),rules:{id:'classic',revision:1,powerups:${local&&remote}}});`);
+    assert.equal(h.run('matchPowerupsEnabled'),local&&remote);
+    assert.equal(h.run('saveData.royalPowerupsEnabled'),local);
+    h.run("incoming('status',{phase:'ready',seq:1,hostReady:false,guestReady:false,remainingMs:0});");
+    assert.equal(h.run('onlineMatchFlow.phase'),'connected','initial state must also arrive');
+    h.run("onlineHasState=true;sendOnlineMatchHello();incoming('status',{phase:'ready',seq:2,hostReady:false,guestReady:false,remainingMs:0});");
+    assert.equal(h.run('onlineMatchFlow.phase'),'ready');
+    h.run(`incoming('config',{selection:selectionPayload(),rules:{id:'classic',revision:2,powerups:${!(local&&remote)}}});`);
+    assert.deepEqual(h.json('failed'),['incompatible']);
+  });
+}
+test('public clients without agreement support fail safely, not silently choosing a rule',()=>{
+  const h=setupGame('host',true);h.run("incoming('hello');");assert.deepEqual(h.json('failed'),['incompatible']);
+});
+test('both preferences send exactly the same matchmaking queue search contract',()=>{
+  const src=readFileSync(new URL('game/matchmaking.js',root),'utf8');
+  const packets=[];
+  for(const preference of [true,false]) {
+    const context=vm.createContext({matchmakingRequested:true,matchArenaId:7,matchmakingPowerupsPreference:preference,
+      KING_PONG_MATCHMAKING:{protocol:'same-queue'},matchmakingSocket:{readyState:1,send:p=>packets.push(JSON.parse(p))}});
+    vm.runInContext(functionSource(src,'sendMatchSearch')+';sendMatchSearch()',context);
+  }
+  assert.deepEqual(packets,[{type:'search',protocol:'same-queue',arena:7},{type:'search',protocol:'same-queue',arena:7}]);
 });
