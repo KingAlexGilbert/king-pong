@@ -35,3 +35,22 @@ test('two-player private room rejects nonexistent third participant slot', async
   assert.equal(sockets[0].sent.at(-1).code,'unauthorized');
   assert.equal(sockets[0].closed,true);
 });
+
+test('approval cannot admit an expired pending attempt between alarm ticks',async()=>{
+  const {party,room,sockets}=fixture();room.verification=true;
+  const guest=sockets[1],request=crypto.randomUUID();
+  guest.serializeAttachment({...guest.deserializeAttachment(),slot:-1,request,joinedAt:Date.now()-76000,verification:{hostReady:true,guestReady:true}});
+  await party.receive(sockets[0],JSON.stringify({type:'approve',request}));
+  assert.equal(guest.closed,true);assert.equal(guest.sent[0].code,'approval_timeout');
+  assert.equal(sockets[0].sent.some(m=>m.type==='start'),false);assert.equal(guest.deserializeAttachment().verification,null);
+});
+test('pending guests cannot borrow another request or bypass the verification frame bound',async()=>{
+  for(const attack of ['request','flood']){
+    const {party,room,sockets}=fixture();room.verification=true;
+    const guest=sockets[1],request=crypto.randomUUID();
+    guest.serializeAttachment({...guest.deserializeAttachment(),slot:-1,request,verification:attack==='flood'?{count:16}:null});
+    await party.receive(guest,JSON.stringify({type:'approval-pair',request:attack==='request'?crypto.randomUUID():request,kind:'commit',value:'a'.repeat(64)}));
+    assert.equal(guest.closed,true);assert.equal(sockets[0].closed,false);
+    assert.equal(sockets[0].sent.some(m=>m.type==='approval-pair'||m.type==='start'),false);assert.equal(guest.deserializeAttachment().verification,null);
+  }
+});

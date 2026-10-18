@@ -133,7 +133,7 @@ test('all pickup drawings use 36px nearest-neighbor artwork at the same center a
   const h = harness();
   h.run(`const draws=[];
     document.createElement=()=>({getContext:()=>({fillRect(){}})});
-    const ctx={save(){},restore(){},drawImage(sprite,...args){draws.push({args,smoothing:this.imageSmoothingEnabled})}};
+    const ctx={x:0,y:0,stack:[],save(){this.stack.push([this.x,this.y])},restore(){[this.x,this.y]=this.stack.pop()},translate(x,y){this.x+=x;this.y+=y},drawImage(sprite,x,y,w,h){draws.push({args:[x+this.x,y+this.y,w,h],smoothing:this.imageSmoothingEnabled})}};
     for(const type of ROYAL_TYPES)drawRoyalEffects({guards:{left:0,right:0},pickup:{type,x:320,y:240}});`);
   assert.deepEqual(h.json('draws'), Array(3).fill({args: [302, 222, 36, 36], smoothing: false}));
   for (const [distance, collected] of [[23.99, true], [24, true], [24.01, false], [30, false]]) {

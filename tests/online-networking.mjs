@@ -39,13 +39,13 @@ function harness() {
     state(value) { this.connectionState = value; this.onconnectionstatechange?.(); }
   }
   const context = vm.createContext({
-    byId: () => null, URL, WebSocket: Socket, RTCPeerConnection: Peer, Date, crypto, sessionStorage: {getItem: () => null, setItem() {}},
+    byId: () => null, saveConfirmation: null, TextEncoder, URL, WebSocket: Socket, RTCPeerConnection: Peer, Date, crypto, sessionStorage: {getItem: () => null, setItem() {}},
     setTimeout: (fn, ms) => { const id = ++nextId; timers.set(id, { fn, ms }); return id; },
     clearTimeout: id => timers.delete(id),
     setInterval: fn => { const id = ++nextId; intervals.set(id, fn); return id; },
     clearInterval: id => intervals.delete(id)
   });
-  const Room = vm.runInContext(transport + readFileSync(new URL('../game/pairing.js', import.meta.url), 'utf8') + '\nKingPongRoom', context);
+  const Room = vm.runInContext(transport + readFileSync(new URL('../game/pairing.js', import.meta.url), 'utf8') + readFileSync(new URL('../game/approval-pairing.js', import.meta.url), 'utf8') + '\nKingPongRoom', context);
   const room = new Room('https://signal.example', {
     status: value => statuses.push(value), error: value => errors.push(value), welcome() {}, peer() {}, channel() {}, message() {},
     connected: () => ready++, interrupted: () => interrupted++, resumed: () => resumed++
@@ -227,19 +227,29 @@ test('authoritative state and input reject duplicate/out-of-order packets', () =
 });
 
 
-test('private rooms use capacity-two moderation with approval on or off; legacy room joins remain supported', async () => {
+test('private approval uses versioned signaling; old unverified servers fail before ICE', async () => {
   const ordinary = harness(); ordinary.room.requireApproval = false; ordinary.room.open('host');
-  assert.match(ordinary.room.socket.url.pathname, /^\/v1\/party\/create\/2\/0\//); ordinary.room.close();
+  assert.match(ordinary.room.socket.url.pathname, /^\/v1\/party\/create\/2\/0\/.*\/sas1$/); ordinary.room.close();
   const legacy = harness(); legacy.room.open('guest', 'ABCDE'); assert.equal(legacy.room.socket.url.pathname, '/v1/join/ABCDE'); legacy.room.close();
   const host = harness(); host.room.requireApproval = true; host.room.open('host');
-  assert.match(host.room.socket.url.pathname, /^\/v1\/party\/create\/2\/1\/[a-f0-9-]{36}$/);
-  await host.message({type: 'welcome', role: 'host', code: 'ABCDEF', protocol: 'kp-party-1', capacity: 2});
-  await host.message(direct); host.room.send({type: 'connected'});
-  assert.deepEqual(host.room.socket.sent.at(-1), {type: 'connected', to: 1, attempt: 0});
-  assert.deepEqual(host.errors, []); host.room.close();
-  const guest = harness(); guest.room.open('guest', 'ABCDEF');
-  assert.match(guest.room.socket.url.pathname, /^\/v1\/party\/join\/2\/ABCDEF\//);
-  await guest.message({type: 'welcome', role: 'guest', code: 'ABCDEF', protocol: 'kp-party-1', capacity: 2, pending: true});
-  assert.equal(guest.peers.length, 0); assert.equal(guest.statuses.at(-1), 'Waiting for host approval...');
-  await guest.message({type: 'error', code: 'rejected'}); assert.deepEqual(guest.errors, ['rejected']);
+  assert.match(host.room.socket.url.pathname, /^\/v1\/party\/create\/2\/1\/[a-f0-9-]{36}\/sas1$/);
+  await host.message({type:'welcome',role:'host',code:'ABCDEF',protocol:'kp-party-1',capacity:2});
+  assert.deepEqual(host.errors,['server_outdated']); assert.equal(host.peers.length,0);
+  const guest=harness();guest.room.open('guest','ABCDEF');
+  await guest.message({type:'welcome',role:'guest',code:'ABCDEF',protocol:'kp-party-1',capacity:2,pending:true,verification:'sas1',request:crypto.randomUUID()});
+  assert.equal(guest.peers.length,0);assert.equal(guest.statuses.at(-1),'Waiting for host approval...');
+  await guest.message(direct);
+  assert.deepEqual(guest.errors,['negotiation_failed']);assert.equal(guest.peers.length,0);
+});
+
+test('successful ICE keeps the direct route while channels open; genuine failure still falls back', async () => {
+  for(const state of ['connected','completed']) {
+    const h=harness();h.room.open('host');await h.message(direct);
+    const peer=h.peers[0];peer.iceConnectionState=state;peer.oniceconnectionstatechange();
+    h.fire(8000);assert.equal(h.room.socket.sent.some(m=>m.type==='relay'),false);
+    assert.equal(h.ready,0);peer.state('connected');peer.channels.forEach(c=>c.open());
+    assert.equal(h.ready,1);h.room.close();
+  }
+  const h=harness();h.room.open('host');await h.message(direct);
+  h.peers[0].state('failed');assert.equal(h.room.socket.sent.filter(m=>m.type==='relay').length,1);h.room.close();
 });

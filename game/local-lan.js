@@ -29,6 +29,7 @@ class KingPongLocalRoom extends KingPongRoom {
       if (this.role === 'host' && address) {
         address.textContent = (event.addresses || []).map(ip => localLanInvitation(ip, event.port, event.room, event.code)).join('\n');
         byId('localLanHint').textContent = `${localizeText('Local room')} ${event.room.slice(0, 4).toUpperCase()}`;
+        refreshLanQr();
       }
       if (this.role === 'host' && !event.discovery) setLocalizedText(byId('localLanHint'), 'Discovery unavailable. Paste an invitation, or use manual pairing.');
     } else if (event.type === 'peer') {
@@ -68,6 +69,7 @@ class KingPongLocalRoom extends KingPongRoom {
   close() {
     if (this.closed) return;
     super.close(); nativeLanCommand('close', this.generation);
+    clearLanQr(); byId('localLanAddress').textContent = ''; byId('localLanRoomCode').textContent = '';
   }
 }
 window.KingPongLanReceive = event => {
@@ -128,6 +130,7 @@ function installLocalLanUi(classic) {
     royalButton('localLanClose','Close room',()=>{closeLanConnection(false);output.textContent='';}));
   const roomCode = document.createElement('output'); roomCode.id='localLanRoomCode'; roomCode.setAttribute('aria-label',localizeText('Room Code')); auto.prepend(roomCode);
   classic.append(auto);
+  installLanQrUi(classic);
   const manual = royalDisclosure('Manual pairing', 'manualLanPairing'); manual.open = !hasNativeLan(); classic.append(manual);
   return manual;
 }
@@ -161,7 +164,9 @@ function parseLocalLanInvitation(text) {
     const bytes = Uint8Array.from(atob(text.slice(4).replaceAll('-', '+').replaceAll('_', '/')+'=='), c => c.charCodeAt(0));
     const code = String.fromCharCode(...bytes.slice(22));
     if (bytes.length !== 28 || !/^[A-HJ-NP-Z2-9]{6}$/.test(code)) return null;
-    return {address: [...bytes.slice(0, 4)].join('.'), port: bytes[4]*256+bytes[5],
+    const [a, b] = bytes, port = bytes[4] * 256 + bytes[5];
+    if (!(a === 10 || a === 172 && b >= 16 && b <= 31 || a === 192 && b === 168 || a === 169 && b === 254 || a === 127) || !port) return null;
+    return {address: [...bytes.slice(0, 4)].join('.'), port,
       room: [...bytes.slice(6,22)].map(n=>n.toString(16).padStart(2,'0')).join(''), code};
   } catch { return null; }
 }

@@ -16,8 +16,20 @@ configuration and first snapshot before Ready. Public matches use mutual powerup
 without changing the shared matchmaking queue; private rooms use the host preference.
 
 `local-lan.js` connects native LAN bridges to the same WebRTC gameplay channel, with
-manual pairing retained. `pairing.js` optionally gates private/LAN gameplay behind a
-connection-bound PIN comparison. Native protocol and pairing details live under `native/`.
+manual pairing retained. `lan-qr.js` transfers existing invitations locally, using the
+small bundled implementations documented under `vendor/`. Manual WebRTC pairing needs
+both an offer QR and an answer QR; camera access starts only after choosing Scan.
+`pairing.js` retains the optional, connection-bound PIN comparison for offline LAN.
+
+`approval-pairing.js` supplies the online private-room Host Approval PIN before any
+WebRTC negotiation. Its versioned `sas1` commit/reveal exchange uses ephemeral P-256
+ECDH and transcript-bound HKDF; an HMAC binds the approved exchange to the later SDP.
+Comparing PINs is optional, and accepting alone does not assert verified identity.
+Pending guests can exchange only verification frames through `signaling/src/party-room.js`.
+Publish compatible client and Worker versions together: an approval-enabled new client
+fails closed against an older Worker instead of silently skipping verification. No part
+of this online exchange is used by fully offline LAN or public matchmaking.
+
 `boss-audio.js` loads a separately hosted, optional recording with native cache adapters;
 the Ogg asset stays under `docs/audio/` and is never included in generated native HTML.
 

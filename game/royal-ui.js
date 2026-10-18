@@ -17,6 +17,16 @@ function royalViewportInset() {
   return parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
 }
 
+function syncRoyalArenaInset() {
+  const bar = byId('matchBar');
+  if (!bar || !document.body.classList.contains('royal-ui-ready')) return;
+  const height = bar.hidden ? 52 : Math.max(52, Math.ceil(bar.getBoundingClientRect().height) + 2);
+  const value = height + 'px';
+  if (document.body.style.getPropertyValue('--royal-toolbar-height') === value) return;
+  document.body.style.setProperty('--royal-toolbar-height', value);
+  fitCanvasToViewport(); invalidatePlayfieldBoundsCache();
+}
+
 function royalOnlineMode() {
   return mode === 2 && (royalOnlineSelected || isLanActive());
 }
@@ -36,6 +46,7 @@ function resetRoyalLocalSetup() {
 }
 
 function resetRoyalUiForTitle() {
+  clearLanQr();
   if (typeof KingPongLocalRoom !== 'undefined' && onlineSession instanceof KingPongLocalRoom) closeLanConnection(false);
   if (typeof onlineMatchFlowVisible === 'function' && onlineMatchFlowVisible()) closeLanConnection(false);
   if (typeof stopMatchmaking === 'function') stopMatchmaking();
@@ -140,7 +151,9 @@ function initRoyalUi() {
   const identity = document.createElement('div');
   identity.className = 'match-identity';
   identity.innerHTML = '<strong id="matchMode"></strong><span id="matchContext"></span>';
-  bar.append(menuToggle, identity, royalButton('matchContinue', 'Serve', royalContinue, 'match-primary'), royalButton(
+  bar.append(menuToggle, royalButton('campaignBack', 'Back', () => {
+    if (mode === 1 || mode === 4) showTitleScreen();
+  }, 'mode-back'), identity, royalButton('matchContinue', 'Serve', royalContinue, 'match-primary'), royalButton(
     'matchPause', 'Pause', () => {
       requestTogglePause();
       syncRoyalUi(true);
@@ -148,6 +161,7 @@ function initRoyalUi() {
   menuToggle.setAttribute('aria-haspopup', 'dialog');
   menuToggle.setAttribute('aria-controls', 'matchMenu');
   document.body.append(bar);
+  if (window.ResizeObserver) new ResizeObserver(syncRoyalArenaInset).observe(bar);
   const footer = document.createElement('footer');
   footer.className = 'match-footer';
   footer.append(byId('clockIndicator'), controlHint, byId('batteryIndicator'));
@@ -227,7 +241,6 @@ function initRoyalUi() {
   for (const [label, button] of [
       ['Mute All', royalButton('muteAllButton', 'OFF', () => setGameMuteAll(!saveData.muteAll))],
       ['Music', musicButton],
-      ['Original boss music (optional download)', royalButton('originalBossMusicButton', 'ON', toggleOriginalBossMusic)],
       ['Sound Effects', royalButton('soundEffectsButton', 'ON', () => setSoundEffectsEnabled(saveData
         .soundEffectsEnabled === false))]
     ]) {
@@ -243,7 +256,17 @@ function initRoyalUi() {
   const volume = document.querySelector('.music-volume-control');
   volume.classList.add('audio-volume');
   setLocalizedText(volume.querySelector('span'), 'Music volume');
-  audio.append(audioRows, volume);
+  const originalMusic = document.createElement('div');
+  originalMusic.id = 'originalBossMusicRow'; originalMusic.className = 'audio-row audio-optional';
+  originalMusic.hidden = !isBossUnlocked();
+  const originalCaption = document.createElement('span'); originalCaption.id = 'originalBossMusicButtonLabel';
+  const originalLabel = document.createElement('span'), originalNote = document.createElement('small');
+  setLocalizedText(originalLabel, 'Original boss music'); setLocalizedText(originalNote, 'Optional download');
+  originalCaption.append(originalLabel, originalNote);
+  const originalButton = royalButton('originalBossMusicButton', 'ON', toggleOriginalBossMusic);
+  originalButton.setAttribute('aria-labelledby', originalCaption.id + ' ' + originalButton.id);
+  originalMusic.append(originalCaption, originalButton);
+  audio.append(audioRows, originalMusic, volume);
   const settingsColumns = document.createElement('div');
   settingsColumns.className = 'settings-columns';
   const display = royalHelpSection('displaySettings', 'Display');
@@ -512,6 +535,7 @@ function syncRoyalUi(force = false) {
   byId('matchSetup').hidden = !setup || menu || Boolean(galleryKind);
   byId('matchMenu').hidden = !menu || Boolean(galleryKind);
   byId('matchBar').hidden = title || menu || creditsActive || bossIntroActive;
+  byId('campaignBack').hidden = (mode !== 1 && mode !== 4) || title || menu || bossIntroActive || creditsActive;
   const onlineSetup = online && onlineTransportSelected;
   byId('matchSetup').classList.toggle('online-setup', onlineSetup);
   const back = byId('setupMenuButton');
@@ -549,6 +573,7 @@ function syncRoyalUi(force = false) {
     button.setAttribute('aria-pressed', String(active));
   }
   byId('menuBoss').hidden = !isBossUnlocked();
+  byId('originalBossMusicRow').hidden = !isBossUnlocked();
   royalText(byId('matchMode'), royalModeName());
   royalText(byId('matchContext'), online && !lanConnected ? lanLastStatus : mode === 4 ? BOSS_LEVEL.name :
     (online && lanConnected ? localizeText('Connected!') + ' · ' : mode === 1 ? localizeText(CAMPAIGNS[activeCampaign]
@@ -614,6 +639,7 @@ function syncRoyalUi(force = false) {
   syncMatchRulesUi();
   if (typeof syncOnlineTransportUi === 'function') syncOnlineTransportUi();
   updateRoyalControlHint();
+  syncRoyalArenaInset();
   syncRoyalOrientation();
   syncRoyalFocus();
 }
@@ -739,6 +765,7 @@ function handleRoyalUiKey(event) {
     if (dialog.id === 'pairingDialog') {
       if (dialog.session) rejectPairing(dialog.session);
     } else if (dialog.id === 'classicLanDialog') {
+      stopLanQrCamera();
       dialog.hidden = true; syncRoyalFocus();
     } else if (dialog.id === 'rotateDevice') {
       royalRotateDismissed = true;

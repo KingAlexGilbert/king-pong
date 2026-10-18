@@ -708,8 +708,16 @@ function drawRoyalEffects(view) {
     ctx.shadowBlur = 0;
     ctx.imageSmoothingEnabled = false;
     const sprite = royalPickupSprite(p.type);
-    if (sprite.complete && sprite.naturalWidth) ctx.drawImage(sprite, Math.round(p.x - ROYAL_PICKUP_RENDER_SIZE / 2),
-      Math.round(p.y - ROYAL_PICKUP_RENDER_SIZE / 2), ROYAL_PICKUP_RENDER_SIZE, ROYAL_PICKUP_RENDER_SIZE);
+    if (sprite.complete && sprite.naturalWidth) {
+      const x = Math.round(p.x - ROYAL_PICKUP_RENDER_SIZE / 2), y = Math.round(p.y - ROYAL_PICKUP_RENDER_SIZE / 2);
+      // Reflect the position with the arena, keeping the artwork upright.
+      ctx.save();
+      ctx.translate(x + ROYAL_PICKUP_RENDER_SIZE / 2, y + ROYAL_PICKUP_RENDER_SIZE / 2);
+      if (twoPlayerViewMirrored()) ctx.scale(-1, 1);
+      ctx.drawImage(sprite, -ROYAL_PICKUP_RENDER_SIZE / 2, -ROYAL_PICKUP_RENDER_SIZE / 2,
+        ROYAL_PICKUP_RENDER_SIZE, ROYAL_PICKUP_RENDER_SIZE);
+      ctx.restore();
+    }
   }
   ctx.restore();
 }

@@ -336,8 +336,10 @@ namespace KingPongWebView2
             // for clipboard writes, user-initiated features, and future LAN prompts.
             switch (args.PermissionKind)
             {
-                case CoreWebView2PermissionKind.Microphone:
                 case CoreWebView2PermissionKind.Camera:
+                    args.State = args.IsUserInitiated ? CoreWebView2PermissionState.Default : CoreWebView2PermissionState.Deny;
+                    break;
+                case CoreWebView2PermissionKind.Microphone:
                 case CoreWebView2PermissionKind.Geolocation:
                 case CoreWebView2PermissionKind.Notifications:
                 case CoreWebView2PermissionKind.OtherSensors:

@@ -21,7 +21,7 @@ class KingPongRoom {
           !(url.protocol === 'https:' || url.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(url.hostname))) throw new Error();
       url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
       url.pathname = assignment ? `/v1/match/${assignment.match.id}/${assignment.token}` :
-        this.managed ? (role === 'host' ? `/v1/party/create/2/${this.requireApproval ? 1 : 0}/${kingPongClientToken()}` : `/v1/party/join/2/${code}/${kingPongClientToken()}`) :
+        this.managed ? (role === 'host' ? `/v1/party/create/2/${this.requireApproval ? 1 : 0}/${kingPongClientToken()}/sas1` : `/v1/party/join/2/${code}/${kingPongClientToken()}/sas1`) :
         role === 'host' ? '/v1/create' : `/v1/join/${code}`;
       this.socket = kingPongSignalingSocket(url);
     } catch { this.fail('unavailable'); return; }
@@ -78,10 +78,21 @@ class KingPongRoom {
   }
 
   async receive(message) {
-    if (this.managed && message.type === 'lobby') { if (typeof syncClassicApproval === 'function') syncClassicApproval(message); return; }
-    if (this.managed && message.type === 'approved') { this.hooks.status('Connecting...'); return; }
+    if (this.managed && message.type === 'lobby') {
+      if (this.connected && message.started) clearOnlineApproval(this);
+      if (typeof syncClassicApproval === 'function') syncClassicApproval(message);
+      return;
+    }
+    if (this.managed && message.type === 'approval-pair') {
+      if (this.approvalProtocol !== APPROVAL_PROTOCOL) throw Error('approval protocol');
+      await this.approvalPairs?.get(message.request)?.receive(message); return;
+    }
+    if (this.managed && message.type === 'approved') {
+      if (this.approvalProtocol === APPROVAL_PROTOCOL) acceptOnlineApproval(this,message.request);
+      this.awaitingApproval = false; this.hooks.status('Connecting...'); return;
+    }
     if (this.managed && message.type === 'departed' && this.role === 'host') {
-      this.dropPeer(); clearTimeout(this.totalTimer); this.totalTimer = null;
+      clearOnlineApproval(this); this.dropPeer(); clearTimeout(this.totalTimer); this.totalTimer = null;
       this.connected = false; this.attempt = -1; this.relayPending = false;
       this.hooks.departed?.(); return;
     }
@@ -92,11 +103,21 @@ class KingPongRoom {
           message.match?.arena !== this.assignment.match.arena || message.match?.rules !== this.assignment.match.rules ||
           message.match?.protocol !== KING_PONG_MATCHMAKING.protocol)) throw new Error();
       clearTimeout(this.openTimer);
+      this.code = message.code;
+      if (this.managed && !this.assignment) {
+        const needsApproval = message.pending || this.role === 'host' && this.requireApproval;
+        if (needsApproval && message.verification !== APPROVAL_PROTOCOL) { this.fail('server_outdated'); return; }
+        this.approvalProtocol = message.verification;
+        this.awaitingApproval = Boolean(message.pending);
+        if (message.pending) startOnlineApproval(this,message.request);
+      }
       this.hooks.welcome(message.code);
       this.hooks.status(message.pending ? 'Waiting for host approval...' : this.role === 'host' ? 'Waiting for Player 2...' : 'Connecting...');
       return;
     }
     if (message.type === 'start') {
+      if (this.awaitingApproval || this.approvalProtocol === APPROVAL_PROTOCOL &&
+          (!this.approvalBinding || message.verification !== APPROVAL_PROTOCOL || message.request !== this.approvalBinding.request)) throw Error('approval required');
       if (![0, 1].includes(message.attempt) || message.attempt <= this.attempt || !Array.isArray(message.iceServers)) return;
       this.attempt = message.attempt;
       this.relayPending = false;
@@ -115,6 +136,12 @@ class KingPongRoom {
           this.send({ type: 'candidate', attempt, candidate: event.candidate.toJSON() });
         }
       };
+      // ICE has selected a route. Slow DTLS/data-channel opening must not
+      // discard a working direct path at the eight-second deadline.
+      peer.oniceconnectionstatechange = () => {
+        if (this.peer !== peer || this.closed) return;
+        if (['connected', 'completed'].includes(peer.iceConnectionState)) clearTimeout(this.directTimer);
+      };
       peer.onconnectionstatechange = () => {
         if (this.peer !== peer || this.closed || this.removingGuest) return;
         if (peer.connectionState === 'failed') {
@@ -131,20 +158,23 @@ class KingPongRoom {
           if (this.closed || this.peer !== peer) return;
           this.disconnectTimer = setTimeout(() => this.fail('connection_lost'), 8000);
         } else if (peer.connectionState === 'connected') {
+          clearTimeout(this.directTimer);
           clearTimeout(this.disconnectTimer);
           if (this.connected) { this.hooks.status('Connected!'); this.hooks.resumed?.(); }
           else this.maybeConnected(peer);
         }
       };
       if (!this.totalTimer) this.totalTimer = setTimeout(() => this.fail('timeout'), 45_000);
-      if (!attempt) this.directTimer = setTimeout(() => this.relay(), 8000);
+      if (!attempt) this.directTimer = setTimeout(() => {
+        if (this.peer === peer && !['connected', 'completed'].includes(peer.iceConnectionState) && peer.connectionState !== 'connected') this.relay();
+      }, 8000);
       if (this.role === 'host') {
         this.wire(peer.createDataChannel('pong-lan-input-v1', { ordered: false, maxRetransmits: 1 }), false, peer);
         this.wire(peer.createDataChannel('pong-control-v1'), true, peer);
         const offer = await peer.createOffer();
         if (this.peer !== peer || this.closed) return;
         await peer.setLocalDescription(offer);
-        if (this.peer === peer && !this.closed) this.send({ type: 'description', attempt, description: pairingDescription(this, peer.localDescription.toJSON()) });
+        if (this.peer === peer && !this.closed) await this.sendDescription(peer, attempt);
       } else {
         peer.ondatachannel = event => {
           if (event.channel.label === 'pong-lan-input-v1') this.wire(event.channel, false, peer);
@@ -157,22 +187,29 @@ class KingPongRoom {
     if (message.attempt !== this.attempt || this.relayPending || !this.peer) return;
     const peer = this.peer;
     if (message.type === 'description') {
+      if (peer.remoteDescription) return; // No unsolicited renegotiation after the approved exchange.
       const expected = this.role === 'host' ? 'answer' : 'offer';
       if (message.description?.type !== expected) throw new Error();
       if (!this.assignment && this.role === 'guest') this.pairingRequired = /(?:^|\r?\n)a=x-kingpong-pairing:1(?:\r?\n|$)/.test(message.description.sdp);
+      await verifyApprovedDescription(this, message.description, this.attempt);
       await peer.setRemoteDescription(message.description);
       if (this.peer !== peer || this.closed) return;
       for (const candidate of this.candidates) await peer.addIceCandidate(candidate);
       this.candidates = [];
       if (this.role === 'guest') {
         await peer.setLocalDescription(await peer.createAnswer());
-        if (this.peer === peer && !this.closed) this.send({ type: 'description', attempt: this.attempt, description: pairingDescription(this, peer.localDescription.toJSON()) });
+        if (this.peer === peer && !this.closed) await this.sendDescription(peer, this.attempt);
       }
     } else if (message.type === 'candidate') {
       if (peer.remoteDescription) await peer.addIceCandidate(message.candidate);
       else if (this.candidates.length < 128) this.candidates.push(message.candidate);
       else throw new Error();
     }
+  }
+
+  async sendDescription(peer, attempt) {
+    const description = await signApprovedDescription(this, pairingDescription(this, peer.localDescription.toJSON()), attempt);
+    if (this.peer === peer && !this.closed) this.send({type:'description',attempt,description});
   }
 
   wire(channel, control, peer) {
@@ -242,12 +279,13 @@ class KingPongRoom {
       if (channel) { channel.onclose = channel.onerror = channel.onopen = channel.onmessage = null; channel.close(); }
     }
     this.data = this.control = null;
-    if (peer) { peer.onicecandidate = peer.onconnectionstatechange = peer.ondatachannel = null; peer.close(); }
+    if (peer) { peer.onicecandidate = peer.oniceconnectionstatechange = peer.onconnectionstatechange = peer.ondatachannel = null; peer.close(); }
   }
 
   close() {
     if (this.closed) return;
     this.closed = true;
+    clearOnlineApproval(this);
     clearTimeout(this.openTimer);
     clearTimeout(this.totalTimer);
     clearInterval(this.heartbeat);
@@ -457,7 +495,7 @@ function openOnlineRoom(role, code = '', assignment = null) {
       setLanStatus(assignment ? matchmakingError(code) : ONLINE_ERRORS[code] || ONLINE_ERRORS.connection_lost);
     }
   });
-  session.pairingRequired = role === 'host' && !assignment && playerPreference('verifyPairing');
+  session.pairingRequired = role === 'host' && !assignment && onlineManualLanSelected && playerPreference('verifyPairing');
   session.requireApproval = Boolean(byId('onlineRequireApproval')?.checked);
   onlineSession = session;
   syncMatchmakingUi();

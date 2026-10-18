@@ -39,7 +39,7 @@ function restorePlayerPreferences() {
 }
 
 function syncPlayerPreferenceControls() {
-  for (const [id, key] of [['onlineRequireApproval', 'hostApprovalRequired'], ['privatePairing', 'verifyPairing'], ['localPairing', 'verifyPairing'], ['twoPlayerRoute', 'showConnectionType']]) {
+  for (const [id, key] of [['onlineRequireApproval', 'hostApprovalRequired'], ['localPairing', 'verifyPairing'], ['twoPlayerRoute', 'showConnectionType']]) {
     const input = byId(id);
     if (input) input.checked = playerPreference(key);
   }

@@ -94,16 +94,14 @@ function beginPairingVerification(session) {
   }
 }
 function installPairingUi(privateRooms) {
-  for(let [parent,id] of [[privateRooms,'privatePairing'],[byId('classicLanDialog').firstElementChild,'localPairing']]) {
-    const label=document.createElement('label');label.className='lan-check';const input=document.createElement('input');input.type='checkbox';input.id=id;
-    if(id==='privatePairing'){
-      const checks=document.createElement('div');checks.className='room-approval-options';
-      checks.append(byId('onlineRequireApproval').closest('label'));
-      parent.append(checks);parent=checks;
-    }
-    input.checked=playerPreference('verifyPairing');const text=document.createElement('span');setLocalizedText(text,'Verify pairing PIN (host)');label.append(input,text);parent.append(label);
-    input.addEventListener('change',()=>{savePlayerPreference('verifyPairing',input.checked);for(const other of ['privatePairing','localPairing'])byId(other).checked=input.checked;});
-  }
+  // Offline LAN retains its optional connection-bound verification.
+  const parent=byId('classicLanDialog').firstElementChild;
+  const label=document.createElement('label');label.className='lan-check';
+  const input=document.createElement('input');input.type='checkbox';input.id='localPairing';
+  input.checked=playerPreference('verifyPairing');
+  const text=document.createElement('span');setLocalizedText(text,'Verify pairing PIN (host)');
+  label.append(input,text);parent.append(label);
+  input.addEventListener('change',()=>savePlayerPreference('verifyPairing',input.checked));
   const card=royalDialog('pairingDialog','Verify pairing'),panel=byId('pairingDialog');
   const note=document.createElement('p');note.id='pairingNote';note.className='match-note';
   const pin=document.createElement('output');pin.id='pairingPin';pin.setAttribute('aria-live','polite');

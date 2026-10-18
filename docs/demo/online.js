@@ -146,7 +146,7 @@ class KingPongRoom {
           !(url.protocol === 'https:' || url.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(url.hostname))) throw new Error();
       url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
       url.pathname = assignment ? `/v1/match/${assignment.match.id}/${assignment.token}` :
-        this.managed ? (role === 'host' ? `/v1/party/create/2/${this.requireApproval ? 1 : 0}/${kingPongClientToken()}` : `/v1/party/join/2/${code}/${kingPongClientToken()}`) :
+        this.managed ? (role === 'host' ? `/v1/party/create/2/${this.requireApproval ? 1 : 0}/${kingPongClientToken()}/sas1` : `/v1/party/join/2/${code}/${kingPongClientToken()}/sas1`) :
         role === 'host' ? '/v1/create' : `/v1/join/${code}`;
       this.socket = kingPongSignalingSocket(url);
     } catch { this.fail('unavailable'); return; }
@@ -203,10 +203,21 @@ class KingPongRoom {
   }
 
   async receive(message) {
-    if (this.managed && message.type === 'lobby') { if (typeof syncClassicApproval === 'function') syncClassicApproval(message); return; }
-    if (this.managed && message.type === 'approved') { this.hooks.status('Connecting...'); return; }
+    if (this.managed && message.type === 'lobby') {
+      if (this.connected && message.started) clearOnlineApproval(this);
+      if (typeof syncClassicApproval === 'function') syncClassicApproval(message);
+      return;
+    }
+    if (this.managed && message.type === 'approval-pair') {
+      if (this.approvalProtocol !== APPROVAL_PROTOCOL) throw Error('approval protocol');
+      await this.approvalPairs?.get(message.request)?.receive(message); return;
+    }
+    if (this.managed && message.type === 'approved') {
+      if (this.approvalProtocol === APPROVAL_PROTOCOL) acceptOnlineApproval(this,message.request);
+      this.awaitingApproval = false; this.hooks.status('Connecting...'); return;
+    }
     if (this.managed && message.type === 'departed' && this.role === 'host') {
-      this.dropPeer(); clearTimeout(this.totalTimer); this.totalTimer = null;
+      clearOnlineApproval(this); this.dropPeer(); clearTimeout(this.totalTimer); this.totalTimer = null;
       this.connected = false; this.attempt = -1; this.relayPending = false;
       this.hooks.departed?.(); return;
     }
@@ -217,11 +228,21 @@ class KingPongRoom {
           message.match?.arena !== this.assignment.match.arena || message.match?.rules !== this.assignment.match.rules ||
           message.match?.protocol !== KING_PONG_MATCHMAKING.protocol)) throw new Error();
       clearTimeout(this.openTimer);
+      this.code = message.code;
+      if (this.managed && !this.assignment) {
+        const needsApproval = message.pending || this.role === 'host' && this.requireApproval;
+        if (needsApproval && message.verification !== APPROVAL_PROTOCOL) { this.fail('server_outdated'); return; }
+        this.approvalProtocol = message.verification;
+        this.awaitingApproval = Boolean(message.pending);
+        if (message.pending) startOnlineApproval(this,message.request);
+      }
       this.hooks.welcome(message.code);
       this.hooks.status(message.pending ? 'Waiting for host approval...' : this.role === 'host' ? 'Waiting for Player 2...' : 'Connecting...');
       return;
     }
     if (message.type === 'start') {
+      if (this.awaitingApproval || this.approvalProtocol === APPROVAL_PROTOCOL &&
+          (!this.approvalBinding || message.verification !== APPROVAL_PROTOCOL || message.request !== this.approvalBinding.request)) throw Error('approval required');
       if (![0, 1].includes(message.attempt) || message.attempt <= this.attempt || !Array.isArray(message.iceServers)) return;
       this.attempt = message.attempt;
       this.relayPending = false;
@@ -240,6 +261,12 @@ class KingPongRoom {
           this.send({ type: 'candidate', attempt, candidate: event.candidate.toJSON() });
         }
       };
+      // ICE has selected a route. Slow DTLS/data-channel opening must not
+      // discard a working direct path at the eight-second deadline.
+      peer.oniceconnectionstatechange = () => {
+        if (this.peer !== peer || this.closed) return;
+        if (['connected', 'completed'].includes(peer.iceConnectionState)) clearTimeout(this.directTimer);
+      };
       peer.onconnectionstatechange = () => {
         if (this.peer !== peer || this.closed || this.removingGuest) return;
         if (peer.connectionState === 'failed') {
@@ -256,20 +283,23 @@ class KingPongRoom {
           if (this.closed || this.peer !== peer) return;
           this.disconnectTimer = setTimeout(() => this.fail('connection_lost'), 8000);
         } else if (peer.connectionState === 'connected') {
+          clearTimeout(this.directTimer);
           clearTimeout(this.disconnectTimer);
           if (this.connected) { this.hooks.status('Connected!'); this.hooks.resumed?.(); }
           else this.maybeConnected(peer);
         }
       };
       if (!this.totalTimer) this.totalTimer = setTimeout(() => this.fail('timeout'), 45_000);
-      if (!attempt) this.directTimer = setTimeout(() => this.relay(), 8000);
+      if (!attempt) this.directTimer = setTimeout(() => {
+        if (this.peer === peer && !['connected', 'completed'].includes(peer.iceConnectionState) && peer.connectionState !== 'connected') this.relay();
+      }, 8000);
       if (this.role === 'host') {
         this.wire(peer.createDataChannel('pong-lan-input-v1', { ordered: false, maxRetransmits: 1 }), false, peer);
         this.wire(peer.createDataChannel('pong-control-v1'), true, peer);
         const offer = await peer.createOffer();
         if (this.peer !== peer || this.closed) return;
         await peer.setLocalDescription(offer);
-        if (this.peer === peer && !this.closed) this.send({ type: 'description', attempt, description: pairingDescription(this, peer.localDescription.toJSON()) });
+        if (this.peer === peer && !this.closed) await this.sendDescription(peer, attempt);
       } else {
         peer.ondatachannel = event => {
           if (event.channel.label === 'pong-lan-input-v1') this.wire(event.channel, false, peer);
@@ -282,22 +312,29 @@ class KingPongRoom {
     if (message.attempt !== this.attempt || this.relayPending || !this.peer) return;
     const peer = this.peer;
     if (message.type === 'description') {
+      if (peer.remoteDescription) return; // No unsolicited renegotiation after the approved exchange.
       const expected = this.role === 'host' ? 'answer' : 'offer';
       if (message.description?.type !== expected) throw new Error();
       if (!this.assignment && this.role === 'guest') this.pairingRequired = /(?:^|\r?\n)a=x-kingpong-pairing:1(?:\r?\n|$)/.test(message.description.sdp);
+      await verifyApprovedDescription(this, message.description, this.attempt);
       await peer.setRemoteDescription(message.description);
       if (this.peer !== peer || this.closed) return;
       for (const candidate of this.candidates) await peer.addIceCandidate(candidate);
       this.candidates = [];
       if (this.role === 'guest') {
         await peer.setLocalDescription(await peer.createAnswer());
-        if (this.peer === peer && !this.closed) this.send({ type: 'description', attempt: this.attempt, description: pairingDescription(this, peer.localDescription.toJSON()) });
+        if (this.peer === peer && !this.closed) await this.sendDescription(peer, this.attempt);
       }
     } else if (message.type === 'candidate') {
       if (peer.remoteDescription) await peer.addIceCandidate(message.candidate);
       else if (this.candidates.length < 128) this.candidates.push(message.candidate);
       else throw new Error();
     }
+  }
+
+  async sendDescription(peer, attempt) {
+    const description = await signApprovedDescription(this, pairingDescription(this, peer.localDescription.toJSON()), attempt);
+    if (this.peer === peer && !this.closed) this.send({type:'description',attempt,description});
   }
 
   wire(channel, control, peer) {
@@ -367,12 +404,13 @@ class KingPongRoom {
       if (channel) { channel.onclose = channel.onerror = channel.onopen = channel.onmessage = null; channel.close(); }
     }
     this.data = this.control = null;
-    if (peer) { peer.onicecandidate = peer.onconnectionstatechange = peer.ondatachannel = null; peer.close(); }
+    if (peer) { peer.onicecandidate = peer.oniceconnectionstatechange = peer.onconnectionstatechange = peer.ondatachannel = null; peer.close(); }
   }
 
   close() {
     if (this.closed) return;
     this.closed = true;
+    clearOnlineApproval(this);
     clearTimeout(this.openTimer);
     clearTimeout(this.totalTimer);
     clearInterval(this.heartbeat);
@@ -582,7 +620,7 @@ function openOnlineRoom(role, code = '', assignment = null) {
       setLanStatus(assignment ? matchmakingError(code) : ONLINE_ERRORS[code] || ONLINE_ERRORS.connection_lost);
     }
   });
-  session.pairingRequired = role === 'host' && !assignment && playerPreference('verifyPairing');
+  session.pairingRequired = role === 'host' && !assignment && onlineManualLanSelected && playerPreference('verifyPairing');
   session.requireApproval = Boolean(byId('onlineRequireApproval')?.checked);
   onlineSession = session;
   syncMatchmakingUi();
@@ -715,21 +753,173 @@ function beginPairingVerification(session) {
   }
 }
 function installPairingUi(privateRooms) {
-  for(let [parent,id] of [[privateRooms,'privatePairing'],[byId('classicLanDialog').firstElementChild,'localPairing']]) {
-    const label=document.createElement('label');label.className='lan-check';const input=document.createElement('input');input.type='checkbox';input.id=id;
-    if(id==='privatePairing'){
-      const checks=document.createElement('div');checks.className='room-approval-options';
-      checks.append(byId('onlineRequireApproval').closest('label'));
-      parent.append(checks);parent=checks;
-    }
-    input.checked=playerPreference('verifyPairing');const text=document.createElement('span');setLocalizedText(text,'Verify pairing PIN (host)');label.append(input,text);parent.append(label);
-    input.addEventListener('change',()=>{savePlayerPreference('verifyPairing',input.checked);for(const other of ['privatePairing','localPairing'])byId(other).checked=input.checked;});
-  }
+  // Offline LAN retains its optional connection-bound verification.
+  const parent=byId('classicLanDialog').firstElementChild;
+  const label=document.createElement('label');label.className='lan-check';
+  const input=document.createElement('input');input.type='checkbox';input.id='localPairing';
+  input.checked=playerPreference('verifyPairing');
+  const text=document.createElement('span');setLocalizedText(text,'Verify pairing PIN (host)');
+  label.append(input,text);parent.append(label);
+  input.addEventListener('change',()=>savePlayerPreference('verifyPairing',input.checked));
   const card=royalDialog('pairingDialog','Verify pairing'),panel=byId('pairingDialog');
   const note=document.createElement('p');note.id='pairingNote';note.className='match-note';
   const pin=document.createElement('output');pin.id='pairingPin';pin.setAttribute('aria-live','polite');
   card.append(note,pin,royalButton('pairingAccept','PINs match — Accept',()=>panel.session?.pairing?.accept()),
     royalButton('pairingReject','Reject / Cancel',()=>{if(panel.session)rejectPairing(panel.session);}));
+}
+
+// Online private-room SAS v1. No RTCPeerConnection, SDP or ICE exists during
+// this exchange. PIN comparison is optional; acceptance is permission to connect.
+const APPROVAL_PROTOCOL = 'sas1';
+const approvalHex = bytes => Array.from(new Uint8Array(bytes), b => b.toString(16).padStart(2, '0')).join('');
+const approvalBytes = hex => Uint8Array.from(hex.match(/../g), b => parseInt(b, 16));
+class KingPongApprovalPair {
+  constructor({role, room, request, send, ready, failed}) {
+    this.role = role; this.room = room; this.request = request; this.send = send;
+    this.onReady = ready; this.onFailed = failed; this.queue = Promise.resolve(); this.count = 0;
+    this.closed = false; this.timer = setTimeout(() => this.fail(), 60000);
+    this.initialized = this.start().catch(() => this.fail());
+  }
+  transcript(role, value) { return JSON.stringify(['King Pong approval sas1', this.room, this.request, role, value]); }
+  async start() {
+    const keys = await crypto.subtle.generateKey({name:'ECDH', namedCurve:'P-256'}, false, ['deriveBits']);
+    const publicKey = approvalHex(await crypto.subtle.exportKey('raw', keys.publicKey));
+    if (this.closed) return;
+    this.keys = keys; this.local = {key: publicKey, nonce: approvalHex(crypto.getRandomValues(new Uint8Array(16)))};
+    const commit = await pairingHash(this.transcript(this.role, this.local));
+    if (!this.closed) this.send({kind:'commit', value:commit});
+  }
+  receive(message) {
+    this.queue = this.queue.then(async () => {
+      await this.initialized; if (this.closed) return;
+      if (++this.count > 12) throw Error('rate');
+      if (message.kind === 'commit') {
+        if (!/^[a-f0-9]{64}$/.test(message.value || '') || this.commit && this.commit !== message.value) throw Error('commit');
+        if (!this.commit) { this.commit = message.value; this.send({kind:'reveal', value:this.local}); }
+      } else if (message.kind === 'reveal') {
+        const value = message.value;
+        if (!value || !/^04[a-f0-9]{128}$/.test(value.key || '') || !/^[a-f0-9]{32}$/.test(value.nonce || '') ||
+            Object.keys(value).length !== 2 || this.remote && JSON.stringify(this.remote) !== JSON.stringify(value)) throw Error('reveal');
+        this.remote = {key:value.key, nonce:value.nonce};
+      } else if (message.kind === 'ready') this.remoteReady = true;
+      else throw Error('message');
+      if (this.commit && this.remote && !this.binding) {
+        const other = this.role === 'host' ? 'guest' : 'host';
+        if (await pairingHash(this.transcript(other, this.remote)) !== this.commit) throw Error('commit mismatch');
+        const remoteKey = await crypto.subtle.importKey('raw', approvalBytes(this.remote.key), {name:'ECDH',namedCurve:'P-256'}, false, []);
+        const secret = await crypto.subtle.deriveBits({name:'ECDH',public:remoteKey}, this.keys.privateKey, 256);
+        const parties = this.role === 'host' ? [this.local, this.remote] : [this.remote, this.local];
+        const transcript = JSON.stringify(['King Pong approval sas1',this.room,this.request,...parties]);
+        const material = await crypto.subtle.importKey('raw',secret,'HKDF',false,['deriveBits']);
+        const derived = await crypto.subtle.deriveBits({name:'HKDF',hash:'SHA-256',salt:new TextEncoder().encode(transcript),
+          info:new TextEncoder().encode('King Pong approval PIN and SDP binding v1')},material,288);
+        const bytes = new Uint8Array(derived);
+        const pin = String(new DataView(derived).getUint32(32) % 1000000).padStart(6,'0');
+        const key = await crypto.subtle.importKey('raw',bytes.slice(0,32),{name:'HMAC',hash:'SHA-256'},false,['sign','verify']);
+        if (this.closed) return;
+        this.binding = {key,request:this.request,room:this.room}; this.pin = pin;
+        this.keys = this.local = this.remote = null;
+        this.send({kind:'ready'});
+      }
+      if (this.binding && this.remoteReady && !this.shown) { this.shown = true; this.onReady(this.pin, this.binding); }
+    }).catch(() => this.fail());
+    return this.queue;
+  }
+  fail() { if (!this.closed) { this.close(); this.onFailed(); } }
+  close() {
+    this.closed = true; clearTimeout(this.timer);
+    this.keys = this.local = this.remote = this.commit = this.pin = this.binding = null;
+  }
+}
+function approvalDescriptionData(binding, role, attempt, description) {
+  return new TextEncoder().encode(JSON.stringify(['King Pong approved SDP v1',binding.room,binding.request,role,attempt,description.type,description.sdp]));
+}
+async function signApprovedDescription(session, description, attempt) {
+  const binding = session.approvalBinding;
+  if (!binding) return description;
+  const mac = await crypto.subtle.sign('HMAC',binding.key,approvalDescriptionData(binding,session.role,attempt,description));
+  return {...description,approvalMac:approvalHex(mac)};
+}
+async function verifyApprovedDescription(session, description, attempt) {
+  const binding = session.approvalBinding;
+  if (!binding) return;
+  if (!/^[a-f0-9]{64}$/.test(description.approvalMac || '') || !await crypto.subtle.verify('HMAC',binding.key,
+      approvalBytes(description.approvalMac),approvalDescriptionData(binding,session.role==='host'?'guest':'host',attempt,description))) throw Error('approval binding');
+}
+function clearOnlineApproval(session, keepBinding = false) {
+  for (const pair of session.approvalPairs?.values() || []) pair.close();
+  session.approvalPairs?.clear();
+  if (!keepBinding) session.approvalBinding = null;
+  if (saveConfirmation?.roomSession === session && saveConfirmation.onlineApproval) finishSaveConfirmation(false);
+  const guest = byId('approvalGuest');
+  if (guest?.session === session) { guest.hidden = true; guest.session = null; byId('approvalGuestPin').textContent = ''; }
+  byId('approvalHostPin')?.remove();
+}
+function startOnlineApproval(session, request) {
+  if (!/^[a-f0-9-]{36}$/.test(request) || session.closed || session.approvalPairs?.has(request)) return;
+  session.approvalPairs ||= new Map();
+  if (session.approvalPairs.size >= 4) return;
+  const pair = new KingPongApprovalPair({role:session.role, room:session.code, request,
+    send:message=>{if(!session.closed)session.send({type:'approval-pair',request,...message});},
+    ready:(pin)=>{
+      if (session.closed) return;
+      if (session.role==='host') showOnlineApproval(session);
+      else {
+        const box=byId('approvalGuest'); box.session=session; box.hidden=false;
+        byId('approvalGuestPin').textContent=pin.slice(0,3)+' '+pin.slice(3); syncRoyalFocus();
+      }
+    },
+    failed:()=>{
+      if(session.closed)return;
+      session.approvalPairs.delete(request);
+      if(session.role==='host')session.send({type:'reject',request});else session.fail('approval_timeout');
+      clearOnlineApprovalNotice(session,request);
+    }
+  });
+  session.approvalPairs.set(request,pair);
+}
+function clearOnlineApprovalNotice(session,request) {
+  if(saveConfirmation?.roomSession===session&&saveConfirmation.request===request)finishSaveConfirmation(false);
+  if(!saveConfirmation)byId('approvalHostPin')?.remove();
+}
+function showOnlineApproval(session) {
+  if (saveConfirmation || session.closed) return;
+  const entry = [...session.approvalPairs || []].find(([,pair])=>pair.shown&&!pair.closed);
+  if (!entry) return;
+  const [request,pair] = entry;
+  showSaveConfirmation('Join request','A player wants to join your private room.','Accept',accepted=>{
+    byId('approvalHostPin')?.remove();
+    if(session.closed||session.approvalPairs.get(request)!==pair)return;
+    session.send({type:accepted?'approve':'reject',request});
+    if(!accepted){pair.close();session.approvalPairs.delete(request);showOnlineApproval(session);}
+  });
+  saveConfirmation.roomSession=session;saveConfirmation.request=request;saveConfirmation.onlineApproval=true;
+  setLocalizedText(saveConfirmCancel,'Reject');
+  const pin=document.createElement('div');pin.id='approvalHostPin';
+  const output=document.createElement('output');output.textContent=pair.pin.slice(0,3)+' '+pair.pin.slice(3);
+  const note=document.createElement('p');setLocalizedText(note,'You may compare this PIN with the other player. Comparing is optional.');
+  pin.append(output,note);saveConfirmMessage.after(pin);
+}
+function syncOnlineApproval(session,lobby) {
+  const pending = new Set((lobby.pending || []).map(p=>p.request));
+  for(const [request,pair] of session.approvalPairs || []) if(!pending.has(request)){
+    pair.close();session.approvalPairs.delete(request);clearOnlineApprovalNotice(session,request);
+  }
+  for(const request of pending)startOnlineApproval(session,request);
+  showOnlineApproval(session);
+}
+function acceptOnlineApproval(session,request) {
+  const pair=session.approvalPairs?.get(request);
+  if(!pair?.binding || !pair.shown)throw Error('approval unavailable');
+  session.approvalBinding=pair.binding;
+  clearOnlineApproval(session,true);
+}
+function installOnlineApprovalUi(parent) {
+  const box=document.createElement('section');box.id='approvalGuest';box.hidden=true;
+  const waiting=document.createElement('p');setLocalizedText(waiting,'Waiting for host approval...');
+  const pin=document.createElement('output');pin.id='approvalGuestPin';pin.setAttribute('aria-live','polite');
+  const note=document.createElement('p');setLocalizedText(note,'You may compare this PIN with the other player. Comparing is optional.');
+  box.append(waiting,pin,note);parent.append(box);
 }
 
 let matchmakingSocket = null;

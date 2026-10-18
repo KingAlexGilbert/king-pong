@@ -267,13 +267,13 @@ html {
 body.royal-ui-ready {
   width: 100%;
   height: 100dvh;
-  padding: calc(52px + env(safe-area-inset-top, 0px)) 0 calc(32px + env(safe-area-inset-bottom, 0px));
+  padding: calc(var(--royal-toolbar-height, 52px) + env(safe-area-inset-top, 0px)) 0 calc(32px + env(safe-area-inset-bottom, 0px));
   box-sizing: border-box;
 }
 
 body.royal-ui-ready #game {
   flex: none;
-  max-height: calc(100dvh - 84px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  max-height: calc(100dvh - var(--royal-toolbar-height, 52px) - 32px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
   border: 1px solid #292c38;
   box-shadow: 0 0 40px #0e1626;
 }
@@ -290,7 +290,7 @@ body.royal-ui-ready #game {
   body.royal-ui-ready #game {
     position: absolute;
     left: 50%;
-    top: calc(50% + 10px + (env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) / 2);
+    top: calc(50% + (var(--royal-toolbar-height, 52px) - 32px + env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) / 2);
     transform: translate(-50%, -50%);
   }
 }
@@ -1373,7 +1373,8 @@ body.royal-panel-open .match-footer #controlHint {
   min-width: 0;
 }
 
-.match-rule-options button[aria-pressed="true"] {
+.match-rule-options button[aria-pressed="true"],
+#onlinePowerups[aria-pressed="true"] {
   background: #191006;
   color: #ffe1a0;
   border-color: #ffd469;
@@ -1603,3 +1604,25 @@ body:has(#browserFullscreen) .match-bar { box-sizing: border-box; }
 #onlineMatchOptions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; }
 #onlineMatchOptions #onlinePowerups { margin: 0; }
 #onlineMatchOptions p { flex: 1 1 260px; margin: 0; }
+
+/* QR pixels keep their own quiet zone, without the arena canvas border/glow. */
+#lanQrDisplay { text-align: center; margin: 12px auto; }
+#lanQrDisplay canvas { width: min(100%, 296px, calc(100dvh - 140px)); height: auto; max-height: none; margin: auto; border: 0; box-shadow: none; }
+#lanQrDisplay canvas[width="740"] { width: min(100%, 740px, calc(100dvh - 140px)); }
+#lanQrVideo { display: block; width: min(100%, 480px); max-height: 50dvh; margin: 12px auto; }
+
+#approvalHostPin output, #approvalGuestPin { display: block; color: #ffd469; font-size: 28px; letter-spacing: .12em; text-align: center; margin: 12px 0; }
+#approvalHostPin p, #approvalGuest p { font-size: 12px; line-height: 1.5; color: #c4bacd; }
+#lanQrInput, #lanQrChoice { min-height: 44px; box-sizing: border-box; width: 100%; color: #e8decb; background: #08060b; border: 1px solid #67543b; padding: 10px; }
+#lanQrManual button { margin-top: 8px; }
+.audio-optional { margin-top: 14px; flex-direction: row; align-items: center; justify-content: space-between; gap: 16px; }
+.audio-optional > span { display: grid; gap: 5px; min-width: 0; }
+.audio-optional small { color: #b8a98f; font-size: 11px; }
+.audio-optional button { width: calc((100% - 24px) / 3); min-width: 90px; flex: none; }
+
+/* Campaign actions retain their hit targets; the existing arena identity gets
+   a full row on narrow screens instead of being squeezed behind Fullscreen. */
+@media (max-width: 600px) {
+  .match-bar:has(#campaignBack:not([hidden])) { height: auto; min-height: 50px; flex-wrap: wrap; padding-top: 4px; padding-bottom: 4px; row-gap: 5px; }
+  .match-bar:has(#campaignBack:not([hidden])) .match-identity { order: 2; flex: 0 0 100%; align-items: center; }
+}

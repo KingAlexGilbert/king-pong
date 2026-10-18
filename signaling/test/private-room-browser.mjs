@@ -138,15 +138,17 @@ async function page(locale = 'en-US') {
   return page;
 }
 async function installControlledChannels(page) {
-  await page.exposeFunction('deliverTestChannel', raw => {
+  await page.exposeFunction('deliverTestChannel', (raw,state) => {
     deliveries = deliveries.then(async () => {
       if (browserClosing || page.isClosed()) return;
-      const state = await page.evaluate(() => ({room:lanRoomCode,role:lanRole}));
       for (const target of testPages) {
         if (target === page || target.isClosed()) continue;
         await target.evaluate(({raw,state}) => {
-          if (onlineSession && lanRoomCode === state.room && lanRole !== state.role) onlineSession.control?.onmessage?.({data:raw});
-        }, {raw,state});
+          if (typeof onlineSession !== 'undefined' && onlineSession && lanRoomCode === state.room && lanRole !== state.role) onlineSession.control?.onmessage?.({data:raw});
+        }, {raw,state}).catch(error => {
+          // Navigation discards the old controlled endpoint, just like closing RTC.
+          if (!target.isClosed() && !error.message.includes('Execution context was destroyed')) throw error;
+        });
       }
     }).catch(error => { if (!browserClosing) errors.push(error.message); });
   });
@@ -156,7 +158,7 @@ async function installControlledChannels(page) {
       constructor() { this.iceGatheringState='complete'; }
       createDataChannel(label) {
         const c={label,readyState:'connecting',bufferedAmount:0,ordered:label!=='pong-lan-input-v1',
-          send(raw){window.deliverTestChannel(raw)},close(){this.readyState='closed'}};
+          send(raw){window.deliverTestChannel(raw,{room:lanRoomCode,role:lanRole})},close(){this.readyState='closed'}};
         this.channels.push(c); return c;
       }
       async createOffer(){return {type:'offer',sdp:'v=0\r\na=fingerprint:sha-256 '+Array(32).fill('AA').join(':')+'\r\n'}}
@@ -197,22 +199,26 @@ async function waitFor(page, expression) {
     throw error;
   }
 }
-const verify=process.argv.includes('--verify-pairing');
-async function comparePin(host,guest,accept=true) {
-  if(!verify)return;
-  await host.waitForFunction(()=>onlineSession?.pairing?.remoteShown);
-  await guest.waitForFunction(()=>onlineSession?.pairing?.remoteShown);
-  assert.equal(await host.locator('#pairingPin').innerText(),await guest.locator('#pairingPin').innerText());
-  for(const p of [host,guest])assert.deepEqual(await p.evaluate(()=>[lanConnected,onlineGameBlocked]),[false,true]);
-  await host.locator(accept?'#pairingAccept':'#pairingReject').click();
-  console.log('PASS PIN display, gameplay gate and '+(accept?'confirmation':'rejection')+' (controlled certificates when RTC is controlled)');
+async function pendingPin(host,guest) {
+  await host.locator('#approvalHostPin output').waitFor({state:'visible'});
+  await guest.locator('#approvalGuestPin').waitFor({state:'visible'});
+  const pin=await host.locator('#approvalHostPin output').innerText();
+  assert.match(pin,/^\d{3} \d{3}$/);
+  assert.equal(pin,await guest.locator('#approvalGuestPin').innerText());
+  assert.equal(await host.locator('#saveConfirmAccept').isEnabled(),true);
+  for(const p of [host,guest]) {
+    assert.equal(await p.evaluate(()=>onlineSession.peer==null),true,'no RTC peer before approval');
+    assert.equal(await p.evaluate(()=>lanConnected),false);
+  }
+  assert.equal(await host.locator('#privatePairing').count(),0);
+  assert.equal(await host.locator('#pairingAccept').isVisible(),false);
 }
 try {
   if(process.argv.includes('--public-powerups'))await publicPowerupCases({page,waitFor,queueTraffic,errors});
   else {
   console.log(controlledChannels ? 'MODE controlled RTC channels, real Worker and WebSockets' : 'MODE actual WebRTC');
   const host = await page();
-  if(verify)await host.locator('#privatePairing').check();
+  assert.equal(await host.locator('#onlineRequireApproval').locator('..').innerText(),'Host Approval');
   assert.equal(await host.locator('#onlineRequireApproval').isChecked(), true);
   await host.evaluate(() => {
     setMatchRule('quick'); setMatchPowerups(false);saveData.royalArena=7;
@@ -227,7 +233,7 @@ try {
     await p.evaluate(code => { openOnlineRoom('guest', code); }, code);
   }
   await join(guest);
-  await host.locator('#saveConfirmOverlay').waitFor({state:'visible'});
+  await pendingPin(host,guest);
   if (artifacts) await host.screenshot({path:artifacts+'/private-approval.png'});
   assert.equal(await guest.evaluate(() => lanConnected), false);
   await host.locator('#saveConfirmCancel').click();
@@ -235,17 +241,17 @@ try {
   await join(guest);
   await waitFor(guest, "lanLastStatus === ONLINE_ERRORS.blocked");
   assert.equal(await host.evaluate(() => onlineSession.pendingRequests.length), 0);
-  console.log('PASS approval default, rejection, and same-session rejoin block');
+  console.log('PASS matching preconnection PINs, no RTC before approval, optional comparison, rejection, and same-session rejoin block');
 
-  if(verify){const refused=await page();await join(refused);await host.locator('#saveConfirmAccept').click();await comparePin(host,refused,false);await waitFor(refused,'!onlineSession');await waitFor(host,'!onlineSession.peer');assert.equal(await host.evaluate(()=>lanRoomCode),code);}
+
   const peer = await page();
   await peer.evaluate(()=>{
     savePlayerPreference('multiplayerPaddle','enemy-15');resetMultiplayerPaddleChoices();
     savePlayerPreference('royalPowerupsEnabled',true);savePlayerPreference('matchRuleId','endless');
   });
   await join(peer);
+  await pendingPin(host,peer);
   await host.locator('#saveConfirmAccept').click();
-  await comparePin(host,peer);
   await Promise.all([waitFor(host, "onlineMatchFlow?.phase === 'ready'"),waitFor(peer, "onlineMatchFlow?.phase === 'ready'")]);
   for (const p of [host, peer]) {
     assert.equal(await p.locator('#matchSetup').isVisible(), false);
@@ -300,7 +306,7 @@ try {
 
   // Another approved participant can use the retained room; cancellation during
   // countdown cannot leave a queued serve or old powerup state in that room.
-  const replacement=await page();await join(replacement);await host.locator('#saveConfirmAccept').click();await comparePin(host,replacement);
+  const replacement=await page();await join(replacement);await pendingPin(host,replacement);await host.locator('#saveConfirmAccept').click();
   await Promise.all([waitFor(host,"onlineMatchFlow?.phase === 'ready'"),waitFor(replacement,"onlineMatchFlow?.phase === 'ready'")]);
   await host.locator('#onlineReadyButton').click();await replacement.locator('#onlineReadyButton').click();
   await waitFor(replacement,"onlineMatchFlow?.phase === 'countdown'");
@@ -321,9 +327,10 @@ try {
   await waitFor(host,'lanRoomCode.length === 6');
   const next = await page();
   await next.evaluate(code => openOnlineRoom('guest',code), await host.evaluate(() => lanRoomCode));
-  await comparePin(host,next);
+
   await Promise.all([waitFor(host, "onlineMatchFlow?.phase === 'ready'"),waitFor(next, "onlineMatchFlow?.phase === 'ready'")]);
   assert.equal(await host.locator('#saveConfirmOverlay').isVisible(), false);
+  for(const p of [host,next]) { assert.equal(await p.locator('#approvalGuest').isVisible(),false); assert.equal(await p.evaluate(()=>onlineSession.approvalPairs?.size||0),0); }
   await host.locator('#onlineReadyButton').click(); await next.locator('#onlineReadyButton').click();
   await waitFor(host, "onlineMatchFlow?.phase === 'playing'");
   const spawned=await host.evaluate(() => {

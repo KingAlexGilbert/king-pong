@@ -19,6 +19,7 @@ import android.view.WindowInsets;
 import android.view.WindowInsetsController;
 import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
+import android.webkit.PermissionRequest;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
@@ -42,6 +43,9 @@ public final class MainActivity extends Activity {
     private int saveFileRequestId;
     private String pendingSaveExport;
     private WebView webView;
+    private static final int REQUEST_QR_CAMERA = 4103;
+    private PermissionRequest pendingQrCamera;
+    private long qrCameraArmedUntil;
     private LocalLan localLan;
     private BossAudioCache bossAudio;
     private final String lanBridgeToken = LocalLan.randomHex(16);
@@ -112,7 +116,15 @@ public final class MainActivity extends Activity {
         }));
         webView.addJavascriptInterface(new LanBridge(), "KingPongLan");
         webView.addJavascriptInterface(new SaveFileBridge(), "KingPongSaveFiles");
-        webView.setWebChromeClient(new WebChromeClient());
+        webView.addJavascriptInterface(new QrCameraBridge(), "KingPongCamera");
+        webView.setWebChromeClient(new WebChromeClient() {
+            @Override public void onPermissionRequest(PermissionRequest request) {
+                runOnUiThread(() -> requestQrCamera(request));
+            }
+            @Override public void onPermissionRequestCanceled(PermissionRequest request) {
+                runOnUiThread(() -> { if (pendingQrCamera == request) pendingQrCamera = null; qrCameraArmedUntil = 0; });
+            }
+        });
         webView.setWebViewClient(new LocalOnlyWebViewClient());
         setContentView(webView);
 
@@ -139,6 +151,19 @@ public final class MainActivity extends Activity {
 
     @Override
     protected void onPause() {
+        // The runtime camera prompt is a translucent Activity. Keep its pending
+        // WebView request alive; real backgrounding is still handled by onStop.
+        if (pendingQrCamera == null) pauseGame();
+        super.onPause();
+    }
+
+    @Override protected void onStop() {
+        if (!lanBackgrounded) pauseGame();
+        super.onStop();
+    }
+
+    private void pauseGame() {
+        cancelQrCamera();
         stopBatteryMonitoring();
         lanBackgrounded = true;
         if (localLan != null) localLan.stop();
@@ -149,11 +174,11 @@ public final class MainActivity extends Activity {
             webView.onPause();
             webView.pauseTimers();
         }
-        super.onPause();
     }
 
     @Override
     protected void onDestroy() {
+        cancelQrCamera();
         stopBatteryMonitoring();
         saveFileExecutor.shutdown();
         if (localLan != null) localLan.close();
@@ -164,6 +189,7 @@ public final class MainActivity extends Activity {
             webView.removeJavascriptInterface("KingPongSaveFiles");
             webView.removeJavascriptInterface("KingPongLan");
             webView.removeJavascriptInterface("KingPongBossAudio");
+            webView.removeJavascriptInterface("KingPongCamera");
             if (webView.getParent() instanceof ViewGroup) {
                 ((ViewGroup) webView.getParent()).removeView(webView);
             }
@@ -187,6 +213,46 @@ public final class MainActivity extends Activity {
                 if (!lanMulticast.isHeld()) lanMulticast.acquire();
             } else if (lanMulticast != null && lanMulticast.isHeld()) lanMulticast.release();
         } catch (RuntimeException ignored) { /* Direct IP and manual pairing remain available. */ }
+    }
+
+    private boolean qrCameraPageAllowed() {
+        return !lanBackgrounded && webView != null && isGameUrl(Uri.parse(webView.getUrl() == null ? "" : webView.getUrl()));
+    }
+    private final class QrCameraBridge {
+        @JavascriptInterface public void arm(String capability) {
+            if (!lanBridgeToken.equals(capability)) return;
+            runOnUiThread(() -> { if (qrCameraPageAllowed()) qrCameraArmedUntil = android.os.SystemClock.elapsedRealtime() + 30000; });
+        }
+        @JavascriptInterface public void cancel(String capability) {
+            if (lanBridgeToken.equals(capability)) runOnUiThread(() -> cancelQrCamera());
+        }
+    }
+    private void cancelQrCamera() {
+        qrCameraArmedUntil = 0;
+        if (pendingQrCamera != null) { pendingQrCamera.deny(); pendingQrCamera = null; }
+    }
+    private void requestQrCamera(PermissionRequest request) {
+        String[] resources = request.getResources();
+        if (!qrCameraPageAllowed() || !"file".equals(request.getOrigin().getScheme()) ||
+                android.os.SystemClock.elapsedRealtime() >= qrCameraArmedUntil || pendingQrCamera != null ||
+                resources.length != 1 || !PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(resources[0])) {
+            request.deny(); return;
+        }
+        qrCameraArmedUntil = 0;
+        if (Build.VERSION.SDK_INT < 23 || checkSelfPermission(android.Manifest.permission.CAMERA) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            request.grant(new String[]{PermissionRequest.RESOURCE_VIDEO_CAPTURE});
+        } else {
+            pendingQrCamera = request;
+            requestPermissions(new String[]{android.Manifest.permission.CAMERA}, REQUEST_QR_CAMERA);
+        }
+    }
+    @Override public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode != REQUEST_QR_CAMERA || pendingQrCamera == null) return;
+        PermissionRequest request = pendingQrCamera; pendingQrCamera = null;
+        if (qrCameraPageAllowed() && grantResults.length == 1 && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED)
+            request.grant(new String[]{PermissionRequest.RESOURCE_VIDEO_CAPTURE});
+        else request.deny();
     }
 
     private final class BossAudioBridge {
@@ -438,6 +504,7 @@ public final class MainActivity extends Activity {
     private final class LocalOnlyWebViewClient extends WebViewClient {
         @Override
         public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
+            cancelQrCamera();
             batteryPageReady = false;
             if (localLan != null) localLan.stop();
             lastBatteryScript = null;

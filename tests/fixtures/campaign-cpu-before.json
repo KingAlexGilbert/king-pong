@@ -1,0 +1,506 @@
+{
+  "1:0": {
+    "reaction": 0.052,
+    "maxMove": 2.85,
+    "prediction": 0.23,
+    "error": 62,
+    "deadZone": 17,
+    "horizon": 95,
+    "label": 20
+  },
+  "1:1": {
+    "reaction": 0.052,
+    "maxMove": 2.85,
+    "prediction": 0.23,
+    "error": 62,
+    "deadZone": 17,
+    "horizon": 95,
+    "label": 20
+  },
+  "1:2": {
+    "reaction": 0.052,
+    "maxMove": 2.85,
+    "prediction": 0.23,
+    "error": 62,
+    "deadZone": 17,
+    "horizon": 95,
+    "label": 20
+  },
+  "2:0": {
+    "reaction": 0.058,
+    "maxMove": 3,
+    "prediction": 0.28,
+    "error": 56,
+    "deadZone": 16,
+    "horizon": 105,
+    "label": 25
+  },
+  "2:1": {
+    "reaction": 0.058,
+    "maxMove": 3,
+    "prediction": 0.28,
+    "error": 56,
+    "deadZone": 16,
+    "horizon": 105,
+    "label": 25
+  },
+  "2:2": {
+    "reaction": 0.058,
+    "maxMove": 3,
+    "prediction": 0.28,
+    "error": 56,
+    "deadZone": 16,
+    "horizon": 105,
+    "label": 25
+  },
+  "3:0": {
+    "reaction": 0.064,
+    "maxMove": 3.15,
+    "prediction": 0.33,
+    "error": 50,
+    "deadZone": 15,
+    "horizon": 115,
+    "label": 30
+  },
+  "3:1": {
+    "reaction": 0.064,
+    "maxMove": 3.15,
+    "prediction": 0.33,
+    "error": 50,
+    "deadZone": 15,
+    "horizon": 115,
+    "label": 30
+  },
+  "3:2": {
+    "reaction": 0.064,
+    "maxMove": 3.15,
+    "prediction": 0.33,
+    "error": 50,
+    "deadZone": 15,
+    "horizon": 115,
+    "label": 30
+  },
+  "4:0": {
+    "reaction": 0.071,
+    "maxMove": 3.35,
+    "prediction": 0.39,
+    "error": 44,
+    "deadZone": 13.5,
+    "horizon": 125,
+    "label": 35
+  },
+  "4:1": {
+    "reaction": 0.071,
+    "maxMove": 3.35,
+    "prediction": 0.39,
+    "error": 44,
+    "deadZone": 13.5,
+    "horizon": 125,
+    "label": 35
+  },
+  "4:2": {
+    "reaction": 0.071,
+    "maxMove": 3.35,
+    "prediction": 0.39,
+    "error": 44,
+    "deadZone": 13.5,
+    "horizon": 125,
+    "label": 35
+  },
+  "5:0": {
+    "reaction": 0.078,
+    "maxMove": 3.55,
+    "prediction": 0.45,
+    "error": 39,
+    "deadZone": 12,
+    "horizon": 135,
+    "label": 40
+  },
+  "5:1": {
+    "reaction": 0.078,
+    "maxMove": 3.55,
+    "prediction": 0.45,
+    "error": 39,
+    "deadZone": 12,
+    "horizon": 135,
+    "label": 40
+  },
+  "5:2": {
+    "reaction": 0.078,
+    "maxMove": 3.55,
+    "prediction": 0.45,
+    "error": 39,
+    "deadZone": 12,
+    "horizon": 135,
+    "label": 40
+  },
+  "6:0": {
+    "reaction": 0.086,
+    "maxMove": 3.75,
+    "prediction": 0.51,
+    "error": 34,
+    "deadZone": 10.5,
+    "horizon": 145,
+    "label": 46
+  },
+  "6:1": {
+    "reaction": 0.086,
+    "maxMove": 3.75,
+    "prediction": 0.51,
+    "error": 34,
+    "deadZone": 10.5,
+    "horizon": 145,
+    "label": 46
+  },
+  "6:2": {
+    "reaction": 0.086,
+    "maxMove": 3.75,
+    "prediction": 0.51,
+    "error": 34,
+    "deadZone": 10.5,
+    "horizon": 145,
+    "label": 46
+  },
+  "7:0": {
+    "reaction": 0.08729411764705883,
+    "maxMove": 4.226470588235294,
+    "prediction": 0.43058823529411766,
+    "error": 49.294117647058826,
+    "deadZone": 14.676470588235293,
+    "horizon": 137,
+    "label": 43
+  },
+  "7:1": {
+    "reaction": 0.08729411764705883,
+    "maxMove": 4.226470588235294,
+    "prediction": 0.43058823529411766,
+    "error": 49.294117647058826,
+    "deadZone": 14.676470588235293,
+    "horizon": 137,
+    "label": 43
+  },
+  "7:2": {
+    "reaction": 0.08729411764705883,
+    "maxMove": 4.226470588235294,
+    "prediction": 0.43058823529411766,
+    "error": 49.294117647058826,
+    "deadZone": 14.676470588235293,
+    "horizon": 137,
+    "label": 43
+  },
+  "8:0": {
+    "reaction": 0.0961764705882353,
+    "maxMove": 4.555882352941176,
+    "prediction": 0.4823529411764706,
+    "error": 45.1764705882353,
+    "deadZone": 13.455882352941178,
+    "horizon": 148,
+    "label": 48
+  },
+  "8:1": {
+    "reaction": 0.0961764705882353,
+    "maxMove": 4.555882352941176,
+    "prediction": 0.4823529411764706,
+    "error": 45.1764705882353,
+    "deadZone": 13.455882352941178,
+    "horizon": 148,
+    "label": 48
+  },
+  "8:2": {
+    "reaction": 0.0961764705882353,
+    "maxMove": 4.555882352941176,
+    "prediction": 0.4823529411764706,
+    "error": 45.1764705882353,
+    "deadZone": 13.455882352941178,
+    "horizon": 148,
+    "label": 48
+  },
+  "9:0": {
+    "reaction": 0.10505882352941176,
+    "maxMove": 4.885294117647058,
+    "prediction": 0.5341176470588236,
+    "error": 41.05882352941177,
+    "deadZone": 12.23529411764706,
+    "horizon": 159,
+    "label": 53
+  },
+  "9:1": {
+    "reaction": 0.10505882352941176,
+    "maxMove": 4.885294117647058,
+    "prediction": 0.5341176470588236,
+    "error": 41.05882352941177,
+    "deadZone": 12.23529411764706,
+    "horizon": 159,
+    "label": 53
+  },
+  "9:2": {
+    "reaction": 0.10505882352941176,
+    "maxMove": 4.885294117647058,
+    "prediction": 0.5341176470588236,
+    "error": 41.05882352941177,
+    "deadZone": 12.23529411764706,
+    "horizon": 159,
+    "label": 53
+  },
+  "10:0": {
+    "reaction": 0.11394117647058824,
+    "maxMove": 5.214705882352941,
+    "prediction": 0.5858823529411765,
+    "error": 36.94117647058823,
+    "deadZone": 11.01470588235294,
+    "horizon": 171,
+    "label": 59
+  },
+  "10:1": {
+    "reaction": 0.11394117647058824,
+    "maxMove": 5.214705882352941,
+    "prediction": 0.5858823529411765,
+    "error": 36.94117647058823,
+    "deadZone": 11.01470588235294,
+    "horizon": 171,
+    "label": 59
+  },
+  "10:2": {
+    "reaction": 0.11394117647058824,
+    "maxMove": 5.214705882352941,
+    "prediction": 0.5858823529411765,
+    "error": 36.94117647058823,
+    "deadZone": 11.01470588235294,
+    "horizon": 171,
+    "label": 59
+  },
+  "11:0": {
+    "reaction": 0.1228235294117647,
+    "maxMove": 5.544117647058823,
+    "prediction": 0.6376470588235295,
+    "error": 32.8235294117647,
+    "deadZone": 9.794117647058822,
+    "horizon": 182,
+    "label": 64
+  },
+  "11:1": {
+    "reaction": 0.1228235294117647,
+    "maxMove": 5.544117647058823,
+    "prediction": 0.6376470588235295,
+    "error": 32.8235294117647,
+    "deadZone": 9.794117647058822,
+    "horizon": 182,
+    "label": 64
+  },
+  "11:2": {
+    "reaction": 0.1228235294117647,
+    "maxMove": 5.544117647058823,
+    "prediction": 0.6376470588235295,
+    "error": 32.8235294117647,
+    "deadZone": 9.794117647058822,
+    "horizon": 182,
+    "label": 64
+  },
+  "12:0": {
+    "reaction": 0.13170588235294117,
+    "maxMove": 5.873529411764705,
+    "prediction": 0.6894117647058824,
+    "error": 28.705882352941174,
+    "deadZone": 8.573529411764705,
+    "horizon": 193,
+    "label": 69
+  },
+  "12:1": {
+    "reaction": 0.13170588235294117,
+    "maxMove": 5.873529411764705,
+    "prediction": 0.6894117647058824,
+    "error": 28.705882352941174,
+    "deadZone": 8.573529411764705,
+    "horizon": 193,
+    "label": 69
+  },
+  "12:2": {
+    "reaction": 0.13170588235294117,
+    "maxMove": 5.873529411764705,
+    "prediction": 0.6894117647058824,
+    "error": 28.705882352941174,
+    "deadZone": 8.573529411764705,
+    "horizon": 193,
+    "label": 69
+  },
+  "13:0": {
+    "reaction": 0.144,
+    "maxMove": 6.2,
+    "prediction": 0.79,
+    "error": 19.5,
+    "deadZone": 5.7,
+    "horizon": 210,
+    "label": 76
+  },
+  "13:1": {
+    "reaction": 0.11664,
+    "maxMove": 5.115,
+    "prediction": 0.6122500000000001,
+    "error": 34.5,
+    "deadZone": 9.2,
+    "horizon": 200,
+    "label": 76
+  },
+  "13:2": {
+    "reaction": 0.08928,
+    "maxMove": 4.03,
+    "prediction": 0.43450000000000005,
+    "error": 49.5,
+    "deadZone": 12.7,
+    "horizon": 189,
+    "label": 76
+  },
+  "14:0": {
+    "reaction": 0.1385,
+    "maxMove": 5.92,
+    "prediction": 0.715,
+    "error": 28,
+    "deadZone": 7.8,
+    "horizon": 197,
+    "label": 78
+  },
+  "14:1": {
+    "reaction": 0.11218500000000002,
+    "maxMove": 4.8839999999999995,
+    "prediction": 0.554125,
+    "error": 43,
+    "deadZone": 11.3,
+    "horizon": 187,
+    "label": 78
+  },
+  "14:2": {
+    "reaction": 0.08587,
+    "maxMove": 3.848,
+    "prediction": 0.39325,
+    "error": 58,
+    "deadZone": 14.8,
+    "horizon": 177,
+    "label": 78
+  },
+  "15:0": {
+    "reaction": 0.145,
+    "maxMove": 6.25,
+    "prediction": 0.8,
+    "error": 20,
+    "deadZone": 5.6,
+    "horizon": 212,
+    "label": 80
+  },
+  "15:1": {
+    "reaction": 0.11745,
+    "maxMove": 5.15625,
+    "prediction": 0.6200000000000001,
+    "error": 35,
+    "deadZone": 9.1,
+    "horizon": 201,
+    "label": 80
+  },
+  "15:2": {
+    "reaction": 0.0899,
+    "maxMove": 4.0625,
+    "prediction": 0.44000000000000006,
+    "error": 50,
+    "deadZone": 12.6,
+    "horizon": 191,
+    "label": 80
+  },
+  "16:0": {
+    "reaction": 0.143,
+    "maxMove": 6.15,
+    "prediction": 0.77,
+    "error": 23,
+    "deadZone": 6.4,
+    "horizon": 208,
+    "label": 82
+  },
+  "16:1": {
+    "reaction": 0.11583,
+    "maxMove": 5.07375,
+    "prediction": 0.59675,
+    "error": 38,
+    "deadZone": 9.9,
+    "horizon": 198,
+    "label": 82
+  },
+  "16:2": {
+    "reaction": 0.08865999999999999,
+    "maxMove": 3.9975000000000005,
+    "prediction": 0.42350000000000004,
+    "error": 53,
+    "deadZone": 13.4,
+    "horizon": 187,
+    "label": 82
+  },
+  "17:0": {
+    "reaction": 0.147,
+    "maxMove": 6.35,
+    "prediction": 0.82,
+    "error": 19,
+    "deadZone": 5.2,
+    "horizon": 216,
+    "label": 84
+  },
+  "17:1": {
+    "reaction": 0.11907,
+    "maxMove": 5.23875,
+    "prediction": 0.6355,
+    "error": 34,
+    "deadZone": 8.7,
+    "horizon": 205,
+    "label": 84
+  },
+  "17:2": {
+    "reaction": 0.09114,
+    "maxMove": 4.1274999999999995,
+    "prediction": 0.451,
+    "error": 49,
+    "deadZone": 12.2,
+    "horizon": 194,
+    "label": 84
+  },
+  "18:0": {
+    "reaction": 0.155,
+    "maxMove": 6.7,
+    "prediction": 0.9,
+    "error": 11,
+    "deadZone": 3,
+    "horizon": 232,
+    "label": 86
+  },
+  "18:1": {
+    "reaction": 0.12555,
+    "maxMove": 5.5275,
+    "prediction": 0.6975,
+    "error": 26,
+    "deadZone": 6.5,
+    "horizon": 220,
+    "label": 86
+  },
+  "18:2": {
+    "reaction": 0.0961,
+    "maxMove": 4.355,
+    "prediction": 0.49500000000000005,
+    "error": 41,
+    "deadZone": 10,
+    "horizon": 209,
+    "label": 86
+  },
+  "mode:3": {
+    "reaction": 0.118,
+    "maxMove": 4.4,
+    "prediction": 0.53,
+    "error": 49,
+    "deadZone": 13.375,
+    "horizon": 168,
+    "label": 50
+  },
+  "mode:4": {
+    "reaction": 0.108,
+    "maxMove": 5.4,
+    "prediction": 0.58,
+    "error": 24,
+    "deadZone": 6,
+    "horizon": 150,
+    "label": 88
+  }
+}

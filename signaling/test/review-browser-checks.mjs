@@ -8,18 +8,23 @@ export async function reviewBrowserChecks({page, bounds, snap, pass}) {
       return {x: r.x, y: r.y, width: r.width, height: r.height};
     };
     return {arena: box('#game'), bar: box('#matchBar'),
-      info: box('.match-identity'), menu: box('#menuToggle'), resume: box('#matchPause')};
+      info: box('.match-identity'), menu: box('#menuToggle'), resume: box('#matchPause'),
+      back: document.querySelector('#campaignBack').hidden ? null : box('#campaignBack')};
   });
-  const outsideArena = ({arena, bar, info, menu, resume}) => {
+  const outsideArena = ({arena, bar, info, menu, resume, back}) => {
     assert.ok(Math.abs(bar.x + bar.width / 2 - arena.x - arena.width / 2) < 2);
     assert.ok(bar.width <= 760 && bar.height === 50, 'use the existing header space');
-    for (const control of [bar, info, menu, resume]) {
+    for (const control of [bar, info, menu, resume, back].filter(Boolean)) {
       assert.ok(control.y >= 0 && control.y + control.height <= arena.y,
         'visible controls and match information must be entirely above the playing field');
     }
-    assert.ok(Math.abs(menu.y - resume.y) < 2);
-    assert.ok(resume.x >= menu.x + menu.width && resume.x - menu.x - menu.width <= 24,
-      'Menu and Pause/Resume stay together without overlap');
+    const actions = [menu, back, resume].filter(Boolean).sort((a, b) => a.x - b.x);
+    for (let i = 1; i < actions.length; i++) {
+      const previous = actions[i - 1], current = actions[i];
+      assert.ok(Math.abs(previous.y - current.y) < 2);
+      assert.ok(current.x >= previous.x + previous.width && current.x - previous.x - previous.width <= 24,
+        'Menu, Campaign Back and Pause/Resume stay together without overlap');
+    }
     assert.ok(info.x >= resume.x + resume.width, 'match information does not cover the actions');
   };
   const start = async p => {

@@ -1,4 +1,5 @@
 import {integrateBossAudio} from '../game/boss-audio-integration.mjs';
+import {integrateOpeningCpu} from '../game/campaign-cpu-integration.mjs';
 import {integrateBrowserFullscreen} from '../game/fullscreen-integration.mjs';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { integrateMultiplayerPresentation } from '../game/presentation-integration.mjs';
@@ -25,8 +26,14 @@ const script = iconSources() + [
   'arena-perspective.js',
   'royal-ui.js',
   'multiplayer-safety.js',
-  'local-lan.js'
-].map(file => readFileSync(new URL('game/' + file, root), 'utf8')).join('\n');
+  'local-lan.js',
+  'vendor/qr-creator.min.js',
+  'vendor/jsqr.min.js',
+  'lan-qr.js'
+].map(file => {
+  const source = readFileSync(new URL('game/' + file, root), 'utf8');
+  return file.startsWith('vendor/') ? '(() => {\n' + source + '\n})();' : source;
+}).join('\n');
 const css = readFileSync(new URL('game/royal-menu.css', root), 'utf8');
 const localization = readFileSync(new URL('game/royal-localization.js', root), 'utf8');
 const saveTransfer = readFileSync(new URL('game/save-transfer.js', root), 'utf8');
@@ -59,6 +66,7 @@ for (const file of files) {
   updated = integrateSaveTransfer(updated, saveTransfer);
   updated = integrateRoyalPolish(updated);
   updated = integrateServeMotion(updated);
+  updated = integrateOpeningCpu(updated);
   updated = integrateOnline(updated, nativeOnlineScript, file !== 'docs/demo/index.html');
   updated = integrateBossAudio(updated);
   updated = integrateBrowserFullscreen(updated, file === 'docs/demo/index.html');

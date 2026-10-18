@@ -7,6 +7,9 @@
     <!-- Held only during LAN hosting or a bounded discovery scan. -->
     <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
 
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera.any" android:required="false" />
+
     <application
         android:allowBackup="false"
         android:hardwareAccelerated="true"

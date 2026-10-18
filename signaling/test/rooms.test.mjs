@@ -226,6 +226,69 @@ async function untilMessage(client, predicate) {
   for (let i=0;i<30;i++) { const message=await client.next(); if(predicate(message)) return message; }
   throw new Error('Expected room message');
 }
+
+test('sas1 pending guests exchange verification only; SDP and ICE never reach unapproved peers',async()=>{
+  const host=await connect(`party/create/2/1/${crypto.randomUUID()}/sas1`);
+  const {code,verification}=await host.next();assert.equal(verification,'sas1');
+  const old=await connect(`party/join/2/${code}/${crypto.randomUUID()}`);assert.equal((await old.next()).code,'incompatible');old.close();
+  for(const type of ['description','candidate','connected','relay','approve']){
+    const guest=await connect(`party/join/2/${code}/${crypto.randomUUID()}/sas1`),welcome=await guest.next();
+    assert.equal(welcome.pending,true);assert.equal(welcome.verification,'sas1');
+    const lobby=await untilMessage(host,m=>m.type==='lobby'&&m.pending?.length===1);assert.equal(lobby.pending[0].request,welcome.request);
+    host.send({type:'description',to:1,attempt:0,description:{type:'offer',sdp:'private'}});
+    host.send({type:'candidate',to:1,attempt:0,candidate:{candidate:'private',sdpMid:'0',sdpMLineIndex:0}});
+    guest.send({type,request:welcome.request,to:0,attempt:0});
+    for(;;){const m=await guest.next();assert.ok(!['description','candidate','start'].includes(m.type));if(m.type==='error'){assert.equal(m.code,'unapproved');break;}}
+    await untilMessage(host,m=>m.type==='lobby'&&m.pending?.length===0);guest.close();
+  }
+  host.close();
+});
+
+test('sas1 needs both temporary exchanges, preserves SDP authentication and TURN attempt binding',async()=>{
+  const host=await connect(`party/create/2/1/${crypto.randomUUID()}/sas1`),welcome=await host.next();
+  const guest=await connect(`party/join/2/${welcome.code}/${crypto.randomUUID()}/sas1`),pending=await guest.next();
+  await untilMessage(host,m=>m.type==='lobby'&&m.pending?.length===1);const request=pending.request;
+  host.send({type:'approve',request}); // Ignored until both can derive their PIN.
+  for(const [i,client,other] of [[0,host,guest],[1,guest,host]]){
+    client.send({type:'approval-pair',request,kind:'commit',value:['a','b'][i].repeat(64)});
+    const m=await untilMessage(other,m=>m.type==='approval-pair');assert.equal(m.request,request);assert.equal(m.kind,'commit');
+  }
+  for(const [client,other] of [[host,guest],[guest,host]]){
+    client.send({type:'approval-pair',request,kind:'reveal',value:{key:'04'+'a'.repeat(128),nonce:'b'.repeat(32)}});
+    assert.equal((await untilMessage(other,m=>m.type==='approval-pair')).kind,'reveal');
+  }
+  for(const [client,other] of [[host,guest],[guest,host]]){
+    client.send({type:'approval-pair',request,kind:'ready'});assert.equal((await untilMessage(other,m=>m.type==='approval-pair')).kind,'ready');
+  }
+  host.send({type:'approve',request});
+  for(const client of [host,guest]){
+    assert.equal((await untilMessage(client,m=>m.type==='approved')).request,request);
+    const m=await untilMessage(client,m=>m.type==='start');assert.equal(m.attempt,0);assert.equal(m.request,request);assert.equal(m.verification,'sas1');
+  }
+  const description={type:'offer',sdp:'bound SDP',approvalMac:'c'.repeat(64)};
+  host.send({type:'description',to:1,attempt:0,description});assert.deepEqual((await untilMessage(guest,m=>m.type==='description')).description,description);
+  const namespace=await mf.getDurableObjectNamespace('TURN_CREDENTIALS'),cache=namespace.get(namespace.idFromName('metered'));
+  await cache.fetch('https://turn/test-reset');await mf.dispatchFetch('https://signaling.test/v1/turn/ready');await cache.fetch('https://turn/test-propagated');
+  guest.send({type:'relay',to:0,attempt:0});
+  for(const client of [host,guest]){
+    const m=await untilMessage(client,m=>m.type==='start');assert.equal(m.attempt,1);assert.equal(m.request,request);assert.equal(m.verification,'sas1');
+    assert.ok(m.iceServers[0].urls.some(url=>url.startsWith('turn:')));
+  }
+  host.close();guest.close();
+});
+
+test('sas1 malformed, stale-request and premature reveal frames close only that pending guest',async()=>{
+  const host=await connect(`party/create/2/1/${crypto.randomUUID()}/sas1`),{code}=await host.next();
+  for(const kind of ['malformed','stale','premature']){
+    const guest=await connect(`party/join/2/${code}/${crypto.randomUUID()}/sas1`),welcome=await guest.next();
+    await untilMessage(host,m=>m.type==='lobby'&&m.pending?.length===1);
+    guest.send({type:'approval-pair',request:kind==='stale'?crypto.randomUUID():welcome.request,
+      kind:kind==='premature'?'reveal':'commit',value:kind==='premature'?{key:'04'+'a'.repeat(128),nonce:'b'.repeat(32)}:'bad'});
+    assert.equal((await untilMessage(guest,m=>m.type==='error')).code,kind==='stale'?'unapproved':'negotiation_failed');
+    await untilMessage(host,m=>m.type==='lobby'&&m.pending?.length===0);guest.close();
+  }
+  host.close();
+});
 for (const approval of [0,1]) test(`private approval=${approval}: admission, kick, retained host and blocked reconnect`, async () => {
   const host=await connect(`party/create/2/${approval}/${crypto.randomUUID()}`);
   const welcome=await host.next();

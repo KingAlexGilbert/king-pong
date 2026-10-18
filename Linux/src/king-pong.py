@@ -9,6 +9,7 @@ import base64
 import tempfile
 import secrets
 import math
+import time
 from pathlib import Path
 from urllib.parse import urldefrag
 
@@ -329,6 +330,7 @@ def main():
         GLib.idle_add(deliver)
     boss_audio = BossAudioCache(send_boss_audio)
     native_capability = secrets.token_hex(16)
+    qr_camera_armed_until = 0.0
     manager = WebKit2.UserContentManager.new()
     # Mark this packaged runtime so the shared game HTML can use the Linux WebKitGTK audio keep-alive only here.
     try:
@@ -432,7 +434,7 @@ def main():
 
     if bridge_registered:
         def on_script_message(_manager, message):
-            nonlocal save_file_busy
+            nonlocal save_file_busy, qr_camera_armed_until
             if urldefrag(webview.get_uri() or "")[0] != game_base_uri:
                 return
             try:
@@ -442,6 +444,9 @@ def main():
                 text = value.to_string()
                 if text == "kingpong:exit":
                     window.destroy()
+                    return
+                if text.startswith("kingpong:qr-camera:" + native_capability + ":"):
+                    qr_camera_armed_until = time.monotonic() + 30 if text.endswith(":arm") else 0.0
                     return
                 if text.startswith("kingpong:boss-audio:" + native_capability + ":"):
                     boss_audio.load(text[len("kingpong:boss-audio:" + native_capability + ":"):])
@@ -462,6 +467,10 @@ def main():
         manager.connect("script-message-received::kingpong", on_script_message)
         bridge_js = r"""
             (() => {
+                window.KingPongCamera = {
+                    arm: () => window.webkit.messageHandlers.kingpong.postMessage('kingpong:qr-camera:__NATIVE_CAPABILITY__:arm'),
+                    cancel: () => window.webkit.messageHandlers.kingpong.postMessage('kingpong:qr-camera:__NATIVE_CAPABILITY__:cancel')
+                };
                 window.KingPongNativeLan = true;
                 window.KingPongNativeBossAudio = true;
                 window.chrome = window.chrome || {};
@@ -488,7 +497,25 @@ def main():
     webview = WebKit2.WebView.new_with_user_content_manager(manager)
     webview.connect("load-changed", on_battery_page_load)
 
+    def on_qr_permission(_view, request):
+        nonlocal qr_camera_armed_until
+        if not isinstance(request, WebKit2.UserMediaPermissionRequest):
+            return False
+        allowed = (time.monotonic() < qr_camera_armed_until
+                   and urldefrag(webview.get_uri() or "")[0] == game_base_uri
+                   and request.get_property("is-for-video-device")
+                   and not request.get_property("is-for-audio-device"))
+        qr_camera_armed_until = 0.0
+        if allowed:
+            request.allow()
+        else:
+            request.deny()
+        return True
+
+    webview.connect("permission-request", on_qr_permission)
+
     def on_decide_policy(_view, decision, policy_type):
+        nonlocal qr_camera_armed_until
         if policy_type == WebKit2.PolicyDecisionType.NEW_WINDOW_ACTION:
             decision.ignore()
             return True
@@ -499,6 +526,7 @@ def main():
             if urldefrag(decision.get_request().get_uri() or "")[0] != game_base_uri:
                 decision.ignore()
                 return True
+            qr_camera_armed_until = 0.0
             lan_bridge.stop()
         return False
 
@@ -508,6 +536,7 @@ def main():
     for property_name, value in (
         ("enable-javascript", True),
         ("enable-webaudio", True),
+        ("enable-media-stream", True),  # QR camera; permission remains scoped to Scan.
         ("enable-webgl", True),
         ("enable-accelerated-2d-canvas", True),
         ("media-playback-requires-user-gesture", False),

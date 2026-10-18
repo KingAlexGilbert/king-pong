@@ -32,6 +32,7 @@ class KingPongManualRoom extends KingPongRoom {
         byId('classicLanOutput').value = btoa(JSON.stringify({...m, description}));
       }
       this.hooks.status('Exchange this text with the other device.');
+      refreshLanQr();
     } catch { this.fail('negotiation_failed'); }
   }
   decode(text, type) {
@@ -49,6 +50,10 @@ class KingPongManualRoom extends KingPongRoom {
       if (!this.connected) this.totalTimer = setTimeout(() => { if (!this.connected) this.fail('timeout'); }, 45000);
     } catch { this.hooks.status('Invalid or expired LAN answer.'); }
   }
+  close() {
+    super.close(); clearLanQr();
+    byId('classicLanOutput').value = ''; byId('classicLanInput').value = '';
+  }
   send() {}
   relay() { this.fail('timeout'); }
 }
@@ -56,6 +61,7 @@ function syncClassicApproval(lobby) {
   const session = onlineSession;
   if (lanRole !== 'host' || !session?.managed) return;
   session.pendingRequests = lobby.pending || [];
+  if (session.approvalProtocol === APPROVAL_PROTOCOL) { syncOnlineApproval(session,lobby); return; }
   const pending = session.pendingRequests[0];
   if (saveConfirmation?.roomSession === session && saveConfirmation.request &&
       !session.pendingRequests.some(p => p.request === saveConfirmation.request)) finishSaveConfirmation(false);
@@ -99,7 +105,7 @@ function syncPrivateRoomControls() {
   }
   const approval = byId('onlineRequireApproval');
   if (approval) approval.disabled = Boolean(onlineSession);
-  for (const id of ['privatePairing', 'localPairing']) if (byId(id)) byId(id).disabled = Boolean(onlineSession);
+  if (byId('localPairing')) byId('localPairing').disabled = Boolean(onlineSession);
   if (byId('localLanApproval')) byId('localLanApproval').disabled = Boolean(onlineSession);
   const powerups = byId('onlinePowerups');
   if (powerups) {
@@ -149,7 +155,7 @@ function installMultiplayerSafety() {
   const approval = document.createElement('input'); approval.type = 'checkbox'; approval.id = 'onlineRequireApproval';
   approval.checked = playerPreference('hostApprovalRequired');
   approval.addEventListener('change', () => savePlayerPreference('hostApprovalRequired', approval.checked));
-  const text = document.createElement('span'); setLocalizedText(text, 'Host approval required'); approvalLabel.append(approval, text);
+  const text = document.createElement('span'); setLocalizedText(text, 'Host Approval'); approvalLabel.append(approval, text);
   const members = document.createElement('div'); members.id = 'classicRoomMembers';
   privateRooms.append(approvalLabel, members);
   const powerups = royalButton('onlinePowerups', 'Royal Powerups: On', () => setMatchPowerups(!matchPowerupsEnabled));
@@ -198,6 +204,7 @@ function installMultiplayerSafety() {
   const output = document.createElement('textarea'); output.id = 'classicLanOutput'; output.readOnly = true; output.setAttribute('aria-label', localizeText('Copy LAN invitation or answer'));
   const manual = installLocalLanUi(classic);
   installPairingUi(privateRooms);
+  installOnlineApprovalUi(privateRooms);
   manual.append(note, royalButton('classicLanHost', 'Create invitation', () => { onlineManualLanSelected = true; onlineLocalLanSelected = false; openOnlineRoom('host'); }),
     input, royalButton('classicLanJoin', 'Create answer', () => { onlineManualLanSelected = true; onlineLocalLanSelected = false; openOnlineRoom('guest', input.value); }),
     royalButton('classicLanAccept', 'Accept answer', () => onlineSession instanceof KingPongManualRoom && onlineSession.accept(input.value)), output, royalButton('classicLanCopy', 'Copy', copyLanText),

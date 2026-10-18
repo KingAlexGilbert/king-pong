@@ -13,5 +13,8 @@ export function integrateMultiplayerPresentation(source) {
   source = source.replace('setPlayInfoVisible(true);', "setPlayInfoVisible(playerPreference('playInfoVisible'));");
   const [overlayStart, overlayEnd] = functionRange(source, 'drawOverlay');
   source = source.slice(0, overlayStart) + source.slice(overlayStart, overlayEnd).replaceAll('drawText(endMessage,', 'drawText(arenaResultMessage(endMessage),') + source.slice(overlayEnd);
+  const [bossStart, bossEnd] = functionRange(source, 'drawBossHud');
+  source = source.slice(0, bossStart) + source.slice(bossStart, bossEnd).replace(
+    /\s*ctx\.fillStyle = "rgba\(255, 255, 255, 0\.72\)";\s*drawText\(`SECRET BOSS - \$\{BOSS_LEVEL\.name\}`, W \/ 2, 62, 12\);/, '') + source.slice(bossEnd);
   return source;
 }

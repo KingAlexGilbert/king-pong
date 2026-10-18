@@ -11,7 +11,7 @@ export function signalingBridge(url) {
       if (used || event.source !== parent || event.origin !== 'null' ||
           event.data?.type !== 'king-pong-signaling' || event.ports.length !== 1) return;
       const path = event.data.path;
-      if (typeof path !== 'string' || !/^\\/v1\\/(party\\/(?:create\\/2\\/[01]\\/[a-f0-9-]{36}|join\\/2\\/[A-HJ-NP-Z2-9]{6}\\/[a-f0-9-]{36})|create|join\\/[A-HJ-NP-Z2-9]{5}|queue\\/[a-z0-9-]{1,80}|match\\/[a-f0-9-]{36}\\/[a-f0-9-]{36})$/.test(path)) return;
+      if (typeof path !== 'string' || !/^\\/v1\\/(party\\/(?:create\\/2\\/[01]\\/[a-f0-9-]{36}|join\\/2\\/[A-HJ-NP-Z2-9]{6}\\/[a-f0-9-]{36})(?:\\/sas1)?|create|join\\/[A-HJ-NP-Z2-9]{5}|queue\\/[a-z0-9-]{1,80}|match\\/[a-f0-9-]{36}\\/[a-f0-9-]{36})$/.test(path)) return;
       used = true;
       const port = event.ports[0];
       const socket = new WebSocket(location.origin.replace(/^http/, 'ws') + path);
