@@ -1034,6 +1034,21 @@ Object.entries({
   window.KING_PONG_ROYAL_TRANSLATIONS[language][key] = values[i];
 }));
 
+// QR creation starts a room using the existing offline LAN transport.
+Object.entries({
+  es: ['Crear código QR', 'Creando una sala y un código QR...', 'Cierra la conexión LAN actual antes de crear otra sala.'],
+  fr: ['Créer un code QR', 'Création d’un salon et d’un code QR...', 'Fermez la connexion LAN actuelle avant de créer un autre salon.'],
+  de: ['QR-Code erstellen', 'Raum und QR-Code werden erstellt...', 'Schließe die aktuelle LAN-Verbindung, bevor du einen weiteren Raum erstellst.'],
+  pt: ['Criar código QR', 'Criando sala e código QR...', 'Feche a conexão LAN atual antes de criar outra sala.'],
+  it: ['Crea codice QR', 'Creazione della stanza e del codice QR...', 'Chiudi la connessione LAN corrente prima di creare un’altra stanza.'],
+  nl: ['QR-code maken', 'Kamer en QR-code worden gemaakt...', 'Sluit de huidige LAN-verbinding voordat je een nieuwe kamer maakt.'],
+  ja: ['QRコードを作成', 'ルームとQRコードを作成しています...', '別のルームを作る前に現在のLAN接続を閉じてください。'],
+  ko: ['QR 코드 생성', '방과 QR 코드를 생성하는 중...', '다른 방을 만들기 전에 현재 LAN 연결을 종료하세요.'],
+  zh: ['创建二维码', '正在创建房间和二维码...', '创建其他房间前，请先关闭当前局域网连接。']
+}).forEach(([language, values]) => ['Create QR code', 'Creating a room and QR code...', 'Close the current LAN connection before creating another room.'].forEach((key, i) => {
+  window.KING_PONG_ROYAL_TRANSLATIONS[language][key] = values[i];
+}));
+
 // Online approval includes an optional, preconnection PIN comparison.
 Object.entries({
   es:['Aprobación del anfitrión','Puedes comparar este PIN con el del otro jugador. Compararlo es opcional.'],

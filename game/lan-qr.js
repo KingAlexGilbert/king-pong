@@ -1,6 +1,6 @@
 // QR is a local transfer method for existing invitations, never a new protocol
 // or evidence of authentication. Joining still uses approval and optional PINs.
-let lanQrStream = null, lanQrEpoch = 0, lanQrTimer = 0;
+let lanQrStream = null, lanQrEpoch = 0, lanQrTimer = 0, lanQrPendingHost = false;
 const LAN_QR_LIMIT = 2200;
 
 function validateLanQr(raw) {
@@ -15,7 +15,26 @@ function validateLanQr(raw) {
 }
 function lanQrStatus(message) { setLocalizedText(byId('lanQrStatus'), message); }
 function refreshLanQr() {
-  if (byId('lanQr')?.open && !byId('lanQrDisplay').hidden) showLanQr(false);
+  if (byId('lanQr')?.open && (lanQrPendingHost || !byId('lanQrDisplay').hidden)) {
+    lanQrPendingHost = false;
+    showLanQr(false);
+  }
+}
+function createLanQr() {
+  const existing = (byId('localLanAddress')?.textContent || '').split('\n').find(text => parseLocalLanInvitation(text)) ||
+    byId('classicLanOutput')?.value || '';
+  if (onlineSession && !onlineSession.closed) {
+    if (validateLanQr(existing)) { lanQrPendingHost = false; showLanQr(); return; }
+    lanQrStatus('Close the current LAN connection before creating another room.'); return;
+  }
+  // Native builds host offline TCP signaling; browsers create the existing
+  // offer/answer invitation. Neither path contacts the online signaling Worker.
+  onlineManualLanSelected = true;
+  onlineLocalLanSelected = hasNativeLan();
+  openOnlineRoom('host');
+  if (!onlineSession || onlineSession.closed) return;
+  lanQrPendingHost = true;
+  lanQrStatus('Creating a room and QR code...');
 }
 function showLanQr(scroll = true) {
   stopLanQrCamera();
@@ -29,7 +48,7 @@ function showLanQr(scroll = true) {
   });
   choice.hidden = invitations.length < 2;
   choice.value = String(Math.min(selected, Math.max(0, invitations.length - 1)));
-  const raw = invitations[Number(choice.value)] || byId('classicLanOutput')?.value || byId('lanQrInput').value;
+  const raw = invitations[Number(choice.value)] || byId('classicLanOutput')?.value || '';
   const invitation = validateLanQr(raw);
   display.replaceChildren(); display.hidden = true;
   if (!invitation) {
@@ -48,7 +67,7 @@ function showLanQr(scroll = true) {
 function acceptLanQr(raw) {
   const invitation = validateLanQr(raw);
   if (!invitation) { lanQrStatus('Invalid King Pong invitation. Scan another code or use manual entry.'); return false; }
-  stopLanQrCamera(); byId('lanQrInput').value = invitation.text;
+  stopLanQrCamera();
   if (invitation.kind === 'native') {
     if (!hasNativeLan()) {
       lanQrStatus('This local invitation requires the native King Pong app. Browser players can use manual pairing.'); return true;
@@ -110,15 +129,15 @@ async function startLanQrCamera() {
   }
 }
 function clearLanQr() {
-  stopLanQrCamera(); if (!byId('lanQr')) return;
-  byId('lanQrInput').value = ''; byId('lanQrDisplay').replaceChildren(); byId('lanQrDisplay').hidden = true;
+  stopLanQrCamera(); lanQrPendingHost = false; if (!byId('lanQr')) return;
+  byId('lanQrDisplay').replaceChildren(); byId('lanQrDisplay').hidden = true;
   byId('lanQrChoice').replaceChildren(); byId('lanQrChoice').hidden = true;
   lanQrStatus('Show or scan a QR code at any time. No internet required.');
 }
 function installLanQrUi(classic) {
   const qr = royalDisclosure('QR pairing', 'lanQr'), actions = document.createElement('div');
   actions.className = 'match-actions';
-  actions.append(royalButton('lanQrShow', 'Show QR code', () => showLanQr()),
+  actions.append(royalButton('lanQrShow', 'Create QR code', createLanQr),
     royalButton('lanQrScan', 'Scan QR code', startLanQrCamera), royalButton('lanQrStop', 'Stop camera', stopLanQrCamera));
   const status = document.createElement('p'); status.id = 'lanQrStatus'; status.className = 'match-note'; status.setAttribute('role', 'status');
   const choice = document.createElement('select'); choice.id = 'lanQrChoice'; choice.hidden = true;
@@ -126,11 +145,7 @@ function installLanQrUi(classic) {
   const display = document.createElement('div'); display.id = 'lanQrDisplay'; display.hidden = true;
   const video = document.createElement('video'); video.id = 'lanQrVideo'; video.hidden = true; video.muted = true; video.playsInline = true;
   video.setAttribute('aria-label', localizeText('QR camera preview'));
-  const manual = royalDisclosure('Manual connection', 'lanQrManual');
-  const input = document.createElement('input'); input.id = 'lanQrInput'; input.maxLength = LAN_QR_LIMIT;
-  input.autocomplete = 'off'; input.spellcheck = false; input.setAttribute('aria-label', localizeText('Invitation'));
-  manual.append(input, royalButton('lanQrUse', 'Use invitation', () => acceptLanQr(input.value)));
-  qr.append(actions, status, choice, display, video, manual); classic.append(qr);
+  qr.append(actions, status, choice, display, video); classic.append(qr);
   qr.addEventListener('toggle', () => { if (!qr.open) stopLanQrCamera(); }); clearLanQr();
 }
 document.addEventListener('visibilitychange', () => { if (document.hidden) stopLanQrCamera(); });

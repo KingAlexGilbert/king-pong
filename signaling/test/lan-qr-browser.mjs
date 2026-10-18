@@ -10,6 +10,8 @@ try {
       await p.route('https://**', route => { internet++; return route.abort(); });
     });
     p.setDefaultTimeout(8000);
+    assert.equal((await p.locator('#lanQrShow').textContent()).trim(), 'Create QR code');
+    assert.equal(await p.locator('#lanQrManual').count(), 0, 'manual pairing appears only once');
     await p.evaluate(() => {
       openOfflineLanSetup(true); byId('lanQr').open = true;
       window.invitation = localLanInvitation('192.168.1.12', 45873, 'a'.repeat(32), 'ABCD23');
@@ -28,7 +30,7 @@ try {
     });
     assert.equal(await p.evaluate(() => cameraCalls), 0);
     for (const [width, height] of [[1920,1080], [390,844], [844,390]]) {
-      await p.setViewportSize({width, height}); await p.locator('#lanQrShow').click();
+      await p.setViewportSize({width, height}); await p.evaluate(() => showLanQr());
       assert.equal(await p.evaluate(() => {
         const c = byId('lanQrDisplay').firstChild, ctx = c.getContext('2d');
         const pixels = ctx.getImageData(0,0,c.width,c.height);
@@ -57,11 +59,39 @@ try {
     assert.equal(await p.evaluate(() => acceptLanQr('https://example.com')), false);
     await p.evaluate(() => showTitleScreen());
     assert.equal(await p.locator('#lanQrDisplay canvas').count(), 0);
-    assert.equal(await p.locator('#lanQrInput').inputValue(), '');
+    await p.evaluate(() => {
+      window.lanCommands = [];
+      window.KingPongLan = {postMessage: message => lanCommands.push(JSON.parse(message))};
+      openOfflineLanSetup(true); byId('lanQr').open = true;
+    });
+    await p.locator('#lanQrShow').click();
+    await p.waitForFunction(() => lanCommands.some(command => command.op === 'host'));
+    assert.equal(await p.evaluate(() => onlineSession instanceof KingPongLocalRoom), true);
+    await p.evaluate(() => {
+      KingPongLanReceive({type: 'hosting', generation: onlineSession.generation, code: 'ABCD23',
+        port: 45873, room: 'a'.repeat(32), addresses: ['192.168.1.12'], discovery: true});
+    });
+    await p.waitForFunction(() => byId('lanQrDisplay').querySelector('canvas'));
+    assert.equal(await p.evaluate(() => {
+      const c = byId('lanQrDisplay').firstChild;
+      const p = c.getContext('2d').getImageData(0,0,c.width,c.height);
+      return jsQR(p.data,c.width,c.height)?.data;
+    }), await p.evaluate(() => localLanInvitation('192.168.1.12',45873,'a'.repeat(32),'ABCD23')));
+    await p.locator('#lanQrShow').click();
+    assert.equal(await p.evaluate(() => lanCommands.filter(command => command.op === 'host').length), 1,
+      'creating QR again reuses the existing room');
     assert.equal(internet, 0); await p.close(); console.log(`PASS ${platform} QR generation/scanning/validation/permission races`);
   }
   const p = await f.page();
   await p.evaluate(() => { openOfflineLanSetup(true); byId('lanQr').open = true; });
+  await p.locator('#lanQrShow').click();
+  await p.waitForFunction(() => byId('classicLanOutput').value.length > 0, {timeout: 8000});
+  assert.equal(await p.evaluate(() => onlineSession instanceof KingPongManualRoom), true,
+    'the browser creates an offline manual WebRTC room automatically');
+  assert.equal(await p.evaluate(() => validateLanQr(byId('classicLanOutput').value)?.kind), 'offer');
+  assert.equal(await p.locator('#lanQrDisplay canvas').count(), 1,
+    'browser QR appears automatically when the offline offer is ready');
+  await p.evaluate(() => closeLanConnection(false));
   for (const type of ['offer', 'answer']) {
     const result = await p.evaluate(type => {
       const text = btoa(JSON.stringify({protocol:'kp-lan-two-1',room:'ABCDE',nonce:'a'.repeat(36),description:{type,sdp:'v=0\r\n'+'a=example\r\n'.repeat(80)}}));

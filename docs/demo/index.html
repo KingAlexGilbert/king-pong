@@ -2807,6 +2807,30 @@ body.royal-panel-open .match-footer #controlHint {
   #matchSetup .royal-selection-row .setup-change { grid-column: 1; margin-top: 2px; text-align: left; }
 }
 
+/* Short phone landscape screens can scroll; do not crush selector previews
+   to tiny thumbnails just to fit an entire menu in one screenful. */
+@media (orientation: landscape) and (max-height: 520px) and (max-width: 920px) {
+  #matchSetup > .match-card { padding: 12px 16px; }
+  #matchSetup .match-card h2 { margin-bottom: 10px; }
+  #matchSetup .royal-selection-row button {
+    grid-template-columns: minmax(0, 1fr) minmax(72px, 96px);
+    grid-template-rows: auto auto 1fr;
+    gap: 4px 10px;
+    min-height: 100px;
+    padding: 10px;
+  }
+  #matchSetup .royal-selection-row .setup-caption { grid-column: 1; grid-row: 1; }
+  #matchSetup .royal-selection-row strong { grid-column: 1; grid-row: 2; text-align: left; }
+  #matchSetup .royal-selection-row .setup-change { grid-column: 1; grid-row: 3; }
+  #matchSetup .royal-selection-row canvas {
+    grid-column: 2;
+    grid-row: 1 / span 3;
+    width: 100%;
+    max-width: 96px;
+    height: 64px;
+  }
+}
+
 /* Use available CSS pixels, including zoom/scaled desktops. Preserve control,
    typography and preview sizes; only the containers and flow change. */
 #matchSetup > .match-card, #matchMenu > .match-card { width: min(100%, 1180px); }
@@ -4011,6 +4035,21 @@ Object.entries({
  ko: ['QR 연결','QR 코드 표시','QR 코드 스캔','카메라 중지','초대','LAN 초대 QR 코드','QR 카메라 미리 보기','수동 연결','초대 사용','언제든 QR을 표시하거나 스캔하세요. 인터넷이 필요 없습니다.','방이나 수동 초대를 만든 후 QR을 표시하세요.','초대가 QR 하나에 담기에는 너무 큽니다. 복사하여 수동 연결하세요.','King Pong에서 스캔한 후 참가하세요. 호스트 승인과 선택적 PIN 확인은 유지됩니다.','수동 연결에는 초대를 게스트에게, 답변을 호스트에게 보내는 두 QR이 필요합니다. 너무 촘촘하면 복사하세요.','잘못된 King Pong 초대입니다. 다른 코드를 스캔하거나 직접 입력하세요.','이 로컬 초대는 네이티브 앱이 필요합니다. 브라우저에서는 수동 연결을 이용하세요.','초대를 스캔했습니다. 참가를 선택해 승인을 요청하세요.','초대를 스캔했습니다. 답변을 만들고 QR을 호스트에게 보여 주세요.','답변을 스캔했습니다. 호스트에서 답변 수락을 선택하세요.','여기서는 스캔할 수 없습니다. 보안 브라우저나 수동 연결을 이용하세요.','카메라를 King Pong QR 코드에 맞추세요.','카메라를 사용할 수 없거나 권한이 거부되었습니다. 수동 연결은 가능합니다.','오리지널 보스 음악','선택 다운로드','브라우저 전체 화면 (F11)','F11 키나 브라우저의 전체 화면 버튼을 사용해 브라우저 전체 화면을 종료하세요.'],
  zh: ['二维码配对','显示二维码','扫描二维码','停止相机','邀请','局域网邀请二维码','二维码相机预览','手动连接','使用邀请','随时显示或扫描二维码，无需互联网。','创建房间或手动邀请，然后显示二维码。','邀请过长，无法放入一个二维码。请复制并手动配对。','在 King Pong 中扫描并加入。仍需主机批准和可选的 PIN 验证。','手动配对需要两个二维码：向访客发送邀请，再向主机发送回复。二维码过密时请复制。','无效的 King Pong 邀请。请扫描其他二维码或手动输入。','此本地邀请需要原生应用。浏览器玩家可以使用手动配对。','已扫描邀请。请选择加入以请求主机批准。','已扫描邀请。请创建回复并向主机显示其二维码。','已扫描回复。请在主机上选择接受回复。','此处无法扫描。请使用安全的浏览器或手动输入。','请将相机对准 King Pong 二维码。','相机不可用或权限被拒绝。仍可手动连接。','原版首领音乐','可选下载','浏览器全屏（F11）','请按 F11 或使用浏览器的全屏按钮退出浏览器全屏。']
 }).forEach(([language, values]) => ['QR pairing','Show QR code','Scan QR code','Stop camera','Invitation','LAN invitation QR code','QR camera preview','Manual connection','Use invitation','Show or scan a QR code at any time. No internet required.','Host a room or create a manual invitation, then show its QR code.','This invitation is too large for one QR code. Use Copy and manual pairing.','Scan in King Pong, then Join. Host approval and optional PIN verification still apply.','Manual pairing needs two QR codes: invitation to guest, then answer back to host. Use Copy if the code is too dense.','Invalid King Pong invitation. Scan another code or use manual entry.','This local invitation requires the native King Pong app. Browser players can use manual pairing.','Invitation scanned. Select Join to request host approval.','Invitation scanned. Create an answer, then show its QR code to the host.','Answer scanned. Select Accept answer on the host.','Camera scanning is unavailable here. Use a secure browser or manual entry.','Point the camera at a King Pong QR code.','Camera access was unavailable or denied. You can still use manual entry.','Original boss music','Optional download','Browser fullscreen (F11)','Press F11 or use your browser’s fullscreen control to exit browser fullscreen.'].forEach((key, i) => {
+  window.KING_PONG_ROYAL_TRANSLATIONS[language][key] = values[i];
+}));
+
+// QR creation starts a room using the existing offline LAN transport.
+Object.entries({
+  es: ['Crear código QR', 'Creando una sala y un código QR...', 'Cierra la conexión LAN actual antes de crear otra sala.'],
+  fr: ['Créer un code QR', 'Création d’un salon et d’un code QR...', 'Fermez la connexion LAN actuelle avant de créer un autre salon.'],
+  de: ['QR-Code erstellen', 'Raum und QR-Code werden erstellt...', 'Schließe die aktuelle LAN-Verbindung, bevor du einen weiteren Raum erstellst.'],
+  pt: ['Criar código QR', 'Criando sala e código QR...', 'Feche a conexão LAN atual antes de criar outra sala.'],
+  it: ['Crea codice QR', 'Creazione della stanza e del codice QR...', 'Chiudi la connessione LAN corrente prima di creare un’altra stanza.'],
+  nl: ['QR-code maken', 'Kamer en QR-code worden gemaakt...', 'Sluit de huidige LAN-verbinding voordat je een nieuwe kamer maakt.'],
+  ja: ['QRコードを作成', 'ルームとQRコードを作成しています...', '別のルームを作る前に現在のLAN接続を閉じてください。'],
+  ko: ['QR 코드 생성', '방과 QR 코드를 생성하는 중...', '다른 방을 만들기 전에 현재 LAN 연결을 종료하세요.'],
+  zh: ['创建二维码', '正在创建房间和二维码...', '创建其他房间前，请先关闭当前局域网连接。']
+}).forEach(([language, values]) => ['Create QR code', 'Creating a room and QR code...', 'Close the current LAN connection before creating another room.'].forEach((key, i) => {
   window.KING_PONG_ROYAL_TRANSLATIONS[language][key] = values[i];
 }));
 
@@ -14634,7 +14673,7 @@ typeof e)throw Error("bad rs block @ typeNumber:"+b+"/errorCorrectLevel:"+a);b=e
 })();
 // QR is a local transfer method for existing invitations, never a new protocol
 // or evidence of authentication. Joining still uses approval and optional PINs.
-let lanQrStream = null, lanQrEpoch = 0, lanQrTimer = 0;
+let lanQrStream = null, lanQrEpoch = 0, lanQrTimer = 0, lanQrPendingHost = false;
 const LAN_QR_LIMIT = 2200;
 
 function validateLanQr(raw) {
@@ -14649,7 +14688,26 @@ function validateLanQr(raw) {
 }
 function lanQrStatus(message) { setLocalizedText(byId('lanQrStatus'), message); }
 function refreshLanQr() {
-  if (byId('lanQr')?.open && !byId('lanQrDisplay').hidden) showLanQr(false);
+  if (byId('lanQr')?.open && (lanQrPendingHost || !byId('lanQrDisplay').hidden)) {
+    lanQrPendingHost = false;
+    showLanQr(false);
+  }
+}
+function createLanQr() {
+  const existing = (byId('localLanAddress')?.textContent || '').split('\n').find(text => parseLocalLanInvitation(text)) ||
+    byId('classicLanOutput')?.value || '';
+  if (onlineSession && !onlineSession.closed) {
+    if (validateLanQr(existing)) { lanQrPendingHost = false; showLanQr(); return; }
+    lanQrStatus('Close the current LAN connection before creating another room.'); return;
+  }
+  // Native builds host offline TCP signaling; browsers create the existing
+  // offer/answer invitation. Neither path contacts the online signaling Worker.
+  onlineManualLanSelected = true;
+  onlineLocalLanSelected = hasNativeLan();
+  openOnlineRoom('host');
+  if (!onlineSession || onlineSession.closed) return;
+  lanQrPendingHost = true;
+  lanQrStatus('Creating a room and QR code...');
 }
 function showLanQr(scroll = true) {
   stopLanQrCamera();
@@ -14663,7 +14721,7 @@ function showLanQr(scroll = true) {
   });
   choice.hidden = invitations.length < 2;
   choice.value = String(Math.min(selected, Math.max(0, invitations.length - 1)));
-  const raw = invitations[Number(choice.value)] || byId('classicLanOutput')?.value || byId('lanQrInput').value;
+  const raw = invitations[Number(choice.value)] || byId('classicLanOutput')?.value || '';
   const invitation = validateLanQr(raw);
   display.replaceChildren(); display.hidden = true;
   if (!invitation) {
@@ -14682,7 +14740,7 @@ function showLanQr(scroll = true) {
 function acceptLanQr(raw) {
   const invitation = validateLanQr(raw);
   if (!invitation) { lanQrStatus('Invalid King Pong invitation. Scan another code or use manual entry.'); return false; }
-  stopLanQrCamera(); byId('lanQrInput').value = invitation.text;
+  stopLanQrCamera();
   if (invitation.kind === 'native') {
     if (!hasNativeLan()) {
       lanQrStatus('This local invitation requires the native King Pong app. Browser players can use manual pairing.'); return true;
@@ -14744,15 +14802,15 @@ async function startLanQrCamera() {
   }
 }
 function clearLanQr() {
-  stopLanQrCamera(); if (!byId('lanQr')) return;
-  byId('lanQrInput').value = ''; byId('lanQrDisplay').replaceChildren(); byId('lanQrDisplay').hidden = true;
+  stopLanQrCamera(); lanQrPendingHost = false; if (!byId('lanQr')) return;
+  byId('lanQrDisplay').replaceChildren(); byId('lanQrDisplay').hidden = true;
   byId('lanQrChoice').replaceChildren(); byId('lanQrChoice').hidden = true;
   lanQrStatus('Show or scan a QR code at any time. No internet required.');
 }
 function installLanQrUi(classic) {
   const qr = royalDisclosure('QR pairing', 'lanQr'), actions = document.createElement('div');
   actions.className = 'match-actions';
-  actions.append(royalButton('lanQrShow', 'Show QR code', () => showLanQr()),
+  actions.append(royalButton('lanQrShow', 'Create QR code', createLanQr),
     royalButton('lanQrScan', 'Scan QR code', startLanQrCamera), royalButton('lanQrStop', 'Stop camera', stopLanQrCamera));
   const status = document.createElement('p'); status.id = 'lanQrStatus'; status.className = 'match-note'; status.setAttribute('role', 'status');
   const choice = document.createElement('select'); choice.id = 'lanQrChoice'; choice.hidden = true;
@@ -14760,11 +14818,7 @@ function installLanQrUi(classic) {
   const display = document.createElement('div'); display.id = 'lanQrDisplay'; display.hidden = true;
   const video = document.createElement('video'); video.id = 'lanQrVideo'; video.hidden = true; video.muted = true; video.playsInline = true;
   video.setAttribute('aria-label', localizeText('QR camera preview'));
-  const manual = royalDisclosure('Manual connection', 'lanQrManual');
-  const input = document.createElement('input'); input.id = 'lanQrInput'; input.maxLength = LAN_QR_LIMIT;
-  input.autocomplete = 'off'; input.spellcheck = false; input.setAttribute('aria-label', localizeText('Invitation'));
-  manual.append(input, royalButton('lanQrUse', 'Use invitation', () => acceptLanQr(input.value)));
-  qr.append(actions, status, choice, display, video, manual); classic.append(qr);
+  qr.append(actions, status, choice, display, video); classic.append(qr);
   qr.addEventListener('toggle', () => { if (!qr.open) stopLanQrCamera(); }); clearLanQr();
 }
 document.addEventListener('visibilitychange', () => { if (document.hidden) stopLanQrCamera(); });

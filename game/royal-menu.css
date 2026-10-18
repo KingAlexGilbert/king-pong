@@ -1558,6 +1558,30 @@ body.royal-panel-open .match-footer #controlHint {
   #matchSetup .royal-selection-row .setup-change { grid-column: 1; margin-top: 2px; text-align: left; }
 }
 
+/* Short phone landscape screens can scroll; do not crush selector previews
+   to tiny thumbnails just to fit an entire menu in one screenful. */
+@media (orientation: landscape) and (max-height: 520px) and (max-width: 920px) {
+  #matchSetup > .match-card { padding: 12px 16px; }
+  #matchSetup .match-card h2 { margin-bottom: 10px; }
+  #matchSetup .royal-selection-row button {
+    grid-template-columns: minmax(0, 1fr) minmax(72px, 96px);
+    grid-template-rows: auto auto 1fr;
+    gap: 4px 10px;
+    min-height: 100px;
+    padding: 10px;
+  }
+  #matchSetup .royal-selection-row .setup-caption { grid-column: 1; grid-row: 1; }
+  #matchSetup .royal-selection-row strong { grid-column: 1; grid-row: 2; text-align: left; }
+  #matchSetup .royal-selection-row .setup-change { grid-column: 1; grid-row: 3; }
+  #matchSetup .royal-selection-row canvas {
+    grid-column: 2;
+    grid-row: 1 / span 3;
+    width: 100%;
+    max-width: 96px;
+    height: 64px;
+  }
+}
+
 /* Use available CSS pixels, including zoom/scaled desktops. Preserve control,
    typography and preview sizes; only the containers and flow change. */
 #matchSetup > .match-card, #matchMenu > .match-card { width: min(100%, 1180px); }

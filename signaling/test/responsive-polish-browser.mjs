@@ -17,6 +17,10 @@ for(const [platform,path] of Object.entries(builds)) for(const [width,height,dpr
   const result=await p.evaluate(()=>{const panel=royalActiveDialog()||byId('titleScreen');return [...panel.querySelectorAll('.match-card,.royal-gallery-card,.title-card')].map(e=>({horizontal:e.scrollWidth>e.clientWidth+1,width:e.getBoundingClientRect().width,outerWidth:innerWidth,scrolls:e.scrollHeight>e.clientHeight+1}));});
   assert.ok(result.every(e=>!e.horizontal&&e.width<=width),`${platform} ${width} ${state} no horizontal clipping`);
   if(state==='online'&&width>=1280&&height>=720){const dims=await p.locator('#matchSetup > .match-card').evaluate(e=>[e.scrollHeight,e.clientHeight]);assert.ok(dims[0]<=dims[1]+1,`${platform} ${width} online does not scroll`);}
+  if(state==='online'&&height<=520&&width>height){
+   const preview=await p.locator('#matchSetup .royal-selection-row canvas').first().boundingBox();
+   assert.ok(preview?.width>=72&&preview.height>=60,`${platform} ${width} landscape keeps readable paddle and arena previews`);
+  }
   if(state==='settings'&&width>=960){const boxes=await p.locator('#matchSettings .settings-columns > section').evaluateAll(nodes=>nodes.map(e=>e.getBoundingClientRect().toJSON()));assert.equal(boxes.length,2);assert.ok(Math.abs(boxes[0].top-boxes[1].top)<2&&boxes[1].left>=boxes[0].right,'settings actually use both columns');}
   if(state==='private'){await p.locator('#onlinePowerups').scrollIntoViewIfNeeded();assert.ok(await p.locator('#onlinePowerups').isVisible());}
   if(platform==='Browser')assert.equal(await p.locator('#browserFullscreen').isVisible(),state!=='gallery','gallery controls remain unobstructed');
