@@ -33,7 +33,7 @@ class LocalLanTests(unittest.TestCase):
         s.sendall(json.dumps(message).encode()+b'\n');return s
     def test_real_discovery_and_two_way_signaling(self):
         q=queue.Queue();lan.discover(q.put,10);rooms=self.wait(q,'rooms')['rooms']
-        self.assertTrue(any(r['room']==self.info['room'] for r in rooms))
+        self.assertTrue(any(r['room']==self.info['room'] for r in rooms), f"host discovery={self.info['discovery']}; discovered rooms={rooms}")
         self.assertTrue(all('code' not in r for r in rooms))
         g,q=self.guest();self.wait(q,'joined');peer=self.wait(self.events,'peer')
         self.assertFalse(self.host.peer.approved)
@@ -69,6 +69,13 @@ class LocalLanTests(unittest.TestCase):
     def test_closed_room_releases_tcp_port(self):
         self.host.close();time.sleep(.6)
         with self.assertRaises(OSError):socket.create_connection(('127.0.0.1',self.info['port']),timeout=.5)
+    def test_closed_room_releases_udp_discovery_port(self):
+        self.assertTrue(self.info['discovery'], 'host must bind its discovery port')
+        listener = self.host.discovery_thread
+        self.host.close()
+        self.assertFalse(listener.is_alive(), 'discovery listener must exit before close returns')
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.bind(('', lan.PORT))
     def test_pending_deadline_and_message_rate(self):
         g,q=self.guest();self.wait(q,'joined');self.wait(self.events,'peer');self.host.peer.started-=61
         self.wait(self.events,'departed');self.assertIsNone(self.host.peer)

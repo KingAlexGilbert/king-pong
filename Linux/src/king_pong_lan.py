@@ -132,7 +132,7 @@ class LocalLan:
         self.emit_callback, self.generation = emit, generation
         self.closed = False
         self.host = False
-        self.peer = self.listener = self.udp = None
+        self.peer = self.listener = self.udp = self.discovery_thread = None
         self.lock = threading.RLock()
         self.blocked = set()
         self.rates = {}
@@ -162,7 +162,8 @@ class LocalLan:
         try:
             self.udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             self.udp.bind(('', PORT)); self.udp.settimeout(.5)
-            threading.Thread(target=self.discovery_loop, args=(port,), daemon=True).start()
+            self.discovery_thread = threading.Thread(target=self.discovery_loop, args=(port,), daemon=True)
+            self.discovery_thread.start()
         except OSError:
             if self.udp: self.udp.close()
             self.udp = None
@@ -293,6 +294,10 @@ class LocalLan:
         self.closed = True
         for s in (self.listener, self.udp):
             if s: s.close()
+        # A blocked recvfrom() can retain the UDP port after close() on Linux.
+        # Wait for the bounded-time listener to exit before another host binds it.
+        if self.discovery_thread and self.discovery_thread is not threading.current_thread():
+            self.discovery_thread.join(timeout=1)
         if self.peer: self.peer.close()
         self.peer = None
 
