@@ -290,6 +290,10 @@ try {
   await Promise.all([waitFor(host, "onlineMatchFlow?.phase === 'ready'"),
     waitFor(secondGuest, "onlineMatchFlow?.phase === 'ready'")]);
   console.log('PASS: replacement guest joins the retained private room and reaches Ready');
+  // The RTC channel can close before the signaling server sends 'host_left'.
+  // Keep private-room signaling alive so the guest receives that reason.
+  await secondGuest.evaluate(() => onlineControlChannel.onclose());
+  assert.equal(await secondGuest.evaluate(() => onlineSession && !onlineSession.closed && onlineGameBlocked && paused), true);
   await host.keyboard.press('Escape');
   await waitFor(secondGuest, "lanStatus.textContent.includes('Host disconnected')");
   assert.equal(await secondGuest.evaluate(() => onlineGameBlocked && paused), true);

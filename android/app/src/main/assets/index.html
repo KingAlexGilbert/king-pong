@@ -4235,9 +4235,10 @@ function openOnlineRoom(role, code = '', assignment = null) {
     message: raw => { if (onlineSession === session) handleLanMessage(raw); },
     interrupted: () => {
       if (onlineSession !== session) return;
-      // Matchmaking and guests leave a failed setup; private hosts must keep
-      // their signaling room while the server reports the departing guest.
-      if (onlineMatchFlowBlocksPlay() && !(session.managed && role === 'host')) {
+      // Matchmaking leaves a failed setup immediately. Private-room players
+      // keep signaling alive long enough to receive the authoritative departure
+      // reason (and the host keeps its reusable room code).
+      if (onlineMatchFlowBlocksPlay() && !session.managed) {
         session.fail('opponent_left'); return;
       }
       onlineGameBlocked = true;

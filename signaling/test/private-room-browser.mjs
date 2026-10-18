@@ -340,6 +340,22 @@ try {
   await waitFor(next,'royalPickup !== null');
   assert.deepEqual(await next.evaluate(()=>[royalPickup.type,royalPickup.x,royalPickup.y]),spawned);
   console.log('PASS approval off, reload persistence and peer powerup spawn synchronization');
+
+  // A private guest's RTC channel may close before the host's signaling
+  // departure reaches it. The guest must freeze, retain signaling briefly,
+  // and report the specific host departure instead of generic opponent loss.
+  const closingHost=await page();
+  await closingHost.locator('#onlineRequireApproval').uncheck();
+  await closingHost.locator('#lanHostButton').click();
+  await waitFor(closingHost,'lanRoomCode.length === 6');
+  const closingGuest=await page();
+  await closingGuest.evaluate(code=>openOnlineRoom('guest',code),await closingHost.evaluate(()=>lanRoomCode));
+  await Promise.all([waitFor(closingHost,"onlineMatchFlow?.phase === 'ready'"),waitFor(closingGuest,"onlineMatchFlow?.phase === 'ready'")]);
+  await closingGuest.evaluate(()=>onlineControlChannel.onclose());
+  assert.equal(await closingGuest.evaluate(()=>Boolean(onlineSession&&!onlineSession.closed&&onlineGameBlocked&&paused)),true);
+  await closingHost.evaluate(()=>showTitleScreen());
+  await waitFor(closingGuest,'lanLastStatus === ONLINE_ERRORS.host_left');
+  console.log('PASS private guest retains signaling until authoritative host departure');
   assert.deepEqual(errors, []);
   }
 } catch (error) {
