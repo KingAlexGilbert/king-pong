@@ -192,6 +192,12 @@ function initRoyalUi() {
       royalMenuRequested = true;
       setMenusVisible(true);
     }));
+  const onlineSetupMenu = royalButton('onlineSetupMenuButton', 'Menu (M)', () => {
+    royalMenuRequested = true;
+    setMenusVisible(true);
+  });
+  onlineSetupMenu.hidden = true;
+  setupActions.append(onlineSetupMenu);
   setup.append(setupActions);
   const setupBody = document.createElement('div');
   setupBody.id = 'matchSetupBody';
@@ -556,9 +562,8 @@ function syncRoyalUi(force = false) {
   back.classList.toggle('mode-back', onlineSetup);
   royalText(back, onlineSetup ? 'Back' : 'Menu (M)');
   modeBack.hidden = onlineSetup;
-  // In online setup, the former Menu button is a real Back control.
-  // In Custom, Local and offline LAN setup it is redundant and hidden.
-  back.hidden = !onlineSetup;
+  back.hidden = false; // Restore the setup action (Menu or online Back).
+  byId('onlineSetupMenuButton').hidden = !onlineSetup;
   byId('matchBar').classList.toggle('match-bar-paused', desktopPause);
   // Keep the toggle inside the current screen or modal's focus/inert boundary.
   if (menu && !royalLastDialog) royalReturnFocus = document.activeElement;
@@ -567,10 +572,10 @@ function syncRoyalUi(force = false) {
     if (menu || title) toggleParent.append(menuToggle);
     else toggleParent.prepend(menuToggle);
   }
-  // The global Menu (M) control is only useful inside the arena.
-  // In setup and connection flows it sits behind another overlay.
-  menuToggle.hidden = title || setup || menu || Boolean(galleryKind) ||
-    (online && !lanConnected) || onlineMatchFlowBlocksPlay();
+  // Title and open menus retain their functional Menu (M) toggle.
+  // Hide the arena toolbar toggle behind setup/connection flows.
+  menuToggle.hidden = Boolean(galleryKind) ||
+    (!title && !menu && (setup || (online && !lanConnected) || onlineMatchFlowBlocksPlay()));
   document.body.classList.toggle('royal-panel-open', setup || menu || Boolean(galleryKind));
   if (title || setup || menu || galleryKind || paused || gameOver) stopRoyalPowerupSound();
   // One source of truth for active states, including setup before any peer exists.

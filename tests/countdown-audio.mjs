@@ -40,7 +40,7 @@ for (const platform of Object.keys(builds)) {
     h.run('now++;tickPointServeCountdown();tickPointServeCountdown();');
     assert.equal(h.run('serves'), 1);
     assert.equal(h.run('pointServeCountdown'), null);
-    assert.deepEqual(h.tones(), [600,720]);
+    assert.deepEqual(h.tones(), [600,720,1040]);
     const tone = h.oscillators.find(o => o.type === 'square');
     assert.equal(tone.to.to, h.run('gameAudioBuses.get(audioCtx).sfx'), 'uses the real SFX bus');
     assert.ok(Math.abs(tone.stopAt - 1 - 0.085) < 1e-9);
@@ -63,7 +63,7 @@ for (const platform of Object.keys(builds)) {
     h.run('right.score++;applyPointServeSnapshot({pointServeMs:2000});drawPointServeCountdown();now+=1200;drawPointServeCountdown();');
     assert.deepEqual(h.tones(), [600,720,600,720]);
     h.run('waitingForServe=false;applyPointServeSnapshot({pointServeMs:0});playPointServeCountdownSound(1);');
-    assert.deepEqual(h.tones(), [600,720,600,720]);
+    assert.deepEqual(h.tones(), [600,720,600,720,1040]);
   });
 
   test(`${platform}: pausing, suspension and disconnection keep cues silent and preserve host time`, () => {
@@ -79,10 +79,10 @@ for (const platform of Object.keys(builds)) {
     assert.equal(h.run('serves'), 0);
     h.run('now++;tickPointServeCountdown();');
     assert.equal(h.run('serves'), 1);
-    assert.deepEqual(h.tones(), [600,720]);
+    assert.deepEqual(h.tones(), [600,720,1040]);
     // A point paused before its first visible frame sounds only upon resuming.
     h.run('waitingForServe=true;beginPointServeCountdown();paused=true;suspendPointServeCountdown();drawPointServeCountdown();paused=false;tickPointServeCountdown();drawPointServeCountdown();');
-    assert.deepEqual(h.tones(), [600,720,600]);
+    assert.deepEqual(h.tones(), [600,720,1040,600]);
   });
 
   test(`${platform}: mute settings, suspended/absent audio and hidden pages never queue missed steps`, () => {
