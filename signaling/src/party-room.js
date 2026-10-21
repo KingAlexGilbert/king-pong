@@ -1,3 +1,4 @@
+import { SecureRoomTransport } from './secure-relay.js';
 // Private two-player rooms share the existing ROOMS Durable Object binding.
 // Classic /v1 rooms and the two-player matchmaking queue are untouched.
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -12,8 +13,8 @@ function error(code) {
 }
 function code() { return Array.from(crypto.getRandomValues(new Uint8Array(6)), n => ALPHABET[n % 32]).join(''); }
 export async function partyRequest(url, env) {
-  const create = url.pathname.match(/^\/v1\/party\/create\/(2)\/([01])\/([a-f0-9-]{36})(?:\/(sas1))?$/);
-  const join = url.pathname.match(/^\/v1\/party\/join\/(2)\/([A-HJ-NP-Z2-9]{6})\/([a-f0-9-]{36})(?:\/(sas1))?$/);
+  const create = url.pathname.match(/^\/v1\/party\/create\/(2)\/([01])\/([a-f0-9-]{36})(?:\/(sas[12]))?$/);
+  const join = url.pathname.match(/^\/v1\/party\/join\/(2)\/([A-HJ-NP-Z2-9]{6})\/([a-f0-9-]{36})(?:\/(sas[12]))?$/);
   if (url.search || (!create && !join)) return error('incompatible');
   try {
     for (let i = 0; i < 5; i++) {
@@ -30,7 +31,7 @@ export async function partyRequest(url, env) {
 }
 
 export class PartyRoom {
-  constructor(ctx, env) { this.ctx = ctx; this.env = env; }
+  constructor(ctx, env) { this.ctx = ctx; this.env = env; this.secure = new SecureRoomTransport(ctx,env); }
   sockets() { return this.ctx.getWebSockets().filter(s => { const a = s.deserializeAttachment(); return a?.party && !a.closed; }); }
   approved() { return this.sockets().filter(s => s.deserializeAttachment().slot >= 0); }
   at(slot) { return this.approved().find(s => s.deserializeAttachment().slot === slot); }
@@ -45,12 +46,12 @@ export class PartyRoom {
       let slot = 0;
       if (action === 'create') {
         if (room || this.sockets().length) return new Response(null, {status: 409});
-        room = {code, capacity, approval: approval === '1', verification: approval === '1' && verification === 'sas1', expiresAt: Date.now() + LIFE,
+        room = {code, capacity, approval: approval === '1', verification: approval === '1' && /^sas[12]$/.test(verification), expiresAt: Date.now() + LIFE,
           blocked: [], peers: {}, started: false};
       } else {
         if (!room || !this.at(0)) return error('not_found');
         if (room.capacity !== capacity) return error('wrong_mode');
-        if (room.verification && verification !== 'sas1') return error('incompatible');
+        if (room.verification && !/^sas[12]$/.test(verification)) return error('incompatible');
         if (room.blocked.length >= 128) return error('full');
         if (room.blocked.includes(token)) return error('blocked');
         if (room.started || this.approved().length >= room.capacity || this.sockets().length >= room.capacity + 3) return error('full');
@@ -59,11 +60,11 @@ export class PartyRoom {
       }
       const {0: client, 1: server} = new WebSocketPair();
       this.ctx.acceptWebSocket(server);
-      server.serializeAttachment({party: true, token, slot, request: crypto.randomUUID(), joinedAt: Date.now(),
+      server.serializeAttachment({party: true, secureCapable: verification === 'sas2', token, slot, request: crypto.randomUUID(), joinedAt: Date.now(),
         count: 0, windowAt: Date.now(), connected: slot === 0});
       await this.save(room);
       await this.ctx.storage.setAlarm(Math.min(room.expiresAt, Date.now() + 30_000));
-      send(server, {type: 'welcome', role: slot === 0 ? 'host' : 'guest', code, capacity, slot, pending: slot < 0, approval: room.approval, verification: room.verification ? 'sas1' : null, request: slot < 0 ? server.deserializeAttachment().request : undefined, protocol: 'kp-party-1'});
+      send(server, {type: 'welcome', role: slot === 0 ? 'host' : 'guest', code, capacity, slot, pending: slot < 0, approval: room.approval, verification: room.verification ? 'sas1' : null, request: slot < 0 ? server.deserializeAttachment().request : undefined, transportVersion:1, protocol: 'kp-party-1'});
       if (slot > 0) await this.connect(room, slot);
       this.roster(room);
       return new Response(null, {status: 101, webSocket: client});
@@ -89,6 +90,9 @@ export class PartyRoom {
     await this.save(room);
     const guest = this.at(slot), host = this.at(0);
     if (!guest || !host) return;
+    if (host.deserializeAttachment().secureCapable && guest.deserializeAttachment().secureCapable) {
+      await this.secure.begin([host,guest], async state=>{room.peers[slot].secure=state; await this.save(room);}); return;
+    }
     send(host, {type: 'start', from: slot, attempt: 0, iceServers: STUN, ...(room.verification ? {verification:'sas1',request:room.peers[slot].request} : {})});
     send(guest, {type: 'start', from: 0, attempt: 0, iceServers: STUN, ...(room.verification ? {verification:'sas1',request:room.peers[slot].request} : {})});
   }
@@ -98,12 +102,20 @@ export class PartyRoom {
   async receive(socket, raw) {
     const a = socket.deserializeAttachment();
     if (!a || a.closed) return;
+    if (typeof raw === 'string' && raw.length <= 24000 && /^\{"type":"secure-(frame|credit)"/.test(raw)) {
+      let packet; try { packet=JSON.parse(raw); } catch {
+        const room=await this.ctx.storage.get('party-room');
+        if(room)await this.remove(socket,room,'negotiation_failed');return;
+      }
+      if (this.secure.frame(socket,packet)) return;
+      const room=await this.ctx.storage.get('party-room'); if(room) await this.remove(socket,room,'unauthorized'); return;
+    }
     const room = await this.ctx.storage.get('party-room');
     if (!room || room.expiresAt <= Date.now()) return this.end('expired');
     if (typeof raw !== 'string' || raw.length > 65536) return this.remove(socket, room, 'negotiation_failed');
     if (Date.now() - a.windowAt > 10000) { a.windowAt = Date.now(); a.count = 0; }
-    // Signaling only: gameplay data travels over one host/guest WebRTC connection.
-    if (++a.count > (a.slot === 0 ? 480 : 160)) return this.remove(socket, room, 'rate_limited');
+    // Signaling has its own budget; encrypted gameplay uses the bounded fast path above.
+    if (++a.count > (a.slot === 0 || a.secure ? 480 : 160)) return this.remove(socket, room, 'rate_limited');
     socket.serializeAttachment(a);
     let m;
     try { m = JSON.parse(raw); } catch { return this.remove(socket, room, 'negotiation_failed'); }
@@ -128,6 +140,12 @@ export class PartyRoom {
       for (const other of this.sockets()) if (other.deserializeAttachment().slot < 0) await this.remove(other, room, 'full');
       await this.connect(room, slot); this.roster(room); return;
     }
+    if (m.type === 'secure') {
+      const pair=room.peers[1];
+      return this.secure.control(socket,m,pair?.secure,async state=>{pair.secure=state;await this.save(room);},
+        reason=>this.remove(socket,room,reason),async()=>{room.started=true;const guest=this.at(1);if(guest)guest.serializeAttachment({...guest.deserializeAttachment(),connected:true});await this.save(room);this.roster(room);});
+    }
+    if (room.peers[1]?.secure) return this.remove(socket,room,'incompatible');
     if (!['description', 'candidate', 'relay', 'connected'].includes(m.type) || !SLOT(m.to) || m.to === a.slot ||
         (a.slot !== 0 && m.to !== 0)) return this.remove(socket, room, 'unauthorized');
     const other = this.at(m.to), slot = a.slot === 0 ? m.to : a.slot, pair = room.peers[slot];
@@ -207,6 +225,7 @@ export class PartyRoom {
     send(socket, {type: 'error', code: reason});
     try { socket.close(1000, 'Room membership ended'); } catch {}
     if (a.slot >= 0) {
+      const host=this.at(0);if(host){const h=host.deserializeAttachment();host.serializeAttachment({...h,retiredSecureId:h.secure?.id,secure:null});}
       delete room.peers[a.slot];
       room.started = false;
       for (const s of this.approved()) send(s, {type: 'departed', slot: a.slot, reason});

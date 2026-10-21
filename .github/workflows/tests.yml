@@ -18,8 +18,12 @@ concurrency:
 
 jobs:
   test:
-    name: Node and Python Tests
-    runs-on: ubuntu-latest
+    name: Node and Python Tests (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
 
     steps:
       - name: Check out repository
@@ -39,7 +43,7 @@ jobs:
         run: node --test tests/*.mjs
 
       - name: Run Python tests
-        run: python -B -m unittest discover -s tests -p 'test_*.py'
+        run: python -B -m unittest discover -s tests -p 'test_*.py' -v
 
   online:
     name: Browser Multiplayer and Signaling
@@ -72,6 +76,10 @@ jobs:
         run: npm run test:private-rooms
       - name: Test deterministic private-room admission and gameplay lifecycle
         run: npm run test:private-rooms-controlled
+      - name: Test coordinated WebRTC recovery and encrypted WebSocket fallback
+        run: node test/private-room-browser.mjs --controlled-channels --transport-recovery
+      - name: Test encrypted WebSocket backpressure and reliable controls
+        run: node test/private-room-browser.mjs --websocket-fallback --transport-faults
       - name: Test saved preferences, perspective and layout in every build
         run: npm run test:preferences
       - name: Test automatic cross-build matchmaking with real WebRTC

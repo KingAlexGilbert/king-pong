@@ -728,3 +728,19 @@ Object.entries({
 ['es','fr','de','pt','it','nl','ja','ko','zh'].forEach((language,i)=> {
  window.KING_PONG_ONLINE_TRANSLATIONS[language]["Public matches use powerups only when both players choose On. Private rooms use the host’s choice."] = ["Las partidas públicas usan poderes solo si ambos jugadores eligen Sí. En salas privadas decide el anfitrión.", "Les pouvoirs sont activés en partie publique si les deux joueurs le souhaitent. En privé, l’hôte décide.", "Öffentliche Spiele nutzen Powerups nur, wenn beide sie einschalten. In privaten Räumen entscheidet der Host.", "Partidas públicas usam poderes somente se ambos ativarem. Nas salas privadas, o anfitrião decide.", "Le partite pubbliche usano i poteri solo se entrambi li attivano. Nelle stanze private decide l’host.", "Openbare wedstrijden gebruiken powerups als beide spelers ze inschakelen. In privéruimtes beslist de host.", "公開対戦では両者がオンを選んだ場合のみパワーアップが有効です。非公開ルームではホストが決定します。", "공개 경기에서는 두 플레이어가 모두 켜기를 선택해야 파워업이 활성화됩니다. 비공개 방에서는 호스트가 결정합니다.", "公开对战仅在双方均选择开启时启用强化。私人房间由房主决定。"][i];
 });
+
+// Coarse transport diagnostics; only these labels, never network addresses.
+(() => {
+  const languages=['es','fr','de','pt','it','nl','ja','ko','zh'];
+  const direct=['WebRTC directo','WebRTC direct','Direktes WebRTC','WebRTC direto','WebRTC diretto','Directe WebRTC','直接WebRTC接続','직접 WebRTC','直连 WebRTC'];
+  const turn=['Retransmisión TURN','Relais TURN','TURN-Relay','Retransmissão TURN','Relay TURN','TURN-relay','TURNリレー','TURN 릴레이','TURN 中继'];
+  const ws=['Retransmisión WebSocket','Relais WebSocket','WebSocket-Relay','Retransmissão WebSocket','Relay WebSocket','WebSocket-relay','WebSocketリレー','WebSocket 릴레이','WebSocket 中继'];
+  languages.forEach((language,i)=>{
+    const table=window.KING_PONG_ONLINE_TRANSLATIONS[language];
+    table['WebSocket relay']=ws[i];table['Direct WebRTC']=direct[i];table['TURN relay']=turn[i];
+    for(const family of ['IPv4','IPv6'])table['Direct WebRTC — '+family]=direct[i]+' — '+family;
+    for(const protocol of ['UDP','TCP','TLS'])table['TURN relay — '+protocol]=turn[i]+' — '+protocol;
+    table['Metered TURN']='Metered · '+turn[i];
+    for(const protocol of ['UDP','TCP','TLS'])table['Metered TURN — '+protocol]='Metered · '+turn[i]+' — '+protocol;
+  });
+})();

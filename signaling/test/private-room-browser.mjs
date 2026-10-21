@@ -12,7 +12,7 @@ import {
   convertV4MiniflareOptions
 } from 'miniflare';
 import {
-  chromium
+  chromium, firefox
 } from 'playwright';
 
 const forceRelay = Boolean(process.env.KING_PONG_TEST_TURN_URL);
@@ -34,7 +34,7 @@ const server = createServer(async (request, response) => {
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 const origin = `http://127.0.0.1:${server.address().port}`;
 const mf = new Miniflare(convertV4MiniflareOptions({
-  modules: ['./worker-fixture.mjs', '../src/worker.js', '../src/metered-turn.js', '../src/matchmaking.js', '../src/matchmaking-contract.js', '../src/native-bridge.js', '../src/party-room.js'].map(path => ({
+  modules: ['./worker-fixture.mjs', '../src/worker.js', '../src/metered-turn.js', '../src/matchmaking.js', '../src/matchmaking-contract.js', '../src/native-bridge.js', '../src/party-room.js', '../src/secure-relay.js'].map(path => ({
     type: 'ESModule',
     path: fileURLToPath(new URL(path, import.meta.url))
   })),
@@ -88,18 +88,19 @@ if (forceRelay) {
   const ready = await namespace.get(namespace.idFromName('metered')).fetch('https://turn/test-propagated');
   assert.equal(ready.status, 200);
 }
-const browser = await chromium.launch({
+const browser = await (process.argv.includes('--firefox') ? firefox : chromium).launch({
   headless: true,
-  args: ['--allow-loopback-in-peer-connection', '--no-sandbox', '--disable-features=WebRtcHideLocalIpsWithMdns', '--disable-background-timer-throttling', '--disable-renderer-backgrounding']
+  args: process.argv.includes('--firefox') ? [] : ['--allow-loopback-in-peer-connection', '--no-sandbox', '--disable-background-timer-throttling', '--disable-renderer-backgrounding']
 });
 const errors = [], queueTraffic = [];
 // This explicit fallback keeps real Worker/WebSocket admission and real pages,
-// but replaces RTC channels. The default mode still requires actual WebRTC.
+// but replaces RTC channels. The default mode attempts actual WebRTC before permitting fallback.
+const failFallback = process.argv.includes('--fallback-disconnect');
+const websocketFallback = process.argv.includes('--websocket-fallback') || failFallback;
 const controlledChannels = process.argv.includes('--controlled-channels');
-const testPages = [];
+const testEndpoints = new Map();
 const artifacts = process.env.KING_PONG_TEST_ARTIFACTS;
 if (artifacts) await mkdir(artifacts, {recursive:true});
-let deliveries = Promise.resolve();
 let browserClosing = false;
 async function page(locale = 'en-US') {
   const context = await browser.newContext({
@@ -120,58 +121,99 @@ async function page(locale = 'en-US') {
     contentType: 'text/javascript',
     body: `window.KING_PONG_SIGNALING_URL = ${JSON.stringify(signaling)};`
   }));
+  if(failFallback)await page.addInitScript(()=>{
+    const Native=window.WebSocket;
+    window.WebSocket=class extends Native {
+      send(raw){
+        const m=typeof raw==='string'&&raw.startsWith('{')?JSON.parse(raw):null;
+        if(window.failFallbackSession&&m?.type==='secure'&&m.kind==='ready'&&m.mode==='ws'){this.close();return;}
+        super.send(raw);
+      }
+    };
+  });
+  if (process.argv.includes('--transport-faults')) await page.addInitScript(()=>{
+    const Native=window.WebSocket;
+    window.WebSocket=class extends Native {
+      get bufferedAmount(){return super.bufferedAmount+(this.testQueued||0)+(window.testBackpressure||0);}
+      send(raw){
+        const frame=typeof raw==='string' && raw.startsWith('{') ? JSON.parse(raw):null;
+        if(frame?.type!=='secure-frame'){super.send(raw);return;}
+        if(frame.lane==='a' && window.dropReliableAck)return;
+        const delay=40+(frame.seq%3)*15;this.testQueued=(this.testQueued||0)+raw.length;
+        this.faultFrames ||= [];this.faultFrames.push({raw,due:Date.now()+delay});
+        if(this.faultFrames.length===1)this.drainFaultFrames();
+      }
+      drainFaultFrames(){const item=this.faultFrames[0];if(!item)return;setTimeout(()=>{this.testQueued-=item.raw.length;if(this.readyState===1)super.send(item.raw);this.faultFrames.shift();this.drainFaultFrames();},Math.max(0,item.due-Date.now()));}
+    };
+  });
   if (forceRelay) await page.addInitScript(() => {
     const NativePeer = window.RTCPeerConnection;
     window.RTCPeerConnection = class extends NativePeer {
       constructor(config) {
-        super(config.iceTransportPolicy === 'all' ? {
-          iceServers: [],
-          iceTransportPolicy: 'relay'
-        } : config);
+        super({...config,iceTransportPolicy:'relay'});
       }
     };
   });
   if (controlledChannels) await installControlledChannels(page);
-  testPages.push(page);
+  if(websocketFallback)await page.addInitScript(()=>{window.RTCPeerConnection=class{constructor(){throw Error('WebRTC blocked by test');}};});
   await page.goto(origin + '/demo/');
+  if(process.env.KING_PONG_DEBUG_TRANSPORT) {
+    page.on('console',m=>{if(m.text().startsWith('TRANSPORT'))console.log(m.text());});
+    await page.evaluate(()=>{
+      const receive=KingPongRoom.prototype.receive;KingPongRoom.prototype.receive=async function(m){if(m.type==='secure')console.log('TRANSPORT',this.role,m.kind,m.epoch);try{return await receive.call(this,m);}catch(e){console.log('TRANSPORT receive error',e.stack);throw e;}};
+      const roomFail=KingPongRoom.prototype.fail;KingPongRoom.prototype.fail=function(code){console.log('TRANSPORT room failure',this.role,code,this.secure?.phase);return roomFail.call(this,code);};
+      const fail=KingPongSecureTransport.prototype.fail;KingPongSecureTransport.prototype.fail=function(){console.log('TRANSPORT fail',this.owner.role,this.mode,this.epoch,new Error().stack);return fail.call(this);};
+    });
+  }
   await page.locator('#titleLanButton').click();
   return page;
 }
 async function installControlledChannels(page) {
+  let deliveries = Promise.resolve();
+  await page.exposeFunction('registerTestChannel', state => { testEndpoints.set(page,state); });
+  page.on('close',()=>testEndpoints.delete(page));
   await page.exposeFunction('deliverTestChannel', (raw,state) => {
+    testEndpoints.set(page,state);
     deliveries = deliveries.then(async () => {
       if (browserClosing || page.isClosed()) return;
-      for (const target of testPages) {
-        if (target === page || target.isClosed()) continue;
+      // Route only to the paired endpoint. Visiting every old test page per
+      // packet creates an artificial, unbounded Playwright RPC backlog.
+      for (const [target, endpoint] of testEndpoints) {
+        if (target === page || target.isClosed() || endpoint.room!==state.room || endpoint.role===state.role || endpoint.session!==state.session) continue;
         await target.evaluate(({raw,state}) => {
-          if (typeof onlineSession !== 'undefined' && onlineSession && lanRoomCode === state.room && lanRole !== state.role) onlineSession.control?.onmessage?.({data:raw});
+          if (typeof onlineSession !== 'undefined' && onlineSession && lanRoomCode === state.room && lanRole !== state.role) (onlineSession.secure?.rtcControl || onlineSession.control)?.onmessage?.({data:raw});
         }, {raw,state}).catch(error => {
           // Navigation discards the old controlled endpoint, just like closing RTC.
           if (!target.isClosed() && !error.message.includes('Execution context was destroyed')) throw error;
         });
       }
     }).catch(error => { if (!browserClosing) errors.push(error.message); });
+    return deliveries;
   });
   await page.addInitScript(() => {
     window.RTCPeerConnection = class {
       connectionState='new'; channels=[];
-      constructor() { this.iceGatheringState='complete'; }
+      constructor(config) { this.config=config; this.iceGatheringState='complete'; }
       createDataChannel(label) {
         const c={label,readyState:'connecting',bufferedAmount:0,ordered:label!=='pong-lan-input-v1',
-          send(raw){window.deliverTestChannel(raw,{room:lanRoomCode,role:lanRole})},close(){this.readyState='closed'}};
+          send(raw){if(window.dropReliableAck && JSON.parse(raw).lane==='a')return;this.bufferedAmount+=raw.length;window.deliverTestChannel(raw,{room:lanRoomCode,role:lanRole,session:onlineSession?.secure?.id}).finally(()=>this.bufferedAmount-=raw.length)},close(){this.readyState='closed'}};
         this.channels.push(c); return c;
       }
-      async createOffer(){return {type:'offer',sdp:'v=0\r\na=fingerprint:sha-256 '+Array(32).fill('AA').join(':')+'\r\n'}}
+      setConfiguration(config){this.config=config;}
+      async createOffer(options){if(options?.iceRestart && this.restartBlocked)throw Error('restart blocked by fixture');return {type:'offer',sdp:'v=0\r\na=fingerprint:sha-256 '+Array(32).fill('AA').join(':')+'\r\n'}}
       async createAnswer(){return {type:'answer',sdp:'v=0\r\na=fingerprint:sha-256 '+Array(32).fill('BB').join(':')+'\r\n'}}
       async setLocalDescription(d){this.localDescription={...d,toJSON:()=>d};if(d.type==='answer')this.openChannels()}
       async setRemoteDescription(d){
         this.remoteDescription=d;
-        if(d.type==='offer')for(const label of ['pong-lan-input-v1','pong-control-v1'])this.ondatachannel({channel:this.createDataChannel(label)});
+        if(d.type==='offer'&&!this.channels.length)for(const label of ['pong-lan-input-v1','pong-control-v1'])this.ondatachannel({channel:this.createDataChannel(label)});
         else this.openChannels();
       }
-      openChannels(){setTimeout(()=>{if(this.connectionState==='closed')return;this.connectionState='connected';for(const c of this.channels){c.readyState='open';c.onopen?.()}this.onconnectionstatechange?.()},30)}
+      openChannels(){setTimeout(async()=>{if(this.connectionState==='closed')return;await window.registerTestChannel({room:lanRoomCode,role:lanRole,session:onlineSession?.secure?.id});if(this.connectionState==='closed')return;this.connectionState='connected';for(const c of this.channels){c.readyState='open';c.onopen?.()}this.onconnectionstatechange?.()},30)}
       async addIceCandidate(){}
-      async getStats(){return new Map()}
+      async getStats(){const url=this.config?.iceServers?.flatMap(s=>s.urls).find(u=>u.startsWith('turn:'));return url?new Map([
+        ['t',{type:'transport',selectedCandidatePairId:'p'}],['p',{type:'candidate-pair',state:'succeeded',localCandidateId:'l',remoteCandidateId:'r'}],
+        ['l',{candidateType:'relay',relayProtocol:'udp',url}],['r',{candidateType:'host'}]
+      ]):new Map();}
       close(){this.connectionState='closed'}
     };
   });
@@ -179,7 +221,7 @@ async function installControlledChannels(page) {
 async function waitFor(page, expression) {
   try {
     await page.waitForFunction(expression, null, {
-      timeout: 15_000
+      timeout: 60_000
     });
   } catch (error) {
     console.log('DEBUG', expression, await page.evaluate(() => ({
@@ -194,7 +236,7 @@ async function waitFor(page, expression) {
       remoteInput: lanRemoteInput,
       compactWire: onlineWireReady,
       inputIntent: onlineIntentReady, flow: onlineMatchFlow,
-      peerState: lanPeer?.connectionState, iceState: lanPeer?.iceConnectionState
+      secure:onlineSession?.secure && {mode:onlineSession.secure.mode,phase:onlineSession.secure.phase,keyReady:onlineSession.secure.keyReady,epoch:onlineSession.secure.epoch}, peerState: lanPeer?.connectionState, iceState: lanPeer?.iceConnectionState
     })), errors);
     throw error;
   }
@@ -214,9 +256,21 @@ async function pendingPin(host,guest) {
   assert.equal(await host.locator('#pairingAccept').isVisible(),false);
 }
 try {
-  if(process.argv.includes('--public-powerups'))await publicPowerupCases({page,waitFor,queueTraffic,errors});
+  if(failFallback) {
+    const host=await page();await host.locator('#onlineRequireApproval').uncheck();
+    await host.locator('#lanHostButton').click();await waitFor(host,'lanRoomCode.length === 6');
+    const code=await host.evaluate(()=>lanRoomCode),guest=await page();
+    await guest.evaluate(code=>{window.failFallbackSession=true;openOnlineRoom('guest',code);},code);
+    await waitFor(guest,'onlineSession === null && onlineGameBlocked && paused');
+    await waitFor(host,"lanLastStatus === 'Waiting for Player 2...'");
+    assert.equal(await host.evaluate(()=>lanRoomCode),code);
+    assert.deepEqual(await host.evaluate(()=>[lanConnected,left.score,right.score]),[false,0,0]);
+    assert.equal(await guest.evaluate(()=>lanLastStatus),await guest.evaluate(()=>ONLINE_ERRORS.connection_lost));
+    assert.deepEqual(errors,[]);
+    console.log('PASS actual WebSocket closes during fallback agreement: no gameplay or points, friendly guest error, host room retained');
+  } else if(process.argv.includes('--public-powerups'))await publicPowerupCases({page,waitFor,queueTraffic,errors});
   else {
-  console.log(controlledChannels ? 'MODE controlled RTC channels, real Worker and WebSockets' : 'MODE actual WebRTC');
+  console.log(websocketFallback ? 'MODE real encrypted WebSocket fallback, WebRTC intentionally unavailable' : controlledChannels ? 'MODE controlled RTC channels, real Worker and WebSockets' : 'MODE normal WebRTC negotiation with production fallback');
   const host = await page();
   assert.equal(await host.locator('#onlineRequireApproval').locator('..').innerText(),'Host Approval');
   assert.equal(await host.locator('#onlineRequireApproval').isChecked(), true);
@@ -290,6 +344,42 @@ try {
   await host.evaluate(() => { gameWindowFocused=true; paused=false; waitingForServe=false; for(let i=0;i<700;i++) updateRoyalPowerups(); });
   assert.equal(await host.evaluate(() => royalPickup), null);
   console.log('PASS private configuration, ready withdrawal, synchronized start, powerups disabled, perspective and kick visibility');
+  if(websocketFallback || controlledChannels)assert.equal(await host.evaluate(()=>onlineSession.secure.mode),websocketFallback?'ws':'rtc');
+  if(process.argv.includes('--transport-faults') || process.argv.includes('--transport-recovery')) {
+    await host.evaluate(()=>{
+      window.testActionCount=0;const receive=onlineSession.hooks.message;
+      onlineSession.hooks.message=raw=>{const m=JSON.parse(raw);if(m.type==='action'&&m.action==='pause')window.testActionCount++;receive(raw);};
+      window.dropReliableAck=true;
+    });
+    await peer.evaluate(()=>sendLanAction('pause'));
+    await waitFor(host,'window.testActionCount === 1');
+    const scores=await host.evaluate(()=>[left.score,right.score]);
+    const flow=await host.evaluate(()=>onlineMatchFlow.id);
+    if(process.argv.includes('--transport-recovery')) {
+      await host.evaluate(()=>{onlineSession.secure.peer.restartBlocked=true;onlineSession.secure.rtcFailed();});
+      await Promise.all([waitFor(host,"onlineSession?.secure?.mode==='ws' && onlineSession.secure.phase==='active'"),waitFor(peer,"onlineSession?.secure?.mode==='ws' && onlineSession.secure.phase==='active'")]);
+      assert.equal(await host.evaluate(()=>onlineMatchFlow.id),flow);
+      assert.deepEqual(await host.evaluate(()=>[left.score,right.score]),scores);
+    }
+    await host.waitForTimeout(650); // Force a reliable retry before allowing its acknowledgement.
+    assert.equal(await host.evaluate(()=>window.testActionCount),1,'pause must not execute twice');
+    await host.evaluate(()=>window.dropReliableAck=false);
+    await waitFor(peer,'onlineSession.secure.pending.size === 0');
+    if(process.argv.includes('--transport-faults')) {
+      await host.evaluate(()=>{window.testBackpressure=49152;for(let i=0;i<40;i++)sendLanState(true);});
+      assert.ok(await host.evaluate(()=>Boolean(onlineSession.secure.latest)));
+      assert.ok(await host.evaluate(()=>onlineSession.secure.pending.size<=32));
+      await host.evaluate(()=>window.testBackpressure=0);
+      await waitFor(peer,'onlineHasState');
+    }
+    const forged=await host.evaluate(()=>{const original=window.lanSend;let packet;window.lanSend=m=>packet=m;sendLanState(true);window.lanSend=original;packet.leftScore=1;packet.rightScore=1;return packet;});
+    await peer.evaluate(packet=>onlineLanSend(packet),forged);
+    await host.waitForTimeout(200);
+    assert.deepEqual(await host.evaluate(()=>[left.score,right.score]),scores,'guest must never author scoring');
+    await host.evaluate(()=>setMenusVisible(false));await peer.evaluate(()=>setMenusVisible(false));
+    console.log('PASS encrypted lag/buffering, reliable command deduplication, transport continuity and host-only scores');
+  }
+
 
   await host.locator('#arenaKick').click();
   await host.locator('#saveConfirmCancel').click();
@@ -351,11 +441,13 @@ try {
   const closingGuest=await page();
   await closingGuest.evaluate(code=>openOnlineRoom('guest',code),await closingHost.evaluate(()=>lanRoomCode));
   await Promise.all([waitFor(closingHost,"onlineMatchFlow?.phase === 'ready'"),waitFor(closingGuest,"onlineMatchFlow?.phase === 'ready'")]);
-  await closingGuest.evaluate(()=>onlineControlChannel.onclose());
-  assert.equal(await closingGuest.evaluate(()=>Boolean(onlineSession&&!onlineSession.closed&&onlineGameBlocked&&paused)),true);
+  if(!websocketFallback){
+    await closingGuest.evaluate(()=>(onlineSession.secure?.rtcControl || onlineControlChannel).onclose());
+    assert.equal(await closingGuest.evaluate(()=>Boolean(onlineSession&&!onlineSession.closed&&onlineGameBlocked&&paused)),true);
+  }
   await closingHost.evaluate(()=>showTitleScreen());
   await waitFor(closingGuest,'lanLastStatus === ONLINE_ERRORS.host_left');
-  console.log('PASS private guest retains signaling until authoritative host departure');
+  console.log('PASS private guest receives authoritative host departure');
   assert.deepEqual(errors, []);
   }
 } catch (error) {

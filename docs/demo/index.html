@@ -14170,9 +14170,15 @@ function installMultiplayerSafety() {
     syncPrivateRoomControls();
     if (!onlineSession?.managed) members.replaceChildren();
     approval.disabled = Boolean(onlineSession);
+    if(routeBox.checked && onlineSession?.secure?.mode==='ws' && lanConnected && !document.hidden){setLocalizedText(route,'WebSocket relay');return;}
     if (!routeBox.checked || !lanPeer || !lanConnected || document.hidden) { route.textContent = ''; return; }
     if (statsBusy) return; statsBusy = true; const peer = lanPeer;
-    try { const label = kingPongRoute(await peer.getStats()); if (lanPeer === peer) setLocalizedText(route, label); } catch { setLocalizedText(route, 'Unknown'); }
+    try {
+      const details=kingPongTransportDetails(await peer.getStats(),onlineSession?.secure?.turnProviders);
+      const turn=details.provider==='metered'?'Metered TURN':'TURN relay';
+      const label=details.transport==='direct' ? 'Direct WebRTC'+(details.family==='unknown'?'':' — '+details.family) : details.transport==='turn' ? turn+(details.relayProtocol==='unknown'?'':' — '+details.relayProtocol.toUpperCase()) : 'Unknown';
+      if (lanPeer === peer) setLocalizedText(route, label);
+    } catch { setLocalizedText(route, 'Unknown'); }
     finally { statsBusy = false; }
   }, 2000);
   const classic = royalDialog('classicLanDialog', 'LAN Play');

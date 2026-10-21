@@ -8,12 +8,23 @@ import threading
 import time
 import unittest
 from pathlib import Path
-spec=importlib.util.spec_from_file_location('king_pong_lan',Path(__file__).parents[1]/'Linux/src/king_pong_lan.py')
-lan=importlib.util.module_from_spec(spec);spec.loader.exec_module(lan)
+def load_lan():
+    # Import on demand. Pure protocol/bridge helpers are portable; Linux ioctl
+    # imports live inside addresses()/discover(), never at module import time.
+    spec = importlib.util.spec_from_file_location('king_pong_lan', Path(__file__).parents[1] / 'Linux/src/king_pong_lan.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
+
+@unittest.skipUnless(sys.platform.startswith('linux'), 'Linux interface discovery requires fcntl/ioctl')
 class LocalLanTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.lan = load_lan()
+
     def setUp(self):
-        self.events=queue.Queue();self.host=lan.LocalLan(self.events.put,1);self.host.start_host()
+        self.events=queue.Queue();self.host=self.lan.LocalLan(self.events.put,1);self.host.start_host()
         self.info=self.wait(self.events,'hosting');self.peers=[]
     def tearDown(self):
         for p in self.peers:p.close()
@@ -25,14 +36,14 @@ class LocalLanTests(unittest.TestCase):
             if event['type']==kind:return event
         self.fail(kind)
     def guest(self,code=None,token=None):
-        q=queue.Queue();g=lan.LocalLan(q.put,2);self.peers.append(g)
+        q=queue.Queue();g=self.lan.LocalLan(q.put,2);self.peers.append(g)
         threading.Thread(target=g.join,args=('127.0.0.1',self.info['port'],code or self.info['code'],self.info['room'],token or secrets.token_hex(16)),daemon=True).start()
         return g,q
     def raw(self,message):
         s=socket.create_connection(('127.0.0.1',self.info['port']),timeout=2);self.peers.append(s)
         s.sendall(json.dumps(message).encode()+b'\n');return s
     def test_real_discovery_and_two_way_signaling(self):
-        q=queue.Queue();lan.discover(q.put,10);rooms=self.wait(q,'rooms')['rooms']
+        q=queue.Queue();self.lan.discover(q.put,10);rooms=self.wait(q,'rooms')['rooms']
         self.assertTrue(any(r['room']==self.info['room'] for r in rooms), f"host discovery={self.info['discovery']}; discovered rooms={rooms}")
         self.assertTrue(all('code' not in r for r in rooms))
         g,q=self.guest();self.wait(q,'joined');peer=self.wait(self.events,'peer')
@@ -61,11 +72,6 @@ class LocalLanTests(unittest.TestCase):
     def test_version_and_oversized_frames(self):
         for data in [dict(v=2,type='join'),dict(v=1,type='join',junk='x'*66000)]:
             s=self.raw(data);self.assertEqual(s.recv(4096),b'')
-    def test_bad_signaling_direction_and_empty_ice(self):
-        self.assertFalse(lan.valid_signal(dict(type='description',description=dict(type='offer',sdp='v=0')),False))
-        self.assertFalse(lan.valid_signal(dict(type='start',iceServers=[{'urls':'stun:example.com'}]),True))
-        self.assertFalse(lan.valid_signal(dict(type='candidate',candidate={'candidate':'x'*4097}),False))
-        self.assertFalse(lan.local_ip('8.8.8.8'));self.assertFalse(lan.local_ip('localhost'));self.assertFalse(lan.local_ip('::1'))
     def test_closed_room_releases_tcp_port(self):
         self.host.close();time.sleep(.6)
         with self.assertRaises(OSError):socket.create_connection(('127.0.0.1',self.info['port']),timeout=.5)
@@ -75,7 +81,7 @@ class LocalLanTests(unittest.TestCase):
         self.host.close()
         self.assertFalse(listener.is_alive(), 'discovery listener must exit before close returns')
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-            s.bind(('', lan.PORT))
+            s.bind(('', self.lan.PORT))
     def test_pending_deadline_and_message_rate(self):
         g,q=self.guest();self.wait(q,'joined');self.wait(self.events,'peer');self.host.peer.started-=61
         self.wait(self.events,'departed');self.assertIsNone(self.host.peer)
@@ -85,9 +91,21 @@ class LocalLanTests(unittest.TestCase):
             reply=json.loads(s.recv(1024));self.assertEqual(reply['code'],'invalid_code' if n<8 else 'rate_limited')
             s.close()
 
+class PortableLanProtocolTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.lan = load_lan()
+
+    def test_bad_signaling_direction_and_empty_ice(self):
+        self.assertFalse(self.lan.valid_signal(dict(type='description',description=dict(type='offer',sdp='v=0')),False))
+        self.assertFalse(self.lan.valid_signal(dict(type='start',iceServers=[{'urls':'stun:example.com'}]),True))
+        self.assertFalse(self.lan.valid_signal(dict(type='candidate',candidate={'candidate':'x'*4097}),False))
+        self.assertFalse(self.lan.local_ip('8.8.8.8'));self.assertFalse(self.lan.local_ip('localhost'));self.assertFalse(self.lan.local_ip('::1'))
+
 class BridgeLifecycleTests(unittest.TestCase):
     def test_stop_discards_queued_host_but_allows_new_generation(self):
         from unittest.mock import patch
+        lan = load_lan()
         entered = threading.Event(); release = threading.Event(); stopped = threading.Event()
         rooms = []
         class Room:

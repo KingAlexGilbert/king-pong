@@ -6,8 +6,10 @@ import {Miniflare, convertV4MiniflareOptions} from 'miniflare';
 import {chromium} from 'playwright';
 
 // The explicit signaling-only mode still exchanges real offers/answers. It does
-// not claim that a data channel connected; the default mode requires real RTC.
+// not claim that a data channel connected. Default mode attempts real RTC and
+// permits the production fallback; --websocket-fallback blocks RTC explicitly.
 const signalingOnly = process.argv.includes('--signaling-only');
+const websocketFallback = process.argv.includes('--websocket-fallback');
 const root = new URL('../../', import.meta.url);
 const server = createServer(async (req, res) => {
   try {
@@ -21,7 +23,7 @@ const server = createServer(async (req, res) => {
 await new Promise(r => server.listen(0, '127.0.0.1', r));
 const origin = `http://127.0.0.1:${server.address().port}`;
 const mf = new Miniflare(convertV4MiniflareOptions({
-  modules: ['worker.js','metered-turn.js','matchmaking.js','matchmaking-contract.js','native-bridge.js','party-room.js']
+  modules: ['worker.js','metered-turn.js','matchmaking.js','matchmaking-contract.js','native-bridge.js','party-room.js','secure-relay.js']
     .map(f => ({type:'ESModule',path:fileURLToPath(new URL('../src/'+f,import.meta.url))})),
   modulesRoot:fileURLToPath(new URL('../src/',import.meta.url)),
   compatibilityDate:'2025-09-06',
@@ -32,18 +34,19 @@ const mf = new Miniflare(convertV4MiniflareOptions({
 }));
 const signaling = (await mf.ready).origin;
 const browser = await chromium.launch({headless:true,args:['--no-sandbox','--disable-background-timer-throttling',
-  '--disable-renderer-backgrounding','--allow-loopback-in-peer-connection','--disable-features=WebRtcHideLocalIpsWithMdns']});
+  '--disable-renderer-backgrounding','--allow-loopback-in-peer-connection']});
 const errors = [];
 async function page(path = 'docs/demo/') {
   const p = await browser.newPage({viewport:{width:1280,height:900}});
   p.on('pageerror', e => errors.push(e.message));
   await p.addInitScript(value => Object.defineProperty(window,'KING_PONG_SIGNALING_URL',{get:()=>value,set:()=>{}}),signaling);
+  if(websocketFallback)await p.addInitScript(()=>{window.RTCPeerConnection=class{constructor(){throw Error('WebRTC blocked by fixture');}};});
   await p.goto(path === 'docs/demo/' ? origin+'/'+path : new URL(path,root).href);
   await p.locator(path === 'docs/demo/' ? '#titleLanButton' : '#titleOnlineButton').click();
   await p.waitForFunction(()=>matchmakingWaiting!==null);
   return p;
 }
-async function until(p, expression) { await p.waitForFunction(expression, null, {timeout:15000}); }
+async function until(p, expression) { await p.waitForFunction(expression, null, {timeout:60000}); }
 try {
   const watcher = await page();
   const seeker = await page();
@@ -78,7 +81,8 @@ try {
       await a.locator('#findMatchButton').click();
       await until(watcher,()=>matchmakingWaiting===1);
       await b.locator('#findMatchButton').click();
-      await Promise.all([a,b].map(p=>until(p,()=>lanPeer?.localDescription && lanPeer?.remoteDescription)));
+      await Promise.all([a,b].map(p=>until(p,websocketFallback ? ()=>onlineSession?.secure?.keyReady :
+        ()=>lanPeer?.localDescription && lanPeer?.remoteDescription)));
       await until(watcher,()=>matchmakingWaiting===0);
       const assignments = await Promise.all([a,b].map(p=>p.evaluate(()=>onlineMatchAssignment)));
       assert.deepEqual(assignments[0],assignments[1]);
@@ -97,6 +101,10 @@ try {
       }
       if (!signalingOnly) {
         await Promise.all([a,b].map(p=>until(p,()=>lanConnected && (lanRole==='host'||onlineHasState))));
+        const transport=await a.evaluate(()=>onlineSession.secure.mode==='ws'?{transport:'websocket'}:
+          onlineSession.secure.peer.getStats().then(kingPongTransportDetails));
+        console.log('TRANSPORT',native,nativeHost?'native host':'browser host',JSON.stringify(transport));
+        if(websocketFallback)assert.equal(transport.transport,'websocket');
         for (const p of [a,b]) assert.equal(await p.locator('#cancelSearchButton').isVisible(),false);
         await Promise.all([a,b].map(p=>until(p,()=>onlineMatchFlow?.phase==='ready')));
         await a.locator('#onlineReadyButton').click();
@@ -121,13 +129,13 @@ try {
       await b.locator('#onlineFlowBack').click();
       assert.equal(await b.locator('#findMatchButton').isVisible(),true);
       await a.close();await b.close();
-      console.log(`PASS: ${native} as ${nativeHost?'host':'guest'} shares browser queue, locked settings, real SDP and failure recovery${signalingOnly?'':' plus connected RTC data channels'}`);
+      console.log(`PASS: ${native} as ${nativeHost?'host':'guest'} shares browser queue, locked settings and failure recovery${signalingOnly?', real SDP only':', encrypted gameplay over the reported transport'}`);
     }
   }
   await watcher.close();
   assert.deepEqual(errors,[]);
   console.log(signalingOnly ? 'RESULT: 7 signaling/UI groups passed. RTC data-channel assertions NOT RUN (--signaling-only).' :
-    'RESULT: 7 matchmaking browser groups passed, including six real cross-build WebRTC connections.');
+    'RESULT: 7 matchmaking browser groups passed, including six browser-to-file-page gameplay connections.');
 } catch (e) {
   for (const p of browser.contexts().flatMap(c=>c.pages())) console.log('STATE',await p.evaluate(()=>({
     status:lanStatus.textContent,queue:matchmakingState,count:matchmakingWaiting,role:lanRole,

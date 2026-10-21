@@ -1,7 +1,6 @@
 import { MATCHMAKING_CONTRACT } from './matchmaking-contract.js';
 
 const LEASE_MS = 75_000;
-const CONNECT_MS = 60_000;
 const CAPACITY = 256;
 
 export function chooseArena(a, b, arenas, random = () => crypto.getRandomValues(new Uint32Array(1))[0]) {
@@ -121,7 +120,7 @@ export class MatchmakingQueue {
       const a = host.deserializeAttachment(), b = guest.deserializeAttachment();
       const match = { id: crypto.randomUUID(), protocol: MATCHMAKING_CONTRACT.protocol,
         arena: chooseArena(a.preference, b.preference, MATCHMAKING_CONTRACT.arenas),
-        rules: MATCHMAKING_CONTRACT.rules, expiresAt: Date.now() + CONNECT_MS };
+        rules: MATCHMAKING_CONTRACT.rules, expiresAt: Date.now() + 60_000 };
       const tokens = { host: crypto.randomUUID(), guest: crypto.randomUUID() };
       const room = this.env.ROOMS.get(this.env.ROOMS.idFromName('match:' + match.id));
       try {

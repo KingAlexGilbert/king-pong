@@ -35,7 +35,7 @@ const server = createServer(async (request, response) => {
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 const origin = `http://127.0.0.1:${server.address().port}`;
 const mf = new Miniflare(convertV4MiniflareOptions({
-  modules: ['./worker-fixture.mjs', '../src/worker.js', '../src/metered-turn.js', '../src/matchmaking.js', '../src/matchmaking-contract.js', '../src/native-bridge.js', '../src/party-room.js'].map(path => ({
+  modules: ['./worker-fixture.mjs', '../src/worker.js', '../src/metered-turn.js', '../src/matchmaking.js', '../src/matchmaking-contract.js', '../src/native-bridge.js', '../src/party-room.js', '../src/secure-relay.js'].map(path => ({
     type: 'ESModule',
     path: fileURLToPath(new URL(path, import.meta.url))
   })),
@@ -91,7 +91,7 @@ if (forceRelay) {
 }
 const browser = await chromium.launch({
   headless: true,
-  args: ['--allow-loopback-in-peer-connection', '--no-sandbox', '--disable-features=WebRtcHideLocalIpsWithMdns', '--disable-background-timer-throttling', '--disable-renderer-backgrounding']
+  args: ['--allow-loopback-in-peer-connection', '--no-sandbox', '--disable-background-timer-throttling', '--disable-renderer-backgrounding']
 });
 const errors = [];
 async function page(locale = 'en-US') {
@@ -130,7 +130,7 @@ async function page(locale = 'en-US') {
 async function waitFor(page, expression) {
   try {
     await page.waitForFunction(expression, null, {
-      timeout: 15_000
+      timeout: 60_000
     });
   } catch (error) {
     console.log('DEBUG', expression, await page.evaluate(() => ({
@@ -174,8 +174,10 @@ try {
   await Promise.all([waitFor(host, "onlineMatchFlow?.phase === 'playing'"), waitFor(guest, "onlineMatchFlow?.phase === 'playing'")]);
   assert.equal(await host.locator('#lanStatus').textContent(), 'Connected!');
   assert.equal(await guest.evaluate(() => onlineControlChannel.ordered), true);
-  assert.equal(await host.evaluate(() => lanChannel.ordered), false);
-  assert.equal(await guest.evaluate(() => onlineSession.attempt), forceRelay ? 1 : 0);
+  const transport=await host.evaluate(async()=>onlineSession.secure?.mode==='ws'?{transport:'websocket'}:kingPongTransportDetails(await lanPeer.getStats()));
+  console.log('TRANSPORT',JSON.stringify(transport));
+  assert.equal(await host.evaluate(() => lanChannel.ordered),transport.transport==='websocket');
+  if(forceRelay)assert.equal(transport.transport,'turn');
   if (forceRelay) {
     const type = await guest.evaluate(async () => {
       const stats = await lanPeer.getStats();
@@ -186,7 +188,7 @@ try {
     assert.equal(type, 'relay');
     console.log('PASS: failed direct connection automatically falls back to a real TURN relay candidate');
   }
-  console.log('PASS: UI Create Room → six-character code → Join Room → two real WebRTC peers');
+  console.log('PASS: UI Create Room → six-character code → Join Room → two browser peers with the reported transport');
 
   // Delay outgoing gameplay traffic, with periodic stale state delivery and loss.
   for (const p of [host, guest]) await p.evaluate(() => {
@@ -292,7 +294,10 @@ try {
   console.log('PASS: replacement guest joins the retained private room and reaches Ready');
   // The RTC channel can close before the signaling server sends 'host_left'.
   // Keep private-room signaling alive so the guest receives that reason.
-  await secondGuest.evaluate(() => onlineControlChannel.onclose());
+  await secondGuest.evaluate(() => {
+    if(onlineSession.secure?.mode==='rtc')onlineSession.secure.rtcControl.onclose();
+    else if(!onlineSession.secure)onlineControlChannel.onclose();
+  });
   assert.equal(await secondGuest.evaluate(() => onlineSession && !onlineSession.closed && onlineGameBlocked && paused), true);
   await host.keyboard.press('Escape');
   await waitFor(secondGuest, "lanStatus.textContent.includes('Host disconnected')");

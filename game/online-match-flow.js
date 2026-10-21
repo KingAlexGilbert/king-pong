@@ -178,6 +178,7 @@ function receiveOnlineMatchSetup(message) {
 function tickOnlineMatchFlow() {
   const flow = onlineMatchFlow;
   if (!flow || flow.phase === 'playing') return;
+  if (onlineSession?.secure && onlineSession.secure.phase !== 'active') return;
   const now = performance.now();
   if (flow.phase === 'go') {
     if (now >= flow.goUntil) { flow.phase = 'playing'; syncRoyalUi(true); }

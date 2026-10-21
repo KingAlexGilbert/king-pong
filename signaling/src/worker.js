@@ -1,3 +1,4 @@
+import { SecureRoomTransport } from './secure-relay.js';
 import { PartyRoom, partyRequest } from './party-room.js';
 export { MeteredTurn } from './metered-turn.js';
 export { MatchmakingQueue } from './matchmaking.js';
@@ -67,11 +68,11 @@ export default {
         return response.status === 429 ? socketError('rate_limited') : response;
       } catch { return socketError('unavailable'); }
     }
-    const assigned = !url.search && url.pathname.match(/^\/v1\/match\/([a-f0-9-]{36})\/([a-f0-9-]{36})$/);
+    const assigned = !url.search && url.pathname.match(/^\/v1\/match\/([a-f0-9-]{36})\/([a-f0-9-]{36})(\/secure1)?$/);
     if (assigned) {
       try {
         return await env.ROOMS.get(env.ROOMS.idFromName('match:' + assigned[1]))
-          .fetch('https://room/claim/' + assigned[2], { headers: { Upgrade: 'websocket' } });
+          .fetch('https://room/claim/' + assigned[2] + (assigned[3] || ''), { headers: { Upgrade: 'websocket' } });
       } catch { return socketError('unavailable'); }
     }
     if (url.search || !/^\/v1\/(create|join\/[A-Z0-9]{1,16})$/.test(url.pathname)) {
@@ -100,6 +101,7 @@ export class PongRoom {
     this.ctx = ctx;
     this.env = env;
     this.party = new PartyRoom(ctx, env);
+    this.secure = new SecureRoomTransport(ctx,env);
     ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping', 'pong'));
   }
 
@@ -155,33 +157,62 @@ export class PongRoom {
       }
       const { 0: client, 1: server } = new WebSocketPair();
       this.ctx.acceptWebSocket(server);
-      server.serializeAttachment({ role, joinedAt: Date.now(), count: 0, windowAt: Date.now(), connected: false });
+      server.serializeAttachment({ role, secureCapable: new URL(request.url).pathname.endsWith('/secure1'), joinedAt: Date.now(), count: 0, windowAt: Date.now(), connected: false });
       await this.ctx.storage.put('room', room);
       await this.ctx.storage.setAlarm(Math.min(room.expiresAt, Date.now() + 60_000));
-      send(server, { type: 'welcome', role, code: room.code, ...(room.match ? { match: room.match } : {}) });
+      send(server, { type: 'welcome', role, code: room.code, transportVersion:1, ...(room.match ? { match: room.match } : {}) });
       if (this.sockets().length === 2) {
-        for (const socket of this.sockets()) send(socket, { type: 'start', attempt: 0, iceServers: STUN });
+        const peers=this.sockets().sort((a,b)=>a.deserializeAttachment().role==='host'?-1:1);
+        if(peers.every(s=>s.deserializeAttachment().secureCapable)) await this.secure.begin(peers,async state=>{room.secure=state;await this.ctx.storage.put('room',room);});
+        else for (const socket of peers) send(socket, { type: 'start', attempt: 0, iceServers: STUN });
       }
       return new Response(null, { status: 101, webSocket: client });
     });
   }
 
-  async webSocketMessage(socket, raw) {
-    if (socket.deserializeAttachment()?.party) return this.party.message(socket, raw);
+  webSocketMessage(socket, raw) {
+    // No await: membership, epoch, replay budget and forwarding are one atomic
+    // turn of this single-threaded object. Rare state changes still close the
+    // input gate below, so no frame can interleave with a kick or activation.
+    if (typeof raw === 'string' && raw.length <= 24000 && /^\{"type":"secure-(frame|credit)"/.test(raw)) {
+      if (socket.deserializeAttachment()?.closed) return;
+      let packet, reason = 'unauthorized';
+      try { packet = JSON.parse(raw); } catch { reason = 'negotiation_failed'; }
+      if (packet && this.secure.frame(socket, packet)) return;
+      return this.ctx.blockConcurrencyWhile(async () => {
+        if (socket.deserializeAttachment()?.party) {
+          const room = await this.ctx.storage.get('party-room');
+          if (room) await this.party.remove(socket, room, reason);
+        } else await this.end(reason);
+      });
+    }
+    return this.ctx.blockConcurrencyWhile(()=>this.receive(socket,raw));
+  }
+
+  async receive(socket, raw) {
+    if (socket.deserializeAttachment()?.party) return this.party.receive(socket, raw);
     const attachment = socket.deserializeAttachment();
     if (!attachment || attachment.closed) return;
+    if (typeof raw === 'string' && raw.length<=24000 && /^\{"type":"secure-(frame|credit)"/.test(raw)) {
+      let packet;try{packet=JSON.parse(raw);}catch{return this.end('negotiation_failed');}
+      if(this.secure.frame(socket,packet))return;
+      return this.end('unauthorized');
+    }
     if (typeof raw !== 'string' || raw.length > 65_536) return this.end('negotiation_failed');
     if (Date.now() - attachment.windowAt > 10_000) {
       attachment.windowAt = Date.now();
       attachment.count = 0;
     }
-    if (++attachment.count > 160) return this.end('rate_limited');
+    if (++attachment.count > (attachment.secure ? 480 : 160)) return this.end('rate_limited');
     socket.serializeAttachment(attachment);
     let message;
     try { message = JSON.parse(raw); } catch { return this.end('negotiation_failed'); }
     if (!message || typeof message !== 'object') return this.end('negotiation_failed');
     const room = await this.ctx.storage.get('room');
     if (!room || room.expiresAt <= Date.now()) return this.end('expired');
+    if(message.type==='secure')return this.secure.control(socket,message,room.secure,async state=>{room.secure=state;await this.ctx.storage.put('room',room);},
+      reason=>this.end(reason),async()=>{room.playing=true;room.expiresAt=room.maxAt;await this.ctx.storage.put('room',room);});
+    if(room.secure)return this.end('incompatible');
     const other = this.sockets().find(s => s !== socket);
     if (message.type === 'relay') {
       if (!other || room.relay || room.playing) return;
@@ -250,6 +281,10 @@ export class PongRoom {
 
   async webSocketClose(socket) {
     if (socket.deserializeAttachment()?.party) return this.party.close(socket);
+    return this.ctx.blockConcurrencyWhile(() => this.closeSocket(socket));
+  }
+
+  async closeSocket(socket) {
     const attachment = socket.deserializeAttachment();
     if (!attachment || attachment.closed) return;
     socket.serializeAttachment({ ...attachment, closed: true });
@@ -260,6 +295,10 @@ export class PongRoom {
   async webSocketError(socket) { await this.webSocketClose(socket); }
 
   async alarm() {
+    return this.ctx.blockConcurrencyWhile(() => this.expire());
+  }
+
+  async expire() {
     if ((await this.ctx.storage.get('party-room'))?.capacity) return this.party.alarm();
     const room = await this.ctx.storage.get('room');
     if (!room || room.expiresAt <= Date.now()) return this.end('expired');

@@ -6,6 +6,8 @@ function kingPongSignalingSocket(url) {
 class PackagedSignalingSocket {
   constructor(url) {
     this.readyState = 0;
+    this.queuedBytes = 0;
+    this.socketBuffered = 0;
     const target = new URL(url);
     target.protocol = target.protocol === 'wss:' ? 'https:' : 'http:';
     const path = target.pathname;
@@ -26,6 +28,10 @@ class PackagedSignalingSocket {
       if (m.type === 'open') { this.readyState = 1; this.onopen?.(); }
       else if (m.type === 'message') this.onmessage?.({data: m.data});
       else if (m.type === 'error') this.onerror?.();
+      else if (m.type === 'buffer') {
+        this.queuedBytes = Math.max(0,this.queuedBytes - (m.accepted || 0));
+        this.socketBuffered = m.buffered || 0;
+      }
       else if (m.type === 'close') { this.close(); this.onclose?.(); }
     };
     frame.onload = () => {
@@ -37,8 +43,12 @@ class PackagedSignalingSocket {
   }
 
   send(data) {
-    if (this.readyState === 1) this.port.postMessage({type: 'send', data});
+    if (this.readyState !== 1 || typeof data !== 'string' || data.length > 65536 || this.bufferedAmount > 131072) throw Error('Socket unavailable');
+    this.queuedBytes += new TextEncoder().encode(data).length;
+    this.port.postMessage({type: 'send', data});
   }
+
+  get bufferedAmount() { return this.queuedBytes + this.socketBuffered; }
 
   close() {
     if (this.readyState === 3) return;

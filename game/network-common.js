@@ -46,3 +46,24 @@ class KingPongInputGate {
     this.tokens--; this.seq = seq; return true;
   }
 }
+
+// Return only coarse, local diagnostics. Never return/store stats, IDs or addresses.
+function kingPongTransportDetails(stats, providers) {
+  const values = [...stats.values()];
+  const transport = values.find(s => s.type === 'transport' && s.selectedCandidatePairId);
+  const nominated = values.filter(s => s.type === 'candidate-pair' && s.state === 'succeeded' && (s.nominated || s.selected));
+  const pair = transport ? stats.get(transport.selectedCandidatePairId) : nominated.length === 1 ? nominated[0] : null;
+  if (!pair || pair.state !== 'succeeded') return {transport:'unknown', family:'unknown', relayProtocol:'unknown'};
+  const local = stats.get(pair.localCandidateId), remote = stats.get(pair.remoteCandidateId);
+  const relay = local?.candidateType === 'relay' || remote?.candidateType === 'relay';
+  const family = address => typeof address !== 'string' ? 'unknown' :
+    /^[0-9a-f:]+$/i.test(address) && address.includes(':') ? 'IPv6' :
+    /^(?:\d{1,3}\.){3}\d{1,3}$/.test(address) ? 'IPv4' : 'unknown';
+  const known = [family(local?.address), family(remote?.address)].filter(f => f !== 'unknown');
+  const provider = local?.candidateType === 'relay' && typeof local.url === 'string' ? providers?.get(local.url) : null;
+  return {transport:relay ? 'turn' : local && remote ? 'direct' : 'unknown',
+    provider:provider==='metered'?'metered':'unknown',
+    family:known.length && known.every(f => f === known[0]) ? known[0] : 'unknown',
+    // protocol describes the candidate; only relayProtocol describes the TURN hop.
+    relayProtocol:local?.candidateType === 'relay' && ['udp','tcp','tls'].includes(local.relayProtocol) ? local.relayProtocol : 'unknown'};
+}

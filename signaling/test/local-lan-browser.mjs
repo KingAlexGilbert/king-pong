@@ -8,7 +8,7 @@ import {chromium} from 'playwright';
 import {root} from '../../tests/helpers/game-source.mjs';
 const server=createServer(async(req,res)=>{try{const file=new URL('.'+new URL(req.url,'http://local').pathname,root);if(!file.href.startsWith(root.href))throw Error();res.setHeader('Content-Type',file.pathname.endsWith('.js')?'text/javascript':'text/html');res.end(await readFile(file));}catch{res.writeHead(404).end();}});
 await new Promise(r=>server.listen(0,'127.0.0.1',r));const origin=`http://127.0.0.1:${server.address().port}`;
-const browser=await chromium.launch({args:['--no-sandbox','--disable-features=WebRtcHideLocalIpsWithMdns']});
+const browser=await chromium.launch({args:['--no-sandbox']});
 const children=[],errors=[],internet=[],sockets=[],pages=[],eventsSeen=[];let exiting=false; const controlled=process.argv.includes('--controlled-channels'); let deliveries=Promise.resolve();
 async function page(path){
  const p=await browser.newPage({viewport:{width:1280,height:900}});pages.push(p);p.on('pageerror',e=>errors.push(e.message));p.on('websocket',s=>sockets.push(s.url()));

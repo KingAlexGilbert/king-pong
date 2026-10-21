@@ -103,7 +103,7 @@ test('direct timeout requests TURN once, recreates only the peer, rejects stale 
   assert.equal(h.room.socket.sent.filter(m => m.type === 'relay').length, 1);
   await h.message(relay);
   assert.equal(h.peers[0].closed, true);
-  assert.equal(h.peers[1].config.iceTransportPolicy, 'relay');
+  assert.equal(h.peers[1].config.iceTransportPolicy, 'all');
   await h.message({ type: 'candidate', attempt: 0, candidate: { candidate: 'stale' } });
   assert.equal(h.room.candidates.length, 0);
   h.fire(45000);
@@ -229,10 +229,10 @@ test('authoritative state and input reject duplicate/out-of-order packets', () =
 
 test('private approval uses versioned signaling; old unverified servers fail before ICE', async () => {
   const ordinary = harness(); ordinary.room.requireApproval = false; ordinary.room.open('host');
-  assert.match(ordinary.room.socket.url.pathname, /^\/v1\/party\/create\/2\/0\/.*\/sas1$/); ordinary.room.close();
+  assert.match(ordinary.room.socket.url.pathname, /^\/v1\/party\/create\/2\/0\/.*\/sas2$/); ordinary.room.close();
   const legacy = harness(); legacy.room.open('guest', 'ABCDE'); assert.equal(legacy.room.socket.url.pathname, '/v1/join/ABCDE'); legacy.room.close();
   const host = harness(); host.room.requireApproval = true; host.room.open('host');
-  assert.match(host.room.socket.url.pathname, /^\/v1\/party\/create\/2\/1\/[a-f0-9-]{36}\/sas1$/);
+  assert.match(host.room.socket.url.pathname, /^\/v1\/party\/create\/2\/1\/[a-f0-9-]{36}\/sas2$/);
   await host.message({type:'welcome',role:'host',code:'ABCDEF',protocol:'kp-party-1',capacity:2});
   assert.deepEqual(host.errors,['server_outdated']); assert.equal(host.peers.length,0);
   const guest=harness();guest.room.open('guest','ABCDEF');

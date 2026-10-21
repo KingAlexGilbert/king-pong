@@ -1,4 +1,4 @@
-/* Signaling owns connection setup only. The existing LAN protocol still owns gameplay. */
+/* Room admission and transport setup. Existing LAN packet handlers own gameplay. */
 class KingPongRoom {
   constructor(baseUrl, hooks) {
     this.baseUrl = baseUrl;
@@ -20,8 +20,8 @@ class KingPongRoom {
       if (url.username || url.password || url.search || url.hash ||
           !(url.protocol === 'https:' || url.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(url.hostname))) throw new Error();
       url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
-      url.pathname = assignment ? `/v1/match/${assignment.match.id}/${assignment.token}` :
-        this.managed ? (role === 'host' ? `/v1/party/create/2/${this.requireApproval ? 1 : 0}/${kingPongClientToken()}/sas1` : `/v1/party/join/2/${code}/${kingPongClientToken()}/sas1`) :
+      url.pathname = assignment ? `/v1/match/${assignment.match.id}/${assignment.token}/secure1` :
+        this.managed ? (role === 'host' ? `/v1/party/create/2/${this.requireApproval ? 1 : 0}/${kingPongClientToken()}/sas2` : `/v1/party/join/2/${code}/${kingPongClientToken()}/sas2`) :
         role === 'host' ? '/v1/create' : `/v1/join/${code}`;
       this.socket = kingPongSignalingSocket(url);
     } catch { this.fail('unavailable'); return; }
@@ -36,10 +36,16 @@ class KingPongRoom {
     };
     this.socket.onmessage = event => {
       if (event.data === 'pong') { this.lastPong = Date.now(); return; }
+      if (typeof event.data !== 'string' || event.data.length > 65536) { this.fail('negotiation_failed'); return; }
+      if (typeof event.data === 'string' && event.data.length <= 24000 && event.data.startsWith('{"type":"secure-frame"')) {
+        try { this.secure?.packet(JSON.parse(event.data)); } catch { this.fail('negotiation_failed'); } return;
+      }
       // SDP installation is asynchronous; serialize messages so early ICE cannot race it.
+      this.signalingQueued = (this.signalingQueued || 0) + 1;
+      if (this.signalingQueued > 256) { this.fail('negotiation_failed'); return; }
       this.queue = this.queue.then(() => {
         if (!this.closed) return this.receive(JSON.parse(event.data));
-      }).catch(() => this.fail('negotiation_failed'));
+      }).catch(() => this.fail('negotiation_failed')).finally(() => this.signalingQueued--);
     };
     this.socket.onerror = () => this.fail('connection_lost');
     this.socket.onclose = () => {
@@ -78,8 +84,16 @@ class KingPongRoom {
   }
 
   async receive(message) {
+    if (message.type === 'secure') {
+      if (message.kind === 'init') {
+        if (this.awaitingApproval || this.secure || !/^[a-f0-9-]{36}$/.test(message.session || '') || message.epoch !== 0 ||
+            this.approvalProtocol === APPROVAL_PROTOCOL && !this.approvalBinding) throw Error('session admission');
+        this.secure = new KingPongSecureTransport(this,message); return;
+      }
+      await this.secure?.receive(message); return;
+    }
     if (this.managed && message.type === 'lobby') {
-      if (this.connected && message.started) clearOnlineApproval(this);
+      if (this.connected && message.started) clearOnlineApproval(this,true);
       if (typeof syncClassicApproval === 'function') syncClassicApproval(message);
       return;
     }
@@ -92,11 +106,12 @@ class KingPongRoom {
       this.awaitingApproval = false; this.hooks.status('Connecting...'); return;
     }
     if (this.managed && message.type === 'departed' && this.role === 'host') {
+      this.secure?.close(); this.secure=null;
       clearOnlineApproval(this); this.dropPeer(); clearTimeout(this.totalTimer); this.totalTimer = null;
       this.connected = false; this.attempt = -1; this.relayPending = false;
       this.hooks.departed?.(); return;
     }
-    if (message.type === 'error') { this.fail(this.managed && message.code === 'invalid_code' ? 'server_outdated' : message.code); return; }
+    if (message.type === 'error') { this.fail((this.managed || this.assignment) && message.code === 'invalid_code' ? 'server_outdated' : message.code); return; }
     if (message.type === 'welcome') {
       if (message.role !== this.role || !(this.managed ? message.protocol === 'kp-party-1' && message.capacity === 2 && /^[A-HJ-NP-Z2-9]{6}$/.test(message.code) : /^[A-HJ-NP-Z2-9]{5}$/.test(message.code))) throw new Error();
       if (this.assignment && (message.match?.id !== this.assignment.match.id ||
@@ -116,6 +131,7 @@ class KingPongRoom {
       return;
     }
     if (message.type === 'start') {
+      if (this.secure) throw Error('transport downgrade');
       if (this.awaitingApproval || this.approvalProtocol === APPROVAL_PROTOCOL &&
           (!this.approvalBinding || message.verification !== APPROVAL_PROTOCOL || message.request !== this.approvalBinding.request)) throw Error('approval required');
       if (![0, 1].includes(message.attempt) || message.attempt <= this.attempt || !Array.isArray(message.iceServers)) return;
@@ -127,7 +143,7 @@ class KingPongRoom {
       this.hooks.status(this.attempt ? 'Direct connection unavailable. Trying relay...' : 'Connecting...');
       const peer = this.peer = new RTCPeerConnection({
         iceServers: message.iceServers,
-        iceTransportPolicy: this.attempt ? 'relay' : 'all'
+        iceTransportPolicy: 'all' // TURN availability must not exclude a viable direct pair.
       });
       this.hooks.peer(peer);
       const attempt = this.attempt;
@@ -285,6 +301,7 @@ class KingPongRoom {
   close() {
     if (this.closed) return;
     this.closed = true;
+    this.secure?.close();
     clearOnlineApproval(this);
     clearTimeout(this.openTimer);
     clearTimeout(this.totalTimer);
@@ -298,6 +315,7 @@ class KingPongRoom {
 
   fail(code) {
     if (this.closed) return;
+    this.lastTransport='Connection failure';
     this.close();
     this.hooks.error(code);
   }
@@ -423,7 +441,7 @@ function openOnlineRoom(role, code = '', assignment = null) {
   onlineMatchAssignment = assignment?.match || null;
   if (assignment) matchmakingPreviousRules = matchRuleId;
   onlineGameBlocked = true;
-  if (!isLanSupported() || typeof WebSocket === 'undefined') { setLanStatus('This browser cannot play online. Try an updated browser.'); return; }
+  if (typeof WebSocket === 'undefined' || !globalThis.crypto?.subtle) { setLanStatus('This browser cannot play online. Try an updated browser.'); return; }
   if (!window.KING_PONG_SIGNALING_URL && !(typeof onlineManualLanSelected !== 'undefined' && onlineManualLanSelected)) { setLanStatus(ONLINE_ERRORS.unavailable); return; }
   lanRole = role;
   startTwoPlayerMode(true, false);
@@ -446,6 +464,7 @@ function openOnlineRoom(role, code = '', assignment = null) {
       lanPeer = peer; lanConnected = false; onlineGameBlocked = true;
       if (!assignment && !(session instanceof KingPongManualRoom)) beginOnlineMatchFlow();
     } },
+    peerChanged: peer => { if(onlineSession === session)lanPeer=peer; },
     departed: () => privateGuestDeparted(session),
     channel: (channel, control) => {
       if (onlineSession !== session) return;
@@ -457,9 +476,10 @@ function openOnlineRoom(role, code = '', assignment = null) {
       // Matchmaking leaves a failed setup immediately. Private-room players
       // keep signaling alive long enough to receive the authoritative departure
       // reason (and the host keeps its reusable room code).
-      if (onlineMatchFlowBlocksPlay() && !session.managed) {
+      if (onlineMatchFlowBlocksPlay() && !session.managed && !session.secure) {
         session.fail('opponent_left'); return;
       }
+      if(session.secure && !session.recoveryPause)session.recoveryPause={at:performance.now(),remaining:resumeCountdownRemainingMs()};
       onlineGameBlocked = true;
       paused = true;
       resumeCountdownEndAt = 0;
@@ -467,7 +487,13 @@ function openOnlineRoom(role, code = '', assignment = null) {
     },
     resumed: () => {
       if (onlineSession !== session || session.pairingRequired && !session.pairingAccepted) return;
-      onlineGameBlocked = false;
+      if(session.recoveryPause && onlineMatchFlow) {
+        const elapsed=performance.now()-session.recoveryPause.at;
+        for(const key of ['handshakeDeadline','connectedUntil','goUntil'])if(Number.isFinite(onlineMatchFlow[key]))onlineMatchFlow[key]+=elapsed;
+        if(onlineMatchFlow.phase==='countdown')resumeCountdownEndAt=performance.now()+session.recoveryPause.remaining;
+      }
+      session.recoveryPause=null;
+      onlineGameBlocked = onlineMatchFlowBlocksPlay();
       if (role === 'host') sendLanState(true);
     },
     connected: () => {
