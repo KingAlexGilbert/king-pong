@@ -120,8 +120,13 @@ try {
       const p = await page(platform, viewport);
       const locked = await p.evaluate(() => [...document.querySelectorAll('.title-actions > button:not([hidden])')]
         .map(button => button.getBoundingClientRect().y));
-      assert.equal(locked.length, 3, 'locked boss leaves three secondary choices');
-      assert.ok(locked.every(y => Math.abs(y - locked[0]) < 2), 'locked choices share one row');
+      assert.equal(locked.length, 4, 'locked boss leaves four secondary choices');
+      if (viewport.width > 700) {
+        assert.ok(locked.every(y => Math.abs(y - locked[0]) < 2), 'wide locked choices share one row');
+      } else {
+        assert.ok(Math.abs(locked[0]-locked[1]) < 2 && Math.abs(locked[2]-locked[3]) < 2 &&
+          locked[2] > locked[0], 'narrow locked choices use two rows');
+      }
       await p.evaluate(() => {
         saveData.completedLevels.fill(true); saveData.highestUnlockedLevel = 17; saveData.bossUnlocked = true;
         updateModeControls(); syncRoyalUi(true);
@@ -139,19 +144,26 @@ try {
       });
       assert.ok(Math.abs(title.primary.x + title.primary.w/2 - title.secondary.x - title.secondary.w/2) < 2);
       assert.equal(title.overflow, false);
-      const [custom, local, lan, boss] = title.secondaryTiles;
-      assert.equal(title.secondaryTiles.length, 4, 'unlocked boss adds one secondary choice');
-      assert.deepEqual([custom.id, local.id, boss.id], ['titleCustomButton', 'titleLocalButton', 'titleBossButton']);
+      const [levels, custom, local, lan, boss] = title.secondaryTiles;
+      assert.equal(title.secondaryTiles.length, 5, 'unlocked boss adds one secondary choice');
+      assert.deepEqual([levels.id, custom.id, local.id, boss.id],
+        ['titleLevelSelectButton', 'titleCustomButton', 'titleLocalButton', 'titleBossButton']);
       assert.ok(lan.id === 'titleLanButton' || lan.id === 'titleNativeLanButton');
-      if (viewport.width >= 1360) {
-        assert.ok([local, lan, boss].every(tile => Math.abs(tile.y-custom.y)<2), 'wide title uses one row');
-        assert.ok(local.x >= custom.x+custom.w && lan.x >= local.x+local.w && boss.x >= lan.x+lan.w, 'wide choices do not overlap');
+      const regular = [levels, custom, local, lan];
+      if (viewport.width > 700) {
+        assert.ok(regular.every(tile => Math.abs(tile.y-levels.y)<2), 'wide title uses one regular row');
+        assert.ok(regular.slice(1).every((tile, i) => tile.x >= regular[i].x+regular[i].w-2),
+          'wide choices do not overlap');
       } else {
-        assert.ok(Math.abs(custom.y-local.y)<2 && Math.abs(lan.y-boss.y)<2, 'narrow title uses two rows');
-        assert.ok(Math.abs(custom.x-lan.x)<2 && Math.abs(local.x-boss.x)<2, 'narrow columns align');
-        assert.ok(lan.y >= custom.y+custom.h-2, 'narrow rows do not overlap');
+        assert.ok(Math.abs(levels.y-custom.y)<2 && Math.abs(local.y-lan.y)<2,
+          'narrow regular choices use two rows');
+        assert.ok(Math.abs(levels.x-local.x)<2 && Math.abs(custom.x-lan.x)<2,
+          'narrow columns align');
+        assert.ok(local.y >= levels.y+levels.h-2, 'narrow regular rows do not overlap');
       }
-      assert.ok(title.secondaryTiles.every(tile => Math.abs(tile.w-custom.w)<2), 'secondary choices have equal width');
+      assert.ok(boss.y >= Math.max(...regular.map(tile => tile.y+tile.h))-2,
+        'boss occupies its own row below regular choices');
+      assert.ok(regular.every(tile => Math.abs(tile.w-levels.w)<2), 'regular choices have equal width');
       assert.notEqual(title.tiles[0].border, title.tiles[1].border);
       for (const tile of title.tiles) assert.ok(!tile.shadow.includes('4px 4px'), 'no offset double edge');
       await paint(p, `${platform}-title-${viewport.width}`);
