@@ -2880,13 +2880,6 @@ body:has(#browserFullscreen) .match-bar { box-sizing: border-box; }
   padding: 8px 12px;
 }
 
-/* Restore title/setup Menu buttons and outline the in-game Close menu button. */
-#matchMenu .match-menu-navigation > .match-close {
-  border: 1px solid #685833;
-  background: #0a0d16;
-  color: #ffe0a0;
-  box-sizing: border-box;
-}
 </style>
 </head>
 
@@ -17018,7 +17011,7 @@ function initRoyalUi() {
   }
   menu.append(help);
   const close = royalButton('matchMenuClose', 'Close menu', () => setMenusVisible(false));
-  close.className = 'match-close';
+  close.className = 'mode-back'; // Inherit standard menu button colors and hover states.
   menuNavigation.append(close);
   byId('matchMenu').addEventListener('click', event => {
     if (event.target === byId('matchMenu')) setMenusVisible(false);
@@ -17321,8 +17314,9 @@ function syncRoyalUi(force = false) {
       localizeText(matchRule().label) : localizeText('Goal') + ' ' + currentLevel().goal) : ''));
   royalText(byId('matchSetupTitle'), royalModeName());
   royalText(byId('matchMenuTitle'), title ? 'Menu' : paused ? 'Paused' : 'Match menu');
-  // On the title menu, Back is enough; Close menu would do the same thing.
-  byId('matchMenuClose').hidden = title;
+  // On the title menu, Close menu replaces the redundant Back button.
+  titleJumpButton.hidden = title;
+  byId('matchMenuClose').hidden = false;
   byId('matchResume').hidden = title;
   byId('matchResume').parentElement.hidden = title;
   royalText(twoPlayerModeButton, 'Local Two Player');

@@ -297,7 +297,7 @@ function initRoyalUi() {
   }
   menu.append(help);
   const close = royalButton('matchMenuClose', 'Close menu', () => setMenusVisible(false));
-  close.className = 'match-close';
+  close.className = 'mode-back'; // Inherit standard menu button colors and hover states.
   menuNavigation.append(close);
   byId('matchMenu').addEventListener('click', event => {
     if (event.target === byId('matchMenu')) setMenusVisible(false);
@@ -600,8 +600,9 @@ function syncRoyalUi(force = false) {
       localizeText(matchRule().label) : localizeText('Goal') + ' ' + currentLevel().goal) : ''));
   royalText(byId('matchSetupTitle'), royalModeName());
   royalText(byId('matchMenuTitle'), title ? 'Menu' : paused ? 'Paused' : 'Match menu');
-  // On the title menu, Back is enough; Close menu would do the same thing.
-  byId('matchMenuClose').hidden = title;
+  // On the title menu, Close menu replaces the redundant Back button.
+  titleJumpButton.hidden = title;
+  byId('matchMenuClose').hidden = false;
   byId('matchResume').hidden = title;
   byId('matchResume').parentElement.hidden = title;
   royalText(twoPlayerModeButton, 'Local Two Player');
