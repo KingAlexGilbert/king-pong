@@ -96,6 +96,8 @@ jobs:
         run: npm run test:ui
       - name: Test campaign level selection, saved progression and music settings layout
         run: npm run test:level-select
+      - name: Test first-entry serve prompts, countdown audio and title menu cleanup in every build
+        run: npm run test:serve-feedback
       - name: Test desktop centering and high-refresh rally transitions
         run: npm run test:engineering
       - name: Test rendered serves and authoritative snapshot playback at five refresh rates

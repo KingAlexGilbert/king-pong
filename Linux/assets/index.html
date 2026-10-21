@@ -10065,6 +10065,7 @@ function toggleMusic() {
 }
 
 function firstStartControlsShouldDisplay() {
+  if (!firstStartControls || firstStartControls.hidden) return false;
   return Boolean(firstStartControlsVisible && mode !== 3 && !customPreviewActive && waitingForServe && !levelCleared &&
     !campaignCleared && !gameOver && !creditsActive && !bossIntroActive && !document.body.classList.contains(
       "title-active"));
@@ -16049,7 +16050,8 @@ function suspendPointServeCountdown() {
 function beginPointServeCountdown() {
   if (mode !== 2 || lanRole === 'guest' || pointServeCountdownActive() ||
       gameOver || levelCleared || campaignCleared) return;
-  pointServeCountdown = {remainingMs: MULTIPLAYER_SERVE_MS, at: performance.now(), networked: isLanActive()};
+  pointServeCountdown = {remainingMs: MULTIPLAYER_SERVE_MS, at: performance.now(), networked: isLanActive(),
+    score: left.score + ':' + right.score, soundStep: 3};
   sendLanState(true);
 }
 
@@ -16059,9 +16061,13 @@ function pointServeSnapshotMs() {
 
 function applyPointServeSnapshot(state) {
   // Called only after the normal host/sequence/tick/snapshot validation.
+  const score = left.score + ':' + right.score;
+  // Keep local cue progress across snapshots/recovery. Scores identify a new
+  // point even when the guest missed every snapshot of the intervening rally.
+  const soundStep = pointServeCountdown?.score === score ? pointServeCountdown.soundStep : 3;
   pointServeCountdown = state.pointServeMs > 0 && waitingForServe && !gameOver &&
     !levelCleared && !campaignCleared ?
-    {remainingMs: state.pointServeMs, at: paused ? null : performance.now(), networked: true} : null;
+    {remainingMs: state.pointServeMs, at: paused ? null : performance.now(), networked: true, score, soundStep} : null;
 }
 
 function pointServeDisplayNumber() {
@@ -16096,14 +16102,27 @@ function tickPointServeCountdown() {
   sendLanState(true);
 }
 
+function playPointServeCountdownSound(number) {
+  if (!pointServeCountdownActive() || paused || onlineGameBlocked || pointServeCountdown.at === null ||
+      pointServeCountdown.networked && !isLanHostActive() && !isLanGuestActive()) return;
+  if (number >= pointServeCountdown.soundStep) return;
+  // Consume a displayed step even if muted or audio is not yet unlocked. Never
+  // queue old beeps for a later gesture or replay them after snapshot correction.
+  pointServeCountdown.soundStep = number;
+  if (document.hidden || !audioCtx || audioCtx.state !== 'running') return;
+  beep(number === 1 ? 720 : 600, 0.085);
+}
+
 function drawPointServeCountdown() {
+  const number = pointServeDisplayNumber();
+  playPointServeCountdownSound(number);
   ctx.fillStyle = 'rgba(0, 0, 0, 0.68)';
   ctx.fillRect(W / 2 - 42, H / 2 - 96, 84, 84);
   ctx.strokeStyle = currentCampaign().accent;
   ctx.lineWidth = 2;
   ctx.strokeRect(W / 2 - 42, H / 2 - 96, 84, 84);
   ctx.fillStyle = '#fff';
-  drawText(String(pointServeDisplayNumber()), W / 2, H / 2 - 54, 56);
+  drawText(String(number), W / 2, H / 2 - 54, 56);
 }
 
 // A replay is a normal campaign encounter with a different return destination.
@@ -17303,10 +17322,11 @@ function syncRoyalUi(force = false) {
     lanConnected ? 'Both players can choose a paddle before serving.' :
     'Find an opponent or create/join a private room.' : mode === 3 ?
     'Choose your paddle and arena, then start the match.' : 'Choose your paddles and arena, then start the match.');
-  byId('menuPaddle').hidden = !title && (mode === 4 || online && !waitingForServe);
+  byId('menuPaddle').hidden = title || mode === 4 || online && !waitingForServe;
   byId('menuPaddle2').hidden = title || mode !== 2 || online;
   byId('menuArena').hidden = fixedMatch || title || mode !== 2 && mode !== 3 || lanRole === 'guest' || joining ||
     online && !waitingForServe;
+  byId('menuPaddle').parentElement.hidden = ['menuPaddle', 'menuPaddle2', 'menuArena'].every(id => byId(id).hidden);
   restartButton.hidden = title;
   restartButton.disabled = online && !lanConnected;
   syncMatchRulesUi();

@@ -19,6 +19,7 @@
     "test:private-rooms-controlled": "node test/private-room-browser.mjs --controlled-channels",
     "test:powerup-ui": "node test/matchmaking-polish-browser.mjs",
     "test:serve": "node test/serve-browser.mjs",
+    "test:serve-feedback": "node test/serve-feedback-browser.mjs",
     "test:level-select": "node test/level-select-browser.mjs",
     "compare:serve": "node test/serve-comparison.mjs",
     "test:network": "node test/network-benchmark.mjs --faults",

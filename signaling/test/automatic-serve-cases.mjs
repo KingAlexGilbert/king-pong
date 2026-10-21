@@ -4,10 +4,22 @@ import assert from 'node:assert/strict';
 // Callers select direct RTC, encrypted WebSockets, or fully offline native LAN.
 export async function automaticServeChecks(host, guest, label) {
   await Promise.all([host,guest].map(p=>p.waitForFunction(()=>onlineMatchFlow?.phase==='playing',null,{timeout:12000})));
+  // Prior recovery cases may leave a paused point. Establish this fixture's
+  // fresh rally on both peers before scoring; do not skip the reset snapshot.
+  await host.evaluate(()=>{
+    gameWindowFocused=true;paused=false;onlineGameBlocked=false;resumeCountdownEndAt=0;
+    startLevel();setMenusVisible(false);waitingForServe=false;sendLanState(true);
+  });
+  await guest.waitForFunction(()=>left.score===0&&right.score===0&&!waitingForServe&&!pointServeCountdownActive());
+  await Promise.all([host,guest].map(p=>p.evaluate(()=>{
+    window.testOriginalBeep=window.beep;window.testPointSounds=[];
+    window.beep=(frequency,...args)=>{
+      if(pointServeCountdownActive()&&[600,720].includes(frequency))window.testPointSounds.push(frequency);
+      return window.testOriginalBeep(frequency,...args);
+    };
+  })));
   await guest.evaluate(()=>{gameWindowFocused=true;keys.add('ArrowUp');});
   const started=await host.evaluate(()=>{
-    gameWindowFocused=true;paused=false;onlineGameBlocked=false;resumeCountdownEndAt=0;
-    startLevel();setMenusVisible(false);waitingForServe=false;
     window.testOriginalServe=window.serveOrContinue;window.testAutomaticServes=[];
     window.serveOrContinue=(...args)=>{
       const waiting=waitingForServe;window.testOriginalServe(...args);
@@ -52,6 +64,9 @@ export async function automaticServeChecks(host, guest, label) {
   await Promise.all([host,guest].map(p=>p.waitForFunction(()=>!waitingForServe,null,{timeout:5000})));
   const elapsed=await host.evaluate(()=>window.testAutomaticServes[0]);
   assert.ok(elapsed>=1990&&elapsed<4000,label+': one automatic serve after two seconds: '+elapsed);
+  for(const [side,p] of [['host',host],['guest',guest]]) {
+    assert.deepEqual(await p.evaluate(()=>window.testPointSounds),[600,720],label+': '+side+' sounds each number once');
+  }
   await host.evaluate(()=>{requestServeOrContinue();sendLanState(true);});
   await guest.evaluate(()=>sendLanAction('serve'));
   assert.equal(await host.evaluate(()=>window.testAutomaticServes.length),1);
@@ -61,9 +76,11 @@ export async function automaticServeChecks(host, guest, label) {
     window.testPointAt=performance.now();pointForCpu();togglePause();sendLanState(true);
   });
   await guest.waitForFunction(()=>paused&&pointServeCountdownActive());
+  const pausedSounds=await Promise.all([host,guest].map(p=>p.evaluate(()=>window.testPointSounds)));
   const remaining=await host.evaluate(()=>pointServeSnapshotMs());
   await host.waitForTimeout(2100);
   assert.deepEqual(await host.evaluate(()=>[waitingForServe,pointServeSnapshotMs(),window.testAutomaticServes.length]),[true,remaining,1]);
+  for(const [i,p] of [host,guest].entries())assert.deepEqual(await p.evaluate(()=>window.testPointSounds),pausedSounds[i],'pause adds no cues');
   await host.evaluate(()=>{
     togglePause();resumeCountdownEndAt=performance.now()-1; // Existing resume flow, without a three-second test delay.
   });
@@ -72,7 +89,11 @@ export async function automaticServeChecks(host, guest, label) {
   await Promise.all([host,guest].map(p=>p.waitForFunction(()=>!waitingForServe,null,{timeout:5000})));
   assert.equal(await host.evaluate(()=>window.testAutomaticServes.length),2);
   assert.deepEqual(await guest.evaluate(()=>[left.score,right.score]),[1,1]);
+  for(const p of [host,guest]) {
+    assert.deepEqual(await p.evaluate(()=>window.testPointSounds),[600,720,600,720],'resume sounds each remaining step once');
+    await p.evaluate(()=>{window.beep=window.testOriginalBeep;});
+  }
   await host.evaluate(()=>{window.serveOrContinue=window.testOriginalServe;paused=true;sendLanState(true);setMenusVisible(false);});
   await guest.evaluate(()=>setMenusVisible(false));
-  console.log('PASS: '+label+' automatic 2 → 1 serving, paddle preparation, input rejection and pause/resume');
+  console.log('PASS: '+label+' automatic 2 → 1 serving/audio, paddle preparation, input rejection and pause/resume');
 }

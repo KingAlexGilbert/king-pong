@@ -108,6 +108,13 @@ const hooks = {
 };
 
 export function integrateRoyalUi(source) {
+  // The current shell hides the legacy first-launch controls. A hidden panel
+  // must not suppress the canvas serve prompt before the player's first serve.
+  const firstStart = 'function firstStartControlsShouldDisplay() {';
+  const visibleControls = '\n  if (!firstStartControls || firstStartControls.hidden) return false;';
+  if (source.includes(firstStart) && !source.includes(firstStart + visibleControls)) {
+    source = source.replace(firstStart, firstStart + visibleControls);
+  }
   // Guard the programmatic picker too; a locked request must not select a different arena.
   const picker = 'function applyCustomLevelPickerChoice(value) {';
   const guard = '\n  if (Number(value) === TOTAL_LEVELS && !isBossUnlocked()) return;';
