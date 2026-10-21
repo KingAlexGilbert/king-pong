@@ -278,7 +278,7 @@ try {
       hasTouch: true,
       isMobile: true
     });
-    await p.evaluate(() => { mode = 3; openRoyalGallery('paddle'); });
+    await p.evaluate(() => { hideTitleScreen(); mode = 3; openRoyalGallery('paddle'); });
     const layout = await p.evaluate(() => {
       const card = document.querySelector('.royal-gallery-card').getBoundingClientRect(),
         list = byId('royalGalleryList');
@@ -312,7 +312,7 @@ try {
     locale: 'es-ES'
   });
   assert.equal(await localized.locator('.primary-online strong').innerText(), 'JUGAR EN LÍNEA');
-  await localized.evaluate(() => { mode = 3; openRoyalGallery('paddle'); });
+  await localized.evaluate(() => { hideTitleScreen(); mode = 3; openRoyalGallery('paddle'); });
   assert.equal(await localized.locator('#royalGalleryTitle').innerText(), 'Elige tu pala');
   await localized.close();
   pass('Spanish localization includes new landing and gallery text');
