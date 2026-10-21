@@ -13592,7 +13592,7 @@ function activePaddleProfile(paddle) {
     return paddle === right ? bossAdaptiveProfile : DEFAULT_PADDLE_PROFILE;
   }
   if (mode === 2) return selectedPaddleProfile(paddle);
-  if (paddle === left && saveData && validPaddleId(saveData.royalPaddle)) return selectedPaddleProfile(paddle);
+  if (mode === 3 && paddle === left && saveData && validPaddleId(saveData.royalPaddle)) return selectedPaddleProfile(paddle);
   const index = clamp(selectedAbsoluteLevelIndex(), 0, TOTAL_LEVELS - 1);
   return paddle === right ? ENEMY_PADDLE_PROFILES[index] || DEFAULT_PADDLE_PROFILE : PLAYER_PADDLE_PROFILES[index] ||
     DEFAULT_PADDLE_PROFILE;
@@ -15703,6 +15703,7 @@ function paddleThumbnail(entry) {
 }
 
 function openRoyalGallery(kind, side = 'left') {
+  if (kind === 'paddle' && (mode !== 2 && mode !== 3 || document.body.classList.contains('title-active'))) return;
   if (typeof onlineMatchFlowVisible === 'function' && onlineMatchFlowVisible()) return;
   if (kind === 'arena' && typeof matchmakingRequested !== 'undefined' &&
       (matchmakingRequested || matchmakingState === 'waiting')) return;
@@ -17322,7 +17323,7 @@ function syncRoyalUi(force = false) {
     lanConnected ? 'Both players can choose a paddle before serving.' :
     'Find an opponent or create/join a private room.' : mode === 3 ?
     'Choose your paddle and arena, then start the match.' : 'Choose your paddles and arena, then start the match.');
-  byId('menuPaddle').hidden = title || mode === 4 || online && !waitingForServe;
+  byId('menuPaddle').hidden = title || (mode !== 2 && mode !== 3) || (online && !waitingForServe);
   byId('menuPaddle2').hidden = title || mode !== 2 || online;
   byId('menuArena').hidden = fixedMatch || title || mode !== 2 && mode !== 3 || lanRole === 'guest' || joining ||
     online && !waitingForServe;

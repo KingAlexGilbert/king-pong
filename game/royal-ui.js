@@ -634,7 +634,7 @@ function syncRoyalUi(force = false) {
     lanConnected ? 'Both players can choose a paddle before serving.' :
     'Find an opponent or create/join a private room.' : mode === 3 ?
     'Choose your paddle and arena, then start the match.' : 'Choose your paddles and arena, then start the match.');
-  byId('menuPaddle').hidden = title || mode === 4 || online && !waitingForServe;
+  byId('menuPaddle').hidden = title || (mode !== 2 && mode !== 3) || (online && !waitingForServe);
   byId('menuPaddle2').hidden = title || mode !== 2 || online;
   byId('menuArena').hidden = fixedMatch || title || mode !== 2 && mode !== 3 || lanRole === 'guest' || joining ||
     online && !waitingForServe;
