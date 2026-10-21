@@ -17,13 +17,16 @@ function encodeOnlineWire(m) {
   if (m.type === 'input') return [...head, m.axis, m.targetY];
   if (m.type !== 'state') return m;
   const r = m.royal;
-  return [...head, m.tick, m.inputSeq, pack('selection', m.selection), pack('rules', m.rules),
+  const state = [...head, m.tick, m.inputSeq, pack('selection', m.selection), pack('rules', m.rules),
     [m.activeCampaign, m.levelIndex, m.leftY, m.rightY, m.leftScore, m.rightScore], pack('ball', m.ball),
     [m.paused, m.waitingForServe, m.gameOver, m.levelCleared, m.campaignCleared], m.resumeCountdownMs,
     [r.rally, r.rush, pack('split', r.split), pack('pickup', r.pickup), [r.guards.left, r.guards.right],
       [pack('hit', r.guardHits.left), pack('hit', r.guardHits.right)], pack('pulse', r.powerupPulse),
       r.cueSeq, r.cues.map(c => pack('cue', c))],
     m.hazards.map(h => pack('hazard', h)), m.endMessage];
+  // Keep legacy v1 tuples unchanged unless the peer acknowledged this extension.
+  if (onlinePointServeReady) state.push(m.pointServeMs ?? 0);
+  return state;
 }
 
 function decodeOnlineWire(a) {
@@ -31,7 +34,7 @@ function decodeOnlineWire(a) {
   if (!Array.isArray(a) || a[0] !== 'kp' || a[1] !== ONLINE_WIRE_VERSION) return null;
   const m = {v: LAN_SIGNAL_VERSION, gameplay: 'royal', matchRules: 'presets', room: a[3], seq: a[4]};
   if (a[2] === 'i' && tuple(a, 7)) return {...m, type: 'input', axis: a[5], targetY: a[6]};
-  if (a[2] !== 's' || !tuple(a, 16) || !tuple(a[9], 6) || !tuple(a[11], 5) ||
+  if (a[2] !== 's' || !(tuple(a, 16) || tuple(a, 17)) || !tuple(a[9], 6) || !tuple(a[11], 5) ||
       !tuple(a[13], 9) || !tuple(a[13][4], 2) || !tuple(a[13][5], 2) ||
       !Array.isArray(a[13][8]) || a[13][8].length > 16 || !Array.isArray(a[14]) || a[14].length > 128) return null;
   // Shape errors are rejected here; the existing gameplay validators then enforce
@@ -53,11 +56,13 @@ function decodeOnlineWire(a) {
       guardHits: {left: unpack('hit', r[5][0], true), right: unpack('hit', r[5][1], true)},
       powerupPulse: unpack('pulse', r[6], true), cueSeq: r[7], cues: r[8].map(c => unpack('cue', c))},
     hazards: a[14].map(h => unpack('hazard', h)), endMessage: a[15]});
+  if (a.length === 17) m.pointServeMs = a[16];
   return valid ? m : null;
 }
 
 let onlineWireReady = false;
 let onlineIntentReady = false;
+let onlinePointServeReady = false;
 let onlineWireAttempts = 0;
 let onlineWireHelloAt = -Infinity;
 let onlineLastInput = null;
@@ -66,6 +71,7 @@ let onlineInputAck = -1;
 function resetOnlineWire() {
   onlineWireReady = false;
   onlineIntentReady = false;
+  onlinePointServeReady = false;
   onlineWireAttempts = 0;
   onlineWireHelloAt = -Infinity;
   onlineLastInput = null;
@@ -74,7 +80,7 @@ function resetOnlineWire() {
 
 function sendOnlineWireHello(ack = false) {
   return onlineLanSend({v: LAN_SIGNAL_VERSION, type: 'net-format', room: lanRoomCode,
-    format: ONLINE_WIRE_VERSION, ack, inputIntent: 1});
+    format: ONLINE_WIRE_VERSION, ack, inputIntent: 1, pointServe: 1});
 }
 
 function negotiateOnlineWire() {
@@ -88,6 +94,6 @@ function receiveOnlineWireHello(m) {
   if (!onlineSession || !lanRoomCode || m.v !== LAN_SIGNAL_VERSION || m.room !== lanRoomCode ||
       m.gameplay !== 'royal' || m.matchRules !== 'presets' || m.format !== ONLINE_WIRE_VERSION ||
       typeof m.ack !== 'boolean') return;
-  if (m.ack) { onlineWireReady = true; onlineIntentReady = m.inputIntent === 1; }
+  if (m.ack) { onlineWireReady = true; onlineIntentReady = m.inputIntent === 1; onlinePointServeReady = m.pointServe === 1; }
   else sendOnlineWireHello(true);
 }

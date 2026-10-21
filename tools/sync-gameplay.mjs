@@ -6,6 +6,7 @@ import { integrateMultiplayerPresentation } from '../game/presentation-integrati
 import { integrateRoyalUi } from '../game/ui-integration.mjs';
 import { integrateRoyalPolish } from '../game/polish-integration.mjs';
 import { integrateServeMotion } from '../game/serve-integration.mjs';
+import { integrateLevelSelect } from '../game/level-select-integration.mjs';
 import { integrateSaveTransfer } from '../game/save-transfer-integration.mjs';
 import { onlineSources, iconSources, integrateOnline } from './sync-online.mjs';
 
@@ -19,6 +20,8 @@ const files = [
 const nativeOnlineScript = onlineSources(process.argv.includes('--check'));
 const script = iconSources() + [
   'royal-gameplay.js',
+  'multiplayer-serve.js',
+  'level-select.js',
   'royal-rules.js',
   'royal-audio.js',
   'boss-audio.js',
@@ -66,6 +69,7 @@ for (const file of files) {
   updated = integrateSaveTransfer(updated, saveTransfer);
   updated = integrateRoyalPolish(updated);
   updated = integrateServeMotion(updated);
+  updated = integrateLevelSelect(updated);
   updated = integrateOpeningCpu(updated);
   updated = integrateOnline(updated, nativeOnlineScript, file !== 'docs/demo/index.html');
   updated = integrateBossAudio(updated);

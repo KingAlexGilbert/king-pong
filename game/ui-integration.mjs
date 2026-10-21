@@ -71,6 +71,7 @@ const hooks = {
   `],
   requestServeOrContinue: [`
     if (royalOnlineMode() && !lanConnected) return;
+    if (pointServeCountdownActive()) return;
     requestRoyalLandscape();
   `],
   loadSaveSlot: ["restorePlayerPreferences();"],
@@ -78,7 +79,7 @@ const hooks = {
     if (typeof FIRST_LAUNCH_HINT_MESSAGE !== "undefined" && message === FIRST_LAUNCH_HINT_MESSAGE) setLocalizedText(
       titleMessage, "Choose a save slot, then choose a game mode.");
   `],
-  startCampaignFromSave: ["requestRoyalLandscape();"],
+  startCampaignFromSave: ["levelSelectEncounter = null;\nrequestRoyalLandscape();"],
   startTwoPlayerFromTitle: ["closeLanConnection(false);"],
   startBossFromTitle: ["if (isBossUnlocked()) requestRoyalLandscape();"],
   prepareCustomLevelPreview: ["royalMenuRequested = false;"],
@@ -102,6 +103,7 @@ const hooks = {
     if (document.body.classList.contains("royal-panel-open") || royalDesktopPauseVisible()) return;
     // Resume needs only its existing 3, 2, 1; retain panels for actual results.
     if ((paused || hasResumeCountdown()) && !gameOver && !levelCleared && !campaignCleared) return;
+    if (pointServeCountdownActive()) { drawPointServeCountdown(); return; }
   `],
 };
 

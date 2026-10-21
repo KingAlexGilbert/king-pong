@@ -115,8 +115,8 @@ const hooks = {
     if (ball !== royalSplitBall) rallyLaunchTargetSpeed = 0;
     if (ball === royalSplitBall) royalSplitBall = null;
   `],
-  pointForPlayer: ["if (isLanGuestActive()) return;"],
-  pointForCpu: ["if (isLanGuestActive()) return;"],
+  pointForPlayer: ["if (isLanGuestActive() || mode === 2 && (waitingForServe || paused || gameOver || pointServeCountdownActive())) return;"],
+  pointForCpu: ["if (isLanGuestActive() || mode === 2 && (waitingForServe || paused || gameOver || pointServeCountdownActive())) return;"],
   predictBallCenterForCPU: ["if (arrival) arrival.frames = Infinity;",
     "if (arrival) arrival.frames = Math.max(0, (right.x - ball.x - BALL_HALF) / ball.vx);",
     "if (arrival) arrival.frames = i + 1;"

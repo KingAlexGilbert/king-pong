@@ -1512,18 +1512,11 @@ body.royal-panel-open .match-footer #controlHint {
   .title-primary-modes span { margin-top: 5px; }
 }
 
-/* Three secondary choices beneath Campaign and Play Online. */
-.title-card .title-actions { width: min(100%, 620px); grid-template-columns: repeat(3, minmax(0, 1fr)); }
+/* Four secondary choices; keep the primary modes prominent and desktop compact. */
+.title-card .title-actions { width: min(100%, 620px); grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .title-card .title-actions .secret-boss-button { grid-column: 1 / -1; }
-/* With the fourth choice unlocked, use two balanced rows instead of an
-   orphaned LAN button beneath a full-width Secret Boss tile. */
-.title-card .title-actions:has(> .secret-boss-button:not([hidden])) {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-.title-card .title-actions:has(> .secret-boss-button:not([hidden])) .secret-boss-button {
-  grid-column: auto;
-  justify-self: stretch;
-  width: 100%;
+@media (max-width: 700px) {
+  .title-card .title-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 420px) { .title-card .title-actions { gap: 6px; } .title-card .title-actions button { padding: 10px 5px; font-size: 11px; } }
 
@@ -1643,6 +1636,13 @@ body:has(#browserFullscreen) .match-bar { box-sizing: border-box; }
 .audio-optional > span { display: grid; gap: 5px; min-width: 0; }
 .audio-optional small { color: #b8a98f; font-size: 11px; }
 .audio-optional button { width: calc((100% - 24px) / 3); min-width: 90px; flex: none; }
+@media (min-width: 521px) {
+  .audio-rows > .audio-optional { grid-column: 2; margin-top: 0; flex-direction: column; align-items: stretch; gap: 8px; }
+  .audio-rows > .audio-optional button { width: 100%; min-width: 0; }
+}
+@media (max-width: 520px) {
+  .audio-rows > .audio-optional { margin-top: 6px; }
+}
 
 /* Campaign actions retain their hit targets; the existing arena identity gets
    a full row on narrow screens instead of being squeezed behind Fullscreen. */

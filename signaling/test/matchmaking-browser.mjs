@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {automaticServeChecks} from './automatic-serve-cases.mjs';
 import {createServer} from 'node:http';
 import {readFile} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
@@ -115,6 +116,7 @@ try {
         await b.evaluate(()=>{gameWindowFocused=true;keys.add('ArrowDown');});
         await until(a,()=>onlineAppliedInputSeq>0);
         await b.evaluate(()=>keys.clear());
+        await automaticServeChecks(a,b,native+' matchmaking');
       }
       if (nativeHost && native.startsWith('windows')) {
         await b.evaluate(()=>validMatchmakingState({type:'rules',rules:{id:'endless'}}));

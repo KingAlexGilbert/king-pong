@@ -1063,3 +1063,19 @@ Object.entries({
 }).forEach(([language,values])=>['Host Approval','You may compare this PIN with the other player. Comparing is optional.'].forEach((key,i)=>{
   window.KING_PONG_ROYAL_TRANSLATIONS[language][key]=values[i];
 }));
+
+// Campaign replays share the existing arena names and save progression.
+Object.entries({
+  es: ['Selección de nivel', 'Nivel', 'Completado', 'Desbloqueado', 'ESPACIO / TOCAR / A: Selección de nivel', 'TOCAR: Selección de nivel'],
+  fr: ['Choix du niveau', 'Niveau', 'Terminé', 'Débloqué', 'ESPACE / TOUCHER / A : Choix du niveau', 'TOUCHER : Choix du niveau'],
+  de: ['Levelauswahl', 'Level', 'Abgeschlossen', 'Freigeschaltet', 'LEERTASTE / TIPPEN / A: Levelauswahl', 'TIPPEN: Levelauswahl'],
+  pt: ['Seleção de nível', 'Nível', 'Concluído', 'Desbloqueado', 'ESPAÇO / TOQUE / A: Seleção de nível', 'TOQUE: Seleção de nível'],
+  it: ['Selezione livello', 'Livello', 'Completato', 'Sbloccato', 'SPAZIO / TOCCO / A: Selezione livello', 'TOCCO: Selezione livello'],
+  nl: ['Levelkeuze', 'Level', 'Voltooid', 'Ontgrendeld', 'SPATIE / TIK / A: Levelkeuze', 'TIK: Levelkeuze'],
+  ja: ['レベル選択', 'レベル', 'クリア済み', '解放済み', 'スペース / タップ / A：レベル選択', 'タップ：レベル選択'],
+  ko: ['레벨 선택', '레벨', '완료', '잠금 해제됨', '스페이스 / 탭 / A: 레벨 선택', '탭: 레벨 선택'],
+  zh: ['关卡选择', '关卡', '已完成', '已解锁', '空格 / 点击 / A：关卡选择', '点击：关卡选择']
+}).forEach(([language, values]) => ['Level Select', 'Level', 'Completed', 'Unlocked',
+  'SPACE / TAP / A: Level Select', 'TAP: Level Select'].forEach((key, i) => {
+  window.KING_PONG_ROYAL_TRANSLATIONS[language][key] = values[i];
+}));

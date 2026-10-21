@@ -15,6 +15,17 @@ flow between private rooms and matchmaking. Both acknowledge the authoritative
 configuration and first snapshot before Ready. Public matches use mutual powerup consent
 without changing the shared matchmaking queue; private rooms use the host preference.
 
+`multiplayer-serve.js` owns the two-second countdown after a two-player point. The host
+advances its remaining active time and releases the existing serve; snapshots carry the
+remaining time for guest rendering. The optional compact-wire field is negotiated in the
+existing hello exchange. Pauses and transport recovery suspend the clock. Initial Ready
+and single-player serving are unchanged.
+
+`level-select.js` reuses campaign encounters and arena previews, with unlocks read from the
+active save slot. Its replay context is transient: earlier encounters cannot award progress
+again, while completing the current frontier uses the existing campaign progression rules.
+Replays return to the gallery; the secret boss keeps its separate, gated title entry.
+
 `local-lan.js` connects native LAN bridges to the same WebRTC gameplay channel, with
 manual pairing retained. `lan-qr.js` transfers existing invitations locally, using the
 small bundled implementations documented under `vendor/`. Manual WebRTC pairing needs
@@ -40,3 +51,6 @@ unchanged. Royal effects draw once after the scores. These modules contain no fo
 
 Run `node tools/sync-gameplay.mjs`, then `node tools/sync-gameplay.mjs --check` and
 `node --test tests/*.mjs` after updating canonical sources.
+Run `npm run test:level-select` in `signaling/` for campaign replay, save-slot, localization
+and audio-layout checks in all four HTML builds. The private-room, matchmaking and offline
+LAN browser suites also exercise automatic serving on connected peers.

@@ -6,7 +6,7 @@ import {harness} from './helpers/royal-harness.mjs';
 const wire = readFileSync(new URL('../game/online-wire.js',import.meta.url),'utf8');
 const engine = readFileSync(new URL('../game/online-engine.js',import.meta.url),'utf8');
 const clean = value => JSON.parse(JSON.stringify(value));
-function game() { const h=harness();h.run(wire);return h; }
+function game() { const h=harness();h.run(wire + '\nonlinePointServeReady=true;');return h; }
 function snapshot(h) {
   h.run("lanRole='host';sendLanState(true)");
   return {...h.json("sent.filter(m=>m.type==='state').at(-1)"),gameplay:"royal",matchRules:"presets"};

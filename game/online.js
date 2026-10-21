@@ -371,6 +371,7 @@ function setOnlineControls(busy, joining = false) {
 }
 
 function closeOnlineConnection(showMessage = true, keepQueue = false) {
+  clearPointServeCountdown();
   if (saveConfirmation?.roomSession === onlineSession) finishSaveConfirmation(false);
   resetOnlineMatchFlow();
   resetOnlineWire();
@@ -473,6 +474,7 @@ function openOnlineRoom(role, code = '', assignment = null) {
     message: raw => { if (onlineSession === session) handleLanMessage(raw); },
     interrupted: () => {
       if (onlineSession !== session) return;
+      suspendPointServeCountdown();
       // Matchmaking leaves a failed setup immediately. Private-room players
       // keep signaling alive long enough to receive the authoritative departure
       // reason (and the host keeps its reusable room code).

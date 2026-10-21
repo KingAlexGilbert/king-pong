@@ -12,7 +12,7 @@ import {
 
 export function harness(platform = 'Browser') {
   const html = source(platform);
-  const shared = ['royal-gameplay.js', 'royal-rules.js', 'arena-perspective.js'].map(file => readFileSync(new URL('game/' + file, root),
+  const shared = ['royal-gameplay.js', 'royal-rules.js', 'arena-perspective.js', 'multiplayer-serve.js', 'level-select.js'].map(file => readFileSync(new URL('game/' + file, root),
     'utf8')).join('\n');
   const core = ['clamp', 'lerp', 'makePaddleProfile', 'currentCampaign', 'currentLevel', 'absoluteLevelNumber',
     'selectedAbsoluteLevelIndex',
@@ -36,6 +36,7 @@ export function harness(platform = 'Browser') {
   ].map(n => constantSource(html, n)).join('\n');
   const context = vm.createContext({
     console,
+    onlineGameBlocked: false,
     Image: class { constructor(width, height) { this.width = width; this.height = height; this.complete = true; this.naturalWidth = width; } },
     performance: {
       now: () => 1000
@@ -75,6 +76,7 @@ export function harness(platform = 'Browser') {
     function finiteNumber(x,fallback){return Number.isFinite(Number(x))?Number(x):fallback}
     function isLanGuestActive(){return lanRole==='guest'}
     function isLanHostActive(){return lanRole==='host'}
+    function isLanActive(){return lanRole!=='none'}
     function visiblePlayfieldBounds(){return {top:0,bottom:H}}
     function visiblePlayfieldCenterY(){return H/2}
     function currentShakeAmplitude(){return 0}

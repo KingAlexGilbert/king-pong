@@ -886,7 +886,8 @@ function validLanSnapshot(message) {
     true) ||
     !optional(message, 'leftY', -H, H * 2) || !optional(message, 'rightY', -H, H * 2) ||
     !optional(message, 'inputSeq', -1, Number.MAX_SAFE_INTEGER, true) ||
-    !optional(message, 'resumeCountdownMs', 0, 3000)) return false;
+    !optional(message, 'resumeCountdownMs', 0, 3000) ||
+    !optional(message, 'pointServeMs', 0, 2000)) return false;
   for (const key of ['paused', 'waitingForServe', 'gameOver', 'levelCleared', 'campaignCleared']) {
     if (message[key] !== undefined && typeof message[key] !== 'boolean') return false;
   }
@@ -1020,6 +1021,7 @@ function openRoyalGallery(kind, side = 'left') {
   if (galleryResumePlay) paused = true;
   selectionReturnFocus = document.activeElement;
   const panel = byId('royalGallery');
+  setLocalizedText(byId('royalGalleryClose'), 'Close');
   setLocalizedText(byId('royalGalleryTitle'), kind === 'arena' ? 'Choose your arena' : 'Choose your paddle');
   const list = byId('royalGalleryList');
   list.replaceChildren();
@@ -1179,8 +1181,10 @@ function initRoyalMenus() {
     const lan = royalButton('titleNativeLanButton', 'LAN Play', () => openOfflineLanSetup(true));
     actions.append(lan);
   }
-  // Keep the optional boss tile last in both DOM/focus order and the grid:
-  // Custom / Local above LAN / Boss when the boss has been unlocked.
+  const levels = royalButton('titleLevelSelectButton', 'Level Select', openLevelSelect);
+  levels.setAttribute('aria-haspopup', 'dialog');
+  actions.prepend(levels);
+  // Keep the optional boss tile last in both DOM/focus order and the grid.
   actions.append(byId('titleBossButton'));
   for (const [button, heading, subtitle, style] of [
       [online, 'PLAY ONLINE', 'Challenge real players', 'primary-online'],

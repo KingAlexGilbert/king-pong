@@ -29,7 +29,7 @@ function installOnlineSupport() {
     window[name] = (...args) => {
       if (name === 'update') tickOnlineMatchFlow();
       if (name === 'requestServeOrContinue' && onlineMatchFlowBlocksPlay()) return;
-      if (mode === 2 && onlineGameBlocked) return;
+      if (mode === 2 && onlineGameBlocked) { suspendPointServeCountdown(); return; }
       return original(...args);
     };
   }

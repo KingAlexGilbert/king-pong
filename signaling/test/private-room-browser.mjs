@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {automaticServeChecks} from './automatic-serve-cases.mjs';
 import {publicPowerupCases} from './public-powerups-cases.mjs';
 import {
   createServer
@@ -296,7 +297,7 @@ try {
   await waitFor(guest, "lanLastStatus === ONLINE_ERRORS.blocked");
   assert.equal(await host.evaluate(() => onlineSession.pendingRequests.length), 0);
   console.log('PASS matching preconnection PINs, no RTC before approval, optional comparison, rejection, and same-session rejoin block');
-
+  await guest.context().close();
 
   const peer = await page();
   await peer.evaluate(()=>{
@@ -350,16 +351,22 @@ try {
       window.testActionCount=0;const receive=onlineSession.hooks.message;
       onlineSession.hooks.message=raw=>{const m=JSON.parse(raw);if(m.type==='action'&&m.action==='pause')window.testActionCount++;receive(raw);};
       window.dropReliableAck=true;
+      // Layout checks above leave a live rally running. Seed a fresh non-final
+      // point so this assertion cannot depend on the previous rally's score.
+      startLevel();waitingForServe=false;gameWindowFocused=true;pointForPlayer();
     });
     await peer.evaluate(()=>sendLanAction('pause'));
     await waitFor(host,'window.testActionCount === 1');
     const scores=await host.evaluate(()=>[left.score,right.score]);
     const flow=await host.evaluate(()=>onlineMatchFlow.id);
+    const serveRemaining=await host.evaluate(()=>pointServeSnapshotMs());
+    assert.ok(serveRemaining>0);
     if(process.argv.includes('--transport-recovery')) {
       await host.evaluate(()=>{onlineSession.secure.peer.restartBlocked=true;onlineSession.secure.rtcFailed();});
       await Promise.all([waitFor(host,"onlineSession?.secure?.mode==='ws' && onlineSession.secure.phase==='active'"),waitFor(peer,"onlineSession?.secure?.mode==='ws' && onlineSession.secure.phase==='active'")]);
       assert.equal(await host.evaluate(()=>onlineMatchFlow.id),flow);
       assert.deepEqual(await host.evaluate(()=>[left.score,right.score]),scores);
+      assert.equal(await host.evaluate(()=>pointServeSnapshotMs()),serveRemaining,'recovery freezes the point countdown');
     }
     await host.waitForTimeout(650); // Force a reliable retry before allowing its acknowledgement.
     assert.equal(await host.evaluate(()=>window.testActionCount),1,'pause must not execute twice');
@@ -380,6 +387,7 @@ try {
     console.log('PASS encrypted lag/buffering, reliable command deduplication, transport continuity and host-only scores');
   }
 
+  await automaticServeChecks(host,peer,await host.evaluate(()=>onlineSession.secure.mode));
 
   await host.locator('#arenaKick').click();
   await host.locator('#saveConfirmCancel').click();
@@ -393,6 +401,7 @@ try {
   await join(peer);
   await waitFor(peer, 'lanLastStatus === ONLINE_ERRORS.blocked');
   console.log('PASS kick confirmation, guest notification, retained host room and reconnect block');
+  await peer.context().close();
 
   // Another approved participant can use the retained room; cancellation during
   // countdown cannot leave a queued serve or old powerup state in that room.
@@ -405,6 +414,7 @@ try {
   assert.deepEqual(await host.evaluate(()=>[waitingForServe,paused,resumeCountdownEndAt,royalPickup,royalSplitBall]),[true,true,0,null,null]);
   assert.equal(await host.evaluate(()=>lanRoomCode),code);
   console.log('PASS retained-room replacement, new initialization and countdown-disconnect cleanup');
+  await replacement.context().close();
 
   await host.evaluate(() => { closeOnlineConnection(false); startOnlineSetup(); });
   await host.locator('#onlineRequireApproval').uncheck();
@@ -430,6 +440,7 @@ try {
   await waitFor(next,'royalPickup !== null');
   assert.deepEqual(await next.evaluate(()=>[royalPickup.type,royalPickup.x,royalPickup.y]),spawned);
   console.log('PASS approval off, reload persistence and peer powerup spawn synchronization');
+  await next.context().close();await host.context().close();
 
   // A private guest's RTC channel may close before the host's signaling
   // departure reaches it. The guest must freeze, retain signaling briefly,

@@ -94,6 +94,8 @@ jobs:
         run: npm run test:gameplay
       - name: Test contextual UI, accessibility and phone rotation
         run: npm run test:ui
+      - name: Test campaign level selection, saved progression and music settings layout
+        run: npm run test:level-select
       - name: Test desktop centering and high-refresh rally transitions
         run: npm run test:engineering
       - name: Test rendered serves and authoritative snapshot playback at five refresh rates

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {automaticServeChecks} from './automatic-serve-cases.mjs';
 import {spawn} from 'node:child_process';
 import {createInterface} from 'node:readline';
 import {createServer} from 'node:http';
@@ -22,14 +23,16 @@ async function page(path){
  await p.goto(origin+'/'+path);await p.evaluate(()=>openOfflineLanSetup(true));return p;
 }
 async function controlledChannels(p){
- await p.exposeFunction('deliverLocalTest',raw=>{deliveries=deliveries.then(async()=>{
-  if(exiting||p.isClosed())return;const state=await p.evaluate(()=>({room:lanRoomCode,role:lanRole}));
+ // Capture routing at send time, avoiding an extra browser RPC per packet that
+ // can make this controlled channel slower than the production snapshot rate.
+ await p.exposeFunction('deliverLocalTest',(raw,state)=>{deliveries=deliveries.then(async()=>{
+  if(exiting||p.isClosed())return;
   for(const other of pages)if(other!==p&&!other.isClosed())await other.evaluate(({raw,state})=>{if(onlineSession&&lanRoomCode===state.room&&lanRole!==state.role)onlineSession.control?.onmessage?.({data:raw});},{raw,state});
  }).catch(e=>{if(!exiting)errors.push(e.message);});});
  await p.addInitScript(()=>{window.RTCPeerConnection=class{
   connectionState='new';iceGatheringState='complete';channels=[];
   constructor(config){this.config=config;}getConfiguration(){return this.config;}
-  createDataChannel(label){const c={label,readyState:'connecting',bufferedAmount:0,send(raw){window.deliverLocalTest(raw);},close(){this.readyState='closed';}};this.channels.push(c);return c;}
+  createDataChannel(label){const c={label,readyState:'connecting',bufferedAmount:0,send(raw){window.deliverLocalTest(raw,{room:lanRoomCode,role:lanRole});},close(){this.readyState='closed';}};this.channels.push(c);return c;}
   async createOffer(){return{type:'offer',sdp:'v=0\r\na=fingerprint:sha-256 '+Array(32).fill('AA').join(':')+'\r\n'}}async createAnswer(){return{type:'answer',sdp:'v=0\r\na=fingerprint:sha-256 '+Array(32).fill('BB').join(':')+'\r\n'}}
   async setLocalDescription(d){this.localDescription={...d,toJSON:()=>d};if(d.type==='answer')this.open();}
   async setRemoteDescription(d){this.remoteDescription=d;if(d.type==='offer')for(const label of ['pong-lan-input-v1','pong-control-v1'])this.ondatachannel({channel:this.createDataChannel(label)});else this.open();}
@@ -64,6 +67,7 @@ try{
  await host.waitForFunction(()=>!onlineMatchFlowBlocksPlay(),{},{timeout:12000});
  await guest.waitForFunction(()=>!onlineMatchFlowBlocksPlay(),{},{timeout:12000});
  console.log('PASS local signaling, approval, ready/countdown; '+(controlled?'controlled RTC':'actual WebRTC'));
+ await automaticServeChecks(host,guest,'offline LAN');
  await host.evaluate(()=>onlineSession.kickGuest());await host.waitForFunction(()=>!lanConnected&&onlineSession?.code);
  await guest.waitForFunction(()=>!onlineSession);assert.equal(await host.evaluate(()=>onlineSession.code),code);
  console.log('PASS kick retains host room; guest stops');

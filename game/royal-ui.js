@@ -46,6 +46,8 @@ function resetRoyalLocalSetup() {
 }
 
 function resetRoyalUiForTitle() {
+  levelSelectEncounter = null;
+  clearPointServeCountdown();
   clearLanQr();
   if (typeof KingPongLocalRoom !== 'undefined' && onlineSession instanceof KingPongLocalRoom) closeLanConnection(false);
   if (typeof onlineMatchFlowVisible === 'function' && onlineMatchFlowVisible()) closeLanConnection(false);
@@ -68,6 +70,7 @@ function resetRoyalUiForTitle() {
 }
 
 function royalModeName() {
+  if (isLevelSelectEncounter()) return 'Level Select';
   if (mode === 4 || bossIntroActive) return 'Secret Boss';
   if (mode === 3) return 'Custom Game';
   if (royalOnlineMode()) return typeof onlineManualLanSelected !== 'undefined' && onlineManualLanSelected ?
@@ -152,7 +155,7 @@ function initRoyalUi() {
   identity.className = 'match-identity';
   identity.innerHTML = '<strong id="matchMode"></strong><span id="matchContext"></span>';
   bar.append(menuToggle, royalButton('campaignBack', 'Back', () => {
-    if (mode === 1 || mode === 4) showTitleScreen();
+    if (mode === 1 || mode === 4) returnFromCampaignEncounter();
   }, 'mode-back'), identity, royalButton('matchContinue', 'Serve', royalContinue, 'match-primary'), royalButton(
     'matchPause', 'Pause', () => {
       requestTogglePause();
@@ -266,7 +269,8 @@ function initRoyalUi() {
   const originalButton = royalButton('originalBossMusicButton', 'ON', toggleOriginalBossMusic);
   originalButton.setAttribute('aria-labelledby', originalCaption.id + ' ' + originalButton.id);
   originalMusic.append(originalCaption, originalButton);
-  audio.append(audioRows, originalMusic, volume);
+  audioRows.append(originalMusic);
+  audio.append(audioRows, volume);
   const settingsColumns = document.createElement('div');
   settingsColumns.className = 'settings-columns';
   const display = royalHelpSection('displaySettings', 'Display');
@@ -472,7 +476,7 @@ function royalContinue() {
     setMenusVisible(false);
     return;
   }
-  if (paused && !waitingForServe && !gameOver && !levelCleared) requestTogglePause();
+  if (paused && (!waitingForServe || pointServeCountdownActive()) && !gameOver && !levelCleared) requestTogglePause();
   else requestServeOrContinue();
   if (!royalOnlineMode() || lanConnected) setMenusVisible(false);
   syncRoyalUi(true);
@@ -484,7 +488,7 @@ function toggleRoyalMenu() {
   const title = document.body.classList.contains('title-active');
   const open = byId('matchMenu') && !byId('matchMenu').hidden;
   royalMenuRequested = !open;
-  if (!title && !open && !paused && !waitingForServe && !gameOver && (!royalOnlineMode() || lanConnected)) {
+  if (!title && !open && !paused && (!waitingForServe || pointServeCountdownActive()) && !gameOver && (!royalOnlineMode() || lanConnected)) {
     requestTogglePause();
   }
   setMenusVisible(!open);
@@ -528,7 +532,7 @@ function syncRoyalUi(force = false) {
     levelCleared, campaignCleared, lanRole, lanConnected, lanLastStatus, matchArenaId, matchPaddles.left, matchPaddles
     .right,
     saveData?.royalPaddle, activeSaveSlot, playInfoVisible, matchRuleId, matchRuleRevision, isBossUnlocked(),
-    touchInputActive, gamepadConnected, joining, onlineMatchFlow?.phase, matchPowerupsEnabled
+    touchInputActive, gamepadConnected, joining, onlineMatchFlow?.phase, matchPowerupsEnabled, isLevelSelectEncounter()
   ].join('|');
   if (!force && signature === royalUiSignature) return;
   royalUiSignature = signature;
@@ -619,12 +623,12 @@ function syncRoyalUi(force = false) {
   byId('matchCpuSettings').hidden = title || mode !== 3;
   const canServe = (!online || lanConnected) && !onlineMatchFlowBlocksPlay();
   byId('matchServe').hidden = !canServe;
-  byId('matchContinue').hidden = title || setup || menu || !canServe || !(waitingForServe || gameOver || levelCleared ||
+  byId('matchContinue').hidden = title || setup || menu || !canServe || pointServeCountdownActive() || !(waitingForServe || gameOver || levelCleared ||
     campaignCleared);
   byId('matchPause').hidden = title || setup || menu || !canServe;
-  royalText(byId('matchContinue'), gameOver ? 'Retry' : levelCleared || campaignCleared ? 'Continue' : 'Serve');
+  royalText(byId('matchContinue'), isLevelSelectEncounter() && levelCleared ? 'Level Select' : gameOver ? 'Retry' : levelCleared || campaignCleared ? 'Continue' : 'Serve');
   royalText(byId('matchPause'), paused ? 'Resume' : 'Pause');
-  royalText(byId('matchResume'), title ? 'Close menu' : setup ? 'Back to setup' : gameOver ? 'Retry' :
+  royalText(byId('matchResume'), title ? 'Close menu' : setup ? 'Back to setup' : isLevelSelectEncounter() && levelCleared ? 'Level Select' : gameOver ? 'Retry' :
     paused ? 'Resume' : waitingForServe ? 'Serve' : 'Back to match');
   royalText(byId('matchSetupHint'), fixedMatch ? 'Matchmaking uses the same arena and rules for both players.' : online ? lanRole === 'guest' ? 'Choose your paddle. The host chooses the arena.' :
     lanConnected ? 'Both players can choose a paddle before serving.' :
@@ -655,8 +659,9 @@ function updateRoyalControlHint() {
   const touch = touchInputActive || royalPhoneViewport();
   const move = gamepadConnected ? 'Stick / D-pad: move' : touch ? mode === 2 && !online ? 'Drag each side to move' :
     'Drag to move' : mode === 2 && !online ? 'P1 W/S · P2 ↑/↓' : 'W/S or ↑/↓: move';
-  const action = gamepadConnected ? waitingForServe ? 'A: serve' : 'Start: pause' : touch ? waitingForServe ?
-    'Tap: serve' : 'Two fingers: pause' : waitingForServe ? 'Space: serve' : 'P: pause';
+  const manualServe = waitingForServe && !pointServeCountdownActive();
+  const action = gamepadConnected ? manualServe ? 'A: serve' : 'Start: pause' : touch ? manualServe ?
+    'Tap: serve' : 'Two fingers: pause' : manualServe ? 'Space: serve' : 'P: pause';
   royalText(controlHint, onlineMatchFlowBlocksPlay() ? '' : online && !lanConnected ? 'Menu (M)' : move + ' · ' + action);
   for (const [id, current] of [
       ['helpKeyboard', !gamepadConnected && !touch],

@@ -102,6 +102,7 @@ function onlineApplyLanHostState(state) {
   levelCleared = Boolean(state.levelCleared);
   campaignCleared = Boolean(state.campaignCleared);
   endMessage = String(state.endMessage || "").slice(0, 180);
+  applyPointServeSnapshot(state);
   if (document.body.classList.contains("title-active")) hideTitleScreen();
   if (levelChanged) {
     updateModeControls();
@@ -212,6 +213,7 @@ function onlineSendLanState(force = false) {
     hazards: serializeLanHazards(),
     paused,
     resumeCountdownMs: Math.round(resumeCountdownRemainingMs()),
+    pointServeMs: pointServeSnapshotMs(),
     waitingForServe,
     gameOver,
     levelCleared,
