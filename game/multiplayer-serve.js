@@ -31,12 +31,17 @@ function pointServeSnapshotMs() {
 function applyPointServeSnapshot(state) {
   // Called only after the normal host/sequence/tick/snapshot validation.
   const score = left.score + ':' + right.score;
+  // Only the transition from an active countdown to an authoritative rally rings.
+  const released = Boolean(pointServeCountdown && pointServeCountdown.score === score &&
+    state.pointServeMs === 0 && !waitingForServe && !paused && !onlineGameBlocked &&
+    !gameOver && !levelCleared && !campaignCleared);
   // Keep local cue progress across snapshots/recovery. Scores identify a new
   // point even when the guest missed every snapshot of the intervening rally.
   const soundStep = pointServeCountdown?.score === score ? pointServeCountdown.soundStep : 3;
   pointServeCountdown = state.pointServeMs > 0 && waitingForServe && !gameOver &&
     !levelCleared && !campaignCleared ?
     {remainingMs: state.pointServeMs, at: paused ? null : performance.now(), networked: true, score, soundStep} : null;
+  if (released) playPointServeGoSound();
 }
 
 function pointServeDisplayNumber() {
@@ -67,10 +72,16 @@ function tickPointServeCountdown() {
   if (pointServeCountdown.remainingMs > 0) return;
   // Clear before invoking the normal serve path: no callbacks or duplicate timers.
   clearPointServeCountdown();
-  serveOrContinue();
+  serveOrContinue(true); // Automatic serve replaces the normal 440 Hz serve blip.
+  if (!waitingForServe) playPointServeGoSound();
   sendLanState(true);
 }
 
+// Match the distinct completion cue used by the existing pause/resume countdown.
+function playPointServeGoSound() {
+  if (document.hidden || typeof audioCtx === 'undefined' || !audioCtx || audioCtx.state !== 'running') return;
+  beep(1040, 0.12, 0.065); // beep() respects Mute Sound Effects.
+}
 function playPointServeCountdownSound(number) {
   if (!pointServeCountdownActive() || paused || onlineGameBlocked || pointServeCountdown.at === null ||
       pointServeCountdown.networked && !isLanHostActive() && !isLanGuestActive()) return;
@@ -85,11 +96,7 @@ function playPointServeCountdownSound(number) {
 function drawPointServeCountdown() {
   const number = pointServeDisplayNumber();
   playPointServeCountdownSound(number);
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.68)';
-  ctx.fillRect(W / 2 - 42, H / 2 - 96, 84, 84);
-  ctx.strokeStyle = currentCampaign().accent;
-  ctx.lineWidth = 2;
-  ctx.strokeRect(W / 2 - 42, H / 2 - 96, 84, 84);
+  // Same centered, unboxed 64px digits as the pause/resume countdown.
   ctx.fillStyle = '#fff';
-  drawText(String(number), W / 2, H / 2 - 54, 56);
+  drawText(String(number), W / 2, H / 2 - 58, 64);
 }

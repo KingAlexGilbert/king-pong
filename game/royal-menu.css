@@ -1650,3 +1650,20 @@ body:has(#browserFullscreen) .match-bar { box-sizing: border-box; }
   .match-bar:has(#campaignBack:not([hidden])) { height: auto; min-height: 50px; flex-wrap: wrap; padding-top: 4px; padding-bottom: 4px; row-gap: 5px; }
   .match-bar:has(#campaignBack:not([hidden])) .match-identity { order: 2; flex: 0 0 100%; align-items: center; }
 }
+
+/* Release menu navigation: only show the arena toggle during actual play. */
+#matchMenu .match-menu-navigation {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0 0 12px;
+}
+#matchMenu .match-menu-navigation > .mode-back,
+#matchMenu .match-menu-navigation > .match-close {
+  position: static;
+  align-self: auto;
+  margin: 0;
+  min-height: 44px;
+  padding: 8px 12px;
+}

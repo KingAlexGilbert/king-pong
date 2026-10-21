@@ -203,9 +203,12 @@ function initRoyalUi() {
   menuActions.className = 'match-actions';
   menuActions.append(royalButton('matchResume', 'Resume', royalContinue, 'match-primary'), restartButton,
     titleJumpButton);
+  const menuNavigation = document.createElement('div');
+  menuNavigation.className = 'match-menu-navigation';
   royalText(titleJumpButton, 'Back');
   titleJumpButton.classList.add('mode-back');
-  menu.prepend(titleJumpButton);
+  menuNavigation.append(titleJumpButton);
+  menu.prepend(menuNavigation);
   menu.append(menuActions);
   menu.append(royalDisclosure('Room / connection', 'matchConnection'));
   const configure = document.createElement('div');
@@ -289,7 +292,7 @@ function initRoyalUi() {
   menu.append(help);
   const close = royalButton('matchMenuClose', 'Close menu', () => setMenusVisible(false));
   close.className = 'match-close';
-  menu.append(close);
+  menuNavigation.append(close);
   byId('matchMenu').addEventListener('click', event => {
     if (event.target === byId('matchMenu')) setMenusVisible(false);
   });
@@ -553,6 +556,9 @@ function syncRoyalUi(force = false) {
   back.classList.toggle('mode-back', onlineSetup);
   royalText(back, onlineSetup ? 'Back' : 'Menu (M)');
   modeBack.hidden = onlineSetup;
+  // In online setup, the former Menu button is a real Back control.
+  // In Custom, Local and offline LAN setup it is redundant and hidden.
+  back.hidden = !onlineSetup;
   byId('matchBar').classList.toggle('match-bar-paused', desktopPause);
   // Keep the toggle inside the current screen or modal's focus/inert boundary.
   if (menu && !royalLastDialog) royalReturnFocus = document.activeElement;
@@ -561,6 +567,10 @@ function syncRoyalUi(force = false) {
     if (menu || title) toggleParent.append(menuToggle);
     else toggleParent.prepend(menuToggle);
   }
+  // The global Menu (M) control is only useful inside the arena.
+  // In setup and connection flows it sits behind another overlay.
+  menuToggle.hidden = title || setup || menu || Boolean(galleryKind) ||
+    (online && !lanConnected) || onlineMatchFlowBlocksPlay();
   document.body.classList.toggle('royal-panel-open', setup || menu || Boolean(galleryKind));
   if (title || setup || menu || galleryKind || paused || gameOver) stopRoyalPowerupSound();
   // One source of truth for active states, including setup before any peer exists.
@@ -585,6 +595,10 @@ function syncRoyalUi(force = false) {
       localizeText(matchRule().label) : localizeText('Goal') + ' ' + currentLevel().goal) : ''));
   royalText(byId('matchSetupTitle'), royalModeName());
   royalText(byId('matchMenuTitle'), title ? 'Menu' : paused ? 'Paused' : 'Match menu');
+  // On the title menu, Back is enough; Close menu would do the same thing.
+  byId('matchMenuClose').hidden = title;
+  byId('matchResume').hidden = title;
+  byId('matchResume').parentElement.hidden = title;
   royalText(twoPlayerModeButton, 'Local Two Player');
   royalText(menuToggle, 'Menu (M)');
   menuToggle.setAttribute('aria-expanded', String(menu));
@@ -750,8 +764,11 @@ function syncRoyalFocus() {
     const target = royalReturnFocus?.isConnected && royalReturnFocus !== document.body &&
       royalReturnFocus.getClientRects().length && getComputedStyle(royalReturnFocus).visibility !== 'hidden' &&
       !royalReturnFocus.closest('[inert],[hidden]') ? royalReturnFocus :
-      menuToggle;
-    target.focus({
+      (!menuToggle.hidden ? menuToggle : document.body.classList.contains('title-active') ?
+        byId('titleCampaignButton') : !byId('matchSetup').hidden ?
+        (byId('setupBackButton').hidden ? byId('setupMenuButton') : byId('setupBackButton')) :
+        byId('matchContinue').hidden ? byId('matchPause') : byId('matchContinue'));
+    target?.focus({
       preventScroll: true
     });
   }

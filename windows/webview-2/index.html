@@ -2862,6 +2862,23 @@ body:has(#browserFullscreen) .match-bar { box-sizing: border-box; }
   .match-bar:has(#campaignBack:not([hidden])) { height: auto; min-height: 50px; flex-wrap: wrap; padding-top: 4px; padding-bottom: 4px; row-gap: 5px; }
   .match-bar:has(#campaignBack:not([hidden])) .match-identity { order: 2; flex: 0 0 100%; align-items: center; }
 }
+
+/* Release menu navigation: only show the arena toggle during actual play. */
+#matchMenu .match-menu-navigation {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0 0 12px;
+}
+#matchMenu .match-menu-navigation > .mode-back,
+#matchMenu .match-menu-navigation > .match-close {
+  position: static;
+  align-self: auto;
+  margin: 0;
+  min-height: 44px;
+  padding: 8px 12px;
+}
 </style>
 </head>
 
@@ -12954,7 +12971,7 @@ function advanceLevel() {
   updateHud();
 }
 
-function serveOrContinue() {
+function serveOrContinue(suppressServeBeep = false) {
   if (document.body.classList.contains("title-active")) return;
   if (creditsActive) return;
   if (mode === 2 && (lanRole === 'guest' || pointServeCountdownActive() || paused || onlineGameBlocked ||
@@ -12991,7 +13008,7 @@ function serveOrContinue() {
   /* ROYAL POLISH */
   seedVisualHistory();
   /* END ROYAL POLISH */
-  beep(440, 0.04);
+  if (!suppressServeBeep) beep(440, 0.04);
   /* ROYAL UI */
   syncRoyalUi(true);
   /* END ROYAL UI */
@@ -16063,12 +16080,17 @@ function pointServeSnapshotMs() {
 function applyPointServeSnapshot(state) {
   // Called only after the normal host/sequence/tick/snapshot validation.
   const score = left.score + ':' + right.score;
+  // Only the transition from an active countdown to an authoritative rally rings.
+  const released = Boolean(pointServeCountdown && pointServeCountdown.score === score &&
+    state.pointServeMs === 0 && !waitingForServe && !paused && !onlineGameBlocked &&
+    !gameOver && !levelCleared && !campaignCleared);
   // Keep local cue progress across snapshots/recovery. Scores identify a new
   // point even when the guest missed every snapshot of the intervening rally.
   const soundStep = pointServeCountdown?.score === score ? pointServeCountdown.soundStep : 3;
   pointServeCountdown = state.pointServeMs > 0 && waitingForServe && !gameOver &&
     !levelCleared && !campaignCleared ?
     {remainingMs: state.pointServeMs, at: paused ? null : performance.now(), networked: true, score, soundStep} : null;
+  if (released) playPointServeGoSound();
 }
 
 function pointServeDisplayNumber() {
@@ -16099,10 +16121,16 @@ function tickPointServeCountdown() {
   if (pointServeCountdown.remainingMs > 0) return;
   // Clear before invoking the normal serve path: no callbacks or duplicate timers.
   clearPointServeCountdown();
-  serveOrContinue();
+  serveOrContinue(true); // Automatic serve replaces the normal 440 Hz serve blip.
+  if (!waitingForServe) playPointServeGoSound();
   sendLanState(true);
 }
 
+// Match the distinct completion cue used by the existing pause/resume countdown.
+function playPointServeGoSound() {
+  if (document.hidden || typeof audioCtx === 'undefined' || !audioCtx || audioCtx.state !== 'running') return;
+  beep(1040, 0.12, 0.065); // beep() respects Mute Sound Effects.
+}
 function playPointServeCountdownSound(number) {
   if (!pointServeCountdownActive() || paused || onlineGameBlocked || pointServeCountdown.at === null ||
       pointServeCountdown.networked && !isLanHostActive() && !isLanGuestActive()) return;
@@ -16117,13 +16145,9 @@ function playPointServeCountdownSound(number) {
 function drawPointServeCountdown() {
   const number = pointServeDisplayNumber();
   playPointServeCountdownSound(number);
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.68)';
-  ctx.fillRect(W / 2 - 42, H / 2 - 96, 84, 84);
-  ctx.strokeStyle = currentCampaign().accent;
-  ctx.lineWidth = 2;
-  ctx.strokeRect(W / 2 - 42, H / 2 - 96, 84, 84);
+  // Same centered, unboxed 64px digits as the pause/resume countdown.
   ctx.fillStyle = '#fff';
-  drawText(String(number), W / 2, H / 2 - 54, 56);
+  drawText(String(number), W / 2, H / 2 - 58, 64);
 }
 
 // A replay is a normal campaign encounter with a different return destination.
@@ -16892,9 +16916,12 @@ function initRoyalUi() {
   menuActions.className = 'match-actions';
   menuActions.append(royalButton('matchResume', 'Resume', royalContinue, 'match-primary'), restartButton,
     titleJumpButton);
+  const menuNavigation = document.createElement('div');
+  menuNavigation.className = 'match-menu-navigation';
   royalText(titleJumpButton, 'Back');
   titleJumpButton.classList.add('mode-back');
-  menu.prepend(titleJumpButton);
+  menuNavigation.append(titleJumpButton);
+  menu.prepend(menuNavigation);
   menu.append(menuActions);
   menu.append(royalDisclosure('Room / connection', 'matchConnection'));
   const configure = document.createElement('div');
@@ -16978,7 +17005,7 @@ function initRoyalUi() {
   menu.append(help);
   const close = royalButton('matchMenuClose', 'Close menu', () => setMenusVisible(false));
   close.className = 'match-close';
-  menu.append(close);
+  menuNavigation.append(close);
   byId('matchMenu').addEventListener('click', event => {
     if (event.target === byId('matchMenu')) setMenusVisible(false);
   });
@@ -17242,6 +17269,9 @@ function syncRoyalUi(force = false) {
   back.classList.toggle('mode-back', onlineSetup);
   royalText(back, onlineSetup ? 'Back' : 'Menu (M)');
   modeBack.hidden = onlineSetup;
+  // In online setup, the former Menu button is a real Back control.
+  // In Custom, Local and offline LAN setup it is redundant and hidden.
+  back.hidden = !onlineSetup;
   byId('matchBar').classList.toggle('match-bar-paused', desktopPause);
   // Keep the toggle inside the current screen or modal's focus/inert boundary.
   if (menu && !royalLastDialog) royalReturnFocus = document.activeElement;
@@ -17250,6 +17280,10 @@ function syncRoyalUi(force = false) {
     if (menu || title) toggleParent.append(menuToggle);
     else toggleParent.prepend(menuToggle);
   }
+  // The global Menu (M) control is only useful inside the arena.
+  // In setup and connection flows it sits behind another overlay.
+  menuToggle.hidden = title || setup || menu || Boolean(galleryKind) ||
+    (online && !lanConnected) || onlineMatchFlowBlocksPlay();
   document.body.classList.toggle('royal-panel-open', setup || menu || Boolean(galleryKind));
   if (title || setup || menu || galleryKind || paused || gameOver) stopRoyalPowerupSound();
   // One source of truth for active states, including setup before any peer exists.
@@ -17274,6 +17308,10 @@ function syncRoyalUi(force = false) {
       localizeText(matchRule().label) : localizeText('Goal') + ' ' + currentLevel().goal) : ''));
   royalText(byId('matchSetupTitle'), royalModeName());
   royalText(byId('matchMenuTitle'), title ? 'Menu' : paused ? 'Paused' : 'Match menu');
+  // On the title menu, Back is enough; Close menu would do the same thing.
+  byId('matchMenuClose').hidden = title;
+  byId('matchResume').hidden = title;
+  byId('matchResume').parentElement.hidden = title;
   royalText(twoPlayerModeButton, 'Local Two Player');
   royalText(menuToggle, 'Menu (M)');
   menuToggle.setAttribute('aria-expanded', String(menu));
@@ -17439,8 +17477,11 @@ function syncRoyalFocus() {
     const target = royalReturnFocus?.isConnected && royalReturnFocus !== document.body &&
       royalReturnFocus.getClientRects().length && getComputedStyle(royalReturnFocus).visibility !== 'hidden' &&
       !royalReturnFocus.closest('[inert],[hidden]') ? royalReturnFocus :
-      menuToggle;
-    target.focus({
+      (!menuToggle.hidden ? menuToggle : document.body.classList.contains('title-active') ?
+        byId('titleCampaignButton') : !byId('matchSetup').hidden ?
+        (byId('setupBackButton').hidden ? byId('setupMenuButton') : byId('setupBackButton')) :
+        byId('matchContinue').hidden ? byId('matchPause') : byId('matchContinue'));
+    target?.focus({
       preventScroll: true
     });
   }
