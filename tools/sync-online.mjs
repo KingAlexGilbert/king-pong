@@ -13,19 +13,15 @@ function write(path, text, check) {
   const url = new URL(path, root);
   if (check) {
     if (!existsSync(url) || read(path) !== text) throw new Error(path + ': run node tools/sync-gameplay.mjs');
-  } else {
+  } else if (!existsSync(url) || read(path) !== text) {
     mkdirSync(new URL('.', url), {recursive: true});
     writeFileSync(url, text);
   }
 }
 
 export function onlineSources(check) {
-  const html = read('docs/demo/index.html');
-  const campaigns = vm.runInNewContext(constant(html, 'CAMPAIGNS') + '\nCAMPAIGNS', {W: 640, H: 480});
-  for (const file of ['windows/webview-2/index.html', 'Linux/assets/index.html', 'android/app/src/main/assets/index.html']) {
-    const other = vm.runInNewContext(constant(read(file), 'CAMPAIGNS') + '\nCAMPAIGNS', {W: 640, H: 480});
-    if (JSON.stringify(other) !== JSON.stringify(campaigns)) throw new Error(file + ': matchmaking arenas differ');
-  }
+  // Read canonical arenas so edits and their compatibility hash sync together.
+  const campaigns = vm.runInNewContext(constant(read('game/campaign-data.js'), 'CAMPAIGNS') + '\nCAMPAIGNS', {W: 640, H: 480});
   const rules = vm.runInNewContext(constant(read('game/royal-rules.js'), 'MATCH_RULES') + '\nMATCH_RULES');
   const revision = JSON.parse(read('game/matchmaking-version.json')).revision;
   const fingerprint = createHash('sha256').update(JSON.stringify({campaigns, rules, revision})).digest('hex').slice(0, 16);

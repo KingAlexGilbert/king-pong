@@ -1,20 +1,12 @@
 // Production HTML, canvas and DOM across all builds. Native wrappers and
 // Internet NAT are separate smoke tests.
 import assert from 'node:assert/strict';
-import {createServer} from 'node:http';
-import {readFile, mkdir} from 'node:fs/promises';
+import {staticServer, closeStaticServer} from './static-server.mjs';
+import {mkdir} from 'node:fs/promises';
 import {chromium} from 'playwright';
-import {builds, root} from '../../tests/helpers/game-source.mjs';
+import {builds} from '../../tests/helpers/game-source.mjs';
 
-const server=createServer(async(req,res)=>{
-  try {
-    const file=new URL('.'+new URL(req.url,'http://localhost').pathname,root);
-    if(!file.href.startsWith(root.href))throw Error();
-    res.setHeader('Content-Type',file.pathname.endsWith('.js')?'text/javascript':'text/html');
-    res.end(await readFile(file));
-  } catch {res.writeHead(404);res.end();}
-});
-await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+const server = await staticServer();
 const origin=`http://127.0.0.1:${server.address().port}`;
 const browser=await chromium.launch({headless:true});
 const errors=[],artifacts=process.env.KING_PONG_TEST_ARTIFACTS;
@@ -78,19 +70,28 @@ try {
     await snap(p,platform+'-level-select');
     const auth=await p.evaluate(()=>{
       saveData.highestUnlockedLevel=17;saveData.completedLevels.fill(true);
+      saveData.royalPaddle='enemy-17';
       const results=[];
       for(let index=0;index<TOTAL_LEVELS;index++) {
         levelSelectEncounter=null;mode=1;activeCampaign=Math.floor(index/6);levelIndex=index%6;startLevel();
-        const settings=()=>JSON.stringify({cpu:getCpuConfig(),level:currentLevel(),paddle:activePaddleProfile(right),hazards});
+        const settings=()=>JSON.stringify({cpu:getCpuConfig(),level:currentLevel(),player:activePaddleProfile(left),cpuPaddle:activePaddleProfile(right),hazards});
         const expected=settings();
+        if(activePaddleProfile(left)!==PLAYER_PADDLE_PROFILES[index] ||
+           activePaddleProfile(right)!==ENEMY_PADDLE_PROFILES[index])return ['incorrect campaign profiles',index];
         mode=3;activeCampaign=2;levelIndex=5;customCpuIntel=100;customCpuMaxMove=12;
         const entered=startLevelSelectEncounter(index);
         for(let i=0;i<5;i++)update();
-        results.push(entered&&mode===1&&selectedAbsoluteLevelIndex()===index&&settings()===expected&&waitingForServe&&pointServeCountdown===null);
+        openRoyalGallery('paddle');
+        results.push(galleryKind!=='paddle'&&byId('menuPaddle').hidden&&saveData.royalPaddle==='enemy-17'&&entered&&mode===1&&selectedAbsoluteLevelIndex()===index&&settings()===expected&&waitingForServe&&pointServeCountdown===null);
       }
       return results;
     });
     assert.deepEqual(auth,Array(18).fill(true));
+    assert.equal(await p.evaluate(()=>{
+      levelSelectEncounter=null;mode=3;syncRoyalUi(true);
+      return !byId('menuPaddle').hidden && activePaddleProfile(left)===selectedPaddleProfile(left) &&
+        saveData.royalPaddle==='enemy-17';
+    }),true,'Custom Game retains the saved paddle');
     pass(platform+': old/imported saves, independent slots and all 18 authentic campaign configurations');
 
     assert.deepEqual(await p.evaluate(()=>{
@@ -197,4 +198,4 @@ try {
   assert.deepEqual(errors,[]);
   console.log(`PASS: ${checks} browser check groups; no page errors`);
 } catch(error) {console.error(error);throw error;}
-finally {await browser.close();server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}
+finally {await browser.close();await closeStaticServer(server);}

@@ -28,11 +28,23 @@ class PlatformSelectionTests(unittest.TestCase):
         for platform in ('win32', 'darwin'):
             with self.subTest(platform=platform), patch('builtins.__import__', portable_import), patch.object(socket, 'socket', side_effect=AssertionError('native Linux network test ran')):
                 module = load_tests_module(platform)
+                def cases(suite):
+                    for item in suite:
+                        if isinstance(item, unittest.TestSuite):
+                            yield from cases(item)
+                        else:
+                            yield item
+
                 suite = unittest.defaultTestLoader.loadTestsFromModule(module)
+                discovered = list(cases(suite))
+                native = {case.id() for case in discovered if isinstance(case, module.LocalLanTests)}
+                portable = {case.id() for case in discovered} - native
+                self.assertTrue(native)
+                self.assertTrue(portable)
                 result = unittest.TestResult()
                 suite.run(result)
-                self.assertEqual(result.testsRun, 11)
-                self.assertEqual(len(result.skipped), 9)
+                self.assertEqual(result.testsRun, len(discovered))
+                self.assertEqual({case.id() for case, _ in result.skipped}, native)
                 self.assertEqual(result.errors, [])
                 self.assertEqual(result.failures, [])
                 self.assertTrue(all('fcntl/ioctl' in reason for _, reason in result.skipped))

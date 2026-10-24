@@ -1009,7 +1009,7 @@ function paddleThumbnail(entry) {
 }
 
 function openRoyalGallery(kind, side = 'left') {
-  if (kind === 'paddle' && (mode !== 2 && mode !== 3 || document.body.classList.contains('title-active'))) return;
+  if (kind === 'paddle' && (bossIntroActive || mode !== 2 && mode !== 3 || document.body.classList.contains('title-active'))) return;
   if (typeof onlineMatchFlowVisible === 'function' && onlineMatchFlowVisible()) return;
   if (kind === 'arena' && typeof matchmakingRequested !== 'undefined' &&
       (matchmakingRequested || matchmakingState === 'waiting')) return;

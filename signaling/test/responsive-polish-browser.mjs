@@ -11,7 +11,8 @@ try{
 for(const [platform,path] of Object.entries(builds)) for(const [width,height,dpr] of [[1920,1080,1],[2560,1440,1],[3840,2160,1],[1280,720,3],[960,600,1],[640,360,2],[390,844,3],[844,390,3]]){
  const p=await browser.newPage({viewport:{width,height},deviceScaleFactor:dpr});p.on('pageerror',e=>errors.push(e.message));await p.addInitScript(()=>Object.defineProperty(window,'KING_PONG_SIGNALING_URL',{get:()=>'',set:()=>{}}));await p.goto(origin+'/'+path);
  for(const state of ['title','boss-title','online','private','settings','gallery']){
-  await p.evaluate(state=>{showTitleScreen();if(state==='boss-title'){isBossUnlocked=()=>true;showTitleScreen();}if(['online','private'].includes(state)){startOnlineSetup(true);if(state==='private')byId('onlinePrivateRules').open=true;}if(state==='settings'){setMenusVisible(true);byId('matchSettings').open=true;}if(state==='gallery')openRoyalGallery('paddle');syncRoyalUi(true);},state);
+  await p.evaluate(state=>{showTitleScreen();if(state==='boss-title'){isBossUnlocked=()=>true;showTitleScreen();}if(['online','private'].includes(state)){startOnlineSetup(true);if(state==='private')byId('onlinePrivateRules').open=true;}if(state==='settings'){setMenusVisible(true);byId('matchSettings').open=true;}if(state==='gallery'){hideTitleScreen();mode=3;openRoyalGallery('paddle');}syncRoyalUi(true);},state);
+  if(state==='gallery')assert.equal(await p.locator('#royalGallery').isVisible(),true);
   const menu=await p.locator('#menuToggle').boundingBox();
   if(menu)assert.ok(menu.x>=0&&menu.x+menu.width<=width,`${platform} ${width} ${state} toolbar reachable`);
   const result=await p.evaluate(()=>{const panel=royalActiveDialog()||byId('titleScreen');return [...panel.querySelectorAll('.match-card,.royal-gallery-card,.title-card')].map(e=>({horizontal:e.scrollWidth>e.clientWidth+1,width:e.getBoundingClientRect().width,outerWidth:innerWidth,scrolls:e.scrollHeight>e.clientHeight+1}));});

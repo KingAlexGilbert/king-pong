@@ -6,6 +6,8 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "test": "node --test test/*.test.mjs",
+    "test:standard": "node ../tools/test.mjs standard",
+    "test:release": "node ../tools/test.mjs release",
     "check": "wrangler deploy --dry-run",
     "test:browser": "node test/browser.mjs",
     "test:gameplay": "node test/gameplay-browser.mjs",

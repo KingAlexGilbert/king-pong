@@ -1,19 +1,11 @@
 // Fresh application entry and real canvas/audio paths in each shipped HTML shell.
 import assert from 'node:assert/strict';
-import {createServer} from 'node:http';
-import {readFile, mkdir} from 'node:fs/promises';
+import {staticServer, closeStaticServer} from './static-server.mjs';
+import {mkdir} from 'node:fs/promises';
 import {chromium} from 'playwright';
-import {builds, root} from '../../tests/helpers/game-source.mjs';
+import {builds} from '../../tests/helpers/game-source.mjs';
 
-const server = createServer(async (req, res) => {
-  try {
-    const file = new URL('.' + new URL(req.url, 'http://localhost').pathname, root);
-    if (!file.href.startsWith(root.href)) throw Error();
-    res.setHeader('Content-Type', file.pathname.endsWith('.js') ? 'text/javascript' : 'text/html');
-    res.end(await readFile(file));
-  } catch { res.writeHead(404); res.end(); }
-});
-await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+const server = await staticServer();
 const origin = `http://127.0.0.1:${server.address().port}`;
 const browser = await chromium.launch({headless: true});
 const errors = [], failures = [], artifacts = process.env.KING_PONG_TEST_ARTIFACTS;
@@ -99,11 +91,12 @@ try {
         await p.locator('#menuToggle').click();
         assert.equal(await p.locator('#menuPaddle').isVisible(), false);
         assert.equal(await p.locator('#menuPaddle').evaluate(el => el.parentElement.getBoundingClientRect().height), 0);
-        assert.equal(await p.locator('#titleJumpButton').isVisible(), true);
-        assert.equal(await p.locator('#matchResume').innerText(), 'Close menu');
+        assert.equal(await p.locator('#titleJumpButton').isVisible(), false);
+        assert.equal(await p.locator('#matchResume').isVisible(), false);
+        assert.equal(await p.locator('#matchMenuClose').isVisible(), true);
         assert.equal(await p.locator('#matchModes').isVisible(), true);
         if (artifacts) await p.screenshot({path: artifacts + '/' + platform + '-menu-' + viewport.width + '.png'});
-        await p.locator('#matchResume').click();
+        await p.locator('#matchMenuClose').click();
       }
       await p.setViewportSize({width: 1280, height: 900});
       await p.locator('.primary-online').click();
@@ -115,7 +108,11 @@ try {
       await p.evaluate(() => { saveData.highestUnlockedLevel = 2; saveData.completedLevels[0] = saveData.completedLevels[1] = true; saveProgressNow(); });
       await p.locator('#titleCampaignButton').click();
       await p.locator('#menuToggle').click();
-      assert.equal(await p.locator('#menuPaddle').isVisible(), true, 'in-game customization is retained');
+      assert.equal(await p.locator('#menuPaddle').isVisible(), false, 'campaign profiles stay fixed');
+      await p.locator('#titleJumpButton').click();
+      await p.locator('#titleCustomButton').click();
+      await p.locator('#setupMenuButton').click();
+      assert.equal(await p.locator('#menuPaddle').isVisible(), true, 'Custom Game customization is retained');
       await p.locator('#menuPaddle').click();
       await p.locator('#royalGalleryList button:not(:disabled)').nth(1).click();
       const selected = await p.evaluate(() => savedPaddle());
@@ -136,7 +133,7 @@ try {
         audioCtx.createOscillator = () => {
           const oscillator = createOscillator(), start = oscillator.start.bind(oscillator);
           oscillator.start = (...args) => {
-            if ([600,720].includes(oscillator.frequency.value)) window.testTones.push(oscillator.frequency.value);
+            if ([440,600,720,1040].includes(oscillator.frequency.value)) window.testTones.push(oscillator.frequency.value);
             return start(...args);
           };
           return oscillator;
@@ -152,19 +149,24 @@ try {
         const pending = waitingForServe;
         now++;tickPointServeCountdown();frame();
         const active = !waitingForServe && !window.testCanvasText.some(t => /TO SERVE/.test(t));
+        tickPointServeCountdown();frame();
         const audible = [...window.testTones];
+        const countdown = score => {
+          score();frame();now += 1000;tickPointServeCountdown();frame();
+          now += 1000;tickPointServeCountdown();frame();tickPointServeCountdown();
+        };
         setSoundEffectsEnabled(false);
-        pointForCpu();frame();now += 1000;tickPointServeCountdown();frame();
+        countdown(pointForCpu);
         setSoundEffectsEnabled(true);frame();
         const muted = [...window.testTones];
-        now += 1000;tickPointServeCountdown();
-        setGameMuteAll(true);pointForPlayer();frame();setGameMuteAll(false);frame();
+        setGameMuteAll(true);countdown(pointForPlayer);setGameMuteAll(false);frame();
         const masterMuted = [...window.testTones];
-        now += 1000;tickPointServeCountdown();frame();
+        countdown(pointForCpu);
         return {two, one, pending, active, audible, muted, masterMuted, final: window.testTones};
       });
       assert.deepEqual(result, {two: true, one: true, pending: true, active: true,
-        audible: [600,720], muted: [600,720], masterMuted: [600,720], final: [600,720,720]});
+        audible: [600,720,1040], muted: [600,720,1040], masterMuted: [600,720,1040],
+        final: [600,720,1040,600,720,1040]});
     });
     await audio.context().close();
 
@@ -192,6 +194,6 @@ try {
   console.log(`PASS: ${checks} browser check groups; no page errors`);
 } finally {
   await browser.close();
-  server.closeAllConnections();
-  await new Promise(resolve => server.close(resolve));
+
+  await closeStaticServer(server);
 }

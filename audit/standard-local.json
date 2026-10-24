@@ -1,0 +1,100 @@
+{
+  "group": "standard",
+  "results": [
+    {
+      "id": "sync",
+      "exit": 0,
+      "seconds": 0.35
+    },
+    {
+      "id": "javascript",
+      "exit": 0,
+      "seconds": 11.702
+    },
+    {
+      "id": "python",
+      "exit": 1,
+      "seconds": 0.002
+    },
+    {
+      "id": "signaling",
+      "exit": 0,
+      "seconds": 4.908
+    },
+    {
+      "id": "worker-build",
+      "exit": 0,
+      "seconds": 0.96
+    },
+    {
+      "id": "browser",
+      "exit": 0,
+      "seconds": 10.474
+    },
+    {
+      "id": "private-room-browser",
+      "exit": 0,
+      "seconds": 23.132
+    },
+    {
+      "id": "private-controlled",
+      "exit": 0,
+      "seconds": 23.214
+    },
+    {
+      "id": "transport-recovery",
+      "exit": 0,
+      "seconds": 23.448
+    },
+    {
+      "id": "transport-faults",
+      "exit": 0,
+      "seconds": 25.461
+    },
+    {
+      "id": "preferences-browser",
+      "exit": 0,
+      "seconds": 3.85
+    },
+    {
+      "id": "matchmaking-browser",
+      "exit": 0,
+      "seconds": 75.151
+    },
+    {
+      "id": "online-flow-browser",
+      "exit": 0,
+      "seconds": 33.426
+    },
+    {
+      "id": "network-faults",
+      "exit": 0,
+      "seconds": 6.299
+    },
+    {
+      "id": "matchmaking-polish-browser",
+      "exit": 0,
+      "seconds": 8.038
+    },
+    {
+      "id": "gameplay-browser",
+      "exit": 0,
+      "seconds": 26.466
+    },
+    {
+      "id": "ui-browser",
+      "exit": 0,
+      "seconds": 56.241
+    },
+    {
+      "id": "level-select-browser",
+      "exit": 0,
+      "seconds": 10.254
+    },
+    {
+      "id": "serve-feedback-browser",
+      "exit": 0,
+      "seconds": 13.853
+    }
+  ]
+}

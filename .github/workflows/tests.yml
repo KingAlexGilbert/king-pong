@@ -8,6 +8,11 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      extended:
+        description: Run additional release browser and offline LAN checks
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -70,39 +75,8 @@ jobs:
         run: npm run check
       - name: Install test browser
         run: npx playwright install --with-deps chromium
-      - name: Test real browser peers and existing gameplay
-        run: npm run test:browser
-      - name: Test approval, moderation and private ready flow with real WebRTC
-        run: npm run test:private-rooms
-      - name: Test deterministic private-room admission and gameplay lifecycle
-        run: npm run test:private-rooms-controlled
-      - name: Test coordinated WebRTC recovery and encrypted WebSocket fallback
-        run: node test/private-room-browser.mjs --controlled-channels --transport-recovery
-      - name: Test encrypted WebSocket backpressure and reliable controls
-        run: node test/private-room-browser.mjs --websocket-fallback --transport-faults
-      - name: Test saved preferences, perspective and layout in every build
-        run: npm run test:preferences
-      - name: Test automatic cross-build matchmaking with real WebRTC
-        run: npm run test:matchmaking
-      - name: Test online menu and synchronized ready flow with controlled channels
-        run: npm run test:online-flow
-      - name: Test compact networking with latency, jitter, loss and recovery
-        run: npm run test:network
-      - name: Test new title tiles, approved icons and effective audio controls
-        run: npm run test:powerup-ui
-      - name: Test gameplay, selections, saves and touch layouts in every HTML build
-        run: npm run test:gameplay
-      - name: Test contextual UI, accessibility and phone rotation
-        run: npm run test:ui
-      - name: Test campaign level selection, saved progression and music settings layout
-        run: npm run test:level-select
-      - name: Test first-entry serve prompts, countdown audio and title menu cleanup in every build
-        run: npm run test:serve-feedback
-      - name: Test desktop centering and high-refresh rally transitions
-        run: npm run test:engineering
-      - name: Test rendered serves and authoritative snapshot playback at five refresh rates
-        run: npm run test:serve
-      - name: Test ripple rendering and independent ball motion at four refresh rates
-        run: npm run test:ripple
-      - name: Test ball appearance and immediate pause/resume presentation
-        run: npm run test:appearance
+      - name: Run every standard browser regression gate
+        run: node ../tools/test.mjs browser
+      - name: Run extended release checks
+        if: github.event_name == 'workflow_dispatch' && inputs.extended
+        run: node ../tools/test.mjs extended

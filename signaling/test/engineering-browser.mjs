@@ -1,10 +1,7 @@
 import assert from 'node:assert/strict';
 import {refreshBrowserChecks} from './refresh-browser-checks.mjs';
+import {staticServer, closeStaticServer} from './static-server.mjs';
 import {
-  createServer
-} from 'node:http';
-import {
-  readFile,
   mkdir,
   writeFile
 } from 'node:fs/promises';
@@ -13,22 +10,10 @@ import {
   firefox
 } from 'playwright';
 import {
-  builds,
-  root
+  builds
 } from '../../tests/helpers/game-source.mjs';
 
-const server = createServer(async (req, res) => {
-  try {
-    const file = new URL('.' + new URL(req.url, 'http://localhost').pathname, root);
-    if (!file.href.startsWith(root.href)) throw new Error();
-    res.setHeader('Content-Type', file.pathname.endsWith('.js') ? 'text/javascript' : 'text/html');
-    res.end(await readFile(file));
-  } catch {
-    res.writeHead(404);
-    res.end();
-  }
-});
-await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+const server = await staticServer();
 const origin = `http://127.0.0.1:${server.address().port}`;
 const engine = process.env.KING_PONG_TEST_BROWSER === 'firefox' ? firefox : chromium;
 const browser = await engine.launch({
@@ -772,5 +757,5 @@ try {
   console.log(`RESULT: ${checks} engineering browser groups passed (${engine.name()})`);
 } finally {
   await browser.close();
-  await new Promise(resolve => server.close(resolve))
+  await closeStaticServer(server)
 }

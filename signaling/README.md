@@ -103,3 +103,11 @@ Framework when available. The optional Java core test uses
 `KING_PONG_JAVA_LAN_CLASSPATH`; missing native environments are reported as skips,
 not passes. CI retains both Windows and Linux discovery. These core tests do not
 substitute for physical-device or native WebView integration tests.
+
+## Aggregate regression checks
+
+From the repository root, `node tools/test.mjs standard` runs core checks and
+every standard browser gate; `node tools/test.mjs release` adds the extended
+release scenarios. Existing targeted npm scripts remain available. See
+`../tests/README.md` for suite selection, timing reports and native/network
+prerequisites.

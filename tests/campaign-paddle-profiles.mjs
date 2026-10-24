@@ -1,29 +1,10 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {join} from 'node:path';
 import {test} from 'node:test';
 import vm from 'node:vm';
 
-const root = new URL('../', import.meta.url);
-const files = [
-  'docs/demo/index.html',
-  'windows/webview-2/index.html',
-  'Linux/assets/index.html',
-  'android/app/src/main/assets/index.html'
-];
-
-function functionSource(source, name) {
-  const start = source.indexOf(`function ${name}(`);
-  assert.ok(start >= 0, `${name} must exist`);
-  const brace = source.indexOf('{', start);
-  assert.ok(brace > start);
-  let depth = 0;
-  for (let index = brace; index < source.length; index++) {
-    if (source[index] === '{') depth++;
-    if (source[index] === '}' && --depth === 0) return source.slice(start, index + 1);
-  }
-  throw new Error(`Unterminated ${name}`);
-}
+import {builds, root, functionSource} from './helpers/game-source.mjs';
+const files = Object.values(builds);
 
 function loadProfilesAndResolver(html) {
   const start = html.indexOf('function makePaddleProfile(');
@@ -93,6 +74,10 @@ test('Campaign and title do not offer paddle selection; Custom and multiplayer d
 
   const gameplay = readFileSync(new URL('game/royal-gameplay.js', root), 'utf8');
   const gallery = functionSource(gameplay, 'openRoyalGallery');
-  assert.match(gallery, /kind === 'paddle'.*mode !== 2 && mode !== 3/,
-    'Gallery must refuse Campaign/Boss paddle changes even if called directly');
+  for (const [mode, title, intro] of [[1, false, false], [4, false, false],
+    [2, true, false], [3, true, false], [3, false, true]]) {
+    const context = {mode, bossIntroActive: intro,
+      document: {body: {classList: {contains: value => value === 'title-active' && title}}}};
+    vm.runInNewContext(gallery + ";openRoyalGallery('paddle')", context);
+  }
 });

@@ -1,5 +1,5 @@
 import {integrateBossAudio} from '../game/boss-audio-integration.mjs';
-import {integrateOpeningCpu} from '../game/campaign-cpu-integration.mjs';
+import {integrateSharedSections} from './shared-sections.mjs';
 import {integrateBrowserFullscreen} from '../game/fullscreen-integration.mjs';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { integrateMultiplayerPresentation } from '../game/presentation-integration.mjs';
@@ -57,7 +57,7 @@ for (const file of files) {
   const path = new URL(file, root);
   const html = readFileSync(path, 'utf8');
   let updated = replaceBlock(
-    html.replace(/\r\n/g, '\n'),
+    integrateSharedSections(html.replace(/\r\n/g, '\n')),
     '// BEGIN SHARED ROYAL GAMEPLAY',
     '// END SHARED ROYAL GAMEPLAY',
     script + '\n'
@@ -70,20 +70,19 @@ for (const file of files) {
   updated = integrateRoyalPolish(updated);
   updated = integrateServeMotion(updated);
   updated = integrateLevelSelect(updated);
-  updated = integrateOpeningCpu(updated);
   updated = integrateOnline(updated, nativeOnlineScript, file !== 'docs/demo/index.html');
   updated = integrateBossAudio(updated);
   updated = integrateBrowserFullscreen(updated, file === 'docs/demo/index.html');
   // Normalize generated content, then preserve the original file's line endings.
-updated = updated.replace(/\r\n/g, '\n');
+  updated = updated.replace(/\r\n/g, '\n');
 
-if (html.includes('\r\n')) {
-  updated = updated.replace(/\n/g, '\r\n');
-}
+  if (html.includes('\r\n')) {
+    updated = updated.replace(/\n/g, '\r\n');
+  }
 
   if (process.argv.includes('--check')) {
     if (updated !== html) throw new Error(`${file}: run node tools/sync-gameplay.mjs`);
-  } else {
+  } else if (updated !== html) {
     writeFileSync(path, updated);
   }
 }

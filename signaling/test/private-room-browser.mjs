@@ -452,13 +452,15 @@ try {
   const closingGuest=await page();
   await closingGuest.evaluate(code=>openOnlineRoom('guest',code),await closingHost.evaluate(()=>lanRoomCode));
   await Promise.all([waitFor(closingHost,"onlineMatchFlow?.phase === 'ready'"),waitFor(closingGuest,"onlineMatchFlow?.phase === 'ready'")]);
-  if(!websocketFallback){
+  const departureTransport=await closingGuest.evaluate(()=>onlineSession.secure.mode);
+  assert.ok(['rtc','ws'].includes(departureTransport));
+  if(departureTransport==='rtc'){
     await closingGuest.evaluate(()=>(onlineSession.secure?.rtcControl || onlineControlChannel).onclose());
     assert.equal(await closingGuest.evaluate(()=>Boolean(onlineSession&&!onlineSession.closed&&onlineGameBlocked&&paused)),true);
   }
   await closingHost.evaluate(()=>showTitleScreen());
   await waitFor(closingGuest,'lanLastStatus === ONLINE_ERRORS.host_left');
-  console.log('PASS private guest receives authoritative host departure');
+  console.log('PASS '+departureTransport+' private guest receives authoritative host departure');
   assert.deepEqual(errors, []);
   }
 } catch (error) {

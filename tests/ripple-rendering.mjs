@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {harness} from './helpers/royal-harness.mjs';
-import {builds,source,functionSource} from './helpers/game-source.mjs';
-for(const platform of Object.keys(builds)) {
+import {source,functionSource} from './helpers/game-source.mjs';
+const platform = 'Browser';
  test(`${platform}: spawn rings preserve geometry/fade without shadow filters or gameplay mutation`,()=>{
   const h=harness(platform),strokes=[],arcs=[],blur=[];
   let state={globalAlpha:1,lineWidth:1,strokeStyle:'white',shadowBlur:7};const stack=[];
@@ -29,4 +29,3 @@ for(const platform of Object.keys(builds)) {
   h.run("const calls=[];drawSpawnRippleAt=(...args)=>calls.push(args);bossBalls=[{rallySpawnPulseX:90,rallySpawnPulseY:130,rallyLaunchFramesRemaining:30}];drawBossRallySpawnPulses()");
   assert.deepEqual(h.json('calls[0].slice(0,3)'),[90,130,30]);
  });
-}

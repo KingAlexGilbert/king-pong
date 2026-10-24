@@ -1,33 +1,18 @@
 import assert from 'node:assert/strict';
+import {staticServer, closeStaticServer} from './static-server.mjs';
 import {
-  createServer
-} from 'node:http';
-import {
-  readFile,
   mkdir
 } from 'node:fs/promises';
 import {
   chromium
 } from 'playwright';
 import {
-  builds,
-  root
+  builds
 } from '../../tests/helpers/game-source.mjs';
 
 // These deterministic browser checks exercise real game/UI code. The peer bridge below
 // deliberately tests gameplay messages separately from the real WebRTC test in browser.mjs.
-const server = createServer(async (request, response) => {
-  try {
-    const file = new URL('.' + new URL(request.url, 'http://localhost').pathname, root);
-    if (!file.href.startsWith(root.href)) throw new Error();
-    response.setHeader('Content-Type', file.pathname.endsWith('.js') ? 'text/javascript' : 'text/html');
-    response.end(await readFile(file));
-  } catch {
-    response.writeHead(404);
-    response.end();
-  }
-});
-await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+const server = await staticServer();
 const origin = `http://127.0.0.1:${server.address().port}`;
 const browser = await chromium.launch({
   headless: true,
@@ -263,7 +248,7 @@ try {
       }));
     }
     pass(platform + ': campaign and boss initialization; native online entry and existing LAN setup');
-    await p.close();
+    await p.context().close();
   }
 
   for (const viewport of [{
@@ -305,7 +290,7 @@ try {
     assert.equal(layout.contained, true, 'preview and labels fit in each scrollable card');
     await assertGalleryLayout(p);
     await screenshot(p, 'touch-' + viewport.width);
-    await p.close();
+    await p.context().close();
     pass(`touch ${viewport.width}x${viewport.height}: scrollable gallery stays inside the viewport`);
   }
   const localized = await page('Browser', {
@@ -314,7 +299,7 @@ try {
   assert.equal(await localized.locator('.primary-online strong').innerText(), 'JUGAR EN LÍNEA');
   await localized.evaluate(() => { hideTitleScreen(); mode = 3; openRoyalGallery('paddle'); });
   assert.equal(await localized.locator('#royalGalleryTitle').innerText(), 'Elige tu pala');
-  await localized.close();
+  await localized.context().close();
   pass('Spanish localization includes new landing and gallery text');
 
   for (const viewport of [{width: 1280, height: 800}, {width: 844, height: 390}, {width: 390, height: 844}]) {
@@ -638,12 +623,12 @@ try {
   })));
   assert.equal(await guest.evaluate(() => onlineGameBlocked && paused), true);
   pass('mixed old/new gameplay is stopped with a reload message, without changing version numbers');
-  await host.close();
-  await guest.close();
+  await host.context().close();
+  await guest.context().close();
   assert.deepEqual(errors, []);
   pass('all browser pages and gameplay checks completed without console errors or uncaught exceptions');
   console.log(`RESULT: ${checks} browser integration groups passed`);
 } finally {
   await browser.close();
-  await new Promise(resolve => server.close(resolve));
+  await closeStaticServer(server);
 }

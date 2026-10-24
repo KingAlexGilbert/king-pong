@@ -11,10 +11,11 @@ function game(platform) {
     let gameOver=false,levelCleared=false,campaignCleared=false,creditsActive=false;
     let lanRole='host',connected=true,serves=0;
     const left={score:1},right={score:0},performance={now:()=>now};
-    const W=640,H=480,ctx={fillRect(){},strokeRect(){}},texts=[];
+    const W=640,H=480,ctx={fillRect(){throw Error('unexpected countdown box')},
+      strokeRect(){throw Error('unexpected countdown border')}},texts=[],draws=[];
     document.body={classList:{contains:()=>false}};
     function currentCampaign(){return {accent:'#fff'}}
-    function drawText(text){texts.push(text)}
+    function drawText(text,...args){texts.push(text);draws.push([text,...args])}
     function isLanActive(){return lanRole!=='none'}
     function isLanHostActive(){return lanRole==='host'&&connected}
     function isLanGuestActive(){return lanRole==='guest'&&connected}
@@ -35,6 +36,8 @@ for (const platform of Object.keys(builds)) {
     h.run('now++;tickPointServeCountdown();drawPointServeCountdown();drawPointServeCountdown();');
     assert.deepEqual(h.tones(), [600,720]);
     assert.deepEqual(h.json('texts'), ['2','2','2','1','1']);
+    assert.ok(h.json('draws').every(([,x,y,size]) => x === 320 && y === 182 && size === 64),
+      'digits retain the centered, unboxed pause/resume presentation');
     h.run('now+=999;tickPointServeCountdown();drawPointServeCountdown();');
     assert.equal(h.run('serves'), 0);
     h.run('now++;tickPointServeCountdown();tickPointServeCountdown();');
@@ -62,8 +65,25 @@ for (const platform of Object.keys(builds)) {
     // A new score is enough to identify the next countdown; no new wire fields.
     h.run('right.score++;applyPointServeSnapshot({pointServeMs:2000});drawPointServeCountdown();now+=1200;drawPointServeCountdown();');
     assert.deepEqual(h.tones(), [600,720,600,720]);
-    h.run('waitingForServe=false;applyPointServeSnapshot({pointServeMs:0});playPointServeCountdownSound(1);');
+    h.run('waitingForServe=false;applyPointServeSnapshot({pointServeMs:0});applyPointServeSnapshot({pointServeMs:0});playPointServeCountdownSound(1);');
     assert.deepEqual(h.tones(), [600,720,600,720,1040]);
+  });
+
+  test(`${platform}: blocked or cancelled guest release never rings or queues a completion cue`, () => {
+    for (const state of ['paused=true', 'onlineGameBlocked=true', 'document.hidden=true',
+      "audioCtx.state='suspended'", 'audioCtx=null', 'gameOver=true', 'levelCleared=true',
+      'campaignCleared=true', 'saveData.soundEffectsEnabled=false', 'saveData.muteAll=true',
+      'clearPointServeCountdown()']) {
+      const h = game(platform);
+      h.run(`lanRole='guest';applyPointServeSnapshot({pointServeMs:800});${state};
+        waitingForServe=false;applyPointServeSnapshot({pointServeMs:0});`);
+      assert.deepEqual(h.tones(), [], state);
+      h.run(`paused=onlineGameBlocked=gameOver=levelCleared=campaignCleared=document.hidden=false;
+        saveData.soundEffectsEnabled=true;saveData.muteAll=false;
+        if(audioCtx)audioCtx.state='running';else ensureAudioContext();
+        applyPointServeSnapshot({pointServeMs:0});`);
+      assert.deepEqual(h.tones(), [], 'no late completion after ' + state);
+    }
   });
 
   test(`${platform}: pausing, suspension and disconnection keep cues silent and preserve host time`, () => {
@@ -101,7 +121,7 @@ for (const platform of Object.keys(builds)) {
     assert.deepEqual(h.tones(), [600], 'music mute/volume do not mute the separate SFX channel');
   });
 
-  test(`${platform}: delayed frames skip missed numbers; resets, completion and initial serves are silent`, () => {
+  test(`${platform}: delayed frames skip missed numbers; cancelled and solo countdowns stay silent`, () => {
     const h = game(platform);
     h.run('playPointServeCountdownSound(2);beginPointServeCountdown();now+=1500;tickPointServeCountdown();drawPointServeCountdown();');
     assert.deepEqual(h.tones(), [720], 'only the number actually displayed gets a cue');

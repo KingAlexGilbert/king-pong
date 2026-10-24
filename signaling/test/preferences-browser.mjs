@@ -1,33 +1,18 @@
 import assert from 'node:assert/strict';
+import {staticServer, closeStaticServer} from './static-server.mjs';
 import {
-  createServer
-} from 'node:http';
-import {
-  readFile,
   mkdir
 } from 'node:fs/promises';
 import {
   chromium
 } from 'playwright';
 import {
-  builds,
-  root
+  builds
 } from '../../tests/helpers/game-source.mjs';
 
 // These deterministic browser checks exercise real game/UI code. The peer bridge below
 // deliberately tests gameplay messages separately from the real WebRTC test in browser.mjs.
-const server = createServer(async (request, response) => {
-  try {
-    const file = new URL('.' + new URL(request.url, 'http://localhost').pathname, root);
-    if (!file.href.startsWith(root.href)) throw new Error();
-    response.setHeader('Content-Type', file.pathname.endsWith('.js') ? 'text/javascript' : 'text/html');
-    response.end(await readFile(file));
-  } catch {
-    response.writeHead(404);
-    response.end();
-  }
-});
-await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+const server = await staticServer();
 const origin = `http://127.0.0.1:${server.address().port}`;
 const browser = await chromium.launch({
   headless: true,
@@ -122,7 +107,7 @@ try {
     assert.deepEqual(await p.evaluate(()=>[matchPowerupsEnabled,saveData.royalPowerupsEnabled]),[true,false],
       'private powerup preference does not alter same-device rules');
     pass(platform+': preferences survive restart, slots, backup import/export and temporary host/matchmaking overrides');
-    await p.close();
+    await p.context().close();
   }
   for (const platform of Object.keys(builds)) {
   const p=await page(platform);
@@ -195,7 +180,7 @@ try {
   assert.deepEqual(frames.goal,[1,0]);assert.deepEqual(frames.guestGoal,[1,0]);
   assert.deepEqual(frames.messages,['Right player wins the match. Space to play again.','Left player wins the match. Space to play again.']);
   pass(platform+': actual Canvas perspective, 60/120/144/165/240 Hz interpolation, scores, goals, effects, touch/keyboard/controller, LAN/online assignments and solo isolation');
-  await p.close();
+  await p.context().close();
   }
   const p=await page();
   for(const viewport of [{width:1280,height:800},{width:390,height:844},{width:844,height:390}]) {
@@ -210,4 +195,4 @@ try {
   if (artifacts) await p.screenshot({path:artifacts+'/back-landscape.png'});
   pass('top Back buttons at desktop, portrait and landscape sizes');
   assert.deepEqual(errors,[]);
-} finally { await browser.close(); await new Promise(resolve=>server.close(resolve)); }
+} finally { await browser.close(); await closeStaticServer(server); }

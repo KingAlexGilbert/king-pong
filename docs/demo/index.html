@@ -2916,7 +2916,6 @@ body:has(#browserFullscreen) .match-bar { box-sizing: border-box; }
   min-height: 44px;
   padding: 8px 12px;
 }
-
 </style>
 </head>
 
@@ -5722,6 +5721,7 @@ let ball = {
   lastScored: 0
 };
 
+// BEGIN SHARED PADDLE-PROFILES
 function makePaddleProfile(name, offsets, contactScale = 1.04, slopeInfluence = 0.7, aimStrength = 0, noise = 0, bias =
   0) {
   return Object.freeze({
@@ -5780,6 +5780,7 @@ const BOSS_ADAPTIVE_PROFILES = [makePaddleProfile("Adaptive Flat", [0, 0, 0, 0, 
     1, 6, 3, 8, 2, 7, 1, 5, 0
   ], 0.8, 2.15, 0, 0, 0.24)
 ];
+// END SHARED PADDLE-PROFILES
 let bossAdaptiveProfile = BOSS_ADAPTIVE_PROFILES[0];
 let nextCpuModeServeDirection = -1;
 let rallyLaunchFramesRemaining = 0;
@@ -5798,6 +5799,7 @@ let musicNextStepTime = 0;
 const MUSIC_SCHEDULER_LOOKAHEAD_SECONDS = 0.1;
 const MUSIC_SCHEDULER_MIN_DELAY_MS = 20; /* Track active chiptune voices so muting can stop them immediately. */
 const activeMusicOscillators = new Set;
+// BEGIN SHARED CAMPAIGN-DATA
 const CAMPAIGNS = [{
   id: "training",
   name: "Training Circuit",
@@ -6393,6 +6395,7 @@ const BOSS_CAMPAIGN = {
   accent: "#b14dff",
   levels: [BOSS_LEVEL]
 };
+// END SHARED CAMPAIGN-DATA
 const MUSIC_TRACKS = [{
   title: "Open Pulse",
   root: 48,
@@ -7056,6 +7059,7 @@ function updateControlHint() {
   updateRoyalControlHint();
 }
 
+// BEGIN SHARED GAMEPAD-INPUT
 function getConnectedGamepads() {
   if (document.hidden || !gameWindowFocused) return [];
   if (typeof navigator === "undefined" || typeof navigator.getGamepads !== "function") {
@@ -7112,7 +7116,7 @@ function gamepadVertical(pad, axisIndex = 1) {
     GAMEPAD_BUTTONS.DPAD_UP) ? 1 : 0);
   return clamp(stick + dpad, -1, 1);
 }
-
+// END SHARED GAMEPAD-INPUT
 function resumeCountdownRemainingMs() {
   if (!paused || resumeCountdownEndAt <= 0) return 0;
   return Math.max(0, resumeCountdownEndAt - performance.now());
@@ -7171,6 +7175,7 @@ function togglePause() {
   setMenusVisible(true);
 }
 
+// BEGIN SHARED TOUCH-INPUT
 function setTouchInputActive() {
   if (!touchInputActive) {
     touchInputActive = true;
@@ -7367,7 +7372,7 @@ function handleCanvasPointerCancel(e) {
   activeTouchPointers.delete(e.pointerId);
   refreshTouchPaddleTargets();
 }
-
+// END SHARED TOUCH-INPUT
 function isFullScreenTouchControlTarget(target) {
   if (!target || typeof target.closest !== "function") {
     return false;
@@ -7879,6 +7884,7 @@ function setAccent() {
   invalidateStaticBackgroundCache();
 }
 
+// BEGIN SHARED CPU-CONFIG
 function getCpuConfig() {
   if (mode === 4) {
     return {
@@ -8050,7 +8056,7 @@ function chooseCpuError() {
   const cfg = getCpuConfig();
   cpuErrorOffset = (Math.random() * 2 - 1) * cfg.error;
 }
-
+// END SHARED CPU-CONFIG
 function forEachLevel(callback) {
   CAMPAIGNS.forEach((campaign, campaignIndex) => {
     campaign.levels.forEach((level, levelInCampaign) => {
@@ -9494,6 +9500,7 @@ function resetHazardTrapGuard() {
   framesSincePaddleContact = 0;
 }
 
+// BEGIN SHARED RALLY-RAMP
 function clearRallyLaunchRamp() {
   rallyLaunchFramesRemaining = 0;
   rallyLaunchTargetSpeed = 0;
@@ -9525,7 +9532,7 @@ function updateRallyLaunchRamp() {
   if (elapsed >= 24) rallyLaunchTargetSpeed = 0;
   if (rallyLaunchFramesRemaining <= 0) clearRallyLaunchRamp();
 }
-
+// END SHARED RALLY-RAMP
 function resetBall(direction = 1, waitForServe = true, spawnNearPlayer = false) {
   clearPointServeCountdown();
   resetRoyalRally();
@@ -10234,6 +10241,7 @@ function updateBossBalls() {
   }
 }
 
+// BEGIN SHARED PADDLE-GEOMETRY
 function rectsOverlapRaw(ax, ay, aw, ah, bx, by, bw, bh) {
   return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
 }
@@ -10401,7 +10409,7 @@ function selectBossAdaptiveProfile(targetBall, force = false) {
   bossAdaptiveDecisionFrame = frame;
   return bestProfile;
 }
-
+// END SHARED PADDLE-GEOMETRY
 function hitPaddle(paddle, direction) {
   endRoyalRush(ball);
   ball.lastHit = paddle === left ? "left" : "right";
@@ -10492,6 +10500,7 @@ function updatePlayerPaddles(gamepads = getConnectedGamepads()) {
   clampPaddleToVisiblePlayfield(right);
 }
 
+// BEGIN SHARED HAZARD-MOTION
 function updateHazards() {
   for (const h of hazards) {
     h.hitFlash = Math.max(0, h.hitFlash - 1);
@@ -10533,6 +10542,8 @@ function updateHazards() {
     }
   }
 }
+// END SHARED HAZARD-MOTION
+
 
 function forceBallOutOfHazardLoop(h = null) {
   const level = currentLevel();
@@ -10804,6 +10815,7 @@ function updateSingleBall() {
   }
 }
 
+// BEGIN SHARED CPU-TRACKING
 function predictWithSimpleBounds(x, y, vx, vy, targetX) {
   if (vx <= 0) return y + BALL_HALF;
   const bounds = visiblePlayfieldBounds();
@@ -10929,7 +10941,7 @@ function updateCPU() {
   }
   right.y = clamp(right.y, bounds.top, bounds.bottom - PADDLE_H);
 }
-
+// END SHARED CPU-TRACKING
 function update() {
   frame++;
   if (shakeFrames > 0) shakeFrames--;
@@ -12398,7 +12410,7 @@ function paddleThumbnail(entry) {
 }
 
 function openRoyalGallery(kind, side = 'left') {
-  if (kind === 'paddle' && (mode !== 2 && mode !== 3 || document.body.classList.contains('title-active'))) return;
+  if (kind === 'paddle' && (bossIntroActive || mode !== 2 && mode !== 3 || document.body.classList.contains('title-active'))) return;
   if (typeof onlineMatchFlowVisible === 'function' && onlineMatchFlowVisible()) return;
   if (kind === 'arena' && typeof matchmakingRequested !== 'undefined' &&
       (matchmakingRequested || matchmakingState === 'waiting')) return;
@@ -14139,7 +14151,17 @@ function royalFocusables(panel) {
   return [...panel.querySelectorAll(
       'button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),summary')]
     .concat(byId('browserFullscreen') ? [byId('browserFullscreen')] : [])
-    .filter(element => element.getClientRects().length && !element.closest('[hidden]'));
+    .filter(element => {
+      if (!element.getClientRects().length || element.closest('[hidden],[inert]') ||
+          getComputedStyle(element).visibility === 'hidden') return false;
+      // Collapsed details can retain layout boxes even though their contents
+      // cannot receive focus. Keep only their own summary in the keyboard cycle.
+      for (let parent = element.parentElement; parent; parent = parent.parentElement) {
+        if (parent.tagName === 'DETAILS' && !parent.open &&
+            !(element.tagName === 'SUMMARY' && element.parentElement === parent)) return false;
+      }
+      return true;
+    });
 }
 
 function syncRoyalFocus() {

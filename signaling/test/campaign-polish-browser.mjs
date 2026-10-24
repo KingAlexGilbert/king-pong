@@ -15,7 +15,6 @@ try {
     for (const [width,height] of [[1920,1080],[1280,720],[844,390],[390,844],[320,568]]) {
       await p.setViewportSize({width,height});
       await p.evaluate(() => { showTitleScreen(); startCampaignFromSave(); royalRotateDismissed=true; syncRoyalUi(true); });
-      await p.waitForTimeout(500);
       const toolbar = await p.locator('#matchBar button:not([hidden])').evaluateAll(nodes=>nodes.map(e=>e.getBoundingClientRect().toJSON()));
       assert.ok(toolbar.every(b=>b.x>=0&&b.right<=width), `${platform} ${width} toolbar in viewport`);
       for(let i=0;i<toolbar.length;i++)for(let j=i+1;j<toolbar.length;j++)assert.ok(toolbar[i].right<=toolbar[j].left||toolbar[j].right<=toolbar[i].left||toolbar[i].bottom<=toolbar[j].top||toolbar[j].bottom<=toolbar[i].top,'toolbar buttons never overlap');
@@ -25,7 +24,6 @@ try {
       assert.equal(await p.evaluate(() => document.body.classList.contains('title-active')),true);
       assert.equal(await p.evaluate(() => JSON.stringify(saveData)),save,'leaving awards no progress');
       await p.evaluate(() => { hideTitleScreen(); startBossFight(); royalRotateDismissed=true; syncRoyalUi(true); });
-      await p.waitForTimeout(500);
       const hud = await p.evaluate(() => {
         const text=drawText,health=drawHealthBar;let words=[],bars=0;
         try {drawText=(s)=>words.push(s);drawHealthBar=()=>bars++;drawBossHud();}finally{drawText=text;drawHealthBar=health;}
@@ -43,9 +41,9 @@ try {
     assert.equal(await p.locator('#campaignBack').isVisible(),false);
     await p.locator('#onlinePowerups').click();
     if(await p.locator('#onlinePowerups').getAttribute('aria-pressed')!=='true')await p.locator('#onlinePowerups').click();
-    await p.mouse.move(0,0);await p.waitForTimeout(200);
+    await p.mouse.move(0,0);await p.waitForFunction(()=>getComputedStyle(byId('onlinePowerups')).borderColor==='rgb(255, 212, 105)');
     assert.equal(await p.locator('#onlinePowerups').evaluate(e=>getComputedStyle(e).borderColor),'rgb(255, 212, 105)');
-    await p.locator('#onlinePowerups').click();await p.mouse.move(0,0);await p.waitForTimeout(200);
+    await p.locator('#onlinePowerups').click();await p.mouse.move(0,0);await p.waitForFunction(()=>getComputedStyle(byId('onlinePowerups')).borderColor!=='rgb(255, 212, 105)');
     assert.notEqual(await p.locator('#onlinePowerups').evaluate(e=>getComputedStyle(e).borderColor),'rgb(255, 212, 105)');
     await p.reload();assert.equal(await p.evaluate(()=>playerPreference('royalPowerupsEnabled')),false);
     await p.evaluate(()=>{loadSaveSlot(1);setMenusVisible(true);byId('matchSettings').open=true;syncRoyalUi(true);});

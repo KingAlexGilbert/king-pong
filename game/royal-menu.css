@@ -1667,4 +1667,3 @@ body:has(#browserFullscreen) .match-bar { box-sizing: border-box; }
   min-height: 44px;
   padding: 8px 12px;
 }
-

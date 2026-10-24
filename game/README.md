@@ -3,6 +3,34 @@
 The `game/` directory contains the shared gameplay, interface, networking and localization sources.
 `tools/sync-gameplay.mjs` synchronizes them into the browser, Android, Windows and Linux HTML builds.
 
+The remaining identical engine sections have explicit canonical sources:
+
+| Source | Responsibility |
+| --- | --- |
+| `paddle-profiles.js` | Original player, CPU and boss paddle definitions |
+| `campaign-data.js` | Campaigns, arenas, hazards and boss encounter data |
+| `cpu-config.js` | Existing campaign, Custom Game and boss difficulty values |
+| `paddle-geometry.js` | Paddle profiles, contact geometry and bounce calculations |
+| `cpu-tracking.js` | CPU errors, prediction, hazard forecasts and movement |
+| `hazard-motion.js` | Existing hazard motion update |
+| `rally-ramp.js` | Existing serve acceleration ramp |
+| `gamepad-input.js` | Equivalent gameplay controller polling |
+| `touch-input.js` | Equivalent gameplay touch positioning and handlers |
+
+These are plain script sections, not runtime modules. `tools/shared-sections.mjs`
+inserts each one between its named `BEGIN SHARED` / `END SHARED` markers at the
+original initialization point in every shell. Missing, reversed or duplicate
+markers fail synchronization. Edit the canonical source, then run the existing
+sync command; do not hand-edit generated section contents. Sync keeps platform
+line endings and avoids rewriting unchanged outputs. The online compatibility
+hash reads canonical campaign data in the same sync invocation.
+
+Native bridges, save adapters, audio lifecycle, viewport/fullscreen integration
+and platform bootstrap remain in their respective shells. Collision and frame
+loop sections with platform-specific side effects remain in place. Generated
+copies are required for offline/native packaging; they are verified outputs,
+not independently maintained implementations.
+
 Two-player online room negotiation lives in `online.js`, with compact message handling in
 `online-wire.js` and `online-engine.js`. `network-common.js` supplies conservative connection-route
 classification and bounded input validation. `multiplayer-safety.js` adds two-player private-room
@@ -54,3 +82,5 @@ Run `node tools/sync-gameplay.mjs`, then `node tools/sync-gameplay.mjs --check` 
 Run `npm run test:level-select` in `signaling/` for campaign replay, save-slot, localization
 and audio-layout checks in all four HTML builds. The private-room, matchmaking and offline
 LAN browser suites also exercise automatic serving on connected peers.
+See `tests/README.md` for fast, standard and complete release commands, native
+prerequisites and the distinction between controlled channels and real routes.

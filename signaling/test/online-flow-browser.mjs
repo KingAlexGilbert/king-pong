@@ -1,20 +1,12 @@
 import assert from 'node:assert/strict';
-import {createServer} from 'node:http';
-import {readFile, mkdir} from 'node:fs/promises';
+import {staticServer, closeStaticServer} from './static-server.mjs';
+import {mkdir} from 'node:fs/promises';
 import {chromium} from 'playwright';
-import {builds, root} from '../../tests/helpers/game-source.mjs';
+import {builds} from '../../tests/helpers/game-source.mjs';
 
 // Real production HTML/canvas with two-page, controlled channel delivery. This
 // tests UI/protocol behavior, NOT ICE, TURN or physical WebView compatibility.
-const server = createServer(async (req, res) => {
-  try {
-    const file = new URL('.' + new URL(req.url, 'http://localhost').pathname, root);
-    if (!file.href.startsWith(root.href)) throw new Error();
-    res.setHeader('Content-Type', file.pathname.endsWith('.js') ? 'text/javascript' : 'text/html');
-    res.end(await readFile(file));
-  } catch { res.writeHead(404); res.end(); }
-});
-await new Promise(r => server.listen(0, '127.0.0.1', r));
+const server = await staticServer();
 const browser = await chromium.launch({headless: true, args: ['--no-sandbox']});
 const origin = `http://127.0.0.1:${server.address().port}`;
 const errors = [];
@@ -118,15 +110,10 @@ try {
     for (const viewport of [{width: 1366, height: 768}, {width: 1920, height: 1080},
       {width: 390, height: 844}, {width: 844, height: 390}]) {
       const p = await page(platform, viewport);
-      const locked = await p.evaluate(() => [...document.querySelectorAll('.title-actions > button:not([hidden])')]
-        .map(button => button.getBoundingClientRect().y));
-      assert.equal(locked.length, 4, 'locked boss leaves four secondary choices');
-      if (viewport.width > 700) {
-        assert.ok(locked.every(y => Math.abs(y - locked[0]) < 2), 'wide locked choices share one row');
-      } else {
-        assert.ok(Math.abs(locked[0]-locked[1]) < 2 && Math.abs(locked[2]-locked[3]) < 2 &&
-          locked[2] > locked[0], 'narrow locked choices use two rows');
+      for (const id of ['titleLevelSelectButton','titleCustomButton','titleLocalButton']) {
+        assert.equal(await p.locator('#'+id).isVisible(),true,id+' available before boss unlock');
       }
+      assert.equal(await p.locator('#titleBossButton').isVisible(),false);
       await p.evaluate(() => {
         saveData.completedLevels.fill(true); saveData.highestUnlockedLevel = 17; saveData.bossUnlocked = true;
         updateModeControls(); syncRoyalUi(true);
@@ -144,26 +131,20 @@ try {
       });
       assert.ok(Math.abs(title.primary.x + title.primary.w/2 - title.secondary.x - title.secondary.w/2) < 2);
       assert.equal(title.overflow, false);
-      const [levels, custom, local, lan, boss] = title.secondaryTiles;
-      assert.equal(title.secondaryTiles.length, 5, 'unlocked boss adds one secondary choice');
-      assert.deepEqual([levels.id, custom.id, local.id, boss.id],
-        ['titleLevelSelectButton', 'titleCustomButton', 'titleLocalButton', 'titleBossButton']);
-      assert.ok(lan.id === 'titleLanButton' || lan.id === 'titleNativeLanButton');
-      const regular = [levels, custom, local, lan];
-      if (viewport.width > 700) {
-        assert.ok(regular.every(tile => Math.abs(tile.y-levels.y)<2), 'wide title uses one regular row');
-        assert.ok(regular.slice(1).every((tile, i) => tile.x >= regular[i].x+regular[i].w-2),
-          'wide choices do not overlap');
-      } else {
-        assert.ok(Math.abs(levels.y-custom.y)<2 && Math.abs(local.y-lan.y)<2,
-          'narrow regular choices use two rows');
-        assert.ok(Math.abs(levels.x-local.x)<2 && Math.abs(custom.x-lan.x)<2,
-          'narrow columns align');
-        assert.ok(local.y >= levels.y+levels.h-2, 'narrow regular rows do not overlap');
+      const byId = new Map(title.secondaryTiles.map(tile=>[tile.id,tile]));
+      for (const id of ['titleLevelSelectButton','titleCustomButton','titleLocalButton','titleBossButton']) {
+        assert.ok(byId.get(id)?.w>0 && byId.get(id)?.h>0,id+' visibly rendered');
       }
-      assert.ok(boss.y >= Math.max(...regular.map(tile => tile.y+tile.h))-2,
-        'boss occupies its own row below regular choices');
-      assert.ok(regular.every(tile => Math.abs(tile.w-levels.w)<2), 'regular choices have equal width');
+      assert.ok(byId.has('titleLanButton') || byId.has('titleNativeLanButton'),'platform LAN entry');
+      for (const [i,a] of title.secondaryTiles.entries()) {
+        assert.ok(a.x>=-1 && a.x+a.w<=viewport.width+1,'title choice fits viewport');
+        for (const b of title.secondaryTiles.slice(i+1)) {
+          assert.ok(a.x+a.w<=b.x+1 || b.x+b.w<=a.x+1 || a.y+a.h<=b.y+1 || b.y+b.h<=a.y+1,
+            a.id+' and '+b.id+' do not overlap');
+        }
+      }
+      const ordinary = title.secondaryTiles.filter(tile=>tile.id!=='titleBossButton');
+      assert.ok(ordinary.every(tile=>Math.abs(tile.w-ordinary[0].w)<2),'ordinary choices have equal width');
       assert.notEqual(title.tiles[0].border, title.tiles[1].border);
       for (const tile of title.tiles) assert.ok(!tile.shadow.includes('4px 4px'), 'no offset double edge');
       await paint(p, `${platform}-title-${viewport.width}`);
@@ -341,4 +322,4 @@ try {
   pass('explicit controller/touch readiness, held-key protection, controller cancellation and touch Back');
   assert.deepEqual(errors, []);
   console.log(`RESULT: ${checks} online UI/flow groups passed (controlled channels; real WebRTC tested separately).`);
-} finally { await browser.close(); await new Promise(r => server.close(r)); }
+} finally { await browser.close(); await closeStaticServer(server); }

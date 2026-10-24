@@ -8,7 +8,9 @@ try {
     await p.evaluate(()=>{royalRotateDismissed=true;syncRoyalUi(true);});
     for(const fullscreen of [false,true,false]) {
       if(fullscreen!==await p.evaluate(()=>!!document.fullscreenElement))await p.locator('#browserFullscreen').click();
-      await p.waitForTimeout(250);
+      await p.waitForFunction(expected=>Boolean(document.fullscreenElement)===expected,fullscreen);
+      await p.locator('#titleScreen').waitFor({state:'hidden'});
+      await p.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
       const result=await p.evaluate(()=>{
         const root=document.documentElement,body=document.body,game=byId('game'),bar=byId('matchBar');
         const box=game.getBoundingClientRect(),style=getComputedStyle(body);

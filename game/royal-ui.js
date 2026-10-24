@@ -748,7 +748,17 @@ function royalFocusables(panel) {
   return [...panel.querySelectorAll(
       'button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),summary')]
     .concat(byId('browserFullscreen') ? [byId('browserFullscreen')] : [])
-    .filter(element => element.getClientRects().length && !element.closest('[hidden]'));
+    .filter(element => {
+      if (!element.getClientRects().length || element.closest('[hidden],[inert]') ||
+          getComputedStyle(element).visibility === 'hidden') return false;
+      // Collapsed details can retain layout boxes even though their contents
+      // cannot receive focus. Keep only their own summary in the keyboard cycle.
+      for (let parent = element.parentElement; parent; parent = parent.parentElement) {
+        if (parent.tagName === 'DETAILS' && !parent.open &&
+            !(element.tagName === 'SUMMARY' && element.parentElement === parent)) return false;
+      }
+      return true;
+    });
 }
 
 function syncRoyalFocus() {

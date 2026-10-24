@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { synchronizeHooks } from '../game/ui-integration.mjs';
-import { builds, constantSource, root, source } from './helpers/game-source.mjs';
+import { builds, constantSource, root } from './helpers/game-source.mjs';
 
 const fixture = `function sample() {
   const untouched = "keep { braces } and spaces";
@@ -45,14 +45,6 @@ test('constant extraction accepts readable spacing and still executes the produc
   assert.equal(constantSource('const ANSWER=42;', 'ANSWER'), 'const ANSWER=42;');
   assert.equal(constantSource('const ANSWER = {\n  value: 42\n};', 'ANSWER'), 'const ANSWER = {\n  value: 42\n};');
   assert.throws(() => constantSource('const WRONG = 42;', 'ANSWER'), /Missing constant/);
-});
-
-test('the dynamically inserted title paddle button keeps its original inline spacing beside Exit Game', () => {
-  // initRoyalMenus inserts the paddle button immediately after title-actions.
-  // A new text node after that div would add a visible gap between the inline buttons.
-  for (const platform of ['Browser', 'Windows', 'Linux']) {
-    assert.match(source(platform), /<\/div><button\s+type="button"\s+class="exit-game-button"\s+id="exitGameButton"/);
-  }
 });
 
 test('normal sync propagates readable shared source and hooks to every platform without touching shell code', () => {

@@ -1,45 +1,5 @@
 import { functionRange, synchronizeHooks } from './ui-integration.mjs';
 
-// These helpers live outside the shared script block in the legacy shells;
-// their implementations stay canonical here. Collision solvers stay unchanged.
-const predictionStep = `function simulateHazardStep(sim, h) {
-  // Most forecast steps miss every obstacle. Reject only definite misses before
-  // copying ball state or entering the allocation-heavy collision helpers.
-  if (h.type === "circle") {
-    const radius = h.r + BALL_HALF;
-    if (Math.abs(sim.x + BALL_HALF - h.x) >= radius ||
-        Math.abs(sim.y + BALL_HALF - h.y) >= radius) return false;
-  } else if (!rectsOverlapRaw(sim.x, sim.y, BALL_SIZE, BALL_SIZE, h.x, h.y, h.w, h.h)) {
-    return false;
-  }
-  const save = {
-    x: ball.x,
-    y: ball.y,
-    prevX: ball.prevX,
-    prevY: ball.prevY,
-    vx: ball.vx,
-    vy: ball.vy
-  };
-  ball.x = sim.x;
-  ball.y = sim.y;
-  ball.prevX = sim.prevX;
-  ball.prevY = sim.prevY;
-  ball.vx = sim.vx;
-  ball.vy = sim.vy;
-  const hit = h.type === "circle" ? resolveCircleCollision(h, true) : resolveRectCollision(h, true);
-  sim.x = ball.x;
-  sim.y = ball.y;
-  sim.vx = ball.vx;
-  sim.vy = ball.vy;
-  ball.x = save.x;
-  ball.y = save.y;
-  ball.prevX = save.prevX;
-  ball.prevY = save.prevY;
-  ball.vx = save.vx;
-  ball.vy = save.vy;
-  return hit;
-}`;
-
 const backgroundDraw = `function drawBackground() {
   const accent = currentCampaign().accent;
   if (canvas.width * canvas.height > ROYAL_BACKGROUND_CACHE_MAX_PIXELS) {
@@ -105,10 +65,6 @@ const hooks = {
   `],
   resetBall: ["seedVisualHistory();"],
   serveOrContinue: ["seedVisualHistory();"],
-  normalizeBallVelocity: [`
-    minSpeed *= royalBallSpeedScale();
-    maxSpeed *= royalBallSpeedScale();
-  `],
   // Only a confirmed paddle contact consumes the duplicate; misses can still score.
   hitPaddle: [`
     // A paddle return ends serve acceleration, while the spawn ripple continues.
@@ -117,11 +73,7 @@ const hooks = {
   `],
   pointForPlayer: ["if (isLanGuestActive() || mode === 2 && (waitingForServe || paused || gameOver || pointServeCountdownActive())) return;"],
   pointForCpu: ["if (isLanGuestActive() || mode === 2 && (waitingForServe || paused || gameOver || pointServeCountdownActive())) return;"],
-  predictBallCenterForCPU: ["if (arrival) arrival.frames = Infinity;",
-    "if (arrival) arrival.frames = Math.max(0, (right.x - ball.x - BALL_HALF) / ball.vx);",
-    "if (arrival) arrival.frames = i + 1;"
-  ],
-  updateCPU: ["const aim = royalCpuAim(cfg);"],
+
 };
 
 export function integrateRoyalPolish(source) {
@@ -134,7 +86,7 @@ export function integrateRoyalPolish(source) {
     drawSpawnRippleAt(bossBall.rallySpawnPulseX, bossBall.rallySpawnPulseY,
       Number(bossBall.rallyLaunchFramesRemaining) || 0, color);
   }
-}`], ['simulateHazardStep', predictionStep], ['drawBackground', backgroundDraw], ['drawRallySpawnPulse', `function drawRallySpawnPulse(view = captureVisualState()) {
+}`], ['drawBackground', backgroundDraw], ['drawRallySpawnPulse', `function drawRallySpawnPulse(view = captureVisualState()) {
   if (view.launch.remaining <= 0 || mode === 4) return;
   drawSpawnRipple(view.launch, currentCampaign().accent);
 }`]]) {

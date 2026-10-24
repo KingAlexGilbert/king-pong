@@ -1,3 +1,4 @@
+import {functionRange} from '../../game/ui-integration.mjs';
 import {
   readFileSync
 } from 'node:fs';
@@ -9,41 +10,17 @@ export const builds = {
   Android: 'android/app/src/main/assets/index.html'
 };
 export const root = new URL('../../', import.meta.url);
-export const source = platform => readFileSync(new URL(builds[platform], root), 'utf8');
+// Cache immutable text only; each harness owns a fresh VM and state.
+const sources = new Map();
+export const source = platform => {
+  if (!sources.has(platform)) sources.set(platform, readFileSync(new URL(builds[platform], root), 'utf8'));
+  return sources.get(platform);
+};
 
-// Extract complete production functions, including nested blocks, without a build dependency.
+// Share the synchronization scanner instead of maintaining another parser.
 export function functionSource(html, name) {
-  const start = html.indexOf('function ' + name + '(');
-  if (start < 0) throw new Error('Missing function: ' + name);
-  let cursor = html.indexOf('{', start) + 1;
-  let depth = 1,
-    quote = '',
-    comment = '';
-  while (depth && cursor < html.length) {
-    const c = html[cursor],
-      next = html[cursor + 1];
-    if (comment) {
-      if (comment === 'line' && c === '\n') comment = '';
-      else if (comment === 'block' && c === '*' && next === '/') {
-        comment = '';
-        cursor++;
-      }
-    } else if (quote) {
-      if (c === '\\') cursor++;
-      else if (c === quote) quote = '';
-    } else if (c === '/' && next === '/') {
-      comment = 'line';
-      cursor++;
-    } else if (c === '/' && next === '*') {
-      comment = 'block';
-      cursor++;
-    } else if (c === '"' || c === "'" || c === '`') quote = c;
-    else if (c === '{') depth++;
-    else if (c === '}') depth--;
-    cursor++;
-  }
-  if (depth) throw new Error('Unclosed function: ' + name);
-  return html.slice(start, cursor);
+  const [start, end] = functionRange(html, name);
+  return html.slice(start, end);
 }
 
 export function constantSource(html, name) {

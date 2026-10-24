@@ -1,34 +1,19 @@
 import {reviewBrowserChecks} from './review-browser-checks.mjs';
 import {homepageBrowserChecks} from './homepage-browser-checks.mjs';
 import assert from 'node:assert/strict';
+import {staticServer, closeStaticServer} from './static-server.mjs';
 import {
-  createServer
-} from 'node:http';
-import {
-  readFile,
   mkdir
 } from 'node:fs/promises';
 import {
   chromium
 } from 'playwright';
 import {
-  builds,
-  root
+  builds
 } from '../../tests/helpers/game-source.mjs';
 // Render production builds. Network state fixtures test UI/protocol only;
 // browser.mjs remains the independent real-WebRTC gate.
-const server = createServer(async (request, response) => {
-  try {
-    const file = new URL('.' + new URL(request.url, 'http://localhost').pathname, root);
-    if (!file.href.startsWith(root.href)) throw new Error();
-    response.setHeader('Content-Type', file.pathname.endsWith('.js') ? 'text/javascript' : 'text/html');
-    response.end(await readFile(file));
-  } catch {
-    response.writeHead(404);
-    response.end();
-  }
-});
-await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+const server = await staticServer();
 const origin = `http://127.0.0.1:${server.address().port}`;
 const browser = await chromium.launch({
   headless: true,
@@ -207,12 +192,18 @@ try {
     await p.keyboard.press('m');
     assert.equal(await p.locator('#matchMenu').isVisible(), true);
     assert.equal(await p.locator('#menuToggle').getAttribute('aria-expanded'), 'true');
-    assert.equal(await p.evaluate(() => document.activeElement.id), 'titleJumpButton');
-    assert.equal(await p.locator('#matchResume').innerText(), 'Close menu');
+    assert.equal(await p.evaluate(() => {
+      const focused=document.activeElement;
+      return byId('matchMenu').contains(focused) && focused.tabIndex>=0 &&
+        !focused.disabled && focused.getClientRects().length>0;
+    }),true,'opening the menu focuses an available control inside it');
+    assert.equal(await p.locator('#matchResume').isVisible(), false);
+    assert.equal(await p.locator('#titleJumpButton').isVisible(), false);
+    assert.equal(await p.locator('#matchMenuClose').isVisible(), true);
     assert.equal(await p.locator('#restartButton').isVisible(), false);
     assert.equal(await p.evaluate(() => byId('titleScreen').inert), true);
     assert.deepEqual(await p.locator('#menuToggle').boundingBox(), toggleBounds);
-    await p.dispatchEvent('#matchResume', 'keydown', {key: 'm', repeat: true});
+    await p.dispatchEvent('#matchMenuClose', 'keydown', {key: 'm', repeat: true});
     assert.equal(await p.locator('#matchMenu').isVisible(), true, 'held M does not repeatedly toggle');
     await snap(p, platform + '-title-menu');
     await p.keyboard.press('m');
@@ -223,7 +214,7 @@ try {
     await p.locator('#menuToggle').click();
     assert.equal(await p.evaluate(() => document.activeElement.id), 'menuToggle');
     assert.equal(await titleMenuState(p), titleBefore);
-    for (const action of ['#matchResume', '#matchMenuClose', 'Escape']) {
+    for (const action of ['#matchMenuClose', 'Escape']) {
       await p.locator('#menuToggle').click();
       if (action === 'Escape') await p.keyboard.press(action);
       else await p.locator(action).click();
@@ -318,21 +309,35 @@ try {
     await snap(p, platform + '-settings-help');
     await p.locator('#helpPowerups').scrollIntoViewIfNeeded();
     await snap(p, platform + '-powerup-help');
-    await p.locator('#matchMenuClose').focus();
-    await p.keyboard.press('Tab');
-    assert.equal(await p.evaluate(() => document.activeElement.id), 'menuToggle');
-    await p.keyboard.press('Tab');
-    if (platform === 'Browser') {
-      assert.equal(await p.evaluate(() => document.activeElement.id), 'browserFullscreen');
+    const controls = await p.evaluate(() => {
+      window.testMenuControls = [...document.querySelectorAll(
+        '#matchMenu button, #matchMenu input, #matchMenu select, #matchMenu textarea, #matchMenu summary, #browserFullscreen'
+      )].filter(el => !el.disabled && el.tabIndex >= 0 && el.checkVisibility({visibilityProperty: true}) &&
+        !el.closest('[hidden],[inert]'));
+      window.testMenuControls[0].focus();
+      return window.testMenuControls.length;
+    });
+    const visited = [];
+    for (let i = 0; i < controls; i++) {
+      visited.push(await p.evaluate(() => window.testMenuControls.indexOf(document.activeElement)));
       await p.keyboard.press('Tab');
     }
-    assert.equal(await p.evaluate(() => document.activeElement.id), 'titleJumpButton');
+    assert.equal(new Set(visited).size, controls,
+      'Tab reaches every available menu control exactly once: ' + JSON.stringify({visited,
+        controls: await p.evaluate(() => window.testMenuControls.map(el => el.id || el.tagName))}));
+    assert.ok(visited.every(index => index >= 0), 'focus stays in the menu or its fullscreen control');
+    assert.equal(await p.evaluate(() => window.testMenuControls.indexOf(document.activeElement)), visited[0],
+      'Tab wraps to the starting control');
+    await p.keyboard.press('Shift+Tab');
+    assert.equal(await p.evaluate(() => window.testMenuControls.indexOf(document.activeElement)), visited.at(-1),
+      'Shift+Tab wraps in reverse');
     await p.locator('#titleJumpButton').click();
     await active(p, []);
-    await p.evaluate(() => { mode = 1; openRoyalGallery('paddle'); });
+    await p.evaluate(() => { hideTitleScreen(); mode = 3; openRoyalGallery('paddle'); });
     assert.equal(await p.locator('[data-choice-id="boss-8"]').isDisabled(), true);
     assert.equal(await p.locator('[data-choice-id="enemy-15"]').isDisabled(), true);
     await p.keyboard.press('Escape');
+    await p.evaluate(() => showTitleScreen());
     await p.locator('#titleCampaignButton').click();
     await active(p, ['campaign-0']);
     assert.equal(await p.evaluate(() => savedPaddle()), 'classic');
@@ -835,7 +840,11 @@ try {
     pollRoyalUiGamepad(1000);
   });
   assert.equal(await titleInput.locator('#matchMenu').isVisible(), true);
-  assert.equal(await titleInput.evaluate(() => document.activeElement.id), 'titleJumpButton');
+  assert.equal(await titleInput.evaluate(() => {
+    const focused = document.activeElement;
+    return byId('matchMenu').contains(focused) && !focused.disabled &&
+      focused.checkVisibility({visibilityProperty: true});
+  }), true, 'controller menu entry focuses a visible, enabled control');
   await titleInput.evaluate(() => {
     testPad.buttons[8].pressed = false;
     pollRoyalUiGamepad(1040);
@@ -1060,5 +1069,5 @@ try {
   console.log(`RESULT: ${checks} UI browser integration groups passed; no page exceptions`);
 } finally {
   await browser.close();
-  await new Promise(resolve => server.close(resolve));
+  await closeStaticServer(server);
 }

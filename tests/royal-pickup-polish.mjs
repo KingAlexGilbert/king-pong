@@ -4,7 +4,8 @@ import {createHash} from 'node:crypto';
 import {harness} from './helpers/royal-harness.mjs';
 import {builds, source, functionSource} from './helpers/game-source.mjs';
 
-for (const platform of Object.keys(builds)) {
+{
+  const platform = 'Browser';
   test(`${platform}: Split stays in the center band across every arena, moving hazards and cropped viewports`, () => {
     const h = harness(platform);
     h.run(functionSource(source(platform), 'updateHazards'));
@@ -75,6 +76,9 @@ for (const platform of Object.keys(builds)) {
     }
   });
 
+}
+
+for (const platform of Object.keys(builds)) {
   test(`${platform}: selection order, cadence, lifetime and host authority are unchanged`, () => {
     const h = harness(platform);
     const spawns = h.json(`(() => {

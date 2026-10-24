@@ -1,18 +1,9 @@
-import {createServer} from 'node:http';
-import {readFile, mkdir} from 'node:fs/promises';
+import {staticServer, closeStaticServer} from './static-server.mjs';
+import {mkdir} from 'node:fs/promises';
 import {chromium, firefox} from 'playwright';
-import {root} from '../../tests/helpers/game-source.mjs';
 
 export async function polishFixture() {
-  const server = createServer(async (req, res) => {
-    try {
-      const path = new URL('.' + new URL(req.url, 'http://local').pathname, root);
-      if (!path.href.startsWith(root.href)) throw Error();
-      res.setHeader('Content-Type', path.pathname.endsWith('.js') ? 'text/javascript' : 'text/html');
-      res.end(await readFile(path));
-    } catch { res.writeHead(404).end(); }
-  });
-  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  const server = await staticServer();
   const engine = process.env.KING_PONG_BROWSER === 'firefox' ? firefox : chromium;
   const browser = await engine.launch({args: engine === chromium ? ['--no-sandbox'] : []});
   const origin = `http://127.0.0.1:${server.address().port}`;
@@ -30,5 +21,5 @@ export async function polishFixture() {
     await mkdir(process.env.KING_PONG_SCREENSHOTS, {recursive: true});
     await p.screenshot({path: process.env.KING_PONG_SCREENSHOTS + '/' + name + '.png'});
   }
-  return {browser, origin, errors, page, shot, close: async () => { await browser.close(); server.close(); }};
+  return {browser, origin, errors, page, shot, close: async () => { await browser.close(); await closeStaticServer(server); }};
 }

@@ -10,7 +10,9 @@ import {
   constantSource
 } from './game-source.mjs';
 
-export function harness(platform = 'Browser') {
+const scripts = new Map();
+function script(platform) {
+  if (scripts.has(platform)) return scripts.get(platform);
   const html = source(platform);
   const shared = ['royal-gameplay.js', 'royal-rules.js', 'arena-perspective.js', 'multiplayer-serve.js', 'level-select.js'].map(file => readFileSync(new URL('game/' + file, root),
     'utf8')).join('\n');
@@ -34,25 +36,7 @@ export function harness(platform = 'Browser') {
     'BOSS_ADAPTIVE_PROFILES',
     'CAMPAIGNS', 'BOSS_LEVEL', 'BOSS_CAMPAIGN'
   ].map(n => constantSource(html, n)).join('\n');
-  const context = vm.createContext({
-    console,
-    onlineGameBlocked: false,
-    Image: class { constructor(width, height) { this.width = width; this.height = height; this.complete = true; this.naturalWidth = width; } },
-    performance: {
-      now: () => 1000
-    },
-    document: {
-      hidden: false,
-      body: {
-        classList: {
-          contains: () => false
-        }
-      }
-    },
-    requestAnimationFrame() {}
-  });
-  const run = code => vm.runInContext(code, context);
-  run(`
+  const compiled = new vm.Script(`
     const W=640,H=480,PADDLE_W=8,PADDLE_H=64,PADDLE_SPEED=7.2,PADDLE_MARGIN=32,BALL_SIZE=8,BALL_HALF=4;
     const BASE_BALL_SPEED=4.2,TOTAL_LEVELS=18,SECRET_BOSS_LEVEL_NUMBER=19;
     const RALLY_LAUNCH_RAMP_FRAMES=60,RALLY_LAUNCH_START_SPEED_SCALE=.2,SPAWN_HAZARD_PADDING=14;
@@ -92,6 +76,30 @@ export function harness(platform = 'Browser') {
     ${definitions}
     ${shared}
   `);
+  scripts.set(platform, compiled);
+  return compiled;
+}
+
+export function harness(platform = 'Browser') {
+  const context = vm.createContext({
+    console,
+    onlineGameBlocked: false,
+    Image: class { constructor(width, height) { this.width = width; this.height = height; this.complete = true; this.naturalWidth = width; } },
+    performance: {
+      now: () => 1000
+    },
+    document: {
+      hidden: false,
+      body: {
+        classList: {
+          contains: () => false
+        }
+      }
+    },
+    requestAnimationFrame() {}
+  });
+  const run = code => vm.runInContext(code, context);
+  script(platform).runInContext(context);
   return {
     run,
     context,
