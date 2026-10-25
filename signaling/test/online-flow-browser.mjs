@@ -263,15 +263,21 @@ try {
       }
     }
     await a.evaluate(() => { onlineSession.data.readyState = 'closed'; onlineSession.data.onclose(); });
-    assert.equal((await state(a)).phase,'failed');
-    assert.equal(await a.locator('#onlineRetryButton').isVisible(),true);
+    if (phase === 'connecting') {
+      assert.equal((await state(a)).phase,'failed');
+      assert.equal(await a.locator('#onlineRetryButton').isVisible(),true);
+    } else {
+      assert.equal(await a.locator('#matchSetup').isVisible(),true,
+        'an established session returns automatically after an irrecoverable disconnect');
+      assert.equal(await a.evaluate(() => paused && onlineGameBlocked),true);
+    }
     await step(a,10000);
     assert.equal((await state(a)).waiting,true);
     assert.equal(await a.evaluate(() => resumeCountdownEndAt),0);
     // Late callbacks from the abandoned session cannot revive it.
     await a.evaluate(() => { testOldSession.hooks.connected(); testOldSession.hooks.resumed(); testOldSession.hooks.peer({}); });
     assert.equal(await a.evaluate(() => onlineSession),null);
-    await a.locator('#onlineFlowBack').click();
+    if (phase === 'connecting') await a.locator('#onlineFlowBack').click();
     assert.equal(await a.locator('#matchSetup').isVisible(),true);
     assert.equal(await a.evaluate(() => matchRuleId),'winTwo');
     await b.locator('#onlineFlowBack').click();

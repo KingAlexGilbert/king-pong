@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {automaticServeChecks} from './automatic-serve-cases.mjs';
+import {rematchBackChecks} from './rematch-cases.mjs';
 import {publicPowerupCases} from './public-powerups-cases.mjs';
 import {
   createServer
@@ -440,6 +441,7 @@ try {
   await waitFor(next,'royalPickup !== null');
   assert.deepEqual(await next.evaluate(()=>[royalPickup.type,royalPickup.x,royalPickup.y]),spawned);
   console.log('PASS approval off, reload persistence and peer powerup spawn synchronization');
+  await rematchBackChecks(host,next);
   await next.context().close();await host.context().close();
 
   // A private guest's RTC channel may close before the host's signaling

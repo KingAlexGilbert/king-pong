@@ -100,6 +100,7 @@ const hooks = {
   `],
   drawCampaignPlayInfo: ["if (document.body.classList.contains(\"royal-ui-ready\")) return;"],
   drawOverlay: [`
+    if (typeof multiplayerRematchVisible === 'function' && multiplayerRematchVisible()) return;
     if (document.body.classList.contains("royal-panel-open") || royalDesktopPauseVisible()) return;
     // Resume needs only its existing 3, 2, 1; retain panels for actual results.
     if ((paused || hasResumeCountdown()) && !gameOver && !levelCleared && !campaignCleared) return;

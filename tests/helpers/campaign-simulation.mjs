@@ -8,7 +8,7 @@ export function campaignSimulation(platform = 'Browser', configSource) {
   const functions = ['getCpuConfig','chooseCpuError','predictWithSimpleBounds','predictBallCenterForCPU',
     'simulateHazardStep','rectsOverlapRaw','updateCPU','ballSpawnInsideVerticalBarrierPocket','ballSpawnIsUnsafe',
     'findCenterSafeSpawn','findReceiverSideRallySpawn','applySpawnEscapeAngle','setRallyBallVelocity',
-    'beginRallyLaunchRamp','resetBall'];
+    'beginRallyLaunchRamp','resetBall','updateHazards'];
   h.run(`
     let cpuErrorOffset=0, customCpuIntel=50, customCpuMaxMove=4.4;
     const RALLY_PLAYER_SPAWN_DISTANCE=236,RALLY_PLAYER_SPAWN_MIN_DISTANCE=180,RALLY_PLAYER_SPAWN_Y_JITTER=32;
@@ -24,10 +24,10 @@ export function campaignSimulation(platform = 'Browser', configSource) {
     hitPaddle=(p,d)=>{if(d<0)cpuReturns++;else playerReturns++;rallyReturns++;longestRally=Math.max(longestRally,rallyReturns);measuredHit(p,d);};
     const measuredReset=resetBall;
     resetBall=(...args)=>{rallyReturns=0;return measuredReset(...args);};
-    function simulateMatches(level,count,player,override={}) {
+    function simulateMatches(level,count,player,override={},effects=false) {
       configOverride=override;let wins=0,trivial=0,returns=0,misses=0,longRallies=0,frames=0,timeouts=0;
       for(let i=0;i<count;i++){
-        simulationSeed=1009+i*997;frame=0;mode=1;activeCampaign=0;levelIndex=level-1;
+        simulationSeed=1009+i*997;frame=0;mode=1;activeCampaign=Math.floor((level-1)/6);levelIndex=(level-1)%6;
         paused=waitingForServe=gameOver=levelCleared=campaignCleared=false;
         left.y=right.y=208;left.score=right.score=0;nextCpuModeServeDirection=-1;
         hazards=currentLevel().hazards.map((h,id)=>({...h,id,hitFlash:0}));
@@ -38,6 +38,7 @@ export function campaignSimulation(platform = 'Browser', configSource) {
           frame++;
           if(player==='tracking'&&ball.vx<0){const target=ball.y+BALL_HALF-PADDLE_H/2;
             left.y=clamp(left.y+clamp((target-left.y)*.1,-4,4),0,H-PADDLE_H);}
+          if(effects){updateHazards();updateRoyalPowerups();}
           updateCPU();updateBall();frames++;
         }
         if(!gameOver&&!levelCleared)timeouts++;
@@ -48,7 +49,8 @@ export function campaignSimulation(platform = 'Browser', configSource) {
         returnRate:returns/(returns+misses),shortRallyMatches:longRallies,meanSeconds:frames/count/60,timeouts};
     }
     function simulateShots(level,override={}) {
-      configOverride=override;mode=1;activeCampaign=0;levelIndex=level-1;
+      configOverride=override;mode=1;activeCampaign=Math.floor((level-1)/6);levelIndex=(level-1)%6;
+      left.score=right.score=0;
       let returns=0,misses=0,deflected=0;
       for(const y of [40,120,240,360,440])for(const angle of [-.9,-.6,-.3,0,.3,.6,.9])
         for(const speed of [4.2,6,8])for(let sample=0;sample<12;sample++){

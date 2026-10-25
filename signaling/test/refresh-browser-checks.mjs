@@ -18,6 +18,9 @@ export async function refreshTrace(page, options) {
     royalRotateDismissed = true;
     saveData.muteAll = true;
     nextCpuModeServeDirection = 1;
+    // Replay the same rally seed as well as the same physics/RNG state.
+    // Tactical variation deliberately differs between successive rallies.
+    royalRallyId = 0;
     resetBall(1, false);
     ball.lastScored = 0;
     shakeFrames = 0;

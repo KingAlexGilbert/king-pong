@@ -12,6 +12,7 @@ The remaining identical engine sections have explicit canonical sources:
 | `cpu-config.js` | Existing campaign, Custom Game and boss difficulty values |
 | `paddle-geometry.js` | Paddle profiles, contact geometry and bounce calculations |
 | `cpu-tracking.js` | CPU errors, prediction, hazard forecasts and movement |
+| `cpu-tactics.js` | Bounded contact-position choices, pickup judgment and reachable-ball prioritization |
 | `hazard-motion.js` | Existing hazard motion update |
 | `rally-ramp.js` | Existing serve acceleration ramp |
 | `gamepad-input.js` | Equivalent gameplay controller polling |
@@ -48,6 +49,24 @@ advances its remaining active time and releases the existing serve; snapshots ca
 remaining time for guest rendering. The optional compact-wire field is negotiated in the
 existing hello exchange. Pauses and transport recovery suspend the clock. Initial Ready
 and single-player serving are unchanged.
+
+`multiplayer-rematch.js` shares the result dialog and mutual agreement protocol
+across matchmaking, private rooms and offline LAN. It uses the existing reliable
+control channel and host reset path, without new room admission or transport
+negotiation. Session tokens and round numbers reject stale starts, inputs and
+snapshots. The guest acknowledges a proposed round before the host commits one
+reset and starts the existing two-second serve countdown. Back and terminal
+connection errors return to the originating setup. Both peers must advertise
+rematch support; older peers retain gameplay but cannot use the new rematch UI.
+
+CPU tactics preserve `cpu-config.js` and the actual bounce calculation. At most
+five contact positions are compared every twelve physics ticks during an incoming
+approach, using bounded hazard estimates and stable imperfect judgments. Custom
+intelligence controls these decisions independently of its speed slider. Campaign
+awareness derives from existing prediction, error and intelligence values,
+including the late-level score assist. The Wall uses its existing adaptive
+profiles and AI; `boss-integration.mjs` keeps exactly two permanent encounter balls
+instead of the obsolete staged ball-count policy. Royal Split remains separate.
 
 `level-select.js` reuses campaign encounters and arena previews, with unlocks read from the
 active save slot. Its replay context is transient: earlier encounters cannot award progress

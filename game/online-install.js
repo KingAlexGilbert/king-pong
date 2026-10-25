@@ -27,7 +27,9 @@ function installOnlineSupport() {
   for (const name of ['update', 'requestServeOrContinue', 'requestTogglePause', 'requestRetryLevel']) {
     const original = window[name];
     window[name] = (...args) => {
-      if (name === 'update') tickOnlineMatchFlow();
+      if (name === 'update') { tickOnlineMatchFlow(); tickMultiplayerRematch(); }
+      if (name === 'requestServeOrContinue' && multiplayerRematchVisible()) return;
+      if (name === 'requestRetryLevel' && mode === 2 && onlineSession && (gameOver || lanRole === 'guest')) return;
       if (name === 'requestServeOrContinue' && onlineMatchFlowBlocksPlay()) return;
       if (mode === 2 && onlineGameBlocked) { suspendPointServeCountdown(); return; }
       return original(...args);
@@ -36,6 +38,8 @@ function installOnlineSupport() {
   for (const name of ['serveOrContinue', 'togglePause', 'retryLevel', 'pointForPlayer', 'pointForCpu']) {
     const original = window[name];
     window[name] = (...args) => {
+      if (mode === 2 && onlineSession && (name === 'retryLevel' && (gameOver || lanRole === 'guest') ||
+          name === 'serveOrContinue' && gameOver)) return;
       if (onlineMatchFlowBlocksPlay()) return;
       return original(...args);
     };
@@ -51,10 +55,16 @@ function installOnlineSupport() {
       raw = JSON.stringify(message);
     }
     if (onlineSession && message?.type === 'net-format') { receiveOnlineWireHello(message); return; }
+    if (message?.type === 'rematch') { receiveMultiplayerRematch(message); return; }
+    if (onlineSession && !acceptMultiplayerRound(message)) return;
+    // A remote legacy Retry action is not consent from the host. The host's
+    // existing mid-match Restart control remains available locally.
+    if (onlineSession && message?.type === 'action' && message.action === 'retry') return;
     if (message?.type === 'match-setup') { receiveOnlineMatchSetup(message); return; }
     if (onlineMatchFlowBlocksPlay() && message?.type === 'action') return;
     const needsState = onlineMatchFlow?.configured && !onlineHasState;
     receive(raw);
+    if (message?.type === 'state' && message.seq === lanLastStateSeq) finishMultiplayerRematchSnapshot();
     // Acknowledge the first accepted snapshot immediately; no extra retry delay.
     if (needsState && onlineHasState && lanRole === 'guest' && onlineMatchFlow)
       sendOnlineMatchSetup('initialized', {configuration: onlineMatchFlow.configuration});

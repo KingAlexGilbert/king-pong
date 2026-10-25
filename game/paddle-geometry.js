@@ -111,7 +111,7 @@ function cpuReturnTargetAngle(ballCenter) {
   return clamp(Math.atan2(targetY - ballCenter, horizontalDistance), -0.9, 0.9);
 }
 
-function calculatePaddleBounceAngle(profile, paddle, direction, ballCenter, incomingVy = 0, allowCpuAim = true) {
+function calculatePaddleBounceAngle(profile, paddle, direction, ballCenter, incomingVy = 0, allowCpuAim = true, applyNoise = true) {
   const relative = paddleRelativeContact(paddle, ballCenter);
   const contactAngle = relative * profile.contactScale;
   const surfaceAngle = paddleProfileSlopeAngle(profile, relative) * profile.slopeInfluence;
@@ -120,7 +120,7 @@ function calculatePaddleBounceAngle(profile, paddle, direction, ballCenter, inco
     const desired = cpuReturnTargetAngle(ballCenter);
     bounceAngle = lerp(bounceAngle, desired, profile.aimStrength);
   }
-  if (profile.noise > 0) {
+  if (applyNoise && profile.noise > 0) {
     bounceAngle += (Math.random() * 2 - 1) * profile.noise;
   }
   bounceAngle += clamp(incomingVy * 0.012, -0.07, 0.07);

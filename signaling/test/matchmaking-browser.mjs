@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {automaticServeChecks} from './automatic-serve-cases.mjs';
+import {rematchBackChecks} from './rematch-cases.mjs';
 import {createServer} from 'node:http';
 import {readFile} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
@@ -123,12 +124,17 @@ try {
         await until(a,()=>onlineSession===null);
         assert.match(await b.locator('#onlineFlowNote').innerText(),/latest game/);
       } else {
-        await a.evaluate(()=>cancelMatchSearch());
+        if (!signalingOnly) await rematchBackChecks(a,b);
+        else await a.evaluate(()=>cancelMatchSearch());
         await until(b,()=>onlineSession===null);
       }
       for (const p of [a,b]) assert.equal(await p.evaluate(()=>matchRuleId),'quick','private preset restored');
-      assert.equal(await b.locator('#onlineRetryButton').isVisible(),true);
-      await b.locator('#onlineFlowBack').click();
+      if (signalingOnly || nativeHost && native.startsWith('windows')) {
+        assert.equal(await b.locator('#onlineRetryButton').isVisible(),true);
+        await b.locator('#onlineFlowBack').click();
+      } else {
+        assert.equal(await b.locator('#matchSetup').isVisible(),true,'departed match returns automatically to the online menu');
+      }
       assert.equal(await b.locator('#findMatchButton').isVisible(),true);
       await a.close();await b.close();
       console.log(`PASS: ${native} as ${nativeHost?'host':'guest'} shares browser queue, locked settings and failure recovery${signalingOnly?', real SDP only':', encrypted gameplay over the reported transport'}`);

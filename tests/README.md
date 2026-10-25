@@ -22,6 +22,13 @@ if any command fails. There are no automatic retries or environment-based succes
 conversions. Existing targeted npm scripts in `signaling/` remain available;
 `npm run test:release --prefix signaling` is also a full-suite entry point.
 
+The final summary includes pass/fail counts, total time, and each failed command's
+actual arguments, working directory, exit code or launch error, duration, and
+approximately fifteen relevant output lines. Each stream retains at most 8,192
+characters; stderr has reserved tail space so delayed stdout cannot erase an
+error. Output remains live. SIGINT/SIGTERM stop subsequent commands and retain
+failure diagnostics. JSON reports remain opt-in and retain the original fields.
+
 The JavaScript tests retain platform integration checks even when a deterministic
 calculation is tested once. `shared-sections.mjs` verifies the canonical sections
 in all four generated HTML shells, and `misc-consistency.mjs` parses their scripts.
@@ -71,6 +78,17 @@ release validation also needs native application runs on supported platforms.
 `relay-benchmark.mjs`, and `relay-benchmark-pairs.mjs` are optional measurement or
 visual-comparison tools. `network-benchmark.mjs --faults` is a required standard
 regression gate; its broader deterministic benchmark mode runs in extended validation.
+
+`node tools/measure-ai.mjs` writes a deterministic all-18-level shot/match and
+single-Wall encounter measurement to stdout. `--matches=20` controls sample count;
+`--effects --matches-only` measures moving hazards and Royal Powerups without the
+shot grid. `--baseline=7b7a6f4` substitutes that revision's CPU configuration,
+tracking/target selection and Wall ball-count policy into the same physics
+harness. This is a focused decision-logic comparison, not a general historical
+engine emulator or a calibrated human win-rate estimate. Redirect stdout only
+when a measurement file is wanted. Existing browser pairs also exercise repeated
+mutual rematches, connection reuse, state reset and Back cleanup; no separate
+browser suite launch is added for rematches.
 
 CI keeps Node/Python on both Ubuntu and Windows, and signaling, Worker and all
 standard browser checks on Ubuntu. Manual workflow dispatch with `extended`

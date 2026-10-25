@@ -119,6 +119,9 @@ function syncPrivateRoomControls() {
 // blocked-session list remain alive until the host explicitly closes the room.
 function privateGuestDeparted(session) {
   if (onlineSession !== session) return;
+  const established = session.multiplayerEstablished;
+  session.rematch = null;
+  session.multiplayerEstablished = false;
   if (saveConfirmation?.roomSession === session) finishSaveConfirmation(false);
   resetOnlineMatchFlow();
   resetOnlineWire();
@@ -135,7 +138,9 @@ function privateGuestDeparted(session) {
   setLanPanelOpen(true);
   setMenusVisible(true);
   setOnlineControls(true);
-  setLanStatus('Waiting for Player 2...');
+  if (onlineManualLanSelected) byId('classicLanDialog').hidden = false;
+  else byId('onlinePrivateRooms').open = true;
+  setLanStatus(established ? 'Opponent left the match.' : 'Waiting for Player 2...');
   syncRoyalUi(true);
 }
 // Native discovery and browser/manual pairing share the existing WebRTC engine.

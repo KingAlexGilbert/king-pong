@@ -5,7 +5,8 @@ function onlineLanSend(payload) {
   payload.matchRules = "presets";
   /* END ROYAL POLISH */
   if (payload.type !== 'net-format') negotiateOnlineWire();
-  const channel = (payload.type === "action" || payload.type === "selection" || payload.type === "rules" || payload.type === "match-setup" || payload.type === "net-format") ?
+  if (onlineRematchReady && ['state', 'input', 'action'].includes(payload.type)) payload.round = multiplayerRematch().round;
+  const channel = (payload.type === "rematch" || payload.type === "action" || payload.type === "selection" || payload.type === "rules" || payload.type === "match-setup" || payload.type === "net-format") ?
     onlineControlChannel : lanChannel;
   if (!channel || channel.readyState !== "open") return false;
   try {

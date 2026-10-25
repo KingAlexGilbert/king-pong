@@ -258,6 +258,7 @@ function royalCpuAim(cfg) {
       if (other.frames + Math.min(6, selected.frames * 0.15) < selected.frames) selected = other;
     }
   }
+  selected = chooseCpuTacticalThreat(cfg, primary, split, selected);
   royalCpuTarget = selected.target;
   return selected;
 }
@@ -283,6 +284,7 @@ function royalPickupSprite(type) {
 }
 
 function resetRoyalRally() {
+  resetCpuTactics();
   if (typeof stopRoyalPowerupSound === 'function') stopRoyalPowerupSound();
   royalSplitBall = royalPickup = null;
   royalPowerupPulse = null;

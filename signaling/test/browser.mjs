@@ -278,7 +278,8 @@ try {
   await guest.close();
   // Private rooms deliberately retain the host's signaling socket and room
   // code after a guest leaves so another guest can join the same room.
-  await waitFor(host, "lanStatus.textContent.includes('Waiting for Player 2')");
+  await waitFor(host, "!lanConnected && onlineSession?.managed && lanRole === 'host'");
+  assert.equal(await host.locator('#matchSetup').isVisible(), true);
   assert.equal(await host.evaluate(() => onlineGameBlocked && paused && !lanPeer && !lanChannel), true);
   assert.equal(await host.locator('#onlineRoomCode').textContent(), code);
   console.log('PASS: room full and guest disconnect leave a paused host room with the same code');

@@ -500,6 +500,7 @@ function openOnlineRoom(role, code = '', assignment = null) {
     },
     connected: () => {
       if (onlineSession !== session) return;
+      session.multiplayerEstablished = true;
       if (typeof onlineManualLanSelected !== 'undefined' && onlineManualLanSelected) byId('classicLanDialog').hidden = true;
       lanConnected = true;
 	  syncMatchmakingUi();
@@ -514,6 +515,12 @@ function openOnlineRoom(role, code = '', assignment = null) {
     },
     error: code => {
       if (onlineSession !== session) return;
+      // A connected but incompatible client still needs the existing setup
+      // explanation/Retry UI; terminal departures return directly to the menu.
+      if (session.multiplayerEstablished && code !== 'incompatible') {
+        leaveMultiplayerSession(ONLINE_ERRORS[code] || ONLINE_ERRORS.connection_lost, false);
+        return;
+      }
       if (assignment) { failOnlineMatchFlow(code); return; }
       closeOnlineConnection(false);
       // Keep a disconnected guest from falling through to the local physics loop.
@@ -527,6 +534,7 @@ function openOnlineRoom(role, code = '', assignment = null) {
   session.pairingRequired = role === 'host' && !assignment && onlineManualLanSelected && playerPreference('verifyPairing');
   session.requireApproval = Boolean(byId('onlineRequireApproval')?.checked);
   onlineSession = session;
+  session.multiplayerOrigin = onlineManualLanSelected ? 'lan' : assignment ? 'matchmaking' : 'private';
   syncMatchmakingUi();
   session.open(role, code, assignment);
 }

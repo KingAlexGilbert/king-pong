@@ -80,6 +80,7 @@ function royalModeName() {
 }
 
 function royalNeedsSetup() {
+  if (pointServeCountdownActive()) return false;
   if (typeof onlineMatchFlowVisible === 'function' && onlineMatchFlowVisible()) return false;
   if (royalOnlineMode() && !lanConnected) return true;
   return customPreviewActive || mode === 2 && waitingForServe && left.score === 0 && right.score === 0 && !gameOver;
@@ -334,6 +335,7 @@ function initRoyalUi() {
   }
   prepareAccessibleMenuControls();
   initOnlineMatchFlowUi();
+  initMultiplayerRematchUi();
   document.body.classList.add('royal-ui-ready');
   updateAudioControls();
   // One listener per page. Rotation only changes presentation, never match or connection state.
@@ -492,6 +494,7 @@ function royalContinue() {
 }
 
 function toggleRoyalMenu() {
+  if (multiplayerRematchVisible()) return;
   if (bossIntroActive || creditsActive) return;
   if (onlineMatchFlowBlocksPlay()) { showTitleScreen(); return; }
   const title = document.body.classList.contains('title-active');
@@ -527,6 +530,7 @@ function syncRoyalUi(force = false) {
   syncBossAudio();
   if (!byId('matchSetup')) return;
   syncOnlineMatchFlowUi();
+  syncMultiplayerRematchUi();
   syncPrivateRoomControls();
   const title = document.body.classList.contains('title-active');
   const online = royalOnlineMode();
@@ -643,7 +647,7 @@ function syncRoyalUi(force = false) {
   byId('matchCpuSettings').hidden = title || mode !== 3;
   const canServe = (!online || lanConnected) && !onlineMatchFlowBlocksPlay();
   byId('matchServe').hidden = !canServe;
-  byId('matchContinue').hidden = title || setup || menu || !canServe || pointServeCountdownActive() || !(waitingForServe || gameOver || levelCleared ||
+  byId('matchContinue').hidden = multiplayerRematchVisible() || title || setup || menu || !canServe || pointServeCountdownActive() || !(waitingForServe || gameOver || levelCleared ||
     campaignCleared);
   byId('matchPause').hidden = title || setup || menu || !canServe;
   royalText(byId('matchContinue'), isLevelSelectEncounter() && levelCleared ? 'Level Select' : gameOver ? 'Retry' : levelCleared || campaignCleared ? 'Continue' : 'Serve');
@@ -660,7 +664,7 @@ function syncRoyalUi(force = false) {
     online && !waitingForServe;
   byId('menuPaddle').parentElement.hidden = ['menuPaddle', 'menuPaddle2', 'menuArena'].every(id => byId(id).hidden);
   restartButton.hidden = title;
-  restartButton.disabled = online && !lanConnected;
+  restartButton.disabled = online && (!lanConnected || lanRole === 'guest' || gameOver);
   syncMatchRulesUi();
   if (typeof syncOnlineTransportUi === 'function') syncOnlineTransportUi();
   updateRoyalControlHint();
@@ -736,6 +740,7 @@ function syncRoyalOrientation() {
 }
 
 function royalActiveDialog() {
+  if (multiplayerRematchVisible()) return byId('multiplayerResult');
   if (byId('pairingDialog') && !byId('pairingDialog').hidden) return byId('pairingDialog');
   if (galleryKind) return byId('royalGallery');
   for (const id of ['classicLanDialog', 'rotateDevice', 'matchMenu', 'matchSetup'])
@@ -766,7 +771,7 @@ function syncRoyalFocus() {
   // The gallery covers the toolbar; its Close button must stay unobstructed.
   const fullscreen = byId('browserFullscreen');
   if (fullscreen) fullscreen.hidden = dialog?.id === 'royalGallery';
-  for (const id of ['matchBar', 'matchSetup', 'matchMenu', 'titleScreen', 'onlineMatchFlow', 'classicLanDialog', 'pairingDialog']) {
+  for (const id of ['multiplayerResult', 'matchBar', 'matchSetup', 'matchMenu', 'titleScreen', 'onlineMatchFlow', 'classicLanDialog', 'pairingDialog']) {
     const node = byId(id);
     if (node) node.inert = Boolean(dialog && node !== dialog);
   }
@@ -801,7 +806,8 @@ function handleRoyalUiKey(event) {
       index = controls.indexOf(document.activeElement);
     controls[(index + (event.shiftKey ? -1 : 1) + controls.length) % controls.length]?.focus();
   } else if (dialog && event.key === 'Escape') {
-    if (dialog.id === 'pairingDialog') {
+    if (dialog.id === 'multiplayerResult') leaveMultiplayerSession();
+    else if (dialog.id === 'pairingDialog') {
       if (dialog.session) rejectPairing(dialog.session);
     } else if (dialog.id === 'classicLanDialog') {
       stopLanQrCamera();
@@ -850,7 +856,8 @@ function pollRoyalUiGamepad(now) {
   }
   if ((gamepadButtonJustPressed(pad, GAMEPAD_BUTTONS.B) && panel.id !== 'titleScreen') ||
     gamepadButtonJustPressed(pad, GAMEPAD_BUTTONS.SELECT)) {
-    if (panel.id === 'rotateDevice') {
+    if (panel.id === 'multiplayerResult') leaveMultiplayerSession();
+    else if (panel.id === 'rotateDevice') {
       royalRotateDismissed = true;
       syncRoyalOrientation();
     } else if (panel.id === 'matchSetup' && onlineTransportSelected) showTitleScreen();

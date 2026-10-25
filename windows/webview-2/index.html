@@ -2879,6 +2879,7 @@ body:has(#browserFullscreen) .match-bar { box-sizing: border-box; }
   min-height: 44px;
   padding: 8px 12px;
 }
+#multiplayerResult .online-flow-actions button { text-transform: uppercase; }
 </style>
 </head>
 
@@ -4744,6 +4745,7 @@ function openOnlineRoom(role, code = '', assignment = null) {
     },
     connected: () => {
       if (onlineSession !== session) return;
+      session.multiplayerEstablished = true;
       if (typeof onlineManualLanSelected !== 'undefined' && onlineManualLanSelected) byId('classicLanDialog').hidden = true;
       lanConnected = true;
 	  syncMatchmakingUi();
@@ -4758,6 +4760,12 @@ function openOnlineRoom(role, code = '', assignment = null) {
     },
     error: code => {
       if (onlineSession !== session) return;
+      // A connected but incompatible client still needs the existing setup
+      // explanation/Retry UI; terminal departures return directly to the menu.
+      if (session.multiplayerEstablished && code !== 'incompatible') {
+        leaveMultiplayerSession(ONLINE_ERRORS[code] || ONLINE_ERRORS.connection_lost, false);
+        return;
+      }
       if (assignment) { failOnlineMatchFlow(code); return; }
       closeOnlineConnection(false);
       // Keep a disconnected guest from falling through to the local physics loop.
@@ -4771,6 +4779,7 @@ function openOnlineRoom(role, code = '', assignment = null) {
   session.pairingRequired = role === 'host' && !assignment && onlineManualLanSelected && playerPreference('verifyPairing');
   session.requireApproval = Boolean(byId('onlineRequireApproval')?.checked);
   onlineSession = session;
+  session.multiplayerOrigin = onlineManualLanSelected ? 'lan' : assignment ? 'matchmaking' : 'private';
   syncMatchmakingUi();
   session.open(role, code, assignment);
 }
@@ -5373,7 +5382,7 @@ const ONLINE_WIRE_FIELDS = Object.freeze({
 function encodeOnlineWire(m) {
   const pack = (kind, value) => value === null ? null : ONLINE_WIRE_FIELDS[kind].map(k => value[k]);
   const head = ['kp', ONLINE_WIRE_VERSION, m.type === 'input' ? 'i' : 's', m.room, m.seq];
-  if (m.type === 'input') return [...head, m.axis, m.targetY];
+  if (m.type === 'input') return onlineRematchReady ? [...head, m.axis, m.targetY, m.round] : [...head, m.axis, m.targetY];
   if (m.type !== 'state') return m;
   const r = m.royal;
   const state = [...head, m.tick, m.inputSeq, pack('selection', m.selection), pack('rules', m.rules),
@@ -5384,7 +5393,8 @@ function encodeOnlineWire(m) {
       r.cueSeq, r.cues.map(c => pack('cue', c))],
     m.hazards.map(h => pack('hazard', h)), m.endMessage];
   // Keep legacy v1 tuples unchanged unless the peer acknowledged this extension.
-  if (onlinePointServeReady) state.push(m.pointServeMs ?? 0);
+  if (onlinePointServeReady || onlineRematchReady) state.push(m.pointServeMs ?? 0);
+  if (onlineRematchReady) state.push(m.round);
   return state;
 }
 
@@ -5393,7 +5403,9 @@ function decodeOnlineWire(a) {
   if (!Array.isArray(a) || a[0] !== 'kp' || a[1] !== ONLINE_WIRE_VERSION) return null;
   const m = {v: LAN_SIGNAL_VERSION, gameplay: 'royal', matchRules: 'presets', room: a[3], seq: a[4]};
   if (a[2] === 'i' && tuple(a, 7)) return {...m, type: 'input', axis: a[5], targetY: a[6]};
-  if (a[2] !== 's' || !(tuple(a, 16) || tuple(a, 17)) || !tuple(a[9], 6) || !tuple(a[11], 5) ||
+  if (a[2] === 'i' && onlineRematchReady && tuple(a, 8)) return {...m, type: 'input', axis: a[5], targetY: a[6], round: a[7]};
+  if (a.length === 18 && !onlineRematchReady) return null;
+  if (a[2] !== 's' || !(tuple(a, 16) || tuple(a, 17) || tuple(a, 18)) || !tuple(a[9], 6) || !tuple(a[11], 5) ||
       !tuple(a[13], 9) || !tuple(a[13][4], 2) || !tuple(a[13][5], 2) ||
       !Array.isArray(a[13][8]) || a[13][8].length > 16 || !Array.isArray(a[14]) || a[14].length > 128) return null;
   // Shape errors are rejected here; the existing gameplay validators then enforce
@@ -5415,11 +5427,13 @@ function decodeOnlineWire(a) {
       guardHits: {left: unpack('hit', r[5][0], true), right: unpack('hit', r[5][1], true)},
       powerupPulse: unpack('pulse', r[6], true), cueSeq: r[7], cues: r[8].map(c => unpack('cue', c))},
     hazards: a[14].map(h => unpack('hazard', h)), endMessage: a[15]});
-  if (a.length === 17) m.pointServeMs = a[16];
+  if (a.length >= 17) m.pointServeMs = a[16];
+  if (a.length === 18) m.round = a[17];
   return valid ? m : null;
 }
 
 let onlineWireReady = false;
+let onlineRematchReady = false;
 let onlineIntentReady = false;
 let onlinePointServeReady = false;
 let onlineWireAttempts = 0;
@@ -5428,6 +5442,7 @@ let onlineLastInput = null;
 let onlineInputAck = -1;
 
 function resetOnlineWire() {
+  onlineRematchReady = false;
   onlineWireReady = false;
   onlineIntentReady = false;
   onlinePointServeReady = false;
@@ -5439,7 +5454,8 @@ function resetOnlineWire() {
 
 function sendOnlineWireHello(ack = false) {
   return onlineLanSend({v: LAN_SIGNAL_VERSION, type: 'net-format', room: lanRoomCode,
-    format: ONLINE_WIRE_VERSION, ack, inputIntent: 1, pointServe: 1});
+    format: ONLINE_WIRE_VERSION, ack, inputIntent: 1, pointServe: 1,
+    rematch: 1, rematchToken: multiplayerRematch()?.token});
 }
 
 function negotiateOnlineWire() {
@@ -5453,6 +5469,7 @@ function receiveOnlineWireHello(m) {
   if (!onlineSession || !lanRoomCode || m.v !== LAN_SIGNAL_VERSION || m.room !== lanRoomCode ||
       m.gameplay !== 'royal' || m.matchRules !== 'presets' || m.format !== ONLINE_WIRE_VERSION ||
       typeof m.ack !== 'boolean') return;
+  receiveRematchHello(m);
   if (m.ack) { onlineWireReady = true; onlineIntentReady = m.inputIntent === 1; onlinePointServeReady = m.pointServe === 1; }
   else sendOnlineWireHello(true);
 }
@@ -5464,7 +5481,8 @@ function onlineLanSend(payload) {
   payload.matchRules = "presets";
   /* END ROYAL POLISH */
   if (payload.type !== 'net-format') negotiateOnlineWire();
-  const channel = (payload.type === "action" || payload.type === "selection" || payload.type === "rules" || payload.type === "match-setup" || payload.type === "net-format") ?
+  if (onlineRematchReady && ['state', 'input', 'action'].includes(payload.type)) payload.round = multiplayerRematch().round;
+  const channel = (payload.type === "rematch" || payload.type === "action" || payload.type === "selection" || payload.type === "rules" || payload.type === "match-setup" || payload.type === "net-format") ?
     onlineControlChannel : lanChannel;
   if (!channel || channel.readyState !== "open") return false;
   try {
@@ -5977,6 +5995,190 @@ function syncOnlineMatchFlowUi() {
   if (previousPhase !== flow.phase && flow.phase === 'ready') byId('onlineReadyButton').focus({preventScroll: true});
 }
 
+// Session-local agreement on the reliable, already authenticated control channel.
+// A new round is prepared by the host, acknowledged by the consenting guest,
+// then reset exactly once by the host. Snapshot/input round tags fence old packets.
+function multiplayerRematch() {
+  if (!onlineSession || !['host', 'guest'].includes(lanRole)) return null;
+  if (!onlineSession.rematch) {
+    onlineSession.rematch = {round: 0, local: false, remote: false, phase: 'playing',
+      token: lanRole === 'host' ? Array.from(crypto.getRandomValues(new Uint32Array(4)),
+        n => n.toString(16).padStart(8, '0')).join('') : null, lastSend: -Infinity};
+  }
+  return onlineSession.rematch;
+}
+
+function receiveRematchHello(message) {
+  const state = multiplayerRematch();
+  if (!state || message.rematch !== 1 || !/^[a-f0-9]{32}$/.test(message.rematchToken || '')) return;
+  if (lanRole === 'guest' && state.token === null) state.token = message.rematchToken;
+  if (state.token === message.rematchToken) onlineRematchReady = true;
+}
+
+function multiplayerRematchVisible() {
+  return Boolean(mode === 2 && gameOver && onlineSession && lanConnected);
+}
+
+function sendRematch(kind, round = multiplayerRematch()?.round) {
+  const state = multiplayerRematch();
+  if (!state || !onlineRematchReady || !lanConnected) return false;
+  state.lastSend = performance.now();
+  return lanSend({v: LAN_SIGNAL_VERSION, room: lanRoomCode, type: 'rematch', protocol: 1,
+    token: state.token, round, kind});
+}
+
+function requestMultiplayerRematch() {
+  const state = multiplayerRematch();
+  if (!multiplayerRematchVisible() || !onlineRematchReady || onlineGameBlocked || !state || state.local) return;
+  state.local = true;
+  sendRematch('accept');
+  prepareMultiplayerRematch();
+  syncRoyalUi(true);
+}
+
+function prepareMultiplayerRematch() {
+  const state = multiplayerRematch();
+  if (lanRole !== 'host' || !state || !gameOver || !state.local || !state.remote ||
+      state.phase === 'starting' || state.round >= Number.MAX_SAFE_INTEGER - 1) return;
+  state.phase = 'starting';
+  state.activeWait = 0;
+  state.at = performance.now();
+  sendRematch('start');
+}
+
+function receiveMultiplayerRematch(message) {
+  const state = multiplayerRematch();
+  if (!state || !onlineRematchReady || !lanConnected || message.v !== LAN_SIGNAL_VERSION ||
+      message.room !== lanRoomCode || !lanRoomCode || message.gameplay !== 'royal' ||
+      message.matchRules !== 'presets' || message.protocol !== 1 || message.token !== state.token ||
+      !Number.isSafeInteger(message.round) || message.round < 0) return;
+  if (message.kind === 'leave' && (message.round === state.round ||
+      state.phase === 'awaiting-state' && message.round === state.round - 1 ||
+      state.phase === 'starting' && message.round === state.round + 1)) {
+    return leaveMultiplayerSession('Opponent left the match.', false);
+  }
+  if (lanRole === 'guest' && message.kind === 'start') {
+    if (state.phase === 'awaiting-state' && message.round === state.round - 1) {
+      sendRematch('started'); // Lost acknowledgement during transport recovery.
+      return;
+    }
+    if (message.round !== state.round || !state.local || !gameOver || state.phase !== 'playing') return;
+    state.round++;
+    state.phase = 'awaiting-state';
+    state.activeWait = 0;
+    state.at = performance.now();
+    onlineInputs.clear();
+    onlineHasState = false;
+    onlineLastInput = null;
+    resetVisualHistory();
+    sendRematch('started');
+  } else if (lanRole === 'host' && message.kind === 'started') {
+    if (state.phase !== 'starting' || message.round !== state.round + 1 || !state.local || !state.remote || !gameOver) return;
+    state.round++;
+    state.phase = 'playing'; // Commit before calling reset/UI hooks; duplicates cannot reenter.
+    state.local = state.remote = false;
+    lanRemoteInput = {axis: 0, targetY: null, lastAt: 0};
+    onlineInputs.clear();
+    onlineLastInput = null;
+    clearHeldInput();
+    shakeFrames = 0;
+    resumeCountdownEndAt = 0;
+    lastResumeCountdownNumber = 0;
+    if (onlineMatchFlow) onlineMatchFlow.phase = 'playing';
+    startLevel(); // Existing score, hazard, paddle, ball, powerup and countdown reset.
+    if (typeof hideFirstStartControls === 'function') hideFirstStartControls();
+    setMenusVisible(false);
+    beginPointServeCountdown();
+    sendLanState(true);
+  } else if (message.kind === 'accept' && message.round === state.round && gameOver) {
+    state.remote = true;
+    prepareMultiplayerRematch();
+  }
+  syncRoyalUi(true);
+}
+
+function acceptMultiplayerRound(message) {
+  const state = multiplayerRematch();
+  return !onlineRematchReady || !['input', 'state', 'action'].includes(message?.type) ||
+    state && (message.round === state.round || state.round === 0 && message.round === undefined) &&
+    !(lanRole === 'host' && state.phase === 'starting');
+}
+
+function tickMultiplayerRematch() {
+  const state = onlineSession?.rematch;
+  if (!state || !onlineRematchReady || !lanConnected) return;
+  const now = performance.now();
+  const blocked = onlineGameBlocked || onlineSession.secure && onlineSession.secure.phase !== 'active';
+  if (state.phase === 'starting' || state.phase === 'awaiting-state') {
+    if (!blocked) state.activeWait += Math.max(0, now - (state.at ?? now));
+    state.at = now;
+    if (state.activeWait > 12000) { leaveMultiplayerSession(ONLINE_ERRORS.connection_lost); return; }
+  }
+  if (blocked || now - state.lastSend < 500) return;
+  if (state.phase === 'starting') sendRematch('start');
+  else if (state.phase === 'awaiting-state') sendRematch('started');
+  else if (gameOver && state.local) sendRematch('accept');
+}
+
+function finishMultiplayerRematchSnapshot() {
+  const state = onlineSession?.rematch;
+  if (state?.phase === 'awaiting-state' && !gameOver) {
+    state.phase = 'playing';
+    state.local = state.remote = false;
+    clearHeldInput();
+    syncRoyalUi(true);
+  }
+}
+
+function leaveMultiplayerSession(message = '', notify = true) {
+  const origin = onlineSession?.multiplayerOrigin || (onlineManualLanSelected ? 'lan' : 'private');
+  if (notify) sendRematch('leave');
+  // Closing signaling also supplies a departure notification if the final
+  // encrypted control packet was still queued when the connection closed.
+  if (origin === 'lan') openOfflineLanSetup(false);
+  else {
+    startOnlineSetup(false);
+    if (origin === 'private') byId('onlinePrivateRooms').open = true;
+  }
+  onlineGameBlocked = paused = true;
+  setLanStatus(message || 'Find an opponent or create/join a private room.');
+  syncRoyalUi(true);
+}
+
+function initMultiplayerRematchUi() {
+  const panel = document.createElement('section');
+  panel.id = 'multiplayerResult';
+  panel.className = 'online-match-flow match-ui';
+  panel.hidden = true;
+  panel.setAttribute('role', 'dialog');
+  panel.setAttribute('aria-modal', 'true');
+  panel.setAttribute('aria-labelledby', 'multiplayerResultTitle');
+  const card = document.createElement('div'); card.className = 'online-flow-card';
+  const title = document.createElement('h2'); title.id = 'multiplayerResultTitle';
+  const score = document.createElement('p'); score.id = 'multiplayerResultScore';
+  const note = document.createElement('p'); note.id = 'multiplayerResultNote';
+  note.setAttribute('role', 'status'); note.setAttribute('aria-live', 'polite');
+  const actions = document.createElement('div'); actions.className = 'online-flow-actions';
+  actions.append(royalButton('multiplayerRematch', 'Rematch', requestMultiplayerRematch, 'match-primary'),
+    royalButton('multiplayerBack', 'Back', () => leaveMultiplayerSession()));
+  card.append(title, score, actions, note); panel.append(card); document.body.append(panel);
+}
+
+function syncMultiplayerRematchUi() {
+  const panel = byId('multiplayerResult');
+  if (!panel) return;
+  panel.hidden = !multiplayerRematchVisible() || document.body.classList.contains('title-active');
+  if (panel.hidden) return;
+  const state = multiplayerRematch(), inverted = lanRole === 'guest';
+  const winner = left.score > right.score ? 'left' : 'right';
+  royalText(byId('multiplayerResultTitle'), (inverted ? winner === 'right' : winner === 'left') ?
+    'Left player wins the match.' : 'Right player wins the match.');
+  byId('multiplayerResultScore').textContent = inverted ? right.score + ' – ' + left.score : left.score + ' – ' + right.score;
+  byId('multiplayerRematch').disabled = !onlineRematchReady || state.local || onlineGameBlocked;
+  royalText(byId('multiplayerResultNote'), !onlineRematchReady ? 'Both players must reload the latest game.' :
+    state.local ? 'Waiting for opponent...' : state.remote ? 'Your opponent wants a rematch.' : '');
+}
+
 // Native LAN functions remain intact. Route only online sessions through the
 // existing browser transport and prediction adapters, after legacy declarations.
 function installOnlineSupport() {
@@ -6006,7 +6208,9 @@ function installOnlineSupport() {
   for (const name of ['update', 'requestServeOrContinue', 'requestTogglePause', 'requestRetryLevel']) {
     const original = window[name];
     window[name] = (...args) => {
-      if (name === 'update') tickOnlineMatchFlow();
+      if (name === 'update') { tickOnlineMatchFlow(); tickMultiplayerRematch(); }
+      if (name === 'requestServeOrContinue' && multiplayerRematchVisible()) return;
+      if (name === 'requestRetryLevel' && mode === 2 && onlineSession && (gameOver || lanRole === 'guest')) return;
       if (name === 'requestServeOrContinue' && onlineMatchFlowBlocksPlay()) return;
       if (mode === 2 && onlineGameBlocked) { suspendPointServeCountdown(); return; }
       return original(...args);
@@ -6015,6 +6219,8 @@ function installOnlineSupport() {
   for (const name of ['serveOrContinue', 'togglePause', 'retryLevel', 'pointForPlayer', 'pointForCpu']) {
     const original = window[name];
     window[name] = (...args) => {
+      if (mode === 2 && onlineSession && (name === 'retryLevel' && (gameOver || lanRole === 'guest') ||
+          name === 'serveOrContinue' && gameOver)) return;
       if (onlineMatchFlowBlocksPlay()) return;
       return original(...args);
     };
@@ -6030,10 +6236,16 @@ function installOnlineSupport() {
       raw = JSON.stringify(message);
     }
     if (onlineSession && message?.type === 'net-format') { receiveOnlineWireHello(message); return; }
+    if (message?.type === 'rematch') { receiveMultiplayerRematch(message); return; }
+    if (onlineSession && !acceptMultiplayerRound(message)) return;
+    // A remote legacy Retry action is not consent from the host. The host's
+    // existing mid-match Restart control remains available locally.
+    if (onlineSession && message?.type === 'action' && message.action === 'retry') return;
     if (message?.type === 'match-setup') { receiveOnlineMatchSetup(message); return; }
     if (onlineMatchFlowBlocksPlay() && message?.type === 'action') return;
     const needsState = onlineMatchFlow?.configured && !onlineHasState;
     receive(raw);
+    if (message?.type === 'state' && message.seq === lanLastStateSeq) finishMultiplayerRematchSnapshot();
     // Acknowledge the first accepted snapshot immediately; no extra retry delay.
     if (needsState && onlineHasState && lanRole === 'guest' && onlineMatchFlow)
       sendOnlineMatchSetup('initialized', {configuration: onlineMatchFlow.configuration});
@@ -7126,6 +7338,17 @@ Object.entries({
   zh: ['关卡选择', '关卡', '已完成', '已解锁', '空格 / 点击 / A：关卡选择', '点击：关卡选择']
 }).forEach(([language, values]) => ['Level Select', 'Level', 'Completed', 'Unlocked',
   'SPACE / TAP / A: Level Select', 'TAP: Level Select'].forEach((key, i) => {
+  window.KING_PONG_ROYAL_TRANSLATIONS[language][key] = values[i];
+}));
+
+Object.entries({
+  'Rematch': ['Revancha','Revanche','Revanche','Revanche','Rivincita','Rematch','再戦','재대결','再战'],
+  'Waiting for opponent...': ['Esperando al oponente...','En attente de l’adversaire...','Warte auf Gegner...','Aguardando o adversário...','In attesa dell’avversario...','Wachten op tegenstander...','対戦相手を待っています...','상대방을 기다리는 중...','正在等待对手...'],
+  'Your opponent wants a rematch.': ['Tu oponente quiere una revancha.','Votre adversaire souhaite une revanche.','Dein Gegner möchte eine Revanche.','Seu adversário quer uma revanche.','Il tuo avversario vuole una rivincita.','Je tegenstander wil een rematch.','対戦相手が再戦を希望しています。','상대방이 재대결을 원합니다.','对手希望再战。'],
+  'Opponent left the match.': ['El oponente salió de la partida.','L’adversaire a quitté la partie.','Der Gegner hat das Spiel verlassen.','O adversário saiu da partida.','L’avversario ha lasciato la partita.','De tegenstander heeft de wedstrijd verlaten.','対戦相手が退出しました。','상대방이 경기를 떠났습니다.','对手已退出比赛。'],
+  'Left player wins the match.': ['Gana el jugador izquierdo.','Le joueur de gauche gagne.','Der linke Spieler gewinnt.','O jogador da esquerda vence.','Vince il giocatore a sinistra.','Linker speler wint.','左のプレイヤーの勝利。','왼쪽 플레이어 승리.','左侧玩家获胜。'],
+  'Right player wins the match.': ['Gana el jugador derecho.','Le joueur de droite gagne.','Der rechte Spieler gewinnt.','O jogador da direita vence.','Vince il giocatore a destra.','Rechter speler wint.','右のプレイヤーの勝利。','오른쪽 플레이어 승리.','右侧玩家获胜。']
+}).forEach(([key, values]) => ['es','fr','de','pt','it','nl','ja','ko','zh'].forEach((language, i) => {
   window.KING_PONG_ROYAL_TRANSLATIONS[language][key] = values[i];
 }));
 </script>
@@ -8599,9 +8822,6 @@ const TOTAL_LEVELS = 18;
 const SECRET_BOSS_LEVEL_NUMBER = TOTAL_LEVELS + 1;
 const BOSS_PLAYER_MAX_HEALTH = 13;
 const BOSS_ENEMY_MAX_HEALTH = 10;
-const BOSS_STARTING_BALLS = 1;
-const BOSS_MAX_BALLS = 3;
-const BOSS_SECOND_BALL_DELAY_FRAMES = 60 * 10;
 const SAVE_SLOT_COUNT = 3;
 const SAVE_STORAGE_PREFIX = "pongCampaignSaveSlotV2";
 const ACTIVE_SAVE_SLOT_KEY = "pongCampaignActiveSaveSlotV1";
@@ -13137,13 +13357,7 @@ function startBossFight(showIntroFade = false) {
 }
 
 function desiredBossBallCount() {
-  if (bossRallyFrames < BOSS_SECOND_BALL_DELAY_FRAMES) {
-    return BOSS_STARTING_BALLS;
-  }
-  if (bossEnemyHealth <= Math.floor(BOSS_ENEMY_MAX_HEALTH * 0.45)) {
-    return BOSS_MAX_BALLS;
-  }
-  return Math.min(BOSS_MAX_BALLS, BOSS_STARTING_BALLS + 1);
+  return 2;
 }
 
 function resetBossBalls() {
@@ -13681,7 +13895,7 @@ function cpuReturnTargetAngle(ballCenter) {
   return clamp(Math.atan2(targetY - ballCenter, horizontalDistance), -0.9, 0.9);
 }
 
-function calculatePaddleBounceAngle(profile, paddle, direction, ballCenter, incomingVy = 0, allowCpuAim = true) {
+function calculatePaddleBounceAngle(profile, paddle, direction, ballCenter, incomingVy = 0, allowCpuAim = true, applyNoise = true) {
   const relative = paddleRelativeContact(paddle, ballCenter);
   const contactAngle = relative * profile.contactScale;
   const surfaceAngle = paddleProfileSlopeAngle(profile, relative) * profile.slopeInfluence;
@@ -13690,7 +13904,7 @@ function calculatePaddleBounceAngle(profile, paddle, direction, ballCenter, inco
     const desired = cpuReturnTargetAngle(ballCenter);
     bounceAngle = lerp(bounceAngle, desired, profile.aimStrength);
   }
-  if (profile.noise > 0) {
+  if (applyNoise && profile.noise > 0) {
     bounceAngle += (Math.random() * 2 - 1) * profile.noise;
   }
   bounceAngle += clamp(incomingVy * 0.012, -0.07, 0.07);
@@ -14258,6 +14472,7 @@ function updateCPU() {
   } else {
     targetCenter = centerY + Math.sin(frame * 0.022) * idleDrift;
   }
+  targetCenter = cpuTacticalTarget(cfg, aim, targetCenter);
   const targetY = clamp(targetCenter - PADDLE_H / 2, bounds.top, bounds.bottom - PADDLE_H);
   const delta = targetY - right.y;
   if (Math.abs(delta) > cfg.deadZone) {
@@ -14586,6 +14801,7 @@ function drawCampaignPlayInfo() {
 
 function drawOverlay() {
   /* ROYAL UI */
+  if (typeof multiplayerRematchVisible === 'function' && multiplayerRematchVisible()) return;
   if (document.body.classList.contains("royal-panel-open") || royalDesktopPauseVisible()) return;
   // Resume needs only its existing 3, 2, 1; retain panels for actual results.
   if ((paused || hasResumeCountdown()) && !gameOver && !levelCleared && !campaignCleared) return;
@@ -14982,6 +15198,7 @@ function royalCpuAim(cfg) {
       if (other.frames + Math.min(6, selected.frames * 0.15) < selected.frames) selected = other;
     }
   }
+  selected = chooseCpuTacticalThreat(cfg, primary, split, selected);
   royalCpuTarget = selected.target;
   return selected;
 }
@@ -15007,6 +15224,7 @@ function royalPickupSprite(type) {
 }
 
 function resetRoyalRally() {
+  resetCpuTactics();
   if (typeof stopRoyalPowerupSound === 'function') stopRoyalPowerupSound();
   royalSplitBall = royalPickup = null;
   royalPowerupPulse = null;
@@ -16060,6 +16278,160 @@ function drawSpawnRipple(pulse, color) {
   drawSpawnRippleAt(pulse.x, pulse.y, pulse.remaining, color);
 }
 
+// Small contact-position choices layered over the existing tracking error,
+// prediction and movement limits. No velocity or collision state is changed.
+let cpuTacticPlan = null;
+function resetCpuTactics() { cpuTacticPlan = null; }
+
+function cpuTacticalIntelligence(cfg) {
+  // Custom intelligence is independent of both arena and paddle speed.
+  if (mode === 3) return clamp(customCpuIntel / 100, 0, 1);
+  if (mode !== 1) return 0; // The adaptive Wall Boss retains its own decisions.
+  return clamp(Math.min(cfg.label / 100, cfg.prediction) * (1 - cfg.error / 150), 0, 1);
+}
+
+function cpuDecisionVariation(seed) {
+  // Do not consume the physics/aim-error RNG when considering hypothetical shots.
+  const value = Math.sin(seed * 12.9898 + 78.233) * 43758.5453;
+  return value - Math.floor(value);
+}
+
+function cpuInterceptMargin(aim, cfg) {
+  if (!Number.isFinite(aim.frames)) return -Infinity;
+  return cfg.maxMove * Math.max(0, aim.frames) + PADDLE_H / 2 -
+    Math.abs(aim.center - right.y - PADDLE_H / 2);
+}
+
+function chooseCpuTacticalThreat(cfg, primary, split, selected) {
+  const intel = cpuTacticalIntelligence(cfg);
+  const other = selected === primary ? split : primary;
+  // Retain the existing earliest-arrival choice and near-tie hysteresis unless
+  // one ball is already lost and the other can still realistically be returned.
+  // Inexperienced CPUs sometimes keep chasing the lost ball.
+  if (intel < 0.35 || !Number.isFinite(other.frames) || other.frames > selected.frames + 45) return selected;
+  if (cpuInterceptMargin(selected, cfg) < -PADDLE_H / 2 && cpuInterceptMargin(other, cfg) > 8 &&
+      cpuDecisionVariation(royalRallyId + 31) < intel * 0.85) return other;
+  return selected;
+}
+
+function cpuMatchRisk(intel, arrival) {
+  const goal = Math.max(1, currentLevel().goal);
+  const deficit = (left.score - right.score) / goal;
+  const closeFinish = Math.max(left.score, right.score) >= goal - 1;
+  const protection = clamp((royalGuards.right - arrival - 45) / 180, 0, 1);
+  return clamp(0.42 + deficit * 0.28 - (closeFinish && Math.abs(deficit) < 0.25 ? 0.16 : 0) +
+    protection * intel * 0.16, 0.15, 0.75);
+}
+
+function cpuShotHeight(contact, angle, distance) {
+  return predictWithSimpleBounds(0, contact - BALL_HALF, Math.cos(angle), Math.sin(angle), distance + BALL_HALF);
+}
+
+function cpuShotHazardRisk(contact, angle, speed) {
+  let risk = 0;
+  for (const hazard of hazards) {
+    // Short extrapolation plus uncertainty, not a perfect forecast of moving
+    // obstacles or an exhaustive simulation of every possible rebound.
+    const centerX = hazard.x + (hazard.type === 'circle' ? 0 : hazard.w / 2);
+    const time = Math.min(30, Math.max(0, (right.x - centerX) / Math.max(1, Math.cos(angle) * speed)));
+    const x = centerX + (hazard.vx || 0) * time;
+    if (x <= left.x || x >= right.x) continue;
+    const y = hazard.y + (hazard.type === 'circle' ? 0 : hazard.h / 2) + (hazard.vy || 0) * time;
+    const halfWidth = hazard.type === 'circle' ? hazard.r : hazard.w / 2;
+    const halfHeight = hazard.type === 'circle' ? hazard.r : hazard.h / 2;
+    const margin = halfHeight + BALL_HALF + Math.abs(Math.tan(angle)) * (halfWidth + BALL_HALF) +
+      Math.abs(hazard.vy || 0) * time * 0.25;
+    if (Math.abs(cpuShotHeight(contact, angle, right.x - x) - y) < margin) risk += 0.5;
+  }
+  return Math.min(1, risk);
+}
+
+function cpuPickupValue(type, aim, cfg, intel, speed, openness, hazardRisk, flight) {
+  if (!royalPickup || royalPickup.ttl <= aim.frames + flight) return 0;
+  if (type === 'guard') return royalGuards.right > aim.frames + flight + 120 ? 0 : 0.75;
+  if (type === 'split') return royalSplitBall ? 0 : Math.max(0, 0.35 + openness * 0.35 - hazardRisk * 0.6);
+  if (type === 'rush') {
+    // Rush can rebound toward its collector before the next paddle hit ends
+    // it. Poor reach and uncertain hazards can make that acceleration risky.
+    const defensiveLoad = speed / Math.max(1, cfg.maxMove) / 3;
+    return Math.max(0, openness * 0.75 - defensiveLoad * 0.4 - hazardRisk * 0.5 +
+      cpuMatchRisk(intel, aim.frames) * 0.15);
+  }
+  return 0;
+}
+
+function evaluateCpuContact(cfg, aim, baseCenter, offset, intel, risk) {
+  const bounds = visiblePlayfieldBounds();
+  const center = clamp(baseCenter + offset, bounds.top + PADDLE_H / 2, bounds.bottom - PADDLE_H / 2);
+  const contact = aim.center;
+  const relative = (contact - center) / (PADDLE_H / 2);
+  const move = Math.abs(center - right.y - PADDLE_H / 2);
+  // New tactics may not rescue an otherwise impossible return or aim off the
+  // paddle edge. Existing errors remain in baseCenter, including bad estimates.
+  if (offset && (Math.abs(relative) > 0.72 || move > cfg.maxMove * aim.frames ||
+      cpuInterceptMargin(aim, cfg) < Math.abs(offset) + cfg.error * 0.25)) return null;
+  const profile = activePaddleProfile(right);
+  const paddle = {x: right.x, y: center - PADDLE_H / 2};
+  const angle = calculatePaddleBounceAngle(profile, paddle, -1, contact, aim.target.vy, true, false);
+  const speed = Math.max(1, Math.hypot(aim.target.vx, aim.target.vy) / (aim.target.rush ? 1.3 : 1));
+  const distance = right.x - left.x;
+  const flight = distance / Math.max(1, Math.cos(angle) * speed);
+  const landing = cpuShotHeight(contact, angle, distance);
+  const openness = Math.abs(landing - left.y - PADDLE_H / 2) / (bounds.bottom - bounds.top);
+  const guarded = royalGuards.left > aim.frames + flight + 30;
+  const hazardRisk = intel > 0.25 ? cpuShotHazardRisk(contact, angle, speed) : 0;
+  const rebound = contact + Math.tan(angle) * distance < bounds.top + BALL_HALF ||
+    contact + Math.tan(angle) * distance > bounds.bottom - BALL_HALF;
+  let pickup = 0;
+  if (royalPickup && aim.target !== royalSplitBall && royalPickup.x < right.x) {
+    const dx = right.x - royalPickup.x;
+    const miss = Math.abs(cpuShotHeight(contact, angle, dx) - royalPickup.y) * Math.cos(angle);
+    if (miss < ROYAL_COLLECTION_RADIUS) {
+      pickup = cpuPickupValue(royalPickup.type, aim, cfg, intel, speed, openness, hazardRisk,
+        dx / Math.max(1, Math.cos(angle) * speed)) * (1 - miss / ROYAL_COLLECTION_RADIUS * 0.4);
+    }
+  }
+  const score = openness * (guarded ? 0.12 : 0.35 + risk) + pickup * intel -
+    hazardRisk * intel * 0.6 - Math.abs(relative) * (0.2 + (1 - risk) * 0.2) -
+    Math.abs(offset) / PADDLE_H * (guarded ? 0.6 : 0.15) +
+    (rebound && intel > 0.5 && !guarded ? openness * risk * 0.12 : 0);
+  return {offset: center - baseCenter, score, pickup, hazardRisk, guarded, rebound, angle};
+}
+
+function planCpuContact(cfg, aim, baseCenter, seed) {
+  const intel = cpuTacticalIntelligence(cfg), risk = cpuMatchRisk(intel, aim.frames);
+  const basic = evaluateCpuContact(cfg, aim, baseCenter, 0, intel, risk);
+  let best = basic;
+  const range = mode === 3 ? 3 + intel * 17 : 2 + intel * 9;
+  for (const scale of [-1, -0.5, 0.5, 1]) {
+    const candidate = evaluateCpuContact(cfg, aim, baseCenter, scale * range, intel, risk);
+    if (!candidate) continue;
+    // Imperfect assessment is stable throughout an approach; no per-frame dice.
+    const error = (cpuDecisionVariation(seed + scale * 7) - 0.5) * (0.12 * (1 - intel) + 0.02);
+    if (candidate.score + error > best.score) best = candidate;
+  }
+  const gain = best.score - basic.score;
+  const recognition = Math.min(0.9, intel * intel * Math.max(0, gain) * 4);
+  return gain > 0.015 && cpuDecisionVariation(seed) < recognition ? best : basic;
+}
+
+function cpuTacticalTarget(cfg, aim, baseCenter) {
+  if ((mode !== 1 && mode !== 3) || waitingForServe || aim.target.vx <= 0 || !Number.isFinite(aim.frames)) {
+    resetCpuTactics(); return baseCenter;
+  }
+  if (!cpuTacticPlan || cpuTacticPlan.target !== aim.target || cpuTacticPlan.rally !== royalRallyId) {
+    cpuTacticPlan = {target: aim.target, rally: royalRallyId, at: -Infinity, offset: 0,
+      seed: royalRallyId * 19 + frame * 0.17 + cpuErrorOffset};
+  }
+  if (aim.frames > 90 || aim.frames < 3) return baseCenter + cpuTacticPlan.offset;
+  if (frame - cpuTacticPlan.at >= 12) {
+    cpuTacticPlan.at = frame;
+    const choice = planCpuContact(cfg, aim, baseCenter, cpuTacticPlan.seed);
+    cpuTacticPlan.offset = choice.offset;
+  }
+  return baseCenter + cpuTacticPlan.offset;
+}
+
 // Between-point serving is gameplay state, shared by online and offline LAN.
 // Only the authority advances this clock; guests interpolate its display only.
 const MULTIPLAYER_SERVE_MS = 2000;
@@ -16806,6 +17178,7 @@ function royalModeName() {
 }
 
 function royalNeedsSetup() {
+  if (pointServeCountdownActive()) return false;
   if (typeof onlineMatchFlowVisible === 'function' && onlineMatchFlowVisible()) return false;
   if (royalOnlineMode() && !lanConnected) return true;
   return customPreviewActive || mode === 2 && waitingForServe && left.score === 0 && right.score === 0 && !gameOver;
@@ -17060,6 +17433,7 @@ function initRoyalUi() {
   }
   prepareAccessibleMenuControls();
   initOnlineMatchFlowUi();
+  initMultiplayerRematchUi();
   document.body.classList.add('royal-ui-ready');
   updateAudioControls();
   // One listener per page. Rotation only changes presentation, never match or connection state.
@@ -17218,6 +17592,7 @@ function royalContinue() {
 }
 
 function toggleRoyalMenu() {
+  if (multiplayerRematchVisible()) return;
   if (bossIntroActive || creditsActive) return;
   if (onlineMatchFlowBlocksPlay()) { showTitleScreen(); return; }
   const title = document.body.classList.contains('title-active');
@@ -17253,6 +17628,7 @@ function syncRoyalUi(force = false) {
   syncBossAudio();
   if (!byId('matchSetup')) return;
   syncOnlineMatchFlowUi();
+  syncMultiplayerRematchUi();
   syncPrivateRoomControls();
   const title = document.body.classList.contains('title-active');
   const online = royalOnlineMode();
@@ -17369,7 +17745,7 @@ function syncRoyalUi(force = false) {
   byId('matchCpuSettings').hidden = title || mode !== 3;
   const canServe = (!online || lanConnected) && !onlineMatchFlowBlocksPlay();
   byId('matchServe').hidden = !canServe;
-  byId('matchContinue').hidden = title || setup || menu || !canServe || pointServeCountdownActive() || !(waitingForServe || gameOver || levelCleared ||
+  byId('matchContinue').hidden = multiplayerRematchVisible() || title || setup || menu || !canServe || pointServeCountdownActive() || !(waitingForServe || gameOver || levelCleared ||
     campaignCleared);
   byId('matchPause').hidden = title || setup || menu || !canServe;
   royalText(byId('matchContinue'), isLevelSelectEncounter() && levelCleared ? 'Level Select' : gameOver ? 'Retry' : levelCleared || campaignCleared ? 'Continue' : 'Serve');
@@ -17386,7 +17762,7 @@ function syncRoyalUi(force = false) {
     online && !waitingForServe;
   byId('menuPaddle').parentElement.hidden = ['menuPaddle', 'menuPaddle2', 'menuArena'].every(id => byId(id).hidden);
   restartButton.hidden = title;
-  restartButton.disabled = online && !lanConnected;
+  restartButton.disabled = online && (!lanConnected || lanRole === 'guest' || gameOver);
   syncMatchRulesUi();
   if (typeof syncOnlineTransportUi === 'function') syncOnlineTransportUi();
   updateRoyalControlHint();
@@ -17462,6 +17838,7 @@ function syncRoyalOrientation() {
 }
 
 function royalActiveDialog() {
+  if (multiplayerRematchVisible()) return byId('multiplayerResult');
   if (byId('pairingDialog') && !byId('pairingDialog').hidden) return byId('pairingDialog');
   if (galleryKind) return byId('royalGallery');
   for (const id of ['classicLanDialog', 'rotateDevice', 'matchMenu', 'matchSetup'])
@@ -17492,7 +17869,7 @@ function syncRoyalFocus() {
   // The gallery covers the toolbar; its Close button must stay unobstructed.
   const fullscreen = byId('browserFullscreen');
   if (fullscreen) fullscreen.hidden = dialog?.id === 'royalGallery';
-  for (const id of ['matchBar', 'matchSetup', 'matchMenu', 'titleScreen', 'onlineMatchFlow', 'classicLanDialog', 'pairingDialog']) {
+  for (const id of ['multiplayerResult', 'matchBar', 'matchSetup', 'matchMenu', 'titleScreen', 'onlineMatchFlow', 'classicLanDialog', 'pairingDialog']) {
     const node = byId(id);
     if (node) node.inert = Boolean(dialog && node !== dialog);
   }
@@ -17527,7 +17904,8 @@ function handleRoyalUiKey(event) {
       index = controls.indexOf(document.activeElement);
     controls[(index + (event.shiftKey ? -1 : 1) + controls.length) % controls.length]?.focus();
   } else if (dialog && event.key === 'Escape') {
-    if (dialog.id === 'pairingDialog') {
+    if (dialog.id === 'multiplayerResult') leaveMultiplayerSession();
+    else if (dialog.id === 'pairingDialog') {
       if (dialog.session) rejectPairing(dialog.session);
     } else if (dialog.id === 'classicLanDialog') {
       stopLanQrCamera();
@@ -17576,7 +17954,8 @@ function pollRoyalUiGamepad(now) {
   }
   if ((gamepadButtonJustPressed(pad, GAMEPAD_BUTTONS.B) && panel.id !== 'titleScreen') ||
     gamepadButtonJustPressed(pad, GAMEPAD_BUTTONS.SELECT)) {
-    if (panel.id === 'rotateDevice') {
+    if (panel.id === 'multiplayerResult') leaveMultiplayerSession();
+    else if (panel.id === 'rotateDevice') {
       royalRotateDismissed = true;
       syncRoyalOrientation();
     } else if (panel.id === 'matchSetup' && onlineTransportSelected) showTitleScreen();
@@ -17705,6 +18084,9 @@ function syncPrivateRoomControls() {
 // blocked-session list remain alive until the host explicitly closes the room.
 function privateGuestDeparted(session) {
   if (onlineSession !== session) return;
+  const established = session.multiplayerEstablished;
+  session.rematch = null;
+  session.multiplayerEstablished = false;
   if (saveConfirmation?.roomSession === session) finishSaveConfirmation(false);
   resetOnlineMatchFlow();
   resetOnlineWire();
@@ -17721,7 +18103,9 @@ function privateGuestDeparted(session) {
   setLanPanelOpen(true);
   setMenusVisible(true);
   setOnlineControls(true);
-  setLanStatus('Waiting for Player 2...');
+  if (onlineManualLanSelected) byId('classicLanDialog').hidden = false;
+  else byId('onlinePrivateRooms').open = true;
+  setLanStatus(established ? 'Opponent left the match.' : 'Waiting for Player 2...');
   syncRoyalUi(true);
 }
 // Native discovery and browser/manual pairing share the existing WebRTC engine.

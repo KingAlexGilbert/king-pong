@@ -1,4 +1,5 @@
 import {integrateBossAudio} from '../game/boss-audio-integration.mjs';
+import {integrateWallBalls} from '../game/boss-integration.mjs';
 import {integrateSharedSections} from './shared-sections.mjs';
 import {integrateBrowserFullscreen} from '../game/fullscreen-integration.mjs';
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -20,6 +21,7 @@ const files = [
 const nativeOnlineScript = onlineSources(process.argv.includes('--check'));
 const script = iconSources() + [
   'royal-gameplay.js',
+  'cpu-tactics.js',
   'multiplayer-serve.js',
   'level-select.js',
   'royal-rules.js',
@@ -72,6 +74,7 @@ for (const file of files) {
   updated = integrateLevelSelect(updated);
   updated = integrateOnline(updated, nativeOnlineScript, file !== 'docs/demo/index.html');
   updated = integrateBossAudio(updated);
+  updated = integrateWallBalls(updated);
   updated = integrateBrowserFullscreen(updated, file === 'docs/demo/index.html');
   // Normalize generated content, then preserve the original file's line endings.
   updated = updated.replace(/\r\n/g, '\n');

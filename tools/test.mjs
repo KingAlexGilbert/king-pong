@@ -1,4 +1,5 @@
 import {spawn} from 'node:child_process';
+import {constants as osConstants} from 'node:os';
 import {readdirSync, mkdirSync, writeFileSync} from 'node:fs';
 import {dirname, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -35,70 +36,91 @@ if (only) {
 if (args.includes('--list')) {
   for (const suite of suites) console.log(suite.id + ': ' + suite.command.slice(1).join(' '));
 } else {
-  const results = [];
-  let child, interrupted = false;
-  const stop = () => { interrupted = true; child?.kill('SIGINT'); };
-  process.once('SIGINT', stop);
+  const results = [], runStart = performance.now();
+  let child, interruption = null, killTimer;
+  const stop = signal => {
+    interruption = signal;
+    child?.kill(signal);
+    // A stuck child must not leave an interrupted runner waiting forever.
+    killTimer = setTimeout(() => child?.kill('SIGKILL'), 2000);
+    killTimer.unref();
+  };
+  const interrupt = () => stop('SIGINT'), terminate = () => stop('SIGTERM');
+  process.once('SIGINT', interrupt);
+  process.once('SIGTERM', terminate);
+  const signalExit = signal => 128 + (osConstants.signals[signal] || 1);
+  const displayCommand = command => command.map(arg => /^[\w./:=\\-]+$/.test(arg) ? arg : JSON.stringify(arg)).join(' ');
   for (const suite of suites) {
-    if (interrupted) break;
+    if (interruption) break;
     console.log('\nRUN ' + suite.id);
     const start = performance.now();
-    const exit = await new Promise(resolveExit => {
-      child = spawn(suite.command[0], suite.command.slice(1), {
-        cwd: resolve(root, suite.cwd || '.'), stdio: 'inherit',
-        env: {...process.env, WRANGLER_SEND_METRICS: 'false'}
+    const tails = {stdout: '', stderr: ''};
+    let launchError = null;
+    // Bound each stream even for newline-free output. Keep stderr separately so
+    // a delayed stdout drain cannot erase the actual error from the summary.
+    const capture = (data, stream = 'stderr') => { tails[stream] = (tails[stream] + data).slice(-8192); };
+    const outcome = await new Promise(resolveExit => {
+      try {
+        child = spawn(suite.command[0], suite.command.slice(1), {
+          cwd: resolve(root, suite.cwd || '.'), stdio: ['inherit', 'pipe', 'pipe'],
+          env: {...process.env, WRANGLER_SEND_METRICS: 'false'}
+        });
+      } catch (error) {
+        launchError = error.message;
+        console.error(launchError); capture(launchError);
+        resolveExit({exit: 1, signal: null}); return;
+      }
+      for (const [name, destination] of [['stdout', process.stdout], ['stderr', process.stderr]]) {
+        const stream = child[name];
+        stream.setEncoding('utf8');
+        stream.pipe(destination, {end: false});
+        stream.on('data', data => capture(data, name));
+      }
+      child.once('error', error => {
+        launchError = error.message;
+        console.error(launchError); capture('\n' + launchError + '\n');
       });
-      child.once('error', error => { console.error(error.message); resolveExit(1); });
-      child.once('exit', (code, signal) => resolveExit(code ?? (signal === 'SIGINT' ? 130 : 1)));
+      // close, unlike exit, follows the final stdout/stderr data events.
+      child.once('close', (code, signal) => resolveExit({exit: launchError ? 1 : code ?? signalExit(signal), signal}));
     });
-    const row = {id: suite.id, exit, seconds: Number(((performance.now() - start) / 1000).toFixed(3))};
+    clearTimeout(killTimer);
+    child = null;
+    const lines = stream => tails[stream].replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, '')
+      .split(/[\r\n]+/).filter(line => line.trim()).slice(-15).map(line => line.slice(-1000));
+    const output = lines('stdout'), errors = lines('stderr');
+    const errorCount = Math.min(errors.length, Math.max(5, 15 - output.length));
+    const outputTail = [...output.slice(-(15 - errorCount)),
+      ...errors.slice(-errorCount || errors.length).map(line => '[stderr] ' + line)];
+    const row = {id: suite.id, exit: outcome.exit,
+      seconds: Number(((performance.now() - start) / 1000).toFixed(3)),
+      command: displayCommand(suite.command), argv: suite.command, cwd: resolve(root, suite.cwd || '.'),
+      ...(outcome.signal ? {signal: outcome.signal} : {}), ...(launchError ? {launchError} : {}),
+      ...(outcome.exit !== 0 ? {outputTail} : {})};
     results.push(row);
-    console.log((exit === 0 ? 'PASS ' : 'FAIL ') + JSON.stringify(row));
+    console.log((row.exit === 0 ? 'PASS ' : 'FAIL ') + JSON.stringify({id: row.id, exit: row.exit, seconds: row.seconds}));
     if (report) {
       mkdirSync(dirname(resolve(report)), {recursive: true});
       writeFileSync(resolve(report), JSON.stringify({group, results}, null, 2) + '\n');
     }
   }
-  process.removeListener('SIGINT', stop);
-  console.log(`${results.length} commands completed; ${results.filter(r => r.exit !== 0).length} failed. Native skips remain explicit in Python output.`);
-const failed = results.filter(r => r.exit !== 0);
-
-if (failed.length > 0) {
-  console.error('\n========== FAILED COMMANDS ==========');
-  for (const result of failed) {
-    console.error(JSON.stringify(result, null, 2));
+  process.removeListener('SIGINT', interrupt);
+  process.removeListener('SIGTERM', terminate);
+  clearTimeout(killTimer);
+  const failed = results.filter(row => row.exit !== 0);
+  console.log('\n========== TEST SUMMARY ==========');
+  console.log(`Commands completed: ${results.length}`);
+  console.log(`Passed: ${results.length - failed.length}`);
+  console.log(`Failed: ${failed.length}`);
+  console.log(`Total duration: ${((performance.now() - runStart) / 1000).toFixed(3)}s`);
+  for (const row of failed) {
+    console.log(`\nFAILED: ${row.id}\nCommand: ${row.command}\nDirectory: ${row.cwd}`);
+    console.log(row.launchError ? `Launch error: ${row.launchError}` :
+      `Exit code: ${row.exit}${row.signal ? ' (signal ' + row.signal + ')' : ''}`);
+    console.log(`Duration: ${row.seconds.toFixed(3)}s\nRecent output:`);
+    console.log(row.outputTail.length ? row.outputTail.map(line => '  ' + line).join('\n') : '  (no output)');
   }
-  console.error('=====================================\n');
-} else if (!interrupted) {
-  console.log('\nAll test commands passed.');
-}
-// Print a summary after every test run.
-const failures = results.filter(r => r.exit !== 0);
-const passed = results.length - failures.length;
-
-console.log('\n========== TEST SUMMARY ==========');
-console.log(`Commands completed: ${results.length}`);
-console.log(`Passed: ${passed}`);
-console.log(`Failed: ${failures.length}`);
-
-if (failures.length > 0) {
-  console.error('\nFAILED COMMANDS:');
-
-  for (const failure of failures) {
-    const name = failure.id ?? failure.name ?? failure.command ?? 'Unknown';
-
-    console.error(`- ${name} (exit code ${failure.exit})`);
-
-    if (failure.command) {
-      console.error(`  Command: ${failure.command}`);
-    }
-  }
-}
-
-if (interrupted) {
-  console.warn('\nTest run interrupted.');
-}
-
-console.log('==================================\n');
-  process.exitCode = interrupted ? 130 : results.some(r => r.exit !== 0) ? 1 : 0;
+  if (interruption) console.log('\nTest run interrupted: ' + interruption);
+  console.log('Native skips remain explicit in Python output.');
+  console.log('==================================');
+  process.exitCode = interruption ? signalExit(interruption) : failed.length ? 1 : 0;
 }

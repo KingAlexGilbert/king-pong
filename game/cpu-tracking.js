@@ -115,6 +115,7 @@ function updateCPU() {
   } else {
     targetCenter = centerY + Math.sin(frame * 0.022) * idleDrift;
   }
+  targetCenter = cpuTacticalTarget(cfg, aim, targetCenter);
   const targetY = clamp(targetCenter - PADDLE_H / 2, bounds.top, bounds.bottom - PADDLE_H);
   const delta = targetY - right.y;
   if (Math.abs(delta) > cfg.deadZone) {

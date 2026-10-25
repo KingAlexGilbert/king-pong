@@ -1079,3 +1079,14 @@ Object.entries({
   'SPACE / TAP / A: Level Select', 'TAP: Level Select'].forEach((key, i) => {
   window.KING_PONG_ROYAL_TRANSLATIONS[language][key] = values[i];
 }));
+
+Object.entries({
+  'Rematch': ['Revancha','Revanche','Revanche','Revanche','Rivincita','Rematch','再戦','재대결','再战'],
+  'Waiting for opponent...': ['Esperando al oponente...','En attente de l’adversaire...','Warte auf Gegner...','Aguardando o adversário...','In attesa dell’avversario...','Wachten op tegenstander...','対戦相手を待っています...','상대방을 기다리는 중...','正在等待对手...'],
+  'Your opponent wants a rematch.': ['Tu oponente quiere una revancha.','Votre adversaire souhaite une revanche.','Dein Gegner möchte eine Revanche.','Seu adversário quer uma revanche.','Il tuo avversario vuole una rivincita.','Je tegenstander wil een rematch.','対戦相手が再戦を希望しています。','상대방이 재대결을 원합니다.','对手希望再战。'],
+  'Opponent left the match.': ['El oponente salió de la partida.','L’adversaire a quitté la partie.','Der Gegner hat das Spiel verlassen.','O adversário saiu da partida.','L’avversario ha lasciato la partita.','De tegenstander heeft de wedstrijd verlaten.','対戦相手が退出しました。','상대방이 경기를 떠났습니다.','对手已退出比赛。'],
+  'Left player wins the match.': ['Gana el jugador izquierdo.','Le joueur de gauche gagne.','Der linke Spieler gewinnt.','O jogador da esquerda vence.','Vince il giocatore a sinistra.','Linker speler wint.','左のプレイヤーの勝利。','왼쪽 플레이어 승리.','左侧玩家获胜。'],
+  'Right player wins the match.': ['Gana el jugador derecho.','Le joueur de droite gagne.','Der rechte Spieler gewinnt.','O jogador da direita vence.','Vince il giocatore a destra.','Rechter speler wint.','右のプレイヤーの勝利。','오른쪽 플레이어 승리.','右侧玩家获胜。']
+}).forEach(([key, values]) => ['es','fr','de','pt','it','nl','ja','ko','zh'].forEach((language, i) => {
+  window.KING_PONG_ROYAL_TRANSLATIONS[language][key] = values[i];
+}));

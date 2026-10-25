@@ -4,6 +4,7 @@ import test from 'node:test';
 import vm from 'node:vm';
 import {harness} from './helpers/royal-harness.mjs';
 const wire = readFileSync(new URL('../game/online-wire.js',import.meta.url),'utf8');
+const rematch = readFileSync(new URL('../game/multiplayer-rematch.js',import.meta.url),'utf8');
 const engine = readFileSync(new URL('../game/online-engine.js',import.meta.url),'utf8');
 const clean = value => JSON.parse(JSON.stringify(value));
 function game() { const h=harness();h.run(wire + '\nonlinePointServeReady=true;');return h; }
@@ -74,6 +75,7 @@ function inputHarness() {
     function lanSend(m){if(fail)return false;sent.push(m);return true}
     function onlineLanSend(m){sent.push(m);return true}
     ${wire}
+    ${rematch}
     ${engine.slice(engine.indexOf('function onlineSendLanInput'),engine.indexOf('function onlineApplyLanHostState'))}`);
   return {run,step(t){now=t;run('frame++;onlineSendLanInput()');},json:s=>clean(run(s)),time:t=>{now=t;}};
 }

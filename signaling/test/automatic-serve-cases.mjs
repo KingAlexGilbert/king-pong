@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {rematchChecks} from './rematch-cases.mjs';
 
 // Shared checks run after the existing initial Ready flow on real page pairs.
 // Callers select direct RTC, encrypted WebSockets, or fully offline native LAN.
@@ -95,5 +96,6 @@ export async function automaticServeChecks(host, guest, label) {
   }
   await host.evaluate(()=>{window.serveOrContinue=window.testOriginalServe;paused=true;sendLanState(true);setMenusVisible(false);});
   await guest.evaluate(()=>setMenusVisible(false));
+  await rematchChecks(host,guest,label);
   console.log('PASS: '+label+' automatic 2 → 1 serving/audio, paddle preparation, input rejection and pause/resume');
 }

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {automaticServeChecks} from './automatic-serve-cases.mjs';
+import {rematchBackChecks} from './rematch-cases.mjs';
 import {spawn} from 'node:child_process';
 import {createInterface} from 'node:readline';
 import {createServer} from 'node:http';
@@ -68,9 +69,16 @@ try{
  await guest.waitForFunction(()=>!onlineMatchFlowBlocksPlay(),{},{timeout:12000});
  console.log('PASS local signaling, approval, ready/countdown; '+(controlled?'controlled RTC':'actual WebRTC'));
  await automaticServeChecks(host,guest,'offline LAN');
+ if(verify){
+  await rematchBackChecks(host,guest);
+  for(const p of [host,guest])assert.equal(await p.locator('#classicLanDialog').isVisible(),true,
+    'Back from a LAN rematch returns both players to LAN pairing');
+ }else{
  await host.evaluate(()=>onlineSession.kickGuest());await host.waitForFunction(()=>!lanConnected&&onlineSession?.code);
  await guest.waitForFunction(()=>!onlineSession);assert.equal(await host.evaluate(()=>onlineSession.code),code);
+ assert.equal(await guest.locator('#classicLanDialog').isVisible(),true,'departed LAN guest returns to LAN pairing');
  console.log('PASS kick retains host room; guest stops');
+ }
  await host.evaluate(()=>showTitleScreen());assert.equal(await host.evaluate(()=>onlineSession),null);
  assert.deepEqual(internet,[]);assert.deepEqual(sockets,[]);assert.deepEqual(errors,[]);
  console.log('PASS no HTTP/WebSocket request to any internet endpoint in LAN mode');
