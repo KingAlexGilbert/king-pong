@@ -22,6 +22,8 @@ const nativeOnlineScript = onlineSources(process.argv.includes('--check'));
 const script = iconSources() + [
   'royal-gameplay.js',
   'cpu-tactics.js',
+  'boss-powerups.js',
+  'boss-tactics.js',
   'multiplayer-serve.js',
   'level-select.js',
   'royal-rules.js',

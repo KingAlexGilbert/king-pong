@@ -1,5 +1,6 @@
 import {reviewBrowserChecks} from './review-browser-checks.mjs';
 import {homepageBrowserChecks} from './homepage-browser-checks.mjs';
+import {orientationBrowserChecks} from './orientation-browser-checks.mjs';
 import assert from 'node:assert/strict';
 import {staticServer, closeStaticServer} from './static-server.mjs';
 import {
@@ -520,6 +521,8 @@ try {
     await bounds(p, '#game');
     if (mobile && viewport.height > viewport.width) {
       assert.equal(await p.locator('#rotateDevice').isVisible(), true);
+      assert.equal(await p.locator('#rotatePlay').isVisible(), false, 'uncertain API support is not advertised');
+      assert.equal(await p.locator('#rotateMenu, #rotateTitle').count(), 0);
       await snap(p, prefix + '-rotate');
       await p.locator('#rotateDismiss').click();
     }
@@ -780,10 +783,12 @@ try {
     state: 'visible'
   });
   assert.equal(await phone.locator('#rotateDevice').isVisible(), true);
-  await phone.locator('#rotateMenu').click();
+  assert.equal(await phone.locator('#rotateDevice #rotateMenu, #rotateDevice #rotateTitle').count(), 0);
+  assert.equal(await phone.locator('#rotatePlay').isVisible(), false, 'a refused request is never offered again');
+  await phone.locator('#rotateDismiss').click();
+  await phone.locator('#menuToggle').click();
   assert.equal(await phone.locator('#matchMenu').isVisible(), true);
   await phone.locator('#matchMenuClose').click();
-  await phone.locator('#rotateDismiss').click();
   for (const viewport of [{
       width: 844,
       height: 390
@@ -830,6 +835,7 @@ try {
   assert.equal(await phone.evaluate(() => window.fullscreenAttempts), 1, 'returning to the title must not retry a refused fullscreen request');
   await phone.context().close();
   pass('portrait prompt, navigation, dismissal, one lock attempt, listener lifetime and local/online rotation state');
+  await orientationBrowserChecks({page,bounds,pass});
   const titleInput = await page();
   const controllerTitle = await titleMenuState(titleInput);
   await titleInput.evaluate(() => {
@@ -1021,6 +1027,33 @@ try {
     await translated.locator('#helpPowerups').scrollIntoViewIfNeeded();
     await bounds(translated, '#matchMenu .match-card');
     await snap(translated, locale + '-help');
+    await translated.evaluate(() => {
+      showTitleScreen();startTwoPlayerFromTitle();waitingForServe=false;
+      window.KingPongLanToken='layout-only';
+      window.KingPongOrientation={requestLandscape(){}};
+      window.KingPongNativeOrientation={available:true,landscape:false};
+      setMenusVisible(false);
+      syncRoyalUi(true);
+    });
+    await translated.setViewportSize({width:320,height:568});
+    await translated.locator('#rotatePlay').waitFor({state:'visible'});
+    await bounds(translated, '#rotateDevice .match-card');
+    for (const id of ['rotatePlay','rotateDismiss']) await bounds(translated,'#'+id);
+    assert.notEqual(await translated.locator('#rotatePlay').textContent(),'Rotate & Play');
+    assert.deepEqual(await translated.evaluate(() => {
+      const a=byId('rotatePlay').getBoundingClientRect(), b=byId('rotateDismiss').getBoundingClientRect();
+      return [a.top<b.bottom && b.top<a.bottom,a.right<=b.left];
+    }),[true,true],'translated actions remain beside each other without overflow');
+    for (const [role,hostWon] of [['host',true],['guest',true],['guest',false],['host',false]]) {
+      const result=await translated.evaluate(([role,hostWon])=>{
+        onlineSession={};lanConnected=true;
+        lanRole=role;gameOver=true;left.score=hostWon?5:2;right.score=hostWon?2:5;
+        syncMultiplayerRematchUi();
+        return [byId('multiplayerResultTitle').textContent,localizeText(hostWon===(role==='host')?'YOU WON!':'YOU LOST!')];
+      },[role,hostWon]);
+      assert.equal(result[0],result[1]);
+      assert.ok(!['YOU WON!','YOU LOST!'].includes(result[0]),'result is translated');
+    }
     await translated.context().close();
   }
   pass('all nine translated phone layouts fit; contextual setup and orientation phrases are localized');

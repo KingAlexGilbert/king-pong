@@ -903,6 +903,16 @@ body.royal-panel-open .match-footer #controlHint {
 
 #rotateDevice .match-actions {
   justify-content: center;
+  flex-wrap: nowrap;
+  align-items: stretch;
+}
+
+#rotateDevice .match-actions button {
+  flex: 1 1 0;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-transform: uppercase;
 }
 
 .rotate-symbol {

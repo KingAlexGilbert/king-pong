@@ -99,30 +99,27 @@ test('hypothetical aiming preserves physics RNG and ball state; plans have a bou
  h.run('mode=4');assert.equal(h.run('cpuTacticalTarget(getCpuConfig(),aim,240)'),240);
 });
 
-test('every platform retains exactly two persistent Wall balls, adaptive shapes, health scoring and resets',()=>{
+test('every platform restores staged permanent Wall balls, scoring, resets and legal adaptive geometry',()=>{
  for(const platform of Object.keys(builds)){
   const h=bossSimulation(platform);h.run('setupBoss(1009)');
-  assert.equal(h.run('bossBalls.length'),2);
-  for(const frames of [0,599,600,3000])for(const health of [10,4,1]){
-   h.run(`bossRallyFrames=${frames};bossEnemyHealth=${health}`);assert.equal(h.run('desiredBossBallCount()'),2);
+  assert.equal(h.run('bossBalls.length'),1);assert.ok(h.run('bossBalls[0].vx')<0);
+  for(const [frames,health,count] of [[0,10,1],[599,4,1],[600,4,2],[600,3,3],[0,3,3],[3000,1,3]]){
+   h.run(`bossRallyFrames=${frames};bossEnemyHealth=${health}`);assert.equal(h.run('desiredBossBallCount()'),count);
   }
-  h.run('setupBoss(1009);const oldIds=bossBalls.map(b=>b.id);royalSplitBall={...ball};resetRoyalRally();');
-  assert.deepEqual(h.json('bossBalls.map(b=>b.id)'),h.json('oldIds'),'Royal Split reset cannot remove boss balls');
+  h.run('setupBoss(1009);bossRallyFrames=598;updateBossBalls()');assert.equal(h.run('bossBalls.length'),1);
+  h.run('updateBossBalls();const initialIds=bossBalls.map(b=>b.id)');assert.equal(h.run('bossBalls.length'),2);
+  assert.ok(h.run('bossBalls[1].vx')>0,'timed addition preserves its original boss-directed spawn');
+  h.run('bossEnemyHealth=3;updateBossBalls();const oldIds=bossBalls.map(b=>b.id)');assert.equal(h.run('bossBalls.length'),3);
+  assert.deepEqual(h.json('bossBalls.slice(0,2).map(b=>b.id)'),h.json('initialIds'));
+  h.run('royalSplitBall={...ball};resetRoyalRally();');
+  assert.deepEqual(h.json('bossBalls.map(b=>b.id)'),h.json('oldIds'),'Royal Split reset cannot remove permanent balls');
   h.run('bossBalls[0].x=W+10;bossBalls[0].vx=4;updateBossBalls();');
-  assert.equal(h.run('bossEnemyHealth'),9);assert.equal(h.run('bossBalls.length'),2);
+  assert.equal(h.run('bossEnemyHealth'),2);assert.equal(h.run('bossBalls.length'),3);
   assert.notEqual(h.run('bossBalls[0].id'),h.run('oldIds[0]'));assert.equal(h.run('bossBalls[1].id'),h.run('oldIds[1]'));
   h.run('bossBalls[0].x=-30;bossBalls[0].vx=-4;updateBossBalls();');assert.equal(h.run('bossPlayerHealth'),12);
-  const shapes=h.json(`(()=>{const seen=new Set();
-   for(let y=30;y<450;y+=15)for(const vy of [-4,0,4]){
-    const b={id:y+vy,x:560,y:y-4,vx:5,vy};frame+=6;selectBossAdaptiveProfile(b);seen.add(bossAdaptiveProfile.name);
-   }return [...seen];})()`);
-  assert.ok(shapes.length>3);assert.ok(shapes.every(s=>h.json('BOSS_ADAPTIVE_PROFILES.map(p=>p.name)').includes(s)));
-  h.run(`setupBoss(1009);Object.assign(bossBalls[0],{x:400,y:50,vx:4,vy:0});
-    Object.assign(bossBalls[1],{x:560,y:300,vx:4,vy:0});`);
-  assert.equal(h.run('bossThreatBall()===bossBalls[1]'),true,'the earlier of two incoming threats remains the target');
-  h.run('selectBossAdaptiveProfile(bossBalls[1]);const decisionAt=bossAdaptiveDecisionFrame;frame+=5;selectBossAdaptiveProfile(bossBalls[1]);');
-  assert.equal(h.run('bossAdaptiveDecisionFrame'),h.run('decisionAt'),'same-ball adaptation keeps its existing six-tick limit');
-  h.run('frame++;selectBossAdaptiveProfile(bossBalls[1]);');assert.equal(h.run('bossAdaptiveDecisionFrame'),h.run('frame'));
+  assert.ok(h.run('bossBalls[0].vx')>0,'original receiver-side respawn direction is preserved');
+  h.run('setupBoss(1009);bossEnemyHealth=3;updateBossBalls()');assert.equal(h.run('bossBalls.length'),3,'early threshold fills both missing slots');
+  h.run('for(let i=0;i<10;i++)updateBossBalls()');assert.equal(h.run('bossBalls.length'),3);
   for(let shape=0;shape<9;shape++){
    h.run(`bossAdaptiveProfile=BOSS_ADAPTIVE_PROFILES[${shape}];right.y=208;
     Object.assign(bossBalls[0],{y:236,vx:5,vy:0});
@@ -131,10 +128,113 @@ test('every platform retains exactly two persistent Wall balls, adaptive shapes,
    assert.equal(h.run('paddleIntersectsBall(bossBalls[0],right,-1,bossAdaptiveProfile)'),true);
    h.run('hitBossPaddle(bossBalls[0],right,-1)');assert.ok(h.run('bossBalls[0].vx')<0);
    h.run('bossBalls[0].y=right.y-PADDLE_H');
-   assert.equal(h.run('paddleIntersectsBall(bossBalls[0],right,-1,bossAdaptiveProfile)'),false,'the wall remains vulnerable outside its physical paddle');
+   assert.equal(h.run('paddleIntersectsBall(bossBalls[0],right,-1,bossAdaptiveProfile)'),false);
   }
   h.run('setupBoss(1009);right.y=400;const yBefore=right.y;updateBossCPU();');
   assert.ok(Math.abs(h.run('right.y-yBefore'))<=h.run('getCpuConfig().maxMove'));
-  h.run('royalRallyTick=179;updateRoyalPowerups()');assert.equal(h.run('royalPickup'),null);
+  assert.equal(h.run('bossBalls.length'),1);assert.equal(h.run('bossRallyFrames'),0);
  }
+});
+
+test('boss powerups reuse pickup timing, ownership, Rush, Guard and independent temporary Split lifetime',()=>{
+ for(const platform of Object.keys(builds)){
+  const h=bossSimulation(platform);h.run('setupBoss(1009)');
+  for(let stage=1;stage<=3;stage++) for(const type of ['split','rush','guard']) {
+   h.run(`setupBoss(1009);bossRallyFrames=${stage===1?0:600};bossEnemyHealth=${stage===3?3:10};updateBossBalls();
+    royalPickupIndex=ROYAL_TYPES.indexOf('${type}');royalRallyTick=179;updateRoyalPowerups();`);
+   assert.equal(h.run('royalPickup?.type'),type,'safe spawn for '+type+' in stage '+stage);
+   assert.equal(h.run('royalPickup.ttl'),480);
+   h.run(`const target${stage}${type}=bossBalls[0];Object.assign(bossBalls[0],{x:royalPickup.x-4,y:royalPickup.y-4,
+    prevX:royalPickup.x-4,prevY:royalPickup.y-4,lastHit:'left',vx:4,vy:1,rallyLaunchFramesRemaining:0});
+    collectRoyalPickup(bossBalls[0]);`);
+   assert.equal(h.run('royalPickup'),null);assert.equal(h.run('bossBalls.length'),stage);
+   assert.equal(h.run('royalPowerupCues.at(-1).kind'),'pickup');
+   if(type==='split') {
+    assert.equal(h.run('royalSplitBall.id'),'royal-split');
+    assert.ok(Math.abs(h.run('bossBallSpeed(royalSplitBall)/bossBallSpeed(bossBalls[0])')-.7)<1e-12);
+    h.run("var splitBefore=royalSplitBall;awardRoyalPowerup('split',bossBalls[0]);");
+    assert.equal(h.run('royalSplitBall===splitBefore'),true,'one temporary slot');
+    h.run('hitBossPaddle(royalSplitBall,left,1)');assert.equal(h.run('royalSplitBall'),null);
+    assert.equal(h.run('bossBalls.length'),stage);
+   }
+   if(type==='rush') {
+    assert.ok(Math.abs(h.run('bossBalls[0].vx')-5.2)<1e-12);
+    h.run('normalizeBossBallVelocity(bossBalls[0]);');assert.equal(h.run('bossBalls[0].rush'),true);
+    h.run('hitBossPaddle(bossBalls[0],left,1)');assert.equal(h.run('bossBalls[0].rush'),false);
+   }
+   if(type==='guard') {
+    assert.equal(h.run('royalGuards.left'),600);
+    h.run('Object.assign(bossBalls[0],{x:16,prevX:20,vx:-5});collideCastleGuard(bossBalls[0]);');
+    assert.ok(h.run('bossBalls[0].vx')>0);assert.equal(h.run('bossPlayerHealth'),13);
+    h.run('paused=true;updateRoyalPowerups()');assert.equal(h.run('royalGuards.left'),600);
+    h.run('paused=false;for(let i=0;i<600;i++)updateRoyalPowerups()');assert.equal(h.run('royalGuards.left'),0);
+   }
+  }
+  h.run("setupBoss();bossEnemyHealth=3;updateBossBalls();const ids=bossBalls.map(b=>b.id);bossBalls[0].lastHit='right';awardRoyalPowerup('split',bossBalls[0]);Object.assign(royalSplitBall,{x:W+10,vx:5,rallyLaunchFramesRemaining:0});updateBossBalls();");
+  assert.equal(h.run('bossEnemyHealth'),2);assert.equal(h.run('royalSplitBall'),null);
+  assert.deepEqual(h.json('bossBalls.map(b=>b.id)'),h.json('ids'));
+  h.run(`setupBoss();bossBalls[0].lastHit='right';awardRoyalPowerup('guard',bossBalls[0]);
+   Object.assign(bossBalls[0],{x:W-24,prevX:W-28,vx:5});collideCastleGuard(bossBalls[0]);`);
+  assert.equal(h.run('royalGuards.right'),600);assert.ok(h.run('bossBalls[0].vx')<0);
+  assert.equal(h.run('bossEnemyHealth'),10,'a boss-owned shield protects boss health');
+  h.run(`setupBoss();bossEnemyHealth=1;bossRallyFrames=600;updateBossBalls();
+   let victories=0;bossVictory=()=>{victories++;gameOver=true};
+   bossBalls[0].lastHit='left';awardRoyalPowerup('split',bossBalls[0]);
+   for(const b of [...bossBalls,royalSplitBall])Object.assign(b,{x:W+10,vx:5,rallyLaunchFramesRemaining:0});updateBossBalls();`);
+  assert.equal(h.run('bossEnemyHealth'),0);assert.equal(h.run('victories'),1,'simultaneous permanent/Split exits finish only once');
+  h.run('setupBoss();royalRallyTick=179;updateRoyalPowerups();royalRallyTick=0;for(let i=0;i<480;i++)updateRoyalPowerups();');
+  assert.equal(h.run('royalPickup'),null,'uncollected pickup expires');
+ }
+});
+
+test('boss prediction is bounded and side-effect free; reachable permanent and temporary threats take priority',()=>{
+ for(const platform of Object.keys(builds)) {
+  const h=bossSimulation(platform);h.run(`setupBoss();hazards=[];right.y=380;
+   bossBalls=[{id:1,x:580,y:20,vx:8,vy:0},{id:2,x:500,y:390,vx:6,vy:0}];
+   const before=JSON.stringify([bossBalls,left,right,bossSeed,royalGuards]);
+   const chosen=bossThreatBall();`);
+  assert.equal(h.run('chosen===bossBalls[1]'),true,'do not chase an already lost earlier ball');
+  assert.equal(h.run('JSON.stringify([bossBalls,left,right,bossSeed,royalGuards])'),h.run('before'));
+  h.run('royalSplitBall={...bossBalls[1],id:"royal-split"};bossBalls.length=1;frame+=6;');
+  assert.equal(h.run('bossThreatBall()===royalSplitBall'),true,'temporary balls are genuine health threats');
+  h.run(`setupBoss();let sounds=0,flashes=0;playImpactSound=()=>sounds++;applyHitFlash=()=>flashes++;
+   const probe={id:1,x:350,y:236,vx:5,vy:0};const forecast={};
+   const worldBefore=JSON.stringify([bossBalls,left,right,hazards,bossSeed]);forecastBossBall(probe,getCpuConfig(),forecast);`);
+  assert.equal(h.run('forecast.frames'),Infinity,'the center bumper turns this trajectory away from the boss');
+  assert.deepEqual(h.json('[sounds,flashes]'),[0,0]);
+  assert.equal(h.run('JSON.stringify([bossBalls,left,right,hazards,bossSeed])'),h.run('worldBefore'));
+  h.run(`hazards=[];Object.assign(probe,{x:500,y:10,vx:5,vy:-4});forecastBossBall(probe,getCpuConfig(),forecast);`);
+  assert.ok(h.run('forecast.center')>10,'upper wall rebound is anticipated');
+  assert.ok(h.run('forecast.frames')<=h.run('getCpuConfig().horizon'));
+  assert.ok(h.run('forecast.vy')>0);
+ }
+});
+
+test('boss keeps stable targets and six-tick shape decisions while aiming only through legal geometry',()=>{
+ const h=bossSimulation();h.run(`setupBoss();hazards=[];right.y=208;
+  bossBalls=[{id:1,x:500,y:230,vx:5,vy:0},{id:2,x:499,y:245,vx:5,vy:0}];
+  updateBossCPU();const firstTarget=bossThreatBall();const decisionAt=bossAdaptiveDecisionFrame;
+  bossBalls[1].x=501;frame+=5;selectBossAdaptiveProfile(bossBalls[1],true);`);
+ assert.equal(h.run('bossAdaptiveDecisionFrame'),h.run('decisionAt'),'even a new ball cannot force a last-second shape change');
+ h.run('frame++;updateBossCPU();');assert.equal(h.run('bossThreatBall()===firstTarget'),true,'near ties do not flicker');
+ h.run('firstTarget.vx=-5;frame+=6;updateBossCPU();');assert.equal(h.run('bossThreatBall()===bossBalls[1]'),true);
+ for(const playerY of [40,400]) {
+  h.run(`setupBoss();hazards=[];left.y=${playerY};right.y=208;
+   bossBalls=[{id:3,x:520,y:236,vx:6,vy:0}];const oldVelocity${playerY}=[bossBalls[0].vx,bossBalls[0].vy];
+   updateBossCPU();var contactAngle=calculatePaddleBounceAngle(bossAdaptiveProfile,right,-1,240,0,false,false);`);
+  assert.deepEqual(h.json('[bossBalls[0].vx,bossBalls[0].vy]'),h.json(`oldVelocity${playerY}`),'planning never steers velocity');
+  assert.equal(h.run('contactAngle>0'),playerY===40,'safe shapes aim at the exposed half');
+ }
+ const conflicts=h.json('simulateBossConflicts()');
+ assert.equal(conflicts.returns,conflicts.reachableThreats,'retain the savable balls in these overlapping-contact fixtures');
+ assert.equal(conflicts.lostBallReturns,0,'the already lost balls remain impossible to save');
+ assert.ok(conflicts.maxMove<=5.4+1e-9);
+ h.run('setupBoss();bossEnemyHealth=3;bossRallyFrames=600;updateBossBalls();');
+ const max=h.run('getCpuConfig().maxMove');
+ h.run(`var biggestMove=0;for(let i=0;i<360;i++){
+   frame++;const previousY=right.y;updateHazards();updateBossCPU();updateBossBalls();
+   biggestMove=Math.max(biggestMove,Math.abs(right.y-previousY));
+   if(right.y<0||right.y>H-PADDLE_H)throw Error('Illegal paddle position');
+ }`);
+ assert.ok(h.run('biggestMove')<=max+1e-12);
 });

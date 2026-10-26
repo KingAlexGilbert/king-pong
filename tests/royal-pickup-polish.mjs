@@ -108,7 +108,7 @@ for (const platform of Object.keys(builds)) {
     h.run("lanRole='host';const before=JSON.stringify(royalPickup);handleLanHostMessage({type:'pickup',x:600,y:240});");
     assert.equal(h.run('JSON.stringify(royalPickup)'), h.run('before'));
     h.run('mode=4;royalPickup=null;royalRallyTick=179;updateRoyalPowerups();');
-    assert.equal(h.run('royalPickup'), null, 'the secret boss still disables powerups');
+    assert.ok(h.run('royalPickup'), 'the secret boss shares the normal pickup scheduler');
   });
 }
 

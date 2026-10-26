@@ -205,8 +205,8 @@ function interpolateGuardHits(a, b, alpha) {
   return {left: mix('left'), right: mix('right')};
 }
 
-function royalShieldImpact(side) {
-  royalGuardHits[side] = {seq: ++royalGuardHitSequence, y: clamp(ball.y + BALL_HALF, 0, H),
+function royalShieldImpact(side, target = ball) {
+  royalGuardHits[side] = {seq: ++royalGuardHitSequence, y: clamp(target.y + BALL_HALF, 0, H),
     ttl: ROYAL_GUARD_FLASH_TICKS};
   playImpactSound(880, 0.055, 0.045, 'shield');
 }
@@ -304,7 +304,7 @@ function resetRoyalRally() {
 }
 
 function royalActive() {
-  return (mode !== 2 || matchPowerupsEnabled) && mode !== 4 && !bossIntroActive && !paused && !waitingForServe && !gameOver && !levelCleared && !
+  return (mode !== 2 || matchPowerupsEnabled) && !bossIntroActive && !paused && !waitingForServe && !gameOver && !levelCleared && !
     campaignCleared && !isLanGuestActive();
 }
 
@@ -416,6 +416,11 @@ function awardRoyalPowerup(type, target = ball) {
       prevY: target.y,
       trap: null
     };
+    // A Split inherits the current velocity, never a permanent boss serve ramp.
+    if (mode === 4) {
+      royalSplitBall.rallyLaunchFramesRemaining = 0;
+      royalSplitBall.rallyLaunchTargetSpeed = 0;
+    }
   }
   if (type === 'rush' && !target.rush) {
     target.rush = true;
@@ -426,35 +431,35 @@ function awardRoyalPowerup(type, target = ball) {
   return true;
 }
 
-function collectRoyalPickup() {
-  if (!royalPickup || !ball.lastHit) return;
-  const dx = ball.x - ball.prevX,
-    dy = ball.y - ball.prevY;
-  const t = clamp(((royalPickup.x - ball.prevX - BALL_HALF) * dx + (royalPickup.y - ball.prevY - BALL_HALF) * dy) / (
+function collectRoyalPickup(target = ball) {
+  if (!royalPickup || !target.lastHit) return;
+  const dx = target.x - target.prevX,
+    dy = target.y - target.prevY;
+  const t = clamp(((royalPickup.x - target.prevX - BALL_HALF) * dx + (royalPickup.y - target.prevY - BALL_HALF) * dy) / (
     dx * dx + dy * dy || 1), 0, 1);
-  if (Math.hypot(ball.prevX + BALL_HALF + dx * t - royalPickup.x, ball.prevY + BALL_HALF + dy * t - royalPickup.y) <=
+  if (Math.hypot(target.prevX + BALL_HALF + dx * t - royalPickup.x, target.prevY + BALL_HALF + dy * t - royalPickup.y) <=
     ROYAL_COLLECTION_RADIUS) {
-    if (awardRoyalPowerup(royalPickup.type)) {
+    if (awardRoyalPowerup(royalPickup.type, target)) {
       emitRoyalPowerupCue('pickup', royalPickup.type);
       royalPickup = null;
     }
   }
 }
 
-function collideCastleGuard() {
+function collideCastleGuard(target = ball) {
   const leftWall = 18,
     rightWall = W - 18;
-  if (royalGuards.left > 0 && ball.vx < 0 && ball.prevX >= leftWall && ball.x <= leftWall) {
-    ball.x = leftWall;
-    ball.vx = Math.abs(ball.vx);
-    ball.lastHit = 'left';
-    royalShieldImpact('left');
-  } else if (royalGuards.right > 0 && ball.vx > 0 && ball.prevX + BALL_SIZE <= rightWall && ball.x + BALL_SIZE >=
+  if (royalGuards.left > 0 && target.vx < 0 && target.prevX >= leftWall && target.x <= leftWall) {
+    target.x = leftWall;
+    target.vx = Math.abs(target.vx);
+    target.lastHit = 'left';
+    royalShieldImpact('left', target);
+  } else if (royalGuards.right > 0 && target.vx > 0 && target.prevX + BALL_SIZE <= rightWall && target.x + BALL_SIZE >=
     rightWall) {
-    ball.x = rightWall - BALL_SIZE;
-    ball.vx = -Math.abs(ball.vx);
-    ball.lastHit = 'right';
-    royalShieldImpact('right');
+    target.x = rightWall - BALL_SIZE;
+    target.vx = -Math.abs(target.vx);
+    target.lastHit = 'right';
+    royalShieldImpact('right', target);
   }
 }
 
@@ -492,7 +497,7 @@ function restoreTrapState(state) {
 }
 
 function updateBall() {
-  if (!royalActive()) return;
+  if (mode === 4 || !royalActive()) return;
   const primary = ball;
   const extra = royalSplitBall;
   let scored = updateSingleBall();

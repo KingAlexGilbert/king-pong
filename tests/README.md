@@ -82,7 +82,10 @@ regression gate; its broader deterministic benchmark mode runs in extended valid
 `node tools/measure-ai.mjs` writes a deterministic all-18-level shot/match and
 single-Wall encounter measurement to stdout. `--matches=20` controls sample count;
 `--effects --matches-only` measures moving hazards and Royal Powerups without the
-shot grid. `--baseline=7b7a6f4` substitutes that revision's CPU configuration,
+shot grid. `--boss-only` limits the run to Wall matches, a single-ball contact grid
+and conflicting permanent/temporary threat fixtures. The contact grid reports
+misses avoidable by a same-speed, same-reaction flat-paddle reference; it does not
+assume every arriving ball can be saved. `--baseline=7b7a6f4` substitutes that revision's CPU configuration,
 tracking/target selection and Wall ball-count policy into the same physics
 harness. This is a focused decision-logic comparison, not a general historical
 engine emulator or a calibrated human win-rate estimate. Redirect stdout only

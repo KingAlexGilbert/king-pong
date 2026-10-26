@@ -20,9 +20,15 @@ function drawArenaLabel(text, x, y, size) {
   ctx.restore();
 }
 
+function multiplayerVictoryText() {
+  // Scores stay in host world coordinates even when the guest's view is mirrored.
+  const won = lanRole === 'host' ? left.score > right.score : right.score > left.score;
+  return won ? 'YOU WON!' : 'YOU LOST!';
+}
+
 function arenaResultMessage(message) {
-  if (!twoPlayerViewMirrored()) return message;
-  if (message === 'Left player wins the match. Space to play again.') return 'Right player wins the match. Space to play again.';
-  if (message === 'Right player wins the match. Space to play again.') return 'Left player wins the match. Space to play again.';
+  if (mode === 2 && isLanActive() &&
+      (message === 'Left player wins the match. Space to play again.' ||
+       message === 'Right player wins the match. Space to play again.')) return multiplayerVictoryText();
   return message;
 }

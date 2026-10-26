@@ -6,6 +6,9 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.ActivityInfo;
+import android.content.pm.PackageManager;
+import android.content.res.Configuration;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.BatteryManager;
@@ -57,6 +60,7 @@ public final class MainActivity extends Activity {
     private boolean batteryCharging;
     private int batteryPresence = -1;
     private String lastBatteryScript;
+    private boolean orientationRequestFailed;
     private final BroadcastReceiver batteryReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -117,6 +121,7 @@ public final class MainActivity extends Activity {
         webView.addJavascriptInterface(new LanBridge(), "KingPongLan");
         webView.addJavascriptInterface(new SaveFileBridge(), "KingPongSaveFiles");
         webView.addJavascriptInterface(new QrCameraBridge(), "KingPongCamera");
+        webView.addJavascriptInterface(new OrientationBridge(), "KingPongOrientation");
         webView.setWebChromeClient(new WebChromeClient() {
             @Override public void onPermissionRequest(PermissionRequest request) {
                 runOnUiThread(() -> requestQrCamera(request));
@@ -147,6 +152,7 @@ public final class MainActivity extends Activity {
         }
         startBatteryMonitoring();
         hideSystemUi();
+        sendOrientationState();
     }
 
     @Override
@@ -190,6 +196,7 @@ public final class MainActivity extends Activity {
             webView.removeJavascriptInterface("KingPongLan");
             webView.removeJavascriptInterface("KingPongBossAudio");
             webView.removeJavascriptInterface("KingPongCamera");
+            webView.removeJavascriptInterface("KingPongOrientation");
             if (webView.getParent() instanceof ViewGroup) {
                 ((ViewGroup) webView.getParent()).removeView(webView);
             }
@@ -218,6 +225,46 @@ public final class MainActivity extends Activity {
     private boolean qrCameraPageAllowed() {
         return !lanBackgrounded && webView != null && isGameUrl(Uri.parse(webView.getUrl() == null ? "" : webView.getUrl()));
     }
+    private boolean landscapeRequestAvailable() {
+        Configuration config = getResources().getConfiguration();
+        // Android may ignore requested orientation on large displays and in
+        // multi-window. Only offer the action for a focused, full-window phone.
+        return !orientationRequestFailed && !lanBackgrounded && webView != null && webView.hasWindowFocus() &&
+                !isFinishing() && !isDestroyed() && !isInMultiWindowMode() &&
+                !(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && isInPictureInPictureMode()) &&
+                config.smallestScreenWidthDp > 0 && config.smallestScreenWidthDp < 600 &&
+                getPackageManager().hasSystemFeature(PackageManager.FEATURE_SCREEN_LANDSCAPE) &&
+                isGameUrl(Uri.parse(webView.getUrl() == null ? "" : webView.getUrl()));
+    }
+
+    private void sendOrientationState() {
+        if (webView == null || !isGameUrl(Uri.parse(webView.getUrl() == null ? "" : webView.getUrl()))) return;
+        boolean landscape = getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
+        webView.evaluateJavascript("window.KingPongNativeOrientation={available:" + landscapeRequestAvailable() +
+                ",landscape:" + landscape + ",failed:" + orientationRequestFailed +
+                "};document.dispatchEvent(new Event('kingpong-orientation'));", null);
+    }
+
+    private final class OrientationBridge {
+        @JavascriptInterface public void requestLandscape(String capability) {
+            if (!lanBridgeToken.equals(capability)) return;
+            runOnUiThread(() -> {
+                if (landscapeRequestAvailable()) {
+                    try {
+                        // Same policy as the manifest; no settings or permissions are changed.
+                        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+                    } catch (RuntimeException ignored) { orientationRequestFailed = true; }
+                }
+                sendOrientationState();
+            });
+        }
+    }
+
+    @Override public void onConfigurationChanged(Configuration config) {
+        super.onConfigurationChanged(config);
+        sendOrientationState();
+    }
+
     private final class QrCameraBridge {
         @JavascriptInterface public void arm(String capability) {
             if (!lanBridgeToken.equals(capability)) return;
@@ -365,6 +412,7 @@ public final class MainActivity extends Activity {
         if (hasFocus) {
             hideSystemUi();
         }
+        sendOrientationState();
     }
 
     public final class SaveFileBridge {
@@ -515,6 +563,7 @@ public final class MainActivity extends Activity {
             batteryPageReady = isGameUrl(url == null ? null : Uri.parse(url));
             if (batteryPageReady) view.evaluateJavascript("window.KingPongLanToken=" + org.json.JSONObject.quote(lanBridgeToken) + ";", null);
             sendBatteryState();
+            sendOrientationState();
         }
 
         @Override

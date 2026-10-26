@@ -2152,6 +2152,16 @@ body.royal-panel-open .match-footer #controlHint {
 
 #rotateDevice .match-actions {
   justify-content: center;
+  flex-wrap: nowrap;
+  align-items: stretch;
+}
+
+#rotateDevice .match-actions button {
+  flex: 1 1 0;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-transform: uppercase;
 }
 
 .rotate-symbol {
@@ -4104,6 +4114,9 @@ Object.entries({
 
 Object.entries({
   'Rematch': ['Revancha','Revanche','Revanche','Revanche','Rivincita','Rematch','再戦','재대결','再战'],
+  'YOU WON!': ['¡GANASTE!','VOUS AVEZ GAGNÉ !','DU HAST GEWONNEN!','VOCÊ VENCEU!','HAI VINTO!','JE HEBT GEWONNEN!','あなたの勝ち！','승리했습니다!','你赢了！'],
+  'YOU LOST!': ['¡PERDISTE!','VOUS AVEZ PERDU !','DU HAST VERLOREN!','VOCÊ PERDEU!','HAI PERSO!','JE HEBT VERLOREN!','あなたの負け！','패배했습니다!','你输了！'],
+  'Rotate & Play': ['Girar y jugar','Tourner et jouer','Drehen und spielen','Girar e jogar','Ruota e gioca','Draaien en spelen','回転してプレイ','회전하고 플레이','旋转并开始'],
   'Waiting for opponent...': ['Esperando al oponente...','En attente de l’adversaire...','Warte auf Gegner...','Aguardando o adversário...','In attesa dell’avversario...','Wachten op tegenstander...','対戦相手を待っています...','상대방을 기다리는 중...','正在等待对手...'],
   'Your opponent wants a rematch.': ['Tu oponente quiere una revancha.','Votre adversaire souhaite une revanche.','Dein Gegner möchte eine Revanche.','Seu adversário quer uma revanche.','Il tuo avversario vuole una rivincita.','Je tegenstander wil een rematch.','対戦相手が再戦を希望しています。','상대방이 재대결을 원합니다.','对手希望再战。'],
   'Opponent left the match.': ['El oponente salió de la partida.','L’adversaire a quitté la partie.','Der Gegner hat das Spiel verlassen.','O adversário saiu da partida.','L’avversario ha lasciato la partita.','De tegenstander heeft de wedstrijd verlaten.','対戦相手が退出しました。','상대방이 경기를 떠났습니다.','对手已退出比赛。'],
@@ -9820,14 +9833,15 @@ function startBossFight(showIntroFade = false) {
 }
 
 function desiredBossBallCount() {
-  return 2;
+  // Health can reach the final stage before the timed addition. Fill missing
+  // permanent slots together; the count never includes the temporary Split.
+  if (bossEnemyHealth <= 3) return 3;
+  return bossRallyFrames >= 600 ? 2 : 1;
 }
 
 function resetBossBalls() {
-  bossBalls = [];
-  for (let i = 0; i < desiredBossBallCount(); i++) {
-    bossBalls.push(createBossBall(i, 1));
-  }
+  resetBossTactics();
+  bossBalls = [createBossBall(0, -1)];
 }
 
 function findBossReceiverSideRallySpawn(index, direction) {
@@ -9889,7 +9903,7 @@ function beginBossBallLaunchRamp(bossBall) {
 
 function updateBossBallLaunchRamp(bossBall) {
   const framesRemaining = Number(bossBall.rallyLaunchFramesRemaining) || 0;
-  const targetSpeed = Number(bossBall.rallyLaunchTargetSpeed) || 0;
+  const targetSpeed = (Number(bossBall.rallyLaunchTargetSpeed) || 0) * (bossBall.rush ? 1.3 : 1);
   if (framesRemaining <= 0 || targetSpeed <= 0) return;
   const elapsed = RALLY_LAUNCH_RAMP_FRAMES - framesRemaining + 1;
   const progress = clamp(elapsed / RALLY_LAUNCH_RAMP_FRAMES, 0, 1);
@@ -9970,6 +9984,9 @@ function bossBallSpeed(bossBall) {
 }
 
 function normalizeBossBallVelocity(bossBall, minSpeed = BOSS_LEVEL.ballSpeed * 0.92, maxSpeed = BOSS_LEVEL.maxSpeed) {
+  const scale = (bossBall.id === 'royal-split' ? ROYAL_SPLIT_SPEED_SCALE : 1) * (bossBall.rush ? 1.3 : 1);
+  minSpeed *= scale;
+  maxSpeed *= scale;
   let speed = bossBallSpeed(bossBall);
   if (speed < 0.001) {
     bossBall.vx = Math.random() < 0.5 ? -minSpeed : minSpeed;
@@ -9985,23 +10002,23 @@ function normalizeBossBallVelocity(bossBall, minSpeed = BOSS_LEVEL.ballSpeed * 0
   bossBall.vy = bossBall.vy / speed * target;
 }
 
-function reflectBossBallYForBounds(bossBall) {
+function reflectBossBallYForBounds(bossBall, predictOnly = false) {
   const bounds = visiblePlayfieldBounds();
   if (bossBall.y <= bounds.top) {
     const struck = bossBall.vy < 0;
     bossBall.y = bounds.top;
     bossBall.vy = Math.abs(bossBall.vy);
-    if (struck) playImpactSound(260, 0.022, 0.038);
+    if (struck && !predictOnly) playImpactSound(260, 0.022, 0.038);
   }
   if (bossBall.y + BALL_SIZE >= bounds.bottom) {
     const struck = bossBall.vy > 0;
     bossBall.y = bounds.bottom - BALL_SIZE;
     bossBall.vy = -Math.abs(bossBall.vy);
-    if (struck) playImpactSound(260, 0.022, 0.038);
+    if (struck && !predictOnly) playImpactSound(260, 0.022, 0.038);
   }
 }
 
-function resolveBossRectCollision(bossBall, h) {
+function resolveBossRectCollision(bossBall, h, predictOnly = false) {
   const rect = {
     x: h.x,
     y: h.y,
@@ -10057,13 +10074,15 @@ function resolveBossRectCollision(bossBall, h) {
   bossBall.vx += (h.vx || 0) * 0.28;
   bossBall.vy += (h.vy || 0) * 0.28;
   normalizeBossBallVelocity(bossBall, BOSS_LEVEL.ballSpeed * 0.88, BOSS_LEVEL.maxSpeed + (h.bounce || 0));
-  applyHitFlash(h, 8);
-  addScreenShake(4);
-  playImpactSound(250, 0.024, 0.035);
+  if (!predictOnly) {
+    applyHitFlash(h, 8);
+    addScreenShake(4);
+    playImpactSound(250, 0.024, 0.035);
+  }
   return true;
 }
 
-function resolveBossCircleCollision(bossBall, h) {
+function resolveBossCircleCollision(bossBall, h, predictOnly = false) {
   const cx = bossBall.x + BALL_HALF;
   const cy = bossBall.y + BALL_HALF;
   let dx = cx - h.x;
@@ -10084,9 +10103,11 @@ function resolveBossCircleCollision(bossBall, h) {
   bossBall.x = h.x + nx * minDist - BALL_HALF;
   bossBall.y = h.y + ny * minDist - BALL_HALF;
   normalizeBossBallVelocity(bossBall, BOSS_LEVEL.ballSpeed * 0.9, BOSS_LEVEL.maxSpeed + (h.boost || 0.4));
-  applyHitFlash(h, 10);
-  addScreenShake(5);
-  if (dot < 0) playImpactSound(420, 0.028, 0.04);
+  if (!predictOnly) {
+    applyHitFlash(h, 10);
+    addScreenShake(5);
+    if (dot < 0) playImpactSound(420, 0.028, 0.04);
+  }
   return true;
 }
 
@@ -10101,14 +10122,14 @@ function resolveBossHazardCollisions(bossBall) {
 }
 
 function hitBossPaddle(bossBall, paddle, direction) {
-  if (paddle === right) {
-    selectBossAdaptiveProfile(bossBall, true);
-  }
+  endRoyalRush(bossBall);
+  bossBall.lastHit = paddle === left ? 'left' : 'right';
   const profile = activePaddleProfile(paddle);
   const ballCenter = bossBall.y + BALL_SIZE / 2;
   const relative = paddleRelativeContact(paddle, ballCenter);
   const bounceAngle = calculatePaddleBounceAngle(profile, paddle, direction, ballCenter, bossBall.vy, false);
-  const speed = Math.min(bossBallSpeed(bossBall) + 0.16, BOSS_LEVEL.maxSpeed);
+  const scale = bossBall.id === 'royal-split' ? ROYAL_SPLIT_SPEED_SCALE : 1;
+  const speed = Math.min(bossBallSpeed(bossBall) + 0.16 * scale, BOSS_LEVEL.maxSpeed * scale);
   bossBall.vx = direction * Math.cos(bounceAngle) * speed;
   bossBall.vy = Math.sin(bounceAngle) * speed;
   const surfaceX = paddleSurfaceX(paddle, direction, profile, ballCenter);
@@ -10119,6 +10140,7 @@ function hitBossPaddle(bossBall, paddle, direction) {
   }
   addScreenShake(3);
   playImpactSound(170 + Math.abs(relative) * 240, 0.028, 0.04);
+  if (bossBall === royalSplitBall) royalSplitBall = null;
 }
 
 function damageBoss() {
@@ -10165,49 +10187,11 @@ function respawnBossBall(index, direction) {
   bossBalls[index] = createBossBall(index, direction, true);
 }
 
-function bossThreatBall() {
-  let fastestThreat = null;
-  let fastestThreatTime = Infinity;
-  let closestFallback = null;
-  let closestFallbackDistance = Infinity;
-  for (const bossBall of bossBalls) {
-    if (bossBall.vx > 0) {
-      const timeToRight = (right.x - bossBall.x) / Math.max(0.1, bossBall.vx);
-      if (timeToRight < fastestThreatTime) {
-        fastestThreatTime = timeToRight;
-        fastestThreat = bossBall;
-      }
-    }
-    const distanceToRight = Math.abs(bossBall.x - right.x);
-    if (distanceToRight < closestFallbackDistance) {
-      closestFallbackDistance = distanceToRight;
-      closestFallback = bossBall;
-    }
-  }
-  return fastestThreat || closestFallback;
-}
 
-function predictBossBallCenter(bossBall) {
-  if (!bossBall || bossBall.vx <= 0) {
-    return visiblePlayfieldCenterY();
-  }
-  return predictWithSimpleBounds(bossBall.x, bossBall.y, bossBall.vx, bossBall.vy, right.x);
-}
 
-function updateBossCPU() {
-  const cfg = getCpuConfig();
-  const bounds = visiblePlayfieldBounds();
-  const targetBall = bossThreatBall();
-  selectBossAdaptiveProfile(targetBall);
-  const centerY = bounds.top + (bounds.bottom - bounds.top) / 2;
-  const targetCenter = targetBall ? predictBossBallCenter(targetBall) : centerY;
-  const targetY = clamp(targetCenter - PADDLE_H / 2, bounds.top, bounds.bottom - PADDLE_H);
-  const delta = targetY - right.y;
-  if (Math.abs(delta) > cfg.deadZone) {
-    right.y += clamp(delta * cfg.reaction, -cfg.maxMove, cfg.maxMove);
-  }
-  right.y = clamp(right.y, bounds.top, bounds.bottom - PADDLE_H);
-}
+
+
+
 
 function updateBossBalls() {
   if (waitingForServe || gameOver || bossIntroActive) return;
@@ -10215,31 +10199,19 @@ function updateBossBalls() {
   while (bossBalls.length < desiredBossBallCount()) {
     bossBalls.push(createBossBall(bossBalls.length, 1));
   }
-  for (let i = 0; i < bossBalls.length; i++) {
-    const bossBall = bossBalls[i];
-    updateBossBallLaunchRamp(bossBall);
-    bossBall.prevX = bossBall.x;
-    bossBall.prevY = bossBall.y;
-    bossBall.x += bossBall.vx;
-    bossBall.y += bossBall.vy;
-    reflectBossBallYForBounds(bossBall);
-    resolveBossHazardCollisions(bossBall);
-    if (bossBall.vx < 0 && paddleIntersectsBall(bossBall, left, 1, activePaddleProfile(left))) {
-      hitBossPaddle(bossBall, left, 1);
+  const extra = royalSplitBall;
+  for (let i = 0; i < bossBalls.length && !gameOver; i++) {
+    const scored = updateSingleBossBall(bossBalls[i]);
+    if (scored) {
+      if (scored > 0) damageBoss(); else damagePlayer();
+      if (!gameOver) respawnBossBall(i, 1);
     }
-    if (bossBall.vx > 0 && paddleIntersectsBall(bossBall, right, -1, activePaddleProfile(right))) {
-      hitBossPaddle(bossBall, right, -1);
-    }
-    if (bossBall.x + BALL_SIZE < 0) {
-      damagePlayer();
-      if (!gameOver) {
-        respawnBossBall(i, 1);
-      }
-    } else if (bossBall.x > W) {
-      damageBoss();
-      if (!gameOver) {
-        respawnBossBall(i, 1);
-      }
+  }
+  if (extra && royalSplitBall === extra && !gameOver) {
+    const scored = updateSingleBossBall(extra);
+    if (scored) {
+      royalSplitBall = null; // Temporary balls score once and never respawn.
+      if (scored > 0) damageBoss(); else damagePlayer();
     }
   }
 }
@@ -10390,27 +10362,13 @@ function selectBossAdaptiveProfile(targetBall, force = false) {
     }
     return bossAdaptiveProfile;
   }
-  if (!force && targetBall.id === bossAdaptiveBallId && frame - bossAdaptiveDecisionFrame < 6) {
+  if (frame - bossAdaptiveDecisionFrame < 6) {
     return bossAdaptiveProfile;
   }
-  const contactY = predictBossBallCenter(targetBall);
-  const relative = paddleRelativeContact(right, contactY);
-  const desiredAngle = bossDesiredReturnAngle(contactY);
-  let bestProfile = BOSS_ADAPTIVE_PROFILES[0];
-  let bestScore = Infinity;
-  for (const candidate of BOSS_ADAPTIVE_PROFILES) {
-    const candidateAngle = clamp(relative * candidate.contactScale + paddleProfileSlopeAngle(candidate, relative) *
-      candidate.slopeInfluence + candidate.bias + clamp(targetBall.vy * 0.012, -0.07, 0.07), -1.16, 1.16);
-    const score = Math.abs(candidateAngle - desiredAngle);
-    if (score < bestScore) {
-      bestScore = score;
-      bestProfile = candidate;
-    }
-  }
-  bossAdaptiveProfile = bestProfile;
+  bossAdaptiveProfile = chooseBossProfile(targetBall);
   bossAdaptiveBallId = targetBall.id;
   bossAdaptiveDecisionFrame = frame;
-  return bestProfile;
+  return bossAdaptiveProfile;
 }
 // END SHARED PADDLE-GEOMETRY
 function hitPaddle(paddle, direction) {
@@ -10981,6 +10939,7 @@ function update() {
     if (!waitingForServe && !gameOver && !bossIntroActive) {
       updateHazards();
     }
+    updateRoyalPowerups();
     updateBossCPU();
     updateBossBalls();
     return;
@@ -11205,7 +11164,7 @@ function drawBossBalls(renderBalls = bossBalls) {
   ctx.shadowColor = currentCampaign().accent;
   ctx.shadowBlur = 14;
   for (const bossBall of renderBalls) {
-    drawBallPixels(bossBall);
+    drawRoyalBall(bossBall);
   }
   ctx.restore();
 }
@@ -11352,6 +11311,7 @@ function draw(view = captureVisualState()) {
     .accent : "#ffffff");
   if (mode === 4) {
     drawBossBalls(view.bossBalls);
+    drawRoyalBall(view.split, true);
   } else {
     drawRallySpawnPulse(view);
     ctx.fillStyle = currentCampaign().accent;
@@ -11611,8 +11571,8 @@ function interpolateGuardHits(a, b, alpha) {
   return {left: mix('left'), right: mix('right')};
 }
 
-function royalShieldImpact(side) {
-  royalGuardHits[side] = {seq: ++royalGuardHitSequence, y: clamp(ball.y + BALL_HALF, 0, H),
+function royalShieldImpact(side, target = ball) {
+  royalGuardHits[side] = {seq: ++royalGuardHitSequence, y: clamp(target.y + BALL_HALF, 0, H),
     ttl: ROYAL_GUARD_FLASH_TICKS};
   playImpactSound(880, 0.055, 0.045, 'shield');
 }
@@ -11710,7 +11670,7 @@ function resetRoyalRally() {
 }
 
 function royalActive() {
-  return (mode !== 2 || matchPowerupsEnabled) && mode !== 4 && !bossIntroActive && !paused && !waitingForServe && !gameOver && !levelCleared && !
+  return (mode !== 2 || matchPowerupsEnabled) && !bossIntroActive && !paused && !waitingForServe && !gameOver && !levelCleared && !
     campaignCleared && !isLanGuestActive();
 }
 
@@ -11822,6 +11782,11 @@ function awardRoyalPowerup(type, target = ball) {
       prevY: target.y,
       trap: null
     };
+    // A Split inherits the current velocity, never a permanent boss serve ramp.
+    if (mode === 4) {
+      royalSplitBall.rallyLaunchFramesRemaining = 0;
+      royalSplitBall.rallyLaunchTargetSpeed = 0;
+    }
   }
   if (type === 'rush' && !target.rush) {
     target.rush = true;
@@ -11832,35 +11797,35 @@ function awardRoyalPowerup(type, target = ball) {
   return true;
 }
 
-function collectRoyalPickup() {
-  if (!royalPickup || !ball.lastHit) return;
-  const dx = ball.x - ball.prevX,
-    dy = ball.y - ball.prevY;
-  const t = clamp(((royalPickup.x - ball.prevX - BALL_HALF) * dx + (royalPickup.y - ball.prevY - BALL_HALF) * dy) / (
+function collectRoyalPickup(target = ball) {
+  if (!royalPickup || !target.lastHit) return;
+  const dx = target.x - target.prevX,
+    dy = target.y - target.prevY;
+  const t = clamp(((royalPickup.x - target.prevX - BALL_HALF) * dx + (royalPickup.y - target.prevY - BALL_HALF) * dy) / (
     dx * dx + dy * dy || 1), 0, 1);
-  if (Math.hypot(ball.prevX + BALL_HALF + dx * t - royalPickup.x, ball.prevY + BALL_HALF + dy * t - royalPickup.y) <=
+  if (Math.hypot(target.prevX + BALL_HALF + dx * t - royalPickup.x, target.prevY + BALL_HALF + dy * t - royalPickup.y) <=
     ROYAL_COLLECTION_RADIUS) {
-    if (awardRoyalPowerup(royalPickup.type)) {
+    if (awardRoyalPowerup(royalPickup.type, target)) {
       emitRoyalPowerupCue('pickup', royalPickup.type);
       royalPickup = null;
     }
   }
 }
 
-function collideCastleGuard() {
+function collideCastleGuard(target = ball) {
   const leftWall = 18,
     rightWall = W - 18;
-  if (royalGuards.left > 0 && ball.vx < 0 && ball.prevX >= leftWall && ball.x <= leftWall) {
-    ball.x = leftWall;
-    ball.vx = Math.abs(ball.vx);
-    ball.lastHit = 'left';
-    royalShieldImpact('left');
-  } else if (royalGuards.right > 0 && ball.vx > 0 && ball.prevX + BALL_SIZE <= rightWall && ball.x + BALL_SIZE >=
+  if (royalGuards.left > 0 && target.vx < 0 && target.prevX >= leftWall && target.x <= leftWall) {
+    target.x = leftWall;
+    target.vx = Math.abs(target.vx);
+    target.lastHit = 'left';
+    royalShieldImpact('left', target);
+  } else if (royalGuards.right > 0 && target.vx > 0 && target.prevX + BALL_SIZE <= rightWall && target.x + BALL_SIZE >=
     rightWall) {
-    ball.x = rightWall - BALL_SIZE;
-    ball.vx = -Math.abs(ball.vx);
-    ball.lastHit = 'right';
-    royalShieldImpact('right');
+    target.x = rightWall - BALL_SIZE;
+    target.vx = -Math.abs(target.vx);
+    target.lastHit = 'right';
+    royalShieldImpact('right', target);
   }
 }
 
@@ -11898,7 +11863,7 @@ function restoreTrapState(state) {
 }
 
 function updateBall() {
-  if (!royalActive()) return;
+  if (mode === 4 || !royalActive()) return;
   const primary = ball;
   const extra = royalSplitBall;
   let scored = updateSingleBall();
@@ -12898,6 +12863,203 @@ function cpuTacticalTarget(cfg, aim, baseCenter) {
   return baseCenter + cpuTacticPlan.offset;
 }
 
+// The Wall keeps its permanent ball array. Royal Split uses the existing single
+// temporary slot and the same pickup/shield helpers, without swapping world ball.
+function updateSingleBossBall(bossBall) {
+  updateBossBallLaunchRamp(bossBall);
+  bossBall.prevX = bossBall.x;
+  bossBall.prevY = bossBall.y;
+  bossBall.x += bossBall.vx;
+  bossBall.y += bossBall.vy;
+  reflectBossBallYForBounds(bossBall);
+  resolveBossHazardCollisions(bossBall);
+  if (bossBall.vx < 0 && paddleIntersectsBall(bossBall, left, 1, activePaddleProfile(left)))
+    hitBossPaddle(bossBall, left, 1);
+  if (bossBall.vx > 0 && paddleIntersectsBall(bossBall, right, -1, activePaddleProfile(right)))
+    hitBossPaddle(bossBall, right, -1);
+  // A temporary ball disappears on its first paddle contact, as in Campaign.
+  if (bossBall.id === 'royal-split' && royalSplitBall !== bossBall) return 0;
+  collectRoyalPickup(bossBall);
+  collideCastleGuard(bossBall);
+  if (bossBall.x + BALL_SIZE < 0) return -1;
+  if (bossBall.x > W) return 1;
+  return 0;
+}
+
+// The Wall plans at its existing six-tick adaptation cadence. Scratch records
+// are bounded to three permanent balls and the one temporary Royal Split.
+const bossPlan = {at: -Infinity, ball: null, center: 240, forecast: null};
+const bossForecasts = Array.from({length: 4}, () => ({}));
+const bossForecastState = {};
+const bossForecastHazards = [];
+const bossContactPaddle = {x: 0, y: 0};
+
+function resetBossTactics() {
+  bossPlan.at = -Infinity;
+  bossPlan.ball = bossPlan.forecast = null;
+  bossPlan.center = visiblePlayfieldCenterY();
+}
+
+function forecastBossBall(target, cfg, result) {
+  result.ball = target;
+  result.frames = Infinity;
+  result.center = target.y + BALL_HALF;
+  result.vx = target.vx;
+  result.vy = target.vy;
+  if (target.vx <= 0 || target.x > right.x + PADDLE_W) return result;
+  const sim = bossForecastState, bounds = visiblePlayfieldBounds();
+  Object.assign(sim, target);
+  sim.rush = Boolean(target.rush);
+  sim.rallyLaunchFramesRemaining = Number(target.rallyLaunchFramesRemaining) || 0;
+  sim.rallyLaunchTargetSpeed = Number(target.rallyLaunchTargetSpeed) || 0;
+  let lastHazardX = -Infinity;
+  bossForecastHazards.length = hazards.length;
+  for (let i = 0; i < hazards.length; i++) {
+    const h = hazards[i], copy = bossForecastHazards[i] || (bossForecastHazards[i] = {});
+    Object.assign(copy, h);
+    lastHazardX = Math.max(lastHazardX, h.x + (h.type === 'circle' ? h.r : h.w) + Math.max(0, h.vx || 0) * 30);
+  }
+  for (let tick = 0; tick < cfg.horizon; tick++) {
+    if (!sim.rallyLaunchFramesRemaining && sim.x > lastHazardX) {
+      const remaining = Math.max(0, (right.x - BALL_SIZE - sim.x) / sim.vx);
+      if (tick + remaining > cfg.horizon) return result;
+      result.frames = tick + remaining;
+      result.center = predictWithSimpleBounds(sim.x, sim.y, sim.vx, sim.vy, right.x - BALL_HALF);
+      result.vx = sim.vx;
+      // A wall rebound can reverse the vertical approach before paddle contact.
+      const next = predictWithSimpleBounds(sim.x, sim.y, sim.vx, sim.vy, right.x - BALL_HALF + sim.vx * .01);
+      result.vy = Math.sign(next - result.center) * Math.abs(sim.vy);
+      return result;
+    }
+    updateBossBallLaunchRamp(sim);
+    sim.prevX = sim.x; sim.prevY = sim.y;
+    sim.x += sim.vx; sim.y += sim.vy;
+    reflectBossBallYForBounds(sim, true);
+    for (let i = 0; i < hazards.length; i++) {
+      const h = hazards[i], copy = bossForecastHazards[i];
+      // Only short motion extrapolation, then hold the estimate. Future player
+      // input, pickups and distant moving-obstacle interactions are not known.
+      const time = Math.min(tick + 1, 30);
+      copy.x = h.x + (h.vx || 0) * time;
+      copy.y = h.y + (h.vy || 0) * time;
+      if (copy.type === 'circle') {
+        if (Math.abs(sim.x + BALL_HALF - copy.x) < copy.r + BALL_HALF &&
+            Math.abs(sim.y + BALL_HALF - copy.y) < copy.r + BALL_HALF) resolveBossCircleCollision(sim, copy, true);
+      } else if (rectsOverlapRaw(sim.x, sim.y, BALL_SIZE, BALL_SIZE, copy.x, copy.y, copy.w, copy.h)) {
+        resolveBossRectCollision(sim, copy, true);
+      }
+    }
+    if (sim.vx <= 0) return result;
+    if (sim.x + BALL_SIZE >= right.x) {
+      result.frames = tick + 1;
+      result.center = sim.y + BALL_HALF;
+      result.vx = sim.vx; result.vy = sim.vy;
+      return result;
+    }
+  }
+  return result;
+}
+
+function bossReachPosition(targetY, ticks, cfg) {
+  const delta = targetY - right.y, distance = Math.abs(delta);
+  const steps = Math.max(0, Math.floor(ticks));
+  if (distance <= cfg.deadZone || steps === 0) return right.y;
+  const linear = Math.min(steps, Math.max(0, Math.ceil((distance - cfg.maxMove / cfg.reaction) / cfg.maxMove)));
+  const remaining = Math.max(0, distance - linear * cfg.maxMove);
+  const eased = remaining * Math.pow(1 - cfg.reaction, steps - linear);
+  return right.y + Math.sign(delta) * (distance - Math.min(remaining, Math.max(cfg.deadZone, eased)));
+}
+
+function planBossDefence() {
+  if (frame - bossPlan.at < 6) return bossPlan;
+  bossPlan.at = frame;
+  const cfg = getCpuConfig(), bounds = visiblePlayfieldBounds();
+  let best = null, previous = null, count = 0;
+  for (let i = 0; i < bossBalls.length + (royalSplitBall ? 1 : 0); i++) {
+    const target = i < bossBalls.length ? bossBalls[i] : royalSplitBall;
+    const forecast = forecastBossBall(target, cfg, bossForecasts[count++]);
+    if (!Number.isFinite(forecast.frames)) continue;
+    forecast.targetY = clamp(forecast.center - PADDLE_H / 2, bounds.top, bounds.bottom - PADDLE_H);
+    forecast.margin = PADDLE_H / 2 + BALL_HALF - Math.abs(forecast.center -
+      bossReachPosition(forecast.targetY, forecast.frames, cfg) - PADDLE_H / 2);
+    forecast.score = forecast.frames + (forecast.margin < 0 ? 180 - forecast.margin : Math.max(0, 8 - forecast.margin));
+    if (target === bossPlan.ball) previous = forecast;
+    if (!best || forecast.score < best.score) best = forecast;
+  }
+  // Keep near-equivalent targets stable, but abandon a lost interception when
+  // another ball can still be saved. A respawn is a new ball object.
+  if (previous && previous.margin >= 0 && best && previous.score <= best.score + 8) best = previous;
+  bossPlan.ball = best?.ball || null;
+  bossPlan.forecast = best;
+  bossPlan.center = best ? best.targetY + PADDLE_H / 2 : visiblePlayfieldCenterY();
+  if (best && best.margin > 8) {
+    for (let i = 0; i < count; i++) {
+      const other = bossForecasts[i];
+      if (other === best || !Number.isFinite(other.frames) || other.margin < 0 || Math.abs(other.frames - best.frames) > 12) continue;
+      const radius = PADDLE_H / 2 - 8;
+      const low = Math.max(best.center, other.center) - radius;
+      const high = Math.min(best.center, other.center) + radius;
+      if (low <= high) {
+        const center = clamp(bossPlan.center, low, high);
+        const reached = bossReachPosition(center - PADDLE_H / 2, best.frames, cfg) + PADDLE_H / 2;
+        if (Math.abs(reached - best.center) <= radius) bossPlan.center = center;
+      }
+    }
+  }
+  return bossPlan;
+}
+
+function bossThreatBall() { return planBossDefence().ball; }
+
+function predictBossBallCenter(target) {
+  const plan = planBossDefence();
+  if (plan.ball === target && plan.forecast) return plan.forecast.center;
+  return target && target.vx > 0 ? predictWithSimpleBounds(target.x, target.y, target.vx, target.vy, right.x) :
+    visiblePlayfieldCenterY();
+}
+
+function chooseBossProfile(target) {
+  const plan = planBossDefence(), arrival = plan.forecast;
+  if (!arrival || plan.ball !== target) return bossAdaptiveProfile;
+  const cfg = getCpuConfig(), bounds = visiblePlayfieldBounds();
+  const targetY = clamp(plan.center - PADDLE_H / 2, bounds.top, bounds.bottom - PADDLE_H);
+  bossContactPaddle.x = right.x;
+  let best = bossAdaptiveProfile, bestScore = Infinity;
+  for (const candidate of BOSS_ADAPTIVE_PROFILES) {
+    bossContactPaddle.y = bossReachPosition(targetY, arrival.frames, cfg);
+    const relative = paddleRelativeContact(bossContactPaddle, arrival.center);
+    const lead = paddleProfileOffset(candidate, relative) / Math.max(1, arrival.vx);
+    const contact = clamp(arrival.center - arrival.vy * lead, bounds.top + BALL_HALF, bounds.bottom - BALL_HALF);
+    bossContactPaddle.y = bossReachPosition(targetY, Math.max(0, arrival.frames - lead), cfg);
+    const margin = PADDLE_H / 2 + BALL_HALF - Math.abs(contact - bossContactPaddle.y - PADDLE_H / 2);
+    // Estimate coverage at arrival, but judge the shot from the observed paddle
+    // position. Assuming perfect future contact made this short fight too lethal.
+    const angle = calculatePaddleBounceAngle(candidate, right, -1, contact, arrival.vy, false, false);
+    const speed = Math.max(1, bossBallSpeed(target) / (target.rush ? 1.3 : 1));
+    const landing = cpuShotHeight(contact, angle, right.x - left.x);
+    const flight = (right.x - left.x) / Math.max(1, Math.cos(angle) * speed);
+    const protectedPlayer = royalGuards.left > arrival.frames + flight;
+    // Keep the original open-side aim. Rebound and obstacle value only separate
+    // similar safe shapes; the boss can still misjudge its eventual contact.
+    const offence = Math.abs(landing - left.y - PADDLE_H / 2) / H * (protectedPlayer ? .1 : .45) -
+      cpuShotHazardRisk(contact, angle, speed) * .12;
+    const score = Math.max(0, 12 - margin) * 2 + Math.abs(angle - bossDesiredReturnAngle(contact)) - offence * .1 -
+      (candidate === bossAdaptiveProfile ? .025 : 0);
+    if (score < bestScore) { bestScore = score; best = candidate; }
+  }
+  return best;
+}
+
+function updateBossCPU() {
+  if (waitingForServe || gameOver || bossIntroActive) return;
+  const cfg = getCpuConfig(), bounds = visiblePlayfieldBounds(), plan = planBossDefence();
+  selectBossAdaptiveProfile(plan.ball);
+  const targetY = clamp(plan.center - PADDLE_H / 2, bounds.top, bounds.bottom - PADDLE_H);
+  const delta = targetY - right.y;
+  if (Math.abs(delta) > cfg.deadZone) right.y += clamp(delta * cfg.reaction, -cfg.maxMove, cfg.maxMove);
+  right.y = clamp(right.y, bounds.top, bounds.bottom - PADDLE_H);
+}
+
 // Between-point serving is gameplay state, shared by online and offline LAN.
 // Only the authority advances this clock; guests interpolate its display only.
 const MULTIPLAYER_SERVE_MS = 2000;
@@ -13555,10 +13717,16 @@ function drawArenaLabel(text, x, y, size) {
   ctx.restore();
 }
 
+function multiplayerVictoryText() {
+  // Scores stay in host world coordinates even when the guest's view is mirrored.
+  const won = lanRole === 'host' ? left.score > right.score : right.score > left.score;
+  return won ? 'YOU WON!' : 'YOU LOST!';
+}
+
 function arenaResultMessage(message) {
-  if (!twoPlayerViewMirrored()) return message;
-  if (message === 'Left player wins the match. Space to play again.') return 'Right player wins the match. Space to play again.';
-  if (message === 'Right player wins the match. Space to play again.') return 'Left player wins the match. Space to play again.';
+  if (mode === 2 && isLanActive() &&
+      (message === 'Left player wins the match. Space to play again.' ||
+       message === 'Right player wins the match. Space to play again.')) return multiplayerVictoryText();
   return message;
 }
 
@@ -13571,6 +13739,9 @@ let royalReturnFocus = null;
 let royalOrientationAttempted = false;
 let royalOrientationGeneration = 0;
 let royalOrientationOwned = false;
+let royalOrientationVerified = false;
+let royalOrientationFailed = false;
+let royalOrientationPending = null;
 let royalRotateDismissed = false;
 let royalUiGamepadDirection = 0;
 let royalUiGamepadAt = 0;
@@ -13625,6 +13796,7 @@ function resetRoyalUiForTitle() {
   royalRotateDismissed = false;
   royalOrientationAttempted = false;
   royalOrientationGeneration++;
+  finishRoyalLandscape(royalOrientationPending, 'cancelled');
   if (royalOrientationOwned) {
     try {
       window.screen.orientation.unlock();
@@ -13880,13 +14052,9 @@ function initRoyalUi() {
   rotate.append(rotateNote);
   const rotateActions = document.createElement('div');
   rotateActions.className = 'match-actions';
-  rotateActions.append(royalButton('rotateDismiss', 'Continue in portrait', () => {
-    royalRotateDismissed = true;
-    syncRoyalOrientation();
-  }), royalButton('rotateMenu', 'Menu (M)', () => {
-    royalMenuRequested = true;
-    setMenusVisible(true);
-  }), royalButton('rotateTitle', 'Title Screen', () => showTitleScreen()));
+  const rotatePlay = royalButton('rotatePlay', 'Rotate & Play', () => requestRoyalLandscape(true), 'match-primary');
+  rotatePlay.hidden = true;
+  rotateActions.append(rotatePlay, royalButton('rotateDismiss', 'Continue in portrait', dismissRoyalOrientation));
   rotate.append(rotateActions);
 
   // The legacy nodes remain available to their platform code; the focused shell owns their presentation.
@@ -13906,6 +14074,7 @@ function initRoyalUi() {
   window.addEventListener('resize', syncRoyalOrientation);
   window.screen.orientation?.addEventListener?.('change', syncRoyalOrientation);
   document.addEventListener('fullscreenchange', syncRoyalOrientation);
+  document.addEventListener('kingpong-orientation', syncRoyalOrientation);
   handleViewportChange();
   syncRoyalUi(true);
 }
@@ -14265,38 +14434,105 @@ function royalPhoneViewport() {
   return (navigator.maxTouchPoints > 0 || window.matchMedia('(pointer: coarse)').matches) && Math.min(window.innerWidth,
     window.innerHeight) <= 600;
 }
-async function requestRoyalLandscape() {
-  // Native Android uses its manifest. Browsers get one attempt per title-to-game visit,
-  // only from a real user gesture; rejected/fullscreen-denied attempts never loop.
-  if (typeof KingPongRoom === 'undefined' || !royalPhoneViewport() || royalOrientationAttempted || !navigator
-    .userActivation?.isActive) return;
-  royalOrientationAttempted = true;
-  if (window.KingPongFullscreen?.exited) return;
+function royalBrowserLandscapeAvailable() {
   const orientation = window.screen.orientation;
-  if (!orientation || typeof orientation.lock !== 'function') return;
-  const generation = royalOrientationGeneration;
-  try {
-    if (!document.fullscreenElement) {
-      if (window.KingPongFullscreen) {
-        if (!await window.KingPongFullscreen.enter()) return;
-      } else if (document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen();
-    }
-    if (generation !== royalOrientationGeneration) return;
-    await orientation.lock('landscape');
-    if (generation !== royalOrientationGeneration) {
-      orientation.unlock();
-      return;
-    }
-    royalOrientationOwned = true;
-  } catch {
-    /* Portrait guidance remains available when the browser refuses. */ }
+  return typeof KingPongRoom !== 'undefined' && window.isSecureContext && window.top === window &&
+    typeof orientation?.lock === 'function' && Boolean(document.fullscreenElement ||
+      document.fullscreenEnabled && document.documentElement.requestFullscreen);
+}
+
+function royalLandscapeRoute() {
+  if (royalOrientationFailed || !royalPhoneViewport()) return null;
+  if (window.KingPongOrientation) return window.KingPongNativeOrientation?.available === true &&
+    typeof window.KingPongOrientation.requestLandscape === 'function' && window.KingPongLanToken ? 'native' : null;
+  // There is no web API to query whether a lock will be permitted. An exposed
+  // lock() method is insufficient: require a confirmed successful lock this page.
+  return royalOrientationVerified && royalBrowserLandscapeAvailable() ? 'browser' : null;
+}
+
+function finishRoyalLandscape(request, result) {
+  if (!request || royalOrientationPending !== request) return;
+  clearTimeout(request.timer);
+  royalOrientationPending = null;
+  if (result === 'success' && request.route === 'browser') royalOrientationVerified = true;
+  if (result === 'failed') royalOrientationFailed = true; // Do not offer another known failure until reload.
+  if (result !== 'success' && request.route === 'browser') {
+    try { window.screen.orientation.unlock(); } catch {}
+    royalOrientationOwned = false;
+  }
+  request.resolve(result === 'success');
+  syncRoyalOrientation();
+  if (result === 'failed' && request.manual && !byId('rotateDevice').hidden)
+    byId('rotateDismiss').focus({preventScroll: true});
+}
+
+async function requestRoyalLandscape(manual = false) {
+  if (royalOrientationPending) return royalOrientationPending.promise;
+  if (!royalPhoneViewport() || royalOrientationFailed) return false;
+  // Preserve the existing automatic browser attempt on the initial play gesture.
+  // Native Android already requests sensorLandscape through its manifest.
+  const route = manual ? royalLandscapeRoute() : !window.KingPongOrientation &&
+    !royalOrientationAttempted && !window.KingPongFullscreen?.exited && royalBrowserLandscapeAvailable() ? 'browser' : null;
+  if (!route || route === 'browser' && !navigator.userActivation?.isActive) return false;
+  royalOrientationAttempted = true;
+  const request = {route, manual, generation: royalOrientationGeneration, ready: false,
+    fromPortrait: window.innerHeight > window.innerWidth};
+  request.promise = new Promise(resolve => { request.resolve = resolve; });
+  royalOrientationPending = request;
+  request.timer = setTimeout(() => finishRoyalLandscape(request, 'failed'), 2500);
+  syncRoyalOrientation();
+  const current = () => royalOrientationPending === request && request.generation === royalOrientationGeneration;
+  void (async () => {
+    try {
+      if (route === 'native') {
+        window.KingPongOrientation.requestLandscape(window.KingPongLanToken);
+      } else {
+        if (!document.fullscreenElement) {
+          if (window.KingPongFullscreen) {
+            if (!await window.KingPongFullscreen.enter(manual)) throw new Error('Fullscreen unavailable');
+          } else await document.documentElement.requestFullscreen();
+        }
+        if (!current()) return false;
+        await window.screen.orientation.lock('landscape');
+        if (!current()) {
+          // A late completion after Back/Continue must not restore the old lock.
+          if (!royalOrientationPending && !royalOrientationOwned) window.screen.orientation.unlock();
+          return false;
+        }
+        royalOrientationOwned = true;
+      }
+      request.ready = true;
+      syncRoyalOrientation();
+    } catch { finishRoyalLandscape(request, 'failed'); }
+  })();
+  return request.promise;
+}
+
+function dismissRoyalOrientation() {
+  royalRotateDismissed = true;
+  royalOrientationGeneration++;
+  finishRoyalLandscape(royalOrientationPending, 'cancelled');
   syncRoyalOrientation();
 }
 
 function syncRoyalOrientation() {
   const overlay = byId('rotateDevice');
   if (!overlay) return;
-  const visible = royalPhoneViewport() && window.innerHeight > window.innerWidth && !royalRotateDismissed &&
+  const request = royalOrientationPending;
+  if (request?.ready && window.innerWidth > window.innerHeight && (request.route === 'native' ?
+      window.KingPongNativeOrientation?.landscape === true : window.screen.orientation.type?.startsWith('landscape'))) {
+    finishRoyalLandscape(request, 'success');
+    return;
+  }
+  if (request?.route === 'native' && window.KingPongNativeOrientation?.failed === true) {
+    finishRoyalLandscape(request, 'failed');
+    return;
+  }
+  const button = byId('rotatePlay');
+  button.hidden = !royalLandscapeRoute();
+  button.disabled = Boolean(request);
+  if (button.hidden && document.activeElement === button) byId('rotateDismiss').focus({preventScroll: true});
+  const visible = royalPhoneViewport() && (window.innerHeight > window.innerWidth || request?.fromPortrait) && !royalRotateDismissed &&
     !document.body.classList.contains('title-active') && !galleryKind && !bossIntroActive && !creditsActive &&
     byId('matchSetup').hidden && byId('matchMenu').hidden;
   overlay.hidden = !visible;
@@ -14377,8 +14613,7 @@ function handleRoyalUiKey(event) {
       stopLanQrCamera();
       dialog.hidden = true; syncRoyalFocus();
     } else if (dialog.id === 'rotateDevice') {
-      royalRotateDismissed = true;
-      syncRoyalOrientation();
+      dismissRoyalOrientation();
     } else if (dialog.id === 'matchMenu') setMenusVisible(false);
     else showTitleScreen();
   } else if (!form && event.target.closest?.('.match-ui') && ['Enter', ' '].includes(event.key)) {
@@ -14422,8 +14657,7 @@ function pollRoyalUiGamepad(now) {
     gamepadButtonJustPressed(pad, GAMEPAD_BUTTONS.SELECT)) {
     if (panel.id === 'multiplayerResult') leaveMultiplayerSession();
     else if (panel.id === 'rotateDevice') {
-      royalRotateDismissed = true;
-      syncRoyalOrientation();
+      dismissRoyalOrientation();
     } else if (panel.id === 'matchSetup' && onlineTransportSelected) showTitleScreen();
     else toggleRoyalMenu();
   }

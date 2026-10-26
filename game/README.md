@@ -64,9 +64,25 @@ five contact positions are compared every twelve physics ticks during an incomin
 approach, using bounded hazard estimates and stable imperfect judgments. Custom
 intelligence controls these decisions independently of its speed slider. Campaign
 awareness derives from existing prediction, error and intelligence values,
-including the late-level score assist. The Wall uses its existing adaptive
-profiles and AI; `boss-integration.mjs` keeps exactly two permanent encounter balls
-instead of the obsolete staged ball-count policy. Royal Split remains separate.
+including the late-level score assist.
+
+The single Wall encounter starts with one human-directed ball, adds a second at
+600 active physics ticks, and fills three permanent slots at three boss health.
+`boss-integration.mjs` preserves the original later spawn/respawn rules in all four
+shells. `boss-powerups.js` uses the existing pickup, Rush and Guard helpers; Split
+occupies its separate temporary slot, expires on paddle contact or scoring, and
+never changes the permanent count. Shields retain their 600-active-tick duration
+through individual health losses because this encounter has no between-point
+rally reset. Restart clears every effect.
+
+`boss-tactics.js` evaluates at most four incoming balls every six ticks using the
+existing collision helpers with presentation effects disabled. Short obstacle
+forecasts, arrival time, reachable contact coverage and stable target preference
+guide the nine unchanged shapes. Defensive coverage takes precedence over the
+original open-side aim and a small rebound/hazard tie-break. Shot estimates use
+the observed paddle position, preserving imperfect judgment. Movement, reaction,
+health and ball-speed constants are unchanged; additional balls do not increase
+the underlying intelligence.
 
 `level-select.js` reuses campaign encounters and arena previews, with unlocks read from the
 active save slot. Its replay context is transient: earlier encounters cannot award progress

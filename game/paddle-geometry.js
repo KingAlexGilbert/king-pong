@@ -143,25 +143,11 @@ function selectBossAdaptiveProfile(targetBall, force = false) {
     }
     return bossAdaptiveProfile;
   }
-  if (!force && targetBall.id === bossAdaptiveBallId && frame - bossAdaptiveDecisionFrame < 6) {
+  if (frame - bossAdaptiveDecisionFrame < 6) {
     return bossAdaptiveProfile;
   }
-  const contactY = predictBossBallCenter(targetBall);
-  const relative = paddleRelativeContact(right, contactY);
-  const desiredAngle = bossDesiredReturnAngle(contactY);
-  let bestProfile = BOSS_ADAPTIVE_PROFILES[0];
-  let bestScore = Infinity;
-  for (const candidate of BOSS_ADAPTIVE_PROFILES) {
-    const candidateAngle = clamp(relative * candidate.contactScale + paddleProfileSlopeAngle(candidate, relative) *
-      candidate.slopeInfluence + candidate.bias + clamp(targetBall.vy * 0.012, -0.07, 0.07), -1.16, 1.16);
-    const score = Math.abs(candidateAngle - desiredAngle);
-    if (score < bestScore) {
-      bestScore = score;
-      bestProfile = candidate;
-    }
-  }
-  bossAdaptiveProfile = bestProfile;
+  bossAdaptiveProfile = chooseBossProfile(targetBall);
   bossAdaptiveBallId = targetBall.id;
   bossAdaptiveDecisionFrame = frame;
-  return bestProfile;
+  return bossAdaptiveProfile;
 }

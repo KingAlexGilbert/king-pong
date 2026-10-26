@@ -293,7 +293,7 @@ test('new UI phrases have all nine translations and exact-score rendering stays 
   vm.runInContext(readFileSync(new URL('game/royal-localization.js', root), 'utf8'), c);
   for (const table of Object.values(c.window.KING_PONG_ROYAL_TRANSLATIONS))
     for (const key of ['Mute All', 'Sound Effects', 'Chapters', 'Royal Powerups', 'CHANGE', 'Match rules',
-        'Quick Match — First to 5', 'Endless — No score limit'
+        'Quick Match — First to 5', 'Endless — No score limit', 'YOU WON!', 'YOU LOST!', 'Rotate & Play'
       ]) assert.ok(table[key]);
   const h = harness();
   h.run(

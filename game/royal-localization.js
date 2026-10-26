@@ -1082,6 +1082,9 @@ Object.entries({
 
 Object.entries({
   'Rematch': ['Revancha','Revanche','Revanche','Revanche','Rivincita','Rematch','再戦','재대결','再战'],
+  'YOU WON!': ['¡GANASTE!','VOUS AVEZ GAGNÉ !','DU HAST GEWONNEN!','VOCÊ VENCEU!','HAI VINTO!','JE HEBT GEWONNEN!','あなたの勝ち！','승리했습니다!','你赢了！'],
+  'YOU LOST!': ['¡PERDISTE!','VOUS AVEZ PERDU !','DU HAST VERLOREN!','VOCÊ PERDEU!','HAI PERSO!','JE HEBT VERLOREN!','あなたの負け！','패배했습니다!','你输了！'],
+  'Rotate & Play': ['Girar y jugar','Tourner et jouer','Drehen und spielen','Girar e jogar','Ruota e gioca','Draaien en spelen','回転してプレイ','회전하고 플레이','旋转并开始'],
   'Waiting for opponent...': ['Esperando al oponente...','En attente de l’adversaire...','Warte auf Gegner...','Aguardando o adversário...','In attesa dell’avversario...','Wachten op tegenstander...','対戦相手を待っています...','상대방을 기다리는 중...','正在等待对手...'],
   'Your opponent wants a rematch.': ['Tu oponente quiere una revancha.','Votre adversaire souhaite une revanche.','Dein Gegner möchte eine Revanche.','Seu adversário quer uma revanche.','Il tuo avversario vuole una rivincita.','Je tegenstander wil een rematch.','対戦相手が再戦を希望しています。','상대방이 재대결을 원합니다.','对手希望再战。'],
   'Opponent left the match.': ['El oponente salió de la partida.','L’adversaire a quitté la partie.','Der Gegner hat das Spiel verlassen.','O adversário saiu da partida.','L’avversario ha lasciato la partita.','De tegenstander heeft de wedstrijd verlaten.','対戦相手が退出しました。','상대방이 경기를 떠났습니다.','对手已退出比赛。'],

@@ -145,7 +145,12 @@ try {
     }
     drawPaddleShape=originalPaddle;drawRoyalBall=originalBall;drawMultiplayerScore=originalScore;drawRoyalEffects=originalEffects;drawHazards=originalHazards;
     lanRole='guest';
-    result.messages=[arenaResultMessage('Left player wins the match. Space to play again.'),arenaResultMessage('Right player wins the match. Space to play again.')];
+    const scores=[left.score,right.score];
+    left.score=5;right.score=2;
+    result.messages=[arenaResultMessage('Left player wins the match. Space to play again.')];
+    left.score=2;right.score=5;
+    result.messages.push(arenaResultMessage('Right player wins the match. Space to play again.'));
+    [left.score,right.score]=scores;
     const before=right.y;keys.add('ArrowDown');onlineUpdatePlayerPaddles([]);keys.clear();result.keyboard=right.y>before;
     touchPaddleTargets.right=100;onlineUpdatePlayerPaddles([]);result.touch=right.y===100;touchPaddleTargets.right=null;
     const y=right.y;onlineUpdatePlayerPaddles([{axes:[0,1],buttons:[]}]);result.controller=right.y>y;
@@ -178,7 +183,7 @@ try {
   assert.deepEqual(frames.perspectives,[true,false,false,true,true,false,false,true,false,false,false]);
   assert.equal(frames.disconnected,false);
   assert.deepEqual(frames.goal,[1,0]);assert.deepEqual(frames.guestGoal,[1,0]);
-  assert.deepEqual(frames.messages,['Right player wins the match. Space to play again.','Left player wins the match. Space to play again.']);
+  assert.deepEqual(frames.messages,['YOU LOST!','YOU WON!']);
   pass(platform+': actual Canvas perspective, 60/120/144/165/240 Hz interpolation, scores, goals, effects, touch/keyboard/controller, LAN/online assignments and solo isolation');
   await p.context().close();
   }

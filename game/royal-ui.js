@@ -7,6 +7,9 @@ let royalReturnFocus = null;
 let royalOrientationAttempted = false;
 let royalOrientationGeneration = 0;
 let royalOrientationOwned = false;
+let royalOrientationVerified = false;
+let royalOrientationFailed = false;
+let royalOrientationPending = null;
 let royalRotateDismissed = false;
 let royalUiGamepadDirection = 0;
 let royalUiGamepadAt = 0;
@@ -61,6 +64,7 @@ function resetRoyalUiForTitle() {
   royalRotateDismissed = false;
   royalOrientationAttempted = false;
   royalOrientationGeneration++;
+  finishRoyalLandscape(royalOrientationPending, 'cancelled');
   if (royalOrientationOwned) {
     try {
       window.screen.orientation.unlock();
@@ -316,13 +320,9 @@ function initRoyalUi() {
   rotate.append(rotateNote);
   const rotateActions = document.createElement('div');
   rotateActions.className = 'match-actions';
-  rotateActions.append(royalButton('rotateDismiss', 'Continue in portrait', () => {
-    royalRotateDismissed = true;
-    syncRoyalOrientation();
-  }), royalButton('rotateMenu', 'Menu (M)', () => {
-    royalMenuRequested = true;
-    setMenusVisible(true);
-  }), royalButton('rotateTitle', 'Title Screen', () => showTitleScreen()));
+  const rotatePlay = royalButton('rotatePlay', 'Rotate & Play', () => requestRoyalLandscape(true), 'match-primary');
+  rotatePlay.hidden = true;
+  rotateActions.append(rotatePlay, royalButton('rotateDismiss', 'Continue in portrait', dismissRoyalOrientation));
   rotate.append(rotateActions);
 
   // The legacy nodes remain available to their platform code; the focused shell owns their presentation.
@@ -342,6 +342,7 @@ function initRoyalUi() {
   window.addEventListener('resize', syncRoyalOrientation);
   window.screen.orientation?.addEventListener?.('change', syncRoyalOrientation);
   document.addEventListener('fullscreenchange', syncRoyalOrientation);
+  document.addEventListener('kingpong-orientation', syncRoyalOrientation);
   handleViewportChange();
   syncRoyalUi(true);
 }
@@ -701,38 +702,105 @@ function royalPhoneViewport() {
   return (navigator.maxTouchPoints > 0 || window.matchMedia('(pointer: coarse)').matches) && Math.min(window.innerWidth,
     window.innerHeight) <= 600;
 }
-async function requestRoyalLandscape() {
-  // Native Android uses its manifest. Browsers get one attempt per title-to-game visit,
-  // only from a real user gesture; rejected/fullscreen-denied attempts never loop.
-  if (typeof KingPongRoom === 'undefined' || !royalPhoneViewport() || royalOrientationAttempted || !navigator
-    .userActivation?.isActive) return;
-  royalOrientationAttempted = true;
-  if (window.KingPongFullscreen?.exited) return;
+function royalBrowserLandscapeAvailable() {
   const orientation = window.screen.orientation;
-  if (!orientation || typeof orientation.lock !== 'function') return;
-  const generation = royalOrientationGeneration;
-  try {
-    if (!document.fullscreenElement) {
-      if (window.KingPongFullscreen) {
-        if (!await window.KingPongFullscreen.enter()) return;
-      } else if (document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen();
-    }
-    if (generation !== royalOrientationGeneration) return;
-    await orientation.lock('landscape');
-    if (generation !== royalOrientationGeneration) {
-      orientation.unlock();
-      return;
-    }
-    royalOrientationOwned = true;
-  } catch {
-    /* Portrait guidance remains available when the browser refuses. */ }
+  return typeof KingPongRoom !== 'undefined' && window.isSecureContext && window.top === window &&
+    typeof orientation?.lock === 'function' && Boolean(document.fullscreenElement ||
+      document.fullscreenEnabled && document.documentElement.requestFullscreen);
+}
+
+function royalLandscapeRoute() {
+  if (royalOrientationFailed || !royalPhoneViewport()) return null;
+  if (window.KingPongOrientation) return window.KingPongNativeOrientation?.available === true &&
+    typeof window.KingPongOrientation.requestLandscape === 'function' && window.KingPongLanToken ? 'native' : null;
+  // There is no web API to query whether a lock will be permitted. An exposed
+  // lock() method is insufficient: require a confirmed successful lock this page.
+  return royalOrientationVerified && royalBrowserLandscapeAvailable() ? 'browser' : null;
+}
+
+function finishRoyalLandscape(request, result) {
+  if (!request || royalOrientationPending !== request) return;
+  clearTimeout(request.timer);
+  royalOrientationPending = null;
+  if (result === 'success' && request.route === 'browser') royalOrientationVerified = true;
+  if (result === 'failed') royalOrientationFailed = true; // Do not offer another known failure until reload.
+  if (result !== 'success' && request.route === 'browser') {
+    try { window.screen.orientation.unlock(); } catch {}
+    royalOrientationOwned = false;
+  }
+  request.resolve(result === 'success');
+  syncRoyalOrientation();
+  if (result === 'failed' && request.manual && !byId('rotateDevice').hidden)
+    byId('rotateDismiss').focus({preventScroll: true});
+}
+
+async function requestRoyalLandscape(manual = false) {
+  if (royalOrientationPending) return royalOrientationPending.promise;
+  if (!royalPhoneViewport() || royalOrientationFailed) return false;
+  // Preserve the existing automatic browser attempt on the initial play gesture.
+  // Native Android already requests sensorLandscape through its manifest.
+  const route = manual ? royalLandscapeRoute() : !window.KingPongOrientation &&
+    !royalOrientationAttempted && !window.KingPongFullscreen?.exited && royalBrowserLandscapeAvailable() ? 'browser' : null;
+  if (!route || route === 'browser' && !navigator.userActivation?.isActive) return false;
+  royalOrientationAttempted = true;
+  const request = {route, manual, generation: royalOrientationGeneration, ready: false,
+    fromPortrait: window.innerHeight > window.innerWidth};
+  request.promise = new Promise(resolve => { request.resolve = resolve; });
+  royalOrientationPending = request;
+  request.timer = setTimeout(() => finishRoyalLandscape(request, 'failed'), 2500);
+  syncRoyalOrientation();
+  const current = () => royalOrientationPending === request && request.generation === royalOrientationGeneration;
+  void (async () => {
+    try {
+      if (route === 'native') {
+        window.KingPongOrientation.requestLandscape(window.KingPongLanToken);
+      } else {
+        if (!document.fullscreenElement) {
+          if (window.KingPongFullscreen) {
+            if (!await window.KingPongFullscreen.enter(manual)) throw new Error('Fullscreen unavailable');
+          } else await document.documentElement.requestFullscreen();
+        }
+        if (!current()) return false;
+        await window.screen.orientation.lock('landscape');
+        if (!current()) {
+          // A late completion after Back/Continue must not restore the old lock.
+          if (!royalOrientationPending && !royalOrientationOwned) window.screen.orientation.unlock();
+          return false;
+        }
+        royalOrientationOwned = true;
+      }
+      request.ready = true;
+      syncRoyalOrientation();
+    } catch { finishRoyalLandscape(request, 'failed'); }
+  })();
+  return request.promise;
+}
+
+function dismissRoyalOrientation() {
+  royalRotateDismissed = true;
+  royalOrientationGeneration++;
+  finishRoyalLandscape(royalOrientationPending, 'cancelled');
   syncRoyalOrientation();
 }
 
 function syncRoyalOrientation() {
   const overlay = byId('rotateDevice');
   if (!overlay) return;
-  const visible = royalPhoneViewport() && window.innerHeight > window.innerWidth && !royalRotateDismissed &&
+  const request = royalOrientationPending;
+  if (request?.ready && window.innerWidth > window.innerHeight && (request.route === 'native' ?
+      window.KingPongNativeOrientation?.landscape === true : window.screen.orientation.type?.startsWith('landscape'))) {
+    finishRoyalLandscape(request, 'success');
+    return;
+  }
+  if (request?.route === 'native' && window.KingPongNativeOrientation?.failed === true) {
+    finishRoyalLandscape(request, 'failed');
+    return;
+  }
+  const button = byId('rotatePlay');
+  button.hidden = !royalLandscapeRoute();
+  button.disabled = Boolean(request);
+  if (button.hidden && document.activeElement === button) byId('rotateDismiss').focus({preventScroll: true});
+  const visible = royalPhoneViewport() && (window.innerHeight > window.innerWidth || request?.fromPortrait) && !royalRotateDismissed &&
     !document.body.classList.contains('title-active') && !galleryKind && !bossIntroActive && !creditsActive &&
     byId('matchSetup').hidden && byId('matchMenu').hidden;
   overlay.hidden = !visible;
@@ -813,8 +881,7 @@ function handleRoyalUiKey(event) {
       stopLanQrCamera();
       dialog.hidden = true; syncRoyalFocus();
     } else if (dialog.id === 'rotateDevice') {
-      royalRotateDismissed = true;
-      syncRoyalOrientation();
+      dismissRoyalOrientation();
     } else if (dialog.id === 'matchMenu') setMenusVisible(false);
     else showTitleScreen();
   } else if (!form && event.target.closest?.('.match-ui') && ['Enter', ' '].includes(event.key)) {
@@ -858,8 +925,7 @@ function pollRoyalUiGamepad(now) {
     gamepadButtonJustPressed(pad, GAMEPAD_BUTTONS.SELECT)) {
     if (panel.id === 'multiplayerResult') leaveMultiplayerSession();
     else if (panel.id === 'rotateDevice') {
-      royalRotateDismissed = true;
-      syncRoyalOrientation();
+      dismissRoyalOrientation();
     } else if (panel.id === 'matchSetup' && onlineTransportSelected) showTitleScreen();
     else toggleRoyalMenu();
   }

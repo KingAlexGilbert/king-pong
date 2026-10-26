@@ -173,9 +173,7 @@ function syncMultiplayerRematchUi() {
   panel.hidden = !multiplayerRematchVisible() || document.body.classList.contains('title-active');
   if (panel.hidden) return;
   const state = multiplayerRematch(), inverted = lanRole === 'guest';
-  const winner = left.score > right.score ? 'left' : 'right';
-  royalText(byId('multiplayerResultTitle'), (inverted ? winner === 'right' : winner === 'left') ?
-    'Left player wins the match.' : 'Right player wins the match.');
+  royalText(byId('multiplayerResultTitle'), multiplayerVictoryText());
   byId('multiplayerResultScore').textContent = inverted ? right.score + ' – ' + left.score : left.score + ' – ' + right.score;
   byId('multiplayerRematch').disabled = !onlineRematchReady || state.local || onlineGameBlocked;
   royalText(byId('multiplayerResultNote'), !onlineRematchReady ? 'Both players must reload the latest game.' :

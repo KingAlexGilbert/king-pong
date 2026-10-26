@@ -12,12 +12,21 @@ export async function rematchChecks(host,guest,label) {
  });
  const first=await host.evaluate(()=>multiplayerRematch().round);
  for(let i=0;i<2;i++) {
-   await host.evaluate(()=>{
+   await host.evaluate(round=>{
      paused=false;gameWindowFocused=true;clearPointServeCountdown();waitingForServe=false;
      left.y=20;right.y=390;
-     left.score=matchRule().goal-1;right.score=2;pointForPlayer();sendLanState(true);
-   });
+     if (round === 0) { left.score=matchRule().goal-1;right.score=2;pointForPlayer(); }
+     else { right.score=matchRule().goal-1;left.score=2;pointForCpu(); }
+     sendLanState(true);
+   },i);
    await Promise.all([host,guest].map(p=>p.locator('#multiplayerResult').waitFor({state:'visible'})));
+   for (const [role,p] of [[0,host],[1,guest]]) {
+     assert.equal(await p.locator('#multiplayerResultTitle').textContent(),i===role?'YOU WON!':'YOU LOST!',label+': local result');
+     const goal=await p.evaluate(()=>matchRule().goal);
+     assert.equal(await p.locator('#multiplayerResultScore').textContent(),i===role?`${goal} – 2`:`2 – ${goal}`);
+     assert.equal(await p.locator('#multiplayerRematch').isEnabled(),true);
+     assert.equal(await p.locator('#multiplayerBack').isEnabled(),true);
+   }
    if (i === 0 && process.env.KING_PONG_TEST_ARTIFACTS)
      await host.screenshot({path: process.env.KING_PONG_TEST_ARTIFACTS + '/rematch.png'});
    await guest.evaluate(()=>{sendLanAction('retry');sendLanAction('serve');});
@@ -49,7 +58,7 @@ export async function rematchChecks(host,guest,label) {
  }
  for(const p of [host,guest])await p.evaluate(()=>{window.startLevel=window.rematchReset;});
  await host.evaluate(()=>{paused=true;sendLanState(true)});
- console.log('PASS: '+label+' mutual/repeated rematch, host authority, clean reset, connection reuse and automatic countdown');
+ console.log('PASS: '+label+' local win/loss, mutual/repeated rematch, host authority, clean reset, connection reuse and automatic countdown');
 }
 
 export async function rematchBackChecks(host, guest) {

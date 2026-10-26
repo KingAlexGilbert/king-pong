@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {bossGameplayChecks} from './boss-gameplay-checks.mjs';
 import {staticServer, closeStaticServer} from './static-server.mjs';
 import {
   mkdir
@@ -223,6 +224,8 @@ try {
     await p.waitForFunction(() => mode === 4 && !bossIntroActive, null, {
       polling: 50
     });
+    await bossGameplayChecks(p);
+    pass(platform + ': staged Wall balls, all Royal effects, temporary rendering, health, restart and victory progression');
     if (platform !== 'Browser') {
       await p.evaluate(() => {
         clearCreditTimers();
