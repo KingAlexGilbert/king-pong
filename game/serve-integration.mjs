@@ -23,9 +23,22 @@ export function integrateServeMotion(source) {
     source = source.slice(0, start) + body.replace(before, after) + source.slice(end);
   };
   edit('resetBall', '  resetRoyalRally();', '  clearPointServeCountdown();\n  resetRoyalRally();');
+  // Both the first multiplayer serve and subsequent points start close to the
+  // receiving paddle, using the same hazard-safe placement as single-player.
+  edit('resetBall',
+    '  const useReceiverSideSpawn = spawnNearPlayer && shouldAutoServeAfterPoint();',
+    '  const useReceiverSideSpawn = mode === 2 || spawnNearPlayer && shouldAutoServeAfterPoint();');
   edit('serveOrContinue', '  if (creditsActive) return;', `  if (creditsActive) return;
   if (mode === 2 && (lanRole === 'guest' || pointServeCountdownActive() || paused || onlineGameBlocked ||
       !waitingForServe && !gameOver)) return;`);
+  edit('playPlayerScoreSound',
+    '  if (mode === 1 || mode === 3) {',
+    `  if (mode === 2) { playMultiplayerLocalScoreCue('left', isWinningPoint); return; }
+  if (mode === 1 || mode === 3) {`);
+  edit('pointForCpu',
+    '  if (isWinningPoint && (mode === 1 || mode === 3)) {',
+    `  if (mode === 2) playMultiplayerLocalScoreCue('right', isWinningPoint);
+  else if (isWinningPoint && (mode === 1 || mode === 3)) {`);
   for (const name of ['pointForPlayer', 'pointForCpu']) {
     edit(name, '      shouldAutoServeAfterPoint());',
       '      shouldAutoServeAfterPoint());\n    beginPointServeCountdown();');
@@ -39,6 +52,18 @@ export function integrateServeMotion(source) {
     edit(name, header, header + '\n  suspendPointServeCountdown();');
   }
   edit('sendLanState', '    waitingForServe,', '    pointServeMs: pointServeSnapshotMs(),\n    waitingForServe,');
+  // Count only validated, newly accepted snapshots. The initial snapshot and
+  // any rematch reset cannot manufacture a local point sound.
+  edit('handleLanGuestMessage',
+    '  lanLastStateSeq = message.seq;',
+    `  const hadScoreSnapshot = lanLastStateSeq >= 0 && !gameOver;
+  const previousLeftScore = left.score, previousRightScore = right.score;
+  lanLastStateSeq = message.seq;`);
+  edit('handleLanGuestMessage',
+    '  applyLanHostState(message);',
+    `  applyLanHostState(message);
+  if (hadScoreSnapshot && mode === 2 && !onlineGameBlocked)
+    playGuestMultiplayerScoreCue(previousLeftScore, previousRightScore);`);
   edit('applyLanHostState', '  endMessage = String(state.endMessage || "").slice(0, 180);',
     '  endMessage = String(state.endMessage || "").slice(0, 180);\n  applyPointServeSnapshot(state);');
   return source;

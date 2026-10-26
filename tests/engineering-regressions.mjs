@@ -222,15 +222,15 @@ for (const platform of Object.keys(builds)) {
     h.run(
       'ball.x=620;visualPrevious=visualCurrent=captureVisualState();accumulatedFrameMs=7;previousFrameTime=100;resetBall(1,true);renderFrame(.42,107);'
       );
-    assert.equal(h.run('drawn.at(-1)'), 316);
-    assert.deepEqual(h.json('[ball.x,ball.prevX,ball.y,ball.prevY]'), [316, 316, 236, 236]);
+    assert.equal(h.run('drawn.at(-1)'), 160);
+    assert.deepEqual(h.json('[ball.x,ball.prevX,ball.y,ball.prevY]'), [160, 160, 236, 236]);
     assert.deepEqual(h.json('[accumulatedFrameMs,previousFrameTime,frame]'), [7, 100, 0]);
     h.run('serveOrContinue();renderFrame(.42,107);');
-    assert.equal(h.run('drawn.at(-1)'), 316);
+    assert.equal(h.run('drawn.at(-1)'), 160);
     assert.equal(h.run('visualCurrent.key===captureVisualState().key'), true);
     h.run('loop(112);'); // First simulation step, with 2.333 ms left for interpolation.
     const x = h.run('drawn.at(-1)');
-    assert.ok(x > 316 && x < h.run('ball.x'), 'first movement is interpolated, not a full-tick jump');
+    assert.ok(x > 160 && x < h.run('ball.x'), 'first movement is interpolated, not a full-tick jump');
     assert.equal(h.run('frame'), 1);
   });
 

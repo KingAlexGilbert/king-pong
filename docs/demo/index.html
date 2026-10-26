@@ -6846,6 +6846,7 @@ function playCheatUnlockJingle() {
 }
 
 function playPlayerScoreSound(isWinningPoint = false) {
+  if (mode === 2) { playMultiplayerLocalScoreCue('left', isWinningPoint); return; }
   if (mode === 1 || mode === 3) {
     if (isWinningPoint) {
       if (mode === 1) {
@@ -7673,11 +7674,15 @@ function handleLanGuestMessage(message) {
   if (message.tick !== undefined && (!Number.isSafeInteger(message.tick) || message.tick < 0 || message.tick <
       guestSnapshotTick)) return;
   if (message.tick !== undefined) guestSnapshotTick = message.tick;
+  const hadScoreSnapshot = lanLastStateSeq >= 0 && !gameOver;
+  const previousLeftScore = left.score, previousRightScore = right.score;
   lanLastStateSeq = message.seq;
   /* ROYAL POLISH */
   applyMatchRuleState(message.rules);
   /* END ROYAL POLISH */
   applyLanHostState(message);
+  if (hadScoreSnapshot && mode === 2 && !onlineGameBlocked)
+    playGuestMultiplayerScoreCue(previousLeftScore, previousRightScore);
 }
 
 function serializeLanHazards() {
@@ -9561,7 +9566,7 @@ function resetBall(direction = 1, waitForServe = true, spawnNearPlayer = false) 
   resetHazardTrapGuard();
   const level = currentLevel();
   const speed = level.ballSpeed || BASE_BALL_SPEED;
-  const useReceiverSideSpawn = spawnNearPlayer && shouldAutoServeAfterPoint();
+  const useReceiverSideSpawn = mode === 2 || spawnNearPlayer && shouldAutoServeAfterPoint();
   const spawn = useReceiverSideSpawn ? findReceiverSideRallySpawn(direction) : findCenterSafeSpawn(level);
   ball.x = spawn.x;
   ball.y = spawn.y;
@@ -10727,7 +10732,8 @@ function pointForCpu() {
   right.score = mode === 2 ? nextMatchScore(right.score) : right.score + 1;
   ball.lastScored = 1;
   const isWinningPoint = mode === 2 ? multiplayerPointWins("right") : right.score >= currentLevel().goal;
-  if (isWinningPoint && (mode === 1 || mode === 3)) {
+  if (mode === 2) playMultiplayerLocalScoreCue('right', isWinningPoint);
+  else if (isWinningPoint && (mode === 1 || mode === 3)) {
     playLevelFailureJingle();
   } else {
     beep(98, 0.16);
@@ -13161,6 +13167,27 @@ function drawPointServeCountdown() {
   // Same centered, unboxed 64px digits as the pause/resume countdown.
   ctx.fillStyle = '#fff';
   drawText(String(number), W / 2, H / 2 - 58, 64);
+}
+
+// Reuse the existing single-player point/win and concede/defeat cues for each
+// player's local perspective; the guest hears the opposite outcome to the host.
+function playMultiplayerLocalScoreCue(scoringSide, winningPoint) {
+  if (scoringSide === (lanRole === 'guest' ? 'right' : 'left')) {
+    if (winningPoint) playPlayerClearJingle();
+    else playPlayerPointJingle();
+  } else if (winningPoint) playLevelFailureJingle();
+  else beep(98, 0.16);
+}
+
+// Called only after accepting a sequenced, authoritative guest snapshot. Score
+// changes are sufficient; no new network packets or trust in guest inputs.
+function playGuestMultiplayerScoreCue(previousLeft, previousRight) {
+  if (left.score < previousLeft || right.score < previousRight) return; // New round/reset.
+  if (left.score > previousLeft && right.score === previousRight)
+    playMultiplayerLocalScoreCue('left', gameOver);
+  else if (right.score > previousRight && left.score === previousLeft)
+    playMultiplayerLocalScoreCue('right', gameOver);
+  // Skip ambiguous multi-point recovery instead of playing the wrong cue.
 }
 
 // A replay is a normal campaign encounter with a different return destination.

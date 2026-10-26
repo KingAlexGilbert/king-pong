@@ -5784,6 +5784,9 @@ function confirmOnlineMatchReady() {
   const flow = onlineMatchFlow;
   if (!flow || flow.phase !== 'ready' || !lanConnected || flow.localReady && !flow.privateRoom) return;
   flow.localReady = !flow.localReady;
+  // The Ready click is a user gesture. Unlock SFX here so the later remote
+  // countdown/GO and scoring cues can play even if music was switched off.
+  if (flow.localReady && gameAudioEnabled('sfx')) ensureAudioContext();
   if (lanRole === 'host') { flow.hostReady = flow.localReady; maybeStartOnlineMatchCountdown(); }
   else sendOnlineMatchSetup('ready', {ready: flow.localReady});
   syncRoyalUi(true);
@@ -5867,16 +5870,24 @@ function receiveOnlineMatchSetup(message) {
     if (['countdown', 'go'].includes(message.phase) &&
         (!flow.localReady || !message.hostReady || !message.guestReady)) return;
     if (message.phase !== 'connected' && (!flow.configured || !onlineHasState)) return;
+    const previousPhase = flow.phase;
     flow.remoteSequence = message.seq;
     flow.hostReady = message.hostReady;
     flow.guestReady = message.guestReady;
     flow.peerHello = true;
     flow.phase = message.phase;
-    if (flow.phase === 'ready') resumeCountdownEndAt = 0;
+    if (flow.phase === 'ready') {
+      resumeCountdownEndAt = 0;
+      lastResumeCountdownNumber = 0;
+    }
     if (flow.phase === 'countdown') {
       paused = true;
       resumeCountdownEndAt = performance.now() + message.remainingMs;
     } else if (flow.phase === 'go') {
+      // The host already plays the resume completion cue. A guest must hear it
+      // from the authoritative GO status, never from an expired local timer.
+      if (lanRole === 'guest' && previousPhase === 'countdown') beep(1040, 0.12, 0.065);
+      lastResumeCountdownNumber = 0;
       // Only the host can release the guest, even if its local countdown expires.
       resumeCountdownEndAt = 0;
       onlineGameBlocked = false;
@@ -5899,6 +5910,18 @@ function tickOnlineMatchFlow() {
   if (!flow.peerHello || (lanRole === 'host' ? !flow.peerInitialized : flow.phase === 'connected')) {
     if (now >= flow.handshakeDeadline) { onlineSession?.fail('incompatible'); return; }
     if (now - flow.lastHelloAt >= 500) sendOnlineMatchHello();
+  }
+  if (lanRole === 'guest') {
+    // The guest does not call updateResumeCountdown() because only the host
+    // may release the match. Play its exact 3/2/1 cue on each local digit.
+    if (flow.phase === 'countdown') {
+      const number = Math.max(1, Math.ceil(resumeCountdownRemainingMs() / 1000));
+      if (number !== lastResumeCountdownNumber) {
+        lastResumeCountdownNumber = number;
+        beep(number === 1 ? 720 : 600, 0.085, 0.06);
+      }
+    }
+    return;
   }
   if (lanRole !== 'host') return;
   if (flow.phase === 'connected' && flow.peerHello && flow.peerInitialized && now >= flow.connectedUntil) {
@@ -10086,6 +10109,7 @@ function playCheatUnlockJingle() {
 }
 
 function playPlayerScoreSound(isWinningPoint = false) {
+  if (mode === 2) { playMultiplayerLocalScoreCue('left', isWinningPoint); return; }
   if (mode === 1 || mode === 3) {
     if (isWinningPoint) {
       if (mode === 1) {
@@ -11217,11 +11241,15 @@ function handleLanGuestMessage(message) {
   if (message.tick !== undefined && (!Number.isSafeInteger(message.tick) || message.tick < 0 || message.tick <
       guestSnapshotTick)) return;
   if (message.tick !== undefined) guestSnapshotTick = message.tick;
+  const hadScoreSnapshot = lanLastStateSeq >= 0 && !gameOver;
+  const previousLeftScore = left.score, previousRightScore = right.score;
   lanLastStateSeq = message.seq;
   /* ROYAL POLISH */
   applyMatchRuleState(message.rules);
   /* END ROYAL POLISH */
   applyLanHostState(message);
+  if (hadScoreSnapshot && mode === 2 && !onlineGameBlocked)
+    playGuestMultiplayerScoreCue(previousLeftScore, previousRightScore);
 }
 
 function serializeLanHazards() {
@@ -13096,7 +13124,7 @@ function resetBall(direction = 1, waitForServe = true, spawnNearPlayer = false) 
   resetHazardTrapGuard();
   const level = currentLevel();
   const speed = level.ballSpeed || BASE_BALL_SPEED;
-  const useReceiverSideSpawn = spawnNearPlayer && shouldAutoServeAfterPoint();
+  const useReceiverSideSpawn = mode === 2 || spawnNearPlayer && shouldAutoServeAfterPoint();
   const spawn = useReceiverSideSpawn ? findReceiverSideRallySpawn(direction) : findCenterSafeSpawn(level);
   ball.x = spawn.x;
   ball.y = spawn.y;
@@ -14261,7 +14289,8 @@ function pointForCpu() {
   right.score = mode === 2 ? nextMatchScore(right.score) : right.score + 1;
   ball.lastScored = 1;
   const isWinningPoint = mode === 2 ? multiplayerPointWins("right") : right.score >= currentLevel().goal;
-  if (isWinningPoint && (mode === 1 || mode === 3)) {
+  if (mode === 2) playMultiplayerLocalScoreCue('right', isWinningPoint);
+  else if (isWinningPoint && (mode === 1 || mode === 3)) {
     playLevelFailureJingle();
   } else {
     beep(98, 0.16);
@@ -16693,6 +16722,27 @@ function drawPointServeCountdown() {
   // Same centered, unboxed 64px digits as the pause/resume countdown.
   ctx.fillStyle = '#fff';
   drawText(String(number), W / 2, H / 2 - 58, 64);
+}
+
+// Reuse the existing single-player point/win and concede/defeat cues for each
+// player's local perspective; the guest hears the opposite outcome to the host.
+function playMultiplayerLocalScoreCue(scoringSide, winningPoint) {
+  if (scoringSide === (lanRole === 'guest' ? 'right' : 'left')) {
+    if (winningPoint) playPlayerClearJingle();
+    else playPlayerPointJingle();
+  } else if (winningPoint) playLevelFailureJingle();
+  else beep(98, 0.16);
+}
+
+// Called only after accepting a sequenced, authoritative guest snapshot. Score
+// changes are sufficient; no new network packets or trust in guest inputs.
+function playGuestMultiplayerScoreCue(previousLeft, previousRight) {
+  if (left.score < previousLeft || right.score < previousRight) return; // New round/reset.
+  if (left.score > previousLeft && right.score === previousRight)
+    playMultiplayerLocalScoreCue('left', gameOver);
+  else if (right.score > previousRight && left.score === previousLeft)
+    playMultiplayerLocalScoreCue('right', gameOver);
+  // Skip ambiguous multi-point recovery instead of playing the wrong cue.
 }
 
 // A replay is a normal campaign encounter with a different return destination.

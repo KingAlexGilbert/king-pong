@@ -73,6 +73,9 @@ function confirmOnlineMatchReady() {
   const flow = onlineMatchFlow;
   if (!flow || flow.phase !== 'ready' || !lanConnected || flow.localReady && !flow.privateRoom) return;
   flow.localReady = !flow.localReady;
+  // The Ready click is a user gesture. Unlock SFX here so the later remote
+  // countdown/GO and scoring cues can play even if music was switched off.
+  if (flow.localReady && gameAudioEnabled('sfx')) ensureAudioContext();
   if (lanRole === 'host') { flow.hostReady = flow.localReady; maybeStartOnlineMatchCountdown(); }
   else sendOnlineMatchSetup('ready', {ready: flow.localReady});
   syncRoyalUi(true);
@@ -156,16 +159,24 @@ function receiveOnlineMatchSetup(message) {
     if (['countdown', 'go'].includes(message.phase) &&
         (!flow.localReady || !message.hostReady || !message.guestReady)) return;
     if (message.phase !== 'connected' && (!flow.configured || !onlineHasState)) return;
+    const previousPhase = flow.phase;
     flow.remoteSequence = message.seq;
     flow.hostReady = message.hostReady;
     flow.guestReady = message.guestReady;
     flow.peerHello = true;
     flow.phase = message.phase;
-    if (flow.phase === 'ready') resumeCountdownEndAt = 0;
+    if (flow.phase === 'ready') {
+      resumeCountdownEndAt = 0;
+      lastResumeCountdownNumber = 0;
+    }
     if (flow.phase === 'countdown') {
       paused = true;
       resumeCountdownEndAt = performance.now() + message.remainingMs;
     } else if (flow.phase === 'go') {
+      // The host already plays the resume completion cue. A guest must hear it
+      // from the authoritative GO status, never from an expired local timer.
+      if (lanRole === 'guest' && previousPhase === 'countdown') beep(1040, 0.12, 0.065);
+      lastResumeCountdownNumber = 0;
       // Only the host can release the guest, even if its local countdown expires.
       resumeCountdownEndAt = 0;
       onlineGameBlocked = false;
@@ -188,6 +199,18 @@ function tickOnlineMatchFlow() {
   if (!flow.peerHello || (lanRole === 'host' ? !flow.peerInitialized : flow.phase === 'connected')) {
     if (now >= flow.handshakeDeadline) { onlineSession?.fail('incompatible'); return; }
     if (now - flow.lastHelloAt >= 500) sendOnlineMatchHello();
+  }
+  if (lanRole === 'guest') {
+    // The guest does not call updateResumeCountdown() because only the host
+    // may release the match. Play its exact 3/2/1 cue on each local digit.
+    if (flow.phase === 'countdown') {
+      const number = Math.max(1, Math.ceil(resumeCountdownRemainingMs() / 1000));
+      if (number !== lastResumeCountdownNumber) {
+        lastResumeCountdownNumber = number;
+        beep(number === 1 ? 720 : 600, 0.085, 0.06);
+      }
+    }
+    return;
   }
   if (lanRole !== 'host') return;
   if (flow.phase === 'connected' && flow.peerHello && flow.peerInitialized && now >= flow.connectedUntil) {

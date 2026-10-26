@@ -100,3 +100,24 @@ function drawPointServeCountdown() {
   ctx.fillStyle = '#fff';
   drawText(String(number), W / 2, H / 2 - 58, 64);
 }
+
+// Reuse the existing single-player point/win and concede/defeat cues for each
+// player's local perspective; the guest hears the opposite outcome to the host.
+function playMultiplayerLocalScoreCue(scoringSide, winningPoint) {
+  if (scoringSide === (lanRole === 'guest' ? 'right' : 'left')) {
+    if (winningPoint) playPlayerClearJingle();
+    else playPlayerPointJingle();
+  } else if (winningPoint) playLevelFailureJingle();
+  else beep(98, 0.16);
+}
+
+// Called only after accepting a sequenced, authoritative guest snapshot. Score
+// changes are sufficient; no new network packets or trust in guest inputs.
+function playGuestMultiplayerScoreCue(previousLeft, previousRight) {
+  if (left.score < previousLeft || right.score < previousRight) return; // New round/reset.
+  if (left.score > previousLeft && right.score === previousRight)
+    playMultiplayerLocalScoreCue('left', gameOver);
+  else if (right.score > previousRight && left.score === previousLeft)
+    playMultiplayerLocalScoreCue('right', gameOver);
+  // Skip ambiguous multi-point recovery instead of playing the wrong cue.
+}

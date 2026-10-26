@@ -64,7 +64,7 @@ function script(platform) {
     function visiblePlayfieldBounds(){return {top:0,bottom:H}}
     function visiblePlayfieldCenterY(){return H/2}
     function currentShakeAmplitude(){return 0}
-    function beep(){} function playImpactSound(...args){beep(...args)} function chooseCpuError(){} function addScreenShake(){} function applyHitFlash(){}
+    function beep(){} function gameAudioEnabled(){return true} function ensureAudioContext(){} function playImpactSound(...args){beep(...args)} function chooseCpuError(){} function addScreenShake(){} function applyHitFlash(){}
     function updateHud(){} function playPlayerScoreSound(){} function playLevelFailureJingle(){}
     function resumeCountdownRemainingMs(){return 0} function hasResumeCountdown(){return false}
     function resetBall(direction,wait){resetRoyalRally();ball.x=320;ball.y=240;waitingForServe=wait}
