@@ -888,8 +888,12 @@ body.royal-panel-open .match-footer #controlHint {
 }
 
 #rotateDevice {
-  z-index: 65;
+  inset: 0;
+  z-index: 2147483000;
+  touch-action: none;
 }
+
+#multiplayerUnavailable { z-index: 95; inset: 0; }
 
 #rotateDevice .match-card {
   max-width: 420px;

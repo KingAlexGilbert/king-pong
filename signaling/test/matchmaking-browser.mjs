@@ -1,3 +1,4 @@
+import {presenceBrowserChecks} from './presence-browser-checks.mjs';
 import assert from 'node:assert/strict';
 import {automaticServeChecks} from './automatic-serve-cases.mjs';
 import {rematchBackChecks} from './rematch-cases.mjs';
@@ -62,9 +63,10 @@ try {
   await until(watcher,()=>matchmakingWaiting===0);
   await seeker.locator('#findMatchButton').click();
   await until(watcher,()=>matchmakingWaiting===1);
-  await seeker.evaluate(()=>document.dispatchEvent(new Event('kingpong-background')));
+  await seeker.evaluate(()=>{window.KingPongBackgrounded=true;document.dispatchEvent(new Event('kingpong-background'));});
   await until(watcher,()=>matchmakingWaiting===0);
   assert.match(await seeker.locator('#lanStatus').innerText(),/background/);
+  await seeker.evaluate(()=>{window.KingPongBackgrounded=false;document.dispatchEvent(new Event('kingpong-background'));});
   await seeker.locator('#findMatchButton').click();
   await until(watcher,()=>matchmakingWaiting===1);
   await seeker.close();
@@ -117,6 +119,7 @@ try {
         await b.evaluate(()=>{gameWindowFocused=true;keys.add('ArrowDown');});
         await until(a,()=>onlineAppliedInputSeq>0);
         await b.evaluate(()=>keys.clear());
+        await presenceBrowserChecks(a,b,native+' matchmaking');
         await automaticServeChecks(a,b,native+' matchmaking');
       }
       if (nativeHost && native.startsWith('windows')) {

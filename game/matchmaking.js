@@ -275,6 +275,7 @@ function syncOnlineTransportUi() {
 }
 
 function stopBackgroundMatchmaking() {
+  if (onlineSession?.presence) return;
   if (onlineMatchFlowBlocksPlay()) { failOnlineMatchFlow('opponent_left'); return; }
   if (!matchmakingSocket) return;
   const wasSearching = matchmakingRequested || matchmakingState === 'waiting' || matchmakingLocked();
@@ -283,4 +284,4 @@ function stopBackgroundMatchmaking() {
   if (wasSearching && onlineTransportSelected && !lanConnected) setLanStatus('Search stopped while the app was in the background.');
 }
 document.addEventListener('visibilitychange', () => { if (document.hidden) stopBackgroundMatchmaking(); });
-document.addEventListener('kingpong-background', stopBackgroundMatchmaking);
+document.addEventListener('kingpong-background', () => { if (window.KingPongBackgrounded) stopBackgroundMatchmaking(); });

@@ -109,6 +109,12 @@ const hooks = {
 };
 
 export function integrateRoyalUi(source) {
+  const input = 'function readLocalLanInput(gamepads = null) {';
+  const neutral = "\n  if (royalPortraitVisible()) return {axis: 0, targetY: null};";
+  if (!source.includes(input + neutral)) source = source.replace(input, input + neutral);
+  const pads = '  if (creditsActive || galleryKind || royalUiConsumesGamepad()) {';
+  const block = '  if (royalPortraitVisible()) { refreshGamepadConnection(pads); return []; }\n';
+  if (!source.includes(block + pads)) source = source.replace(pads, block + pads);
   // The current shell hides the legacy first-launch controls. A hidden panel
   // must not suppress the canvas serve prompt before the player's first serve.
   const firstStart = 'function firstStartControlsShouldDisplay() {';

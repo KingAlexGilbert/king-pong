@@ -102,6 +102,32 @@ class PortableLanProtocolTests(unittest.TestCase):
         self.assertFalse(self.lan.valid_signal(dict(type='candidate',candidate={'candidate':'x'*4097}),False))
         self.assertFalse(self.lan.local_ip('8.8.8.8'));self.assertFalse(self.lan.local_ip('localhost'));self.assertFalse(self.lan.local_ip('::1'))
 
+    def test_idle_signaling_allows_background_grace_but_still_expires(self):
+        from types import SimpleNamespace
+        from unittest.mock import patch
+        for returns in (False, True):
+            clock = [0]
+            received = []
+            class Peer:
+                approved = True
+                closed = False
+                started = 0
+                def send(self, message): pass
+                def line(self, _deadline):
+                    clock[0] += 1
+                    if returns and clock[0] == 29:
+                        received.append(clock[0])
+                        return {'type': 'pong'}
+                    raise TimeoutError()
+                def close(self): self.closed = True
+            room = self.lan.LocalLan(lambda _: None, 1)
+            peer = room.peer = Peer()
+            with patch.object(self.lan, 'time', SimpleNamespace(monotonic=lambda: clock[0])):
+                room.read_loop(peer)
+            self.assertTrue(peer.closed)
+            self.assertEqual(clock[0], 70 if returns else 41)
+            self.assertEqual(received, [29] if returns else [])
+
 class BridgeLifecycleTests(unittest.TestCase):
     def test_stop_discards_queued_host_but_allows_new_generation(self):
         from unittest.mock import patch

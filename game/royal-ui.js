@@ -13,6 +13,53 @@ let royalOrientationPending = null;
 let royalRotateDismissed = false;
 let royalUiGamepadDirection = 0;
 let royalUiGamepadAt = 0;
+const royalPortraitInert = new Map();
+
+function royalPortraitVisible() { return Boolean(byId('rotateDevice') && !byId('rotateDevice').hidden); }
+
+function syncRoyalPortraitModal() {
+  const active = royalPortraitVisible();
+  const changed = active !== (royalPortraitInert.size > 0);
+  if (active) {
+    for (const node of document.body.children) {
+      if (node.id === 'rotateDevice' || ['SCRIPT', 'STYLE'].includes(node.tagName)) continue;
+      if (!royalPortraitInert.has(node)) royalPortraitInert.set(node, node.inert);
+      node.inert = true;
+    }
+  } else {
+    for (const [node, inert] of royalPortraitInert) node.inert = inert;
+    royalPortraitInert.clear();
+  }
+  if (changed) {
+    clearHeldInput();
+    // A button held before the popup opened/closed is not a new activation.
+    for (const pad of getConnectedGamepads()) pad.buttons.forEach((button, index) =>
+      gamepadButtonState.set(`${pad.index}:${index}`, Boolean(button.pressed)));
+  }
+}
+
+function installRoyalPortraitModal() {
+  for (const type of ['pointerdown', 'pointermove', 'pointerup', 'pointercancel', 'click', 'dblclick',
+      'touchstart', 'touchmove', 'touchend', 'wheel', 'contextmenu']) {
+    window.addEventListener(type, event => {
+      if (!royalPortraitVisible()) return;
+      const action = event.target.closest?.('#rotatePlay,#rotateDismiss');
+      if (action && !action.hidden && !action.disabled) return;
+      event.preventDefault(); event.stopImmediatePropagation();
+    }, {capture: true, passive: false});
+  }
+  // Block bubbling to the legacy fullscreen paddle/touch handlers even on the
+  // two permitted buttons. Their own click handlers still run at the target.
+  for (const type of ['pointerdown', 'pointermove', 'pointerup', 'touchstart', 'touchmove', 'touchend'])
+    byId('rotateDevice').addEventListener(type, event => event.stopPropagation());
+  window.addEventListener('keyup', event => {
+    if (royalPortraitVisible()) { event.preventDefault(); event.stopImmediatePropagation(); }
+  }, true);
+  window.addEventListener('focusin', event => {
+    if (royalPortraitVisible() && !byId('rotateDevice').contains(event.target))
+      royalFocusables(byId('rotateDevice'))[0]?.focus({preventScroll: true});
+  }, true);
+}
 
 function royalViewportInset() {
   if (!document.body.classList.contains('royal-ui-ready')) return 0;
@@ -324,6 +371,7 @@ function initRoyalUi() {
   rotatePlay.hidden = true;
   rotateActions.append(rotatePlay, royalButton('rotateDismiss', 'Continue in portrait', dismissRoyalOrientation));
   rotate.append(rotateActions);
+  installRoyalPortraitModal();
 
   // The legacy nodes remain available to their platform code; the focused shell owns their presentation.
   document.querySelector('.menu-stack').hidden = true;
@@ -802,12 +850,14 @@ function syncRoyalOrientation() {
   if (button.hidden && document.activeElement === button) byId('rotateDismiss').focus({preventScroll: true});
   const visible = royalPhoneViewport() && (window.innerHeight > window.innerWidth || request?.fromPortrait) && !royalRotateDismissed &&
     !document.body.classList.contains('title-active') && !galleryKind && !bossIntroActive && !creditsActive &&
-    byId('matchSetup').hidden && byId('matchMenu').hidden;
+    (!overlay.hidden || byId('matchSetup').hidden && byId('matchMenu').hidden);
   overlay.hidden = !visible;
   syncRoyalFocus();
 }
 
 function royalActiveDialog() {
+  if (royalPortraitVisible()) return byId('rotateDevice');
+  if (typeof multiplayerSuspended === 'function' && multiplayerSuspended()) return byId('multiplayerUnavailable');
   if (multiplayerRematchVisible()) return byId('multiplayerResult');
   if (byId('pairingDialog') && !byId('pairingDialog').hidden) return byId('pairingDialog');
   if (galleryKind) return byId('royalGallery');
@@ -820,7 +870,7 @@ function royalActiveDialog() {
 function royalFocusables(panel) {
   return [...panel.querySelectorAll(
       'button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),summary')]
-    .concat(byId('browserFullscreen') ? [byId('browserFullscreen')] : [])
+    .concat(panel.id !== 'rotateDevice' && byId('browserFullscreen') ? [byId('browserFullscreen')] : [])
     .filter(element => {
       if (!element.getClientRects().length || element.closest('[hidden],[inert]') ||
           getComputedStyle(element).visibility === 'hidden') return false;
@@ -835,13 +885,14 @@ function royalFocusables(panel) {
 }
 
 function syncRoyalFocus() {
+  syncRoyalPortraitModal();
   const dialog = royalActiveDialog();
   // The gallery covers the toolbar; its Close button must stay unobstructed.
   const fullscreen = byId('browserFullscreen');
-  if (fullscreen) fullscreen.hidden = dialog?.id === 'royalGallery';
+  if (fullscreen) fullscreen.hidden = dialog?.id === 'royalGallery' || royalPortraitVisible();
   for (const id of ['multiplayerResult', 'matchBar', 'matchSetup', 'matchMenu', 'titleScreen', 'onlineMatchFlow', 'classicLanDialog', 'pairingDialog']) {
     const node = byId(id);
-    if (node) node.inert = Boolean(dialog && node !== dialog);
+    if (node && !royalPortraitVisible()) node.inert = Boolean(dialog && node !== dialog);
   }
   if (dialog === royalLastDialog) return;
   if (dialog) {
@@ -865,6 +916,16 @@ function syncRoyalFocus() {
 }
 
 function handleRoyalUiKey(event) {
+  if (royalPortraitVisible()) {
+    const controls = royalFocusables(byId('rotateDevice'));
+    const index = controls.indexOf(document.activeElement);
+    if (['Tab', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) {
+      const previous = event.shiftKey || ['ArrowLeft', 'ArrowUp'].includes(event.key);
+      controls[(index + (previous ? -1 : 1) + controls.length) % controls.length]?.focus();
+    } else if (['Enter', ' '].includes(event.key) && !event.repeat && index >= 0) controls[index].click();
+    event.preventDefault(); event.stopImmediatePropagation();
+    return true;
+  }
   if (event.key === 'Escape' && window.KingPongFullscreen?.consumesEscape()) return;
   const dialog = royalActiveDialog();
   const form = event.target instanceof HTMLInputElement || event.target instanceof HTMLSelectElement || event
@@ -880,8 +941,6 @@ function handleRoyalUiKey(event) {
     } else if (dialog.id === 'classicLanDialog') {
       stopLanQrCamera();
       dialog.hidden = true; syncRoyalFocus();
-    } else if (dialog.id === 'rotateDevice') {
-      dismissRoyalOrientation();
     } else if (dialog.id === 'matchMenu') setMenusVisible(false);
     else showTitleScreen();
   } else if (!form && event.target.closest?.('.match-ui') && ['Enter', ' '].includes(event.key)) {
@@ -915,7 +974,7 @@ function pollRoyalUiGamepad(now) {
     controls[(index + direction + controls.length) % controls.length]?.focus();
   }
   royalUiGamepadDirection = direction;
-  if (gamepadButtonJustPressed(pad, GAMEPAD_BUTTONS.A)) document.activeElement?.click();
+  if (gamepadButtonJustPressed(pad, GAMEPAD_BUTTONS.A) && controls.includes(document.activeElement)) document.activeElement.click();
   if (gamepadButtonJustPressed(pad, GAMEPAD_BUTTONS.START) && panel.id === 'matchMenu') {
     if (document.body.classList.contains('title-active')) setMenusVisible(false);
     else requestTogglePause();
@@ -924,9 +983,8 @@ function pollRoyalUiGamepad(now) {
   if ((gamepadButtonJustPressed(pad, GAMEPAD_BUTTONS.B) && panel.id !== 'titleScreen') ||
     gamepadButtonJustPressed(pad, GAMEPAD_BUTTONS.SELECT)) {
     if (panel.id === 'multiplayerResult') leaveMultiplayerSession();
-    else if (panel.id === 'rotateDevice') {
-      dismissRoyalOrientation();
-    } else if (panel.id === 'matchSetup' && onlineTransportSelected) showTitleScreen();
+    else if (panel.id === 'rotateDevice') return;
+    else if (panel.id === 'matchSetup' && onlineTransportSelected) showTitleScreen();
     else toggleRoyalMenu();
   }
 }

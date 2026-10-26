@@ -111,4 +111,39 @@ export async function orientationBrowserChecks({page, bounds, pass}) {
   assert.equal(await web.locator('#rotateDevice').isVisible(),false);
   await web.context().close();
   pass('mocked browser locks establish capability only after confirmation; explicit fullscreen, rejection and continuation work');
+
+  for (const platform of ['Browser', 'Windows', 'Linux', 'Android']) {
+    const modal = await page(platform, phone);
+    await modal.evaluate(() => {startCampaignFromSave(); syncRoyalUi(true)});
+    await modal.locator('#rotateDevice').waitFor({state:'visible'});
+    const before = await modal.evaluate(() => JSON.stringify([mode,waitingForServe,paused,left.score,right.score,left.y,right.y]));
+    await modal.mouse.click(5,5); // Previously uncovered toolbar.
+    await modal.touchscreen.tap(5,560); // Previously uncovered footer/backdrop.
+    await modal.keyboard.press('m'); await modal.keyboard.press('p'); await modal.keyboard.press('r');
+    await modal.keyboard.press('Escape'); await modal.keyboard.press('w');
+    await modal.keyboard.press('Tab'); await modal.keyboard.press('Shift+Tab');
+    await modal.evaluate(() => {
+      menuToggle.click(); byId('matchContinue').click();
+      canvas.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerType:'touch',pointerId:11,clientX:150,clientY:300}));
+      canvas.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerType:'touch',pointerId:11,clientX:150,clientY:300}));
+      window.modalOriginalPads=getConnectedGamepads;
+      getConnectedGamepads=()=>[{index:0,axes:[0,1],buttons:Array.from({length:16},(_,i)=>({pressed:[1,8,9].includes(i)}))}];
+      pollRoyalUiGamepad(performance.now()+1000);
+      updatePlayerPaddles(updateGamepadInput());
+      getConnectedGamepads=window.modalOriginalPads;
+    });
+    assert.equal(await modal.locator('#rotateDevice').isVisible(),true,'only the two actions can dismiss');
+    assert.equal(await modal.evaluate(() => JSON.stringify([mode,waitingForServe,paused,left.score,right.score,left.y,right.y])),before);
+    assert.equal(await modal.evaluate(()=>byId('rotateDevice').contains(document.activeElement)),true);
+    assert.equal(await modal.evaluate(()=>canvas.closest('[inert]')!==null),true);
+    assert.equal(await modal.evaluate(()=>keys.size+activeTouchPointers.size),0);
+    await bounds(modal,'#rotateDevice .match-card');
+    await modal.locator('#rotateDismiss').click();
+    assert.equal(await modal.evaluate(()=>canvas.closest('[inert]')),null);
+    const y=await modal.evaluate(()=>left.y);
+    await modal.keyboard.down('w');await modal.evaluate(()=>updatePlayerPaddles([]));await modal.keyboard.up('w');
+    assert.ok(await modal.evaluate(()=>left.y)<y,'paddle input restored');
+    await modal.context().close();
+    pass(platform+': full-viewport portrait modal blocks backdrop, menu, pointer, keyboard and controller input; focus and controls restore');
+  }
 }

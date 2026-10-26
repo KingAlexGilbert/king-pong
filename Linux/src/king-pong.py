@@ -321,6 +321,7 @@ def main():
             return False
         GLib.idle_add(deliver)
     lan_bridge = LanBridge(send_lan_event)
+    background_lan_timeout = 0
     from king_pong_audio import BossAudioCache
     def send_boss_audio(request, data):
         def deliver():
@@ -559,7 +560,10 @@ def main():
         print(f"Background-color warning: {exc}", file=sys.stderr)
 
     def close_game(*_args):
-        nonlocal battery_closed
+        nonlocal battery_closed, background_lan_timeout
+        if background_lan_timeout:
+            GLib.source_remove(background_lan_timeout)
+            background_lan_timeout = 0
         battery_closed = True
         lan_bridge.close()
         battery_monitor.stop()
@@ -592,10 +596,19 @@ def main():
         return False
 
     def on_window_state(_window, event):
+        nonlocal background_lan_timeout
         if event.changed_mask & Gdk.WindowState.ICONIFIED:
             minimized = bool(event.new_window_state & Gdk.WindowState.ICONIFIED)
+            if background_lan_timeout:
+                GLib.source_remove(background_lan_timeout)
+                background_lan_timeout = 0
             if minimized:
-                lan_bridge.stop()
+                def expire_background_lan():
+                    nonlocal background_lan_timeout
+                    background_lan_timeout = 0
+                    lan_bridge.stop()
+                    return False
+                background_lan_timeout = GLib.timeout_add_seconds(30, expire_background_lan)
             webview.run_javascript("window.KingPongBackgrounded=" + ("true" if minimized else "false") + ";document.dispatchEvent(new Event('kingpong-background'));", None, None, None)
         return False
 

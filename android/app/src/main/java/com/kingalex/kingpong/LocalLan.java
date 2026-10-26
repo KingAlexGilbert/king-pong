@@ -158,7 +158,8 @@ final class LocalLan implements Closeable {
             code=text(reply,"code");event("joined","code",code);read(p);
         }
         void read(Peer p){long ping=now(),last=ping,bucket=ping;int count=0;try{while(!closed&&!p.closed){
-            long time=now();if(time-last>20000||!p.approved&&time-p.started>60000)throw new IOException("timeout");
+            // Signaling outlives the game's bounded 30-second background grace.
+            long time=now();if(time-last>40000||!p.approved&&time-p.started>60000)throw new IOException("timeout");
             if(time-ping>=5000){p.send(obj("type","ping"));ping=time;}
             JSONObject m;try{m=p.line(time+500);}catch(SocketTimeoutException e){continue;}
             last=now();if(last-bucket>=10000){bucket=last;count=0;}if(++count>160)throw new IOException("rate");String type=text(m,"type");

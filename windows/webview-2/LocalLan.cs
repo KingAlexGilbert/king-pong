@@ -196,7 +196,8 @@ namespace KingPongWebView2
             void Read(Peer p) {
                 long ping=Clock.ElapsedMilliseconds,last=ping,bucket=ping;int count=0;
                 try { while(!closed&&!p.Closed) {
-                    long now=Clock.ElapsedMilliseconds;if(now-last>20000||!p.Approved&&now-p.Started>60000)throw new TimeoutException();
+                    // Signaling outlives the game's bounded 30-second background grace.
+                    long now=Clock.ElapsedMilliseconds;if(now-last>40000||!p.Approved&&now-p.Started>60000)throw new TimeoutException();
                     if(now-ping>=5000){p.Send(Map("type","ping"));ping=now;}
                     Dictionary<string,object> m;try{m=p.Line(now+500);}catch(TimeoutException){continue;}
                     last=Clock.ElapsedMilliseconds;if(last-bucket>=10000){bucket=last;count=0;}if(++count>160)throw new InvalidOperationException();

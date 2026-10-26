@@ -744,3 +744,17 @@ Object.entries({
     for(const protocol of ['UDP','TCP','TLS'])table['Metered TURN — '+protocol]='Metered · '+turn[i]+' — '+protocol;
   });
 })();
+
+// Shared peer-availability messages (English is the lookup source).
+['es','fr','de','pt','it','nl','ja','ko','zh'].forEach((language, i) => {
+  const table = window.KING_PONG_ONLINE_TRANSLATIONS[language];
+  table['Opponent temporarily unavailable.'] = ['El rival no está disponible temporalmente.',
+    'Votre adversaire est temporairement indisponible.', 'Dein Gegner ist vorübergehend nicht erreichbar.',
+    'O adversário está temporariamente indisponível.', 'L’avversario è temporaneamente non disponibile.',
+    'Je tegenstander is tijdelijk niet beschikbaar.', '対戦相手が一時的に応答できません。',
+    '상대가 일시적으로 응답할 수 없습니다.', '对手暂时无法响应。'][i];
+  table['Opponent disconnected.'] = ['El rival se ha desconectado.', 'Votre adversaire s’est déconnecté.',
+    'Dein Gegner hat die Verbindung getrennt.', 'O adversário se desconectou.', 'L’avversario si è disconnesso.',
+    'Je tegenstander heeft de verbinding verbroken.', '対戦相手との接続が切れました。',
+    '상대의 연결이 끊어졌습니다.', '对手已断开连接。'][i];
+});

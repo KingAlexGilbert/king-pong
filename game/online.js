@@ -172,7 +172,7 @@ class KingPongRoom {
           this.hooks.status('Connection interrupted. Reconnecting...');
           this.hooks.interrupted?.();
           if (this.closed || this.peer !== peer) return;
-          this.disconnectTimer = setTimeout(() => this.fail('connection_lost'), 8000);
+          this.disconnectTimer = setTimeout(() => this.fail('connection_lost'), this.presence ? MULTIPLAYER_PRESENCE.grace : 8000);
         } else if (peer.connectionState === 'connected') {
           clearTimeout(this.directTimer);
           clearTimeout(this.disconnectTimer);
@@ -300,6 +300,7 @@ class KingPongRoom {
 
   close() {
     if (this.closed) return;
+    if (typeof stopMultiplayerPresence === 'function') stopMultiplayerPresence(this);
     this.closed = true;
     this.secure?.close();
     clearOnlineApproval(this);
@@ -474,6 +475,7 @@ function openOnlineRoom(role, code = '', assignment = null) {
     message: raw => { if (onlineSession === session) handleLanMessage(raw); },
     interrupted: () => {
       if (onlineSession !== session) return;
+      if (multiplayerTransportInterrupted()) return;
       suspendPointServeCountdown();
       // Matchmaking leaves a failed setup immediately. Private-room players
       // keep signaling alive long enough to receive the authoritative departure
@@ -489,6 +491,7 @@ function openOnlineRoom(role, code = '', assignment = null) {
     },
     resumed: () => {
       if (onlineSession !== session || session.pairingRequired && !session.pairingAccepted) return;
+      if (multiplayerTransportResumed()) return;
       if(session.recoveryPause && onlineMatchFlow) {
         const elapsed=performance.now()-session.recoveryPause.at;
         for(const key of ['handshakeDeadline','connectedUntil','goUntil'])if(Number.isFinite(onlineMatchFlow[key]))onlineMatchFlow[key]+=elapsed;
@@ -567,4 +570,4 @@ function onlinePaddleState(state, levelChanged) {
   return y;
 }
 
-window.addEventListener('pagehide', () => { stopMatchmaking(); if (onlineSession) onlineSession.close(); });
+// Page lifecycle is shared with offline LAN in multiplayer-presence.js.

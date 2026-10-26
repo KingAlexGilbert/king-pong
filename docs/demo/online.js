@@ -308,7 +308,14 @@ class KingPongSecureTransport {
       this.flush();
     }
   }
-  armTimeout(ms,fn){clearTimeout(this.deadline);this.deadline=setTimeout(()=>{if(!this.closed)fn();},ms);}
+  armTimeout(ms,fn){
+    clearTimeout(this.deadline);
+    this.deadline=setTimeout(()=>{
+      if(this.closed)return;
+      const remaining=typeof multiplayerRecoveryRemaining==='function'?multiplayerRecoveryRemaining(this.owner):0;
+      if(remaining>0)this.armTimeout(remaining,fn);else fn();
+    },ms);
+  }
   async startRtc(m) {
     const epoch=this.epoch;
     const provider=m.provider==='metered'?'metered':'unknown';
@@ -450,7 +457,7 @@ class KingPongSecureTransport {
         const now=Date.now(), entry=[...this.pending].find(([,p])=>now-p.sentAt>=500);
         let lane,value;
         if(this.ackPending){lane='a';value={ack:this.receivedControl};this.ackPending=false;}
-        else if(entry){lane='c';value={id:entry[0],raw:entry[1].raw};entry[1].sentAt=now;if(now-entry[1].created>12000){this.fail();break;}}
+        else if(entry){lane='c';value={id:entry[0],raw:entry[1].raw};entry[1].sentAt=now;if(now-entry[1].created>12000 && !this.owner.presence?.suspended){this.fail();break;}}
         else if(this.latest!==null&&this.latest!==undefined){
           if(now-this.latestAt>250){this.latest=null;continue;}
           lane='d';value={raw:this.latest};this.latest=null;
@@ -686,7 +693,7 @@ class KingPongRoom {
           this.hooks.status('Connection interrupted. Reconnecting...');
           this.hooks.interrupted?.();
           if (this.closed || this.peer !== peer) return;
-          this.disconnectTimer = setTimeout(() => this.fail('connection_lost'), 8000);
+          this.disconnectTimer = setTimeout(() => this.fail('connection_lost'), this.presence ? MULTIPLAYER_PRESENCE.grace : 8000);
         } else if (peer.connectionState === 'connected') {
           clearTimeout(this.directTimer);
           clearTimeout(this.disconnectTimer);
@@ -814,6 +821,7 @@ class KingPongRoom {
 
   close() {
     if (this.closed) return;
+    if (typeof stopMultiplayerPresence === 'function') stopMultiplayerPresence(this);
     this.closed = true;
     this.secure?.close();
     clearOnlineApproval(this);
@@ -988,6 +996,7 @@ function openOnlineRoom(role, code = '', assignment = null) {
     message: raw => { if (onlineSession === session) handleLanMessage(raw); },
     interrupted: () => {
       if (onlineSession !== session) return;
+      if (multiplayerTransportInterrupted()) return;
       suspendPointServeCountdown();
       // Matchmaking leaves a failed setup immediately. Private-room players
       // keep signaling alive long enough to receive the authoritative departure
@@ -1003,6 +1012,7 @@ function openOnlineRoom(role, code = '', assignment = null) {
     },
     resumed: () => {
       if (onlineSession !== session || session.pairingRequired && !session.pairingAccepted) return;
+      if (multiplayerTransportResumed()) return;
       if(session.recoveryPause && onlineMatchFlow) {
         const elapsed=performance.now()-session.recoveryPause.at;
         for(const key of ['handshakeDeadline','connectedUntil','goUntil'])if(Number.isFinite(onlineMatchFlow[key]))onlineMatchFlow[key]+=elapsed;
@@ -1081,7 +1091,7 @@ function onlinePaddleState(state, levelChanged) {
   return y;
 }
 
-window.addEventListener('pagehide', () => { stopMatchmaking(); if (onlineSession) onlineSession.close(); });
+// Page lifecycle is shared with offline LAN in multiplayer-presence.js.
 
 // Optional human comparison of one encrypted WebRTC channel. Nothing identifying is saved.
 async function pairingHash(text) {
@@ -1625,6 +1635,7 @@ function syncOnlineTransportUi() {
 }
 
 function stopBackgroundMatchmaking() {
+  if (onlineSession?.presence) return;
   if (onlineMatchFlowBlocksPlay()) { failOnlineMatchFlow('opponent_left'); return; }
   if (!matchmakingSocket) return;
   const wasSearching = matchmakingRequested || matchmakingState === 'waiting' || matchmakingLocked();
@@ -1633,7 +1644,7 @@ function stopBackgroundMatchmaking() {
   if (wasSearching && onlineTransportSelected && !lanConnected) setLanStatus('Search stopped while the app was in the background.');
 }
 document.addEventListener('visibilitychange', () => { if (document.hidden) stopBackgroundMatchmaking(); });
-document.addEventListener('kingpong-background', stopBackgroundMatchmaking);
+document.addEventListener('kingpong-background', () => { if (window.KingPongBackgrounded) stopBackgroundMatchmaking(); });
 
 // Optional online wire format 1. JSON tuples remove field names, not state.
 // Every snapshot is independently decodable: no delta baseline, quantized physics,
@@ -1651,7 +1662,11 @@ const ONLINE_WIRE_FIELDS = Object.freeze({
 function encodeOnlineWire(m) {
   const pack = (kind, value) => value === null ? null : ONLINE_WIRE_FIELDS[kind].map(k => value[k]);
   const head = ['kp', ONLINE_WIRE_VERSION, m.type === 'input' ? 'i' : 's', m.room, m.seq];
-  if (m.type === 'input') return onlineRematchReady ? [...head, m.axis, m.targetY, m.round] : [...head, m.axis, m.targetY];
+  if (m.type === 'input') {
+    const input = onlineRematchReady ? [...head, m.axis, m.targetY, m.round] : [...head, m.axis, m.targetY];
+    if (m.presenceEpoch !== undefined) input.push(m.presenceEpoch);
+    return input;
+  }
   if (m.type !== 'state') return m;
   const r = m.royal;
   const state = [...head, m.tick, m.inputSeq, pack('selection', m.selection), pack('rules', m.rules),
@@ -1664,6 +1679,7 @@ function encodeOnlineWire(m) {
   // Keep legacy v1 tuples unchanged unless the peer acknowledged this extension.
   if (onlinePointServeReady || onlineRematchReady) state.push(m.pointServeMs ?? 0);
   if (onlineRematchReady) state.push(m.round);
+  if (m.presenceEpoch !== undefined) state.push(m.presenceEpoch);
   return state;
 }
 
@@ -1673,8 +1689,10 @@ function decodeOnlineWire(a) {
   const m = {v: LAN_SIGNAL_VERSION, gameplay: 'royal', matchRules: 'presets', room: a[3], seq: a[4]};
   if (a[2] === 'i' && tuple(a, 7)) return {...m, type: 'input', axis: a[5], targetY: a[6]};
   if (a[2] === 'i' && onlineRematchReady && tuple(a, 8)) return {...m, type: 'input', axis: a[5], targetY: a[6], round: a[7]};
-  if (a.length === 18 && !onlineRematchReady) return null;
-  if (a[2] !== 's' || !(tuple(a, 16) || tuple(a, 17) || tuple(a, 18)) || !tuple(a[9], 6) || !tuple(a[11], 5) ||
+  const presence = typeof multiplayerPresence === 'function' && multiplayerPresence();
+  if (a[2] === 'i' && presence && tuple(a, 9)) return {...m, type: 'input', axis: a[5], targetY: a[6], round: a[7], presenceEpoch: a[8]};
+  if (a.length >= 18 && !onlineRematchReady || a.length === 19 && !presence) return null;
+  if (a[2] !== 's' || !(tuple(a, 16) || tuple(a, 17) || tuple(a, 18) || tuple(a, 19)) || !tuple(a[9], 6) || !tuple(a[11], 5) ||
       !tuple(a[13], 9) || !tuple(a[13][4], 2) || !tuple(a[13][5], 2) ||
       !Array.isArray(a[13][8]) || a[13][8].length > 16 || !Array.isArray(a[14]) || a[14].length > 128) return null;
   // Shape errors are rejected here; the existing gameplay validators then enforce
@@ -1697,7 +1715,8 @@ function decodeOnlineWire(a) {
       powerupPulse: unpack('pulse', r[6], true), cueSeq: r[7], cues: r[8].map(c => unpack('cue', c))},
     hazards: a[14].map(h => unpack('hazard', h)), endMessage: a[15]});
   if (a.length >= 17) m.pointServeMs = a[16];
-  if (a.length === 18) m.round = a[17];
+  if (a.length >= 18) m.round = a[17];
+  if (a.length === 19) m.presenceEpoch = a[18];
   return valid ? m : null;
 }
 
@@ -1724,7 +1743,7 @@ function resetOnlineWire() {
 function sendOnlineWireHello(ack = false) {
   return onlineLanSend({v: LAN_SIGNAL_VERSION, type: 'net-format', room: lanRoomCode,
     format: ONLINE_WIRE_VERSION, ack, inputIntent: 1, pointServe: 1,
-    rematch: 1, rematchToken: multiplayerRematch()?.token});
+    presence: 1, rematch: 1, rematchToken: multiplayerRematch()?.token});
 }
 
 function negotiateOnlineWire() {
@@ -1739,6 +1758,7 @@ function receiveOnlineWireHello(m) {
       m.gameplay !== 'royal' || m.matchRules !== 'presets' || m.format !== ONLINE_WIRE_VERSION ||
       typeof m.ack !== 'boolean') return;
   receiveRematchHello(m);
+  if (typeof receivePresenceHello === 'function') receivePresenceHello(m);
   if (m.ack) { onlineWireReady = true; onlineIntentReady = m.inputIntent === 1; onlinePointServeReady = m.pointServe === 1; }
   else sendOnlineWireHello(true);
 }
@@ -1751,12 +1771,18 @@ function onlineLanSend(payload) {
   /* END ROYAL POLISH */
   if (payload.type !== 'net-format') negotiateOnlineWire();
   if (onlineRematchReady && ['state', 'input', 'action'].includes(payload.type)) payload.round = multiplayerRematch().round;
-  const channel = (payload.type === "rematch" || payload.type === "action" || payload.type === "selection" || payload.type === "rules" || payload.type === "match-setup" || payload.type === "net-format") ?
+  const presence = typeof multiplayerPresence === 'function' && multiplayerPresence();
+  if (presence && ['state', 'input', 'action', 'match-setup'].includes(payload.type)) payload.presenceEpoch = presence.epoch;
+  if (presence?.suspended && ['state', 'input', 'action', 'match-setup', 'rematch'].includes(payload.type) &&
+      !presence.sendingSnapshot && !(payload.type === 'rematch' && payload.kind === 'leave')) return false;
+  if (presence?.sendingSnapshot && payload.type === 'state') payload.presenceSnapshot = true;
+  const channel = (payload.presenceSnapshot || payload.type === 'presence' || payload.type === "rematch" || payload.type === "action" || payload.type === "selection" || payload.type === "rules" || payload.type === "match-setup" || payload.type === "net-format") ?
     onlineControlChannel : lanChannel;
   if (!channel || channel.readyState !== "open") return false;
   try {
     if (channel.bufferedAmount > 65536) return false;
-    channel.send(JSON.stringify(onlineWireReady && ['state', 'input'].includes(payload.type) ? encodeOnlineWire(payload) : payload));
+    channel.send(JSON.stringify(onlineWireReady && !payload.presenceSnapshot && ['state', 'input'].includes(payload.type) ? encodeOnlineWire(payload) : payload));
+    if (presence) presence.lastSent = Date.now();
     return true;
   } catch {
     if (onlineSession) onlineSession.fail("connection_lost");
@@ -2469,6 +2495,262 @@ function syncMultiplayerRematchUi() {
     state.local ? 'Waiting for opponent...' : state.remote ? 'Your opponent wants a rematch.' : '');
 }
 
+// Peer availability belongs to the authenticated session, never to paddle input.
+// Background timers may stop entirely. The visible peer owns the deadline too,
+// and every return checks wall-clock time before accepting more gameplay.
+const MULTIPLAYER_PRESENCE = Object.freeze({probe: 2000, stale: 8000, grace: 30000, poll: 500});
+
+function multiplayerPresence() { return onlineSession?.presence; }
+function multiplayerSuspended() { return Boolean(multiplayerPresence()?.suspended); }
+
+function stopMultiplayerPresence(session) {
+  if (session?.presence) clearInterval(session.presence.timer);
+  if (session) session.presence = null;
+  if (onlineSession && session !== onlineSession) return;
+  const panel = document.getElementById('multiplayerUnavailable');
+  if (panel) panel.hidden = true;
+}
+
+function receivePresenceHello(message) {
+  if (message.presence !== 1 || !onlineRematchReady || multiplayerPresence()) return;
+  const now = Date.now(), session = onlineSession;
+  const p = session.presence = {epoch: 0, phase: 'playing', suspended: false,
+    localActive: true, remoteActive: true, revision: 0, remoteRevision: -1,
+    lastHeard: now, lastSent: now, probe: 0, awaitingProbe: 0, transportDown: false};
+  p.timer = setInterval(() => { if (onlineSession === session) tickMultiplayerPresence(); }, MULTIPLAYER_PRESENCE.poll);
+  if (document.hidden || window.KingPongBackgrounded) setMultiplayerAvailability(false);
+}
+
+function sendMultiplayerPresence(kind, fields = {}) {
+  const p = multiplayerPresence();
+  if (!p || !lanConnected) return false;
+  return lanSend({v: LAN_SIGNAL_VERSION, room: lanRoomCode, type: 'presence', protocol: 1,
+    token: multiplayerRematch().token, epoch: p.epoch, kind,
+    revision: p.revision, active: p.localActive, ...fields});
+}
+
+function showMultiplayerUnavailable() {
+  let panel = document.getElementById('multiplayerUnavailable');
+  if (!panel) {
+    panel = document.createElement('section');
+    panel.id = 'multiplayerUnavailable'; panel.className = 'online-match-flow match-ui';
+    panel.setAttribute('role', 'status'); panel.setAttribute('aria-live', 'polite');
+    const card = document.createElement('div'); card.className = 'online-flow-card';
+    const text = document.createElement('p');
+    setLocalizedText(text, 'Opponent temporarily unavailable.');
+    card.append(text, royalButton('multiplayerUnavailableBack', 'Back', () => leaveMultiplayerSession()));
+    panel.append(card); document.body.append(panel);
+  }
+  panel.hidden = !multiplayerSuspended();
+  syncRoyalFocus();
+}
+
+function suspendMultiplayerPresence() {
+  const p = multiplayerPresence();
+  if (!p) return;
+  if (p.suspended) {
+    if (p.phase !== 'held') {
+      p.phase = 'held';
+      if (lanRole === 'host') { p.epoch++; sendMultiplayerPresence('hold'); }
+    }
+    return;
+  }
+  p.suspended = true; p.since = Date.now(); p.flowAt = performance.now();
+  p.wasPaused = p.focusPause?.paused ?? paused; p.countdown = p.focusPause?.countdown ?? resumeCountdownRemainingMs();
+  p.focusPause = null;
+  p.phase = 'held';
+  if (lanRole === 'host') p.epoch++;
+  onlineGameBlocked = paused = true;
+  suspendPointServeCountdown(); resumeCountdownEndAt = 0; lastResumeCountdownNumber = 0;
+  clearHeldInput(); onlineInputs.clear(); onlineLastInput = null; resetVisualHistory();
+  resetFrameClock();
+  showMultiplayerUnavailable();
+  if (lanRole === 'host') sendMultiplayerPresence('hold');
+}
+
+function presenceExpired(p = multiplayerPresence()) {
+  if (!p?.suspended || Date.now() - p.since < MULTIPLAYER_PRESENCE.grace) return false;
+  leaveMultiplayerSession('Opponent disconnected.');
+  return true;
+}
+
+function setMultiplayerAvailability(active) {
+  const p = multiplayerPresence();
+  if (!p || presenceExpired(p)) return;
+  active = Boolean(active);
+  if (p.localActive === active) return;
+  p.localActive = active; p.revision++;
+  if (!active) suspendMultiplayerPresence();
+  sendMultiplayerPresence('status');
+  maybeResumeMultiplayer();
+}
+
+function multiplayerTransportInterrupted() {
+  const p = multiplayerPresence();
+  if (!p) return false;
+  p.transportDown = true;
+  suspendMultiplayerPresence();
+  return true;
+}
+
+function multiplayerTransportResumed() {
+  const p = multiplayerPresence();
+  if (!p) return false;
+  if (presenceExpired(p)) return true;
+  p.transportDown = false;
+  sendMultiplayerPresence('status');
+  maybeResumeMultiplayer();
+  return true;
+}
+
+function noteMultiplayerTraffic() {
+  const p = multiplayerPresence();
+  if (!p || presenceExpired(p)) return;
+  p.lastHeard = Date.now();
+  maybeResumeMultiplayer();
+}
+
+function maybeResumeMultiplayer() {
+  const p = multiplayerPresence();
+  if (!p || !p.suspended || presenceExpired(p) || lanRole !== 'host' ||
+      p.phase !== 'held' || !p.localActive || !p.remoteActive || p.transportDown ||
+      Date.now() - p.lastHeard >= MULTIPLAYER_PRESENCE.stale) return;
+  p.phase = 'offered';
+  sendMultiplayerPresence('offer');
+}
+
+function commitMultiplayerResume() {
+  const p = multiplayerPresence();
+  if (!p || !p.suspended || presenceExpired(p)) return;
+  // The snapshot handshake proves the peer is back. A transport ACK for an
+  // older control can still be in flight; do not charge its suspended time
+  // against the normal 12-second delivery deadline after committing recovery.
+  for (const control of onlineSession.secure?.pending?.values() || []) control.created = Date.now();
+  p.suspended = false; p.phase = 'playing'; p.awaitingProbe = 0;
+  const elapsed = performance.now() - p.flowAt;
+  if (onlineMatchFlow) for (const key of ['handshakeDeadline', 'connectedUntil', 'goUntil'])
+    if (Number.isFinite(onlineMatchFlow[key])) onlineMatchFlow[key] += elapsed;
+  onlineGameBlocked = onlineMatchFlowBlocksPlay();
+  clearHeldInput(); onlineInputs.clear(); onlineLastInput = null; resetVisualHistory(); resetFrameClock();
+  if (lanRole === 'host') {
+    // Preserve manual pause, results and ready consent. An interrupted rally or
+    // countdown always resumes through the existing countdown/audio machinery.
+    const countdown = onlineMatchFlow?.phase === 'countdown' || p.countdown > 0 ||
+      !p.wasPaused && !waitingForServe && !gameOver;
+    paused = p.wasPaused || countdown || onlineGameBlocked;
+    if (countdown) { resumeCountdownEndAt = performance.now() + RESUME_COUNTDOWN_MS; lastResumeCountdownNumber = 0; }
+    sendMultiplayerPresence('resume');
+    p.sendingSnapshot = true; sendLanState(true); p.sendingSnapshot = false;
+  }
+  showMultiplayerUnavailable(); syncRoyalUi(true);
+}
+
+function receiveMultiplayerPresence(m) {
+  const p = multiplayerPresence();
+  if (!p || !lanConnected || m.v !== LAN_SIGNAL_VERSION || m.room !== lanRoomCode ||
+      m.gameplay !== 'royal' || m.matchRules !== 'presets' || m.protocol !== 1 ||
+      m.token !== multiplayerRematch().token || !Number.isSafeInteger(m.epoch) || m.epoch < 0 ||
+      !Number.isSafeInteger(m.revision) || m.revision < 0 || typeof m.active !== 'boolean' ||
+      !['status', 'status-ack', 'ping', 'pong', 'hold', 'offer', 'ready', 'snapshot-ack', 'resume', 'leave'].includes(m.kind)) return;
+  if (m.kind === 'leave') { leaveMultiplayerSession('Opponent disconnected.', false); return; }
+  if (presenceExpired(p)) return;
+  if (m.revision < p.remoteRevision) return;
+  p.remoteRevision = m.revision; p.remoteActive = m.active; p.lastHeard = Date.now();
+  if (!m.active) suspendMultiplayerPresence();
+  if (m.kind === 'status') sendMultiplayerPresence('status-ack');
+  if (m.kind === 'ping' && Number.isSafeInteger(m.probe) && m.probe > 0)
+    sendMultiplayerPresence('pong', {probe: m.probe});
+  if (m.kind === 'pong' && m.probe === p.awaitingProbe) p.awaitingProbe = 0;
+  if (lanRole === 'guest' && (m.kind === 'hold' || m.kind === 'offer') && m.epoch >= p.epoch) {
+    if (m.epoch === p.epoch && !p.suspended) return; // Delayed message from a completed recovery.
+    if (m.epoch === p.epoch && p.phase !== 'held') {
+      if (m.kind === 'offer') sendMultiplayerPresence(p.phase === 'acknowledged' ? 'snapshot-ack' : 'ready');
+      return; // A duplicate hold/offer cannot roll back an in-flight handshake.
+    }
+    suspendMultiplayerPresence();
+    p.epoch = m.epoch;
+    if (m.kind === 'offer' && p.localActive && m.active && !p.transportDown) {
+      p.phase = 'snapshot'; sendMultiplayerPresence('ready');
+    }
+  } else if (lanRole === 'host' && m.epoch === p.epoch && p.localActive && p.remoteActive && !p.transportDown) {
+    if (m.kind === 'ready' && ['offered', 'snapshot'].includes(p.phase)) {
+      p.phase = 'snapshot'; p.sendingSnapshot = true; sendLanState(true); p.sendingSnapshot = false;
+    } else if (m.kind === 'snapshot-ack' && p.phase === 'snapshot') commitMultiplayerResume();
+  } else if (lanRole === 'guest' && m.kind === 'resume' && m.epoch === p.epoch &&
+      p.phase === 'acknowledged' && p.localActive && p.remoteActive && !p.transportDown) commitMultiplayerResume();
+  maybeResumeMultiplayer();
+}
+
+function acceptMultiplayerPresence(m) {
+  if (!m || typeof m !== 'object') return false;
+  const p = multiplayerPresence();
+  if (!p) return true;
+  if (presenceExpired(p)) return false;
+  if (['state', 'input', 'action', 'match-setup'].includes(m.type) && m.presenceEpoch !== p.epoch &&
+      !(p.epoch === 0 && m.presenceEpoch === undefined)) return false;
+  if (!p.suspended) return true;
+  return m.type === 'state' && lanRole === 'guest' && p.phase === 'snapshot' && m.presenceSnapshot === true ||
+    m.type === 'rematch' && m.kind === 'leave';
+}
+
+function finishPresenceSnapshot(m) {
+  const p = multiplayerPresence();
+  if (p?.suspended && p.phase === 'snapshot' && m.presenceSnapshot === true && m.presenceEpoch === p.epoch) {
+    p.phase = 'acknowledged'; sendMultiplayerPresence('snapshot-ack');
+  }
+}
+
+function tickMultiplayerPresence() {
+  const p = multiplayerPresence();
+  if (!p || presenceExpired(p)) return;
+  const now = Date.now();
+  if (now - p.lastHeard >= MULTIPLAYER_PRESENCE.stale) {
+    suspendMultiplayerPresence();
+    // Reuse the existing ICE restart -> TURN -> encrypted WebSocket recovery.
+    // An explicitly backgrounded peer may simply have suspended its JS timers.
+    if (p.remoteActive && p.localActive && !p.transportDown && onlineSession.secure?.mode === 'rtc')
+      onlineSession.secure.rtcFailed();
+  }
+  if (!p.localActive) return;
+  if (!p.awaitingProbe && now - p.lastHeard >= MULTIPLAYER_PRESENCE.probe && now - p.lastSent >= MULTIPLAYER_PRESENCE.probe) {
+    p.awaitingProbe = ++p.probe;
+    if (!sendMultiplayerPresence('ping', {probe: p.awaitingProbe})) p.awaitingProbe = 0;
+  }
+}
+
+function multiplayerRecoveryRemaining(session) {
+  const p = session?.presence;
+  return p?.suspended ? Math.max(0, MULTIPLAYER_PRESENCE.grace - (Date.now() - p.since)) : 0;
+}
+
+function multiplayerPageHide(event) {
+  if (event.persisted) { setMultiplayerAvailability(false); return; }
+  stopMatchmaking();
+  if (onlineSession) {
+    sendMultiplayerPresence('leave'); sendRematch('leave');
+    onlineSession.close(); // Best effort; watchdog also covers process kills without any event.
+  }
+}
+
+window.addEventListener('pagehide', multiplayerPageHide);
+window.addEventListener('pageshow', () => setMultiplayerAvailability(!document.hidden && !window.KingPongBackgrounded));
+document.addEventListener('visibilitychange', () => setMultiplayerAvailability(!document.hidden && !window.KingPongBackgrounded));
+document.addEventListener('kingpong-background', () => setMultiplayerAvailability(!document.hidden && !window.KingPongBackgrounded));
+
+// blur can precede visibilitychange on mobile. Preserve the state from before
+// the legacy blur handler pauses the host, rather than treating it as a user's
+// manual Pause choice. A visible permission prompt keeps its existing behavior.
+function recordMultiplayerFocusLoss() {
+  const p = multiplayerPresence();
+  if (p && !p.suspended && !p.focusPause) p.focusPause = {paused, countdown: resumeCountdownRemainingMs()};
+  if (document.hidden || window.KingPongBackgrounded) setMultiplayerAvailability(false);
+}
+function recordMultiplayerFocusReturn() {
+  if (!document.hidden && !window.KingPongBackgrounded) setMultiplayerAvailability(true);
+  const p = multiplayerPresence();
+  if (p) p.focusPause = null;
+}
+
 // Native LAN functions remain intact. Route only online sessions through the
 // existing browser transport and prediction adapters, after legacy declarations.
 function installOnlineSupport() {
@@ -2498,7 +2780,11 @@ function installOnlineSupport() {
   for (const name of ['update', 'requestServeOrContinue', 'requestTogglePause', 'requestRetryLevel']) {
     const original = window[name];
     window[name] = (...args) => {
-      if (name === 'update') { tickOnlineMatchFlow(); tickMultiplayerRematch(); }
+      if (name === 'update') {
+        tickMultiplayerPresence();
+        if (!multiplayerSuspended()) { tickOnlineMatchFlow(); tickMultiplayerRematch(); }
+      }
+      if (multiplayerSuspended()) return;
       if (name === 'requestServeOrContinue' && multiplayerRematchVisible()) return;
       if (name === 'requestRetryLevel' && mode === 2 && onlineSession && (gameOver || lanRole === 'guest')) return;
       if (name === 'requestServeOrContinue' && onlineMatchFlowBlocksPlay()) return;
@@ -2511,7 +2797,7 @@ function installOnlineSupport() {
     window[name] = (...args) => {
       if (mode === 2 && onlineSession && (name === 'retryLevel' && (gameOver || lanRole === 'guest') ||
           name === 'serveOrContinue' && gameOver)) return;
-      if (onlineMatchFlowBlocksPlay()) return;
+      if (onlineMatchFlowBlocksPlay() || multiplayerSuspended()) return;
       return original(...args);
     };
   }
@@ -2526,6 +2812,8 @@ function installOnlineSupport() {
       raw = JSON.stringify(message);
     }
     if (onlineSession && message?.type === 'net-format') { receiveOnlineWireHello(message); return; }
+    if (message?.type === 'presence') { receiveMultiplayerPresence(message); return; }
+    if (!acceptMultiplayerPresence(message)) return;
     if (message?.type === 'rematch') { receiveMultiplayerRematch(message); return; }
     if (onlineSession && !acceptMultiplayerRound(message)) return;
     // A remote legacy Retry action is not consent from the host. The host's
@@ -2535,7 +2823,9 @@ function installOnlineSupport() {
     if (onlineMatchFlowBlocksPlay() && message?.type === 'action') return;
     const needsState = onlineMatchFlow?.configured && !onlineHasState;
     receive(raw);
-    if (message?.type === 'state' && message.seq === lanLastStateSeq) finishMultiplayerRematchSnapshot();
+    if (message?.type === 'state' && message.seq === lanLastStateSeq) {
+      finishPresenceSnapshot(message); finishMultiplayerRematchSnapshot(); noteMultiplayerTraffic();
+    } else if (message?.type === 'input' && message.seq === lanLastInputSeq) noteMultiplayerTraffic();
     // Acknowledge the first accepted snapshot immediately; no extra retry delay.
     if (needsState && onlineHasState && lanRole === 'guest' && onlineMatchFlow)
       sendOnlineMatchSetup('initialized', {configuration: onlineMatchFlow.configuration});

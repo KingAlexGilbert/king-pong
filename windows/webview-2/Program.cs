@@ -193,13 +193,23 @@ namespace KingPongWebView2
             };
             Controls.Add(webView);
 
-            // Drives document.visibilitychange in the unchanged HTML when minimized.
-            // Existing online behavior stays intact; native offline listeners stop while minimized.
+            // JS pauses the peer immediately; retain LAN signaling for the same
+            // bounded recovery window even if the hidden WebView stops timers.
+            backgroundLanTimer.Interval = 30000;
+            backgroundLanTimer.Tick += (sender, args) =>
+            {
+                backgroundLanTimer.Stop();
+                if (WindowState == FormWindowState.Minimized) localLan?.Stop();
+            };
             Resize += (sender, args) =>
             {
                 if (!isClosing)
                 {
-                    if (WindowState == FormWindowState.Minimized) localLan?.Stop();
+                    if (WindowState == FormWindowState.Minimized)
+                    {
+                        if (!backgroundLanTimer.Enabled) backgroundLanTimer.Start();
+                    }
+                    else backgroundLanTimer.Stop();
                     webView.Visible = WindowState != FormWindowState.Minimized;
                 }
             };
@@ -373,6 +383,7 @@ namespace KingPongWebView2
         }
 
         private LocalLanBridge localLan;
+        private readonly System.Windows.Forms.Timer backgroundLanTimer = new System.Windows.Forms.Timer();
         private readonly BossAudioCache bossAudio = new BossAudioCache();
         private void ReceiveBossAudio(string id, string data)
         {
@@ -603,6 +614,7 @@ namespace KingPongWebView2
             if (disposing)
             {
                 isClosing = true;
+                backgroundLanTimer.Dispose();
                 localLan?.Dispose();
                 // Controls are disposed by Form; do not dispose the web view twice.
                 Icon = null;

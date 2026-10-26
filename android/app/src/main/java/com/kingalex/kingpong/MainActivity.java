@@ -54,6 +54,13 @@ public final class MainActivity extends Activity {
     private final String lanBridgeToken = LocalLan.randomHex(16);
     private android.net.wifi.WifiManager.MulticastLock lanMulticast;
     private boolean lanHosting, lanScanning, lanBackgrounded;
+    private final android.os.Handler backgroundHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+    private final Runnable expireBackgroundLan = () -> {
+        if (!lanBackgrounded) return;
+        if (localLan != null) localLan.stop();
+        lanHosting = lanScanning = false;
+        updateLanMulticast();
+    };
     private boolean batteryReceiverRegistered;
     private boolean batteryPageReady;
     private int batteryLevel = -1;
@@ -141,6 +148,7 @@ public final class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        backgroundHandler.removeCallbacks(expireBackgroundLan);
         if (webView != null) {
             webView.onResume();
             webView.resumeTimers();
@@ -171,10 +179,8 @@ public final class MainActivity extends Activity {
     private void pauseGame() {
         cancelQrCamera();
         stopBatteryMonitoring();
+        if (!lanBackgrounded) backgroundHandler.postDelayed(expireBackgroundLan, 30_000);
         lanBackgrounded = true;
-        if (localLan != null) localLan.stop();
-        lanHosting = lanScanning = false;
-        updateLanMulticast();
         if (webView != null) {
             webView.evaluateJavascript("window.KingPongBackgrounded=true;document.dispatchEvent(new Event('kingpong-background'));", null);
             webView.onPause();
@@ -184,6 +190,7 @@ public final class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        backgroundHandler.removeCallbacks(expireBackgroundLan);
         cancelQrCamera();
         stopBatteryMonitoring();
         saveFileExecutor.shutdown();

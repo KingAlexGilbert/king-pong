@@ -85,7 +85,14 @@ class KingPongSecureTransport {
       this.flush();
     }
   }
-  armTimeout(ms,fn){clearTimeout(this.deadline);this.deadline=setTimeout(()=>{if(!this.closed)fn();},ms);}
+  armTimeout(ms,fn){
+    clearTimeout(this.deadline);
+    this.deadline=setTimeout(()=>{
+      if(this.closed)return;
+      const remaining=typeof multiplayerRecoveryRemaining==='function'?multiplayerRecoveryRemaining(this.owner):0;
+      if(remaining>0)this.armTimeout(remaining,fn);else fn();
+    },ms);
+  }
   async startRtc(m) {
     const epoch=this.epoch;
     const provider=m.provider==='metered'?'metered':'unknown';
@@ -227,7 +234,7 @@ class KingPongSecureTransport {
         const now=Date.now(), entry=[...this.pending].find(([,p])=>now-p.sentAt>=500);
         let lane,value;
         if(this.ackPending){lane='a';value={ack:this.receivedControl};this.ackPending=false;}
-        else if(entry){lane='c';value={id:entry[0],raw:entry[1].raw};entry[1].sentAt=now;if(now-entry[1].created>12000){this.fail();break;}}
+        else if(entry){lane='c';value={id:entry[0],raw:entry[1].raw};entry[1].sentAt=now;if(now-entry[1].created>12000 && !this.owner.presence?.suspended){this.fail();break;}}
         else if(this.latest!==null&&this.latest!==undefined){
           if(now-this.latestAt>250){this.latest=null;continue;}
           lane='d';value={raw:this.latest};this.latest=null;

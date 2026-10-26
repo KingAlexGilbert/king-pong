@@ -119,6 +119,7 @@ function syncPrivateRoomControls() {
 // blocked-session list remain alive until the host explicitly closes the room.
 function privateGuestDeparted(session) {
   if (onlineSession !== session) return;
+  if (typeof stopMultiplayerPresence === 'function') stopMultiplayerPresence(session);
   const established = session.multiplayerEstablished;
   session.rematch = null;
   session.multiplayerEstablished = false;

@@ -247,6 +247,8 @@ try {
     await a.evaluate(() => onlineSession.hooks.interrupted());
     assert.equal((await state(a)).blocked, true);
     await a.evaluate(() => onlineSession.hooks.resumed());
+    assert.equal((await state(a)).blocked, true, 'transport recovery alone cannot resume without a fresh peer acknowledgement');
+    await pump(a,b);
     assert.equal((await state(a)).blocked, false, 'normal post-start reconnect still recovers');
     await a.close(); await b.close();
     pass(`${host} host/${guest} guest: lost first hello, paddles, frozen setup, both confirmations, 3/2/1/GO, no guest premature start, resumed gameplay`);
@@ -267,6 +269,8 @@ try {
       assert.equal((await state(a)).phase,'failed');
       assert.equal(await a.locator('#onlineRetryButton').isVisible(),true);
     } else {
+      // This fixture disables RAF; poll the asynchronous channel-close deadline.
+      await a.waitForFunction(() => onlineSession === null, null, {polling: 20, timeout: 3000});
       assert.equal(await a.locator('#matchSetup').isVisible(),true,
         'an established session returns automatically after an irrecoverable disconnect');
       assert.equal(await a.evaluate(() => paused && onlineGameBlocked),true);
@@ -295,7 +299,7 @@ try {
   assert.equal(await p.evaluate(() => matchmakingRequested),true);
   assert.equal(await p.locator('#matchSetup').isVisible(),true);
   await setup(p,'host'); await connect(p);
-  await p.evaluate(() => document.dispatchEvent(new Event('kingpong-background')));
+  await p.evaluate(() => {window.KingPongBackgrounded=true;document.dispatchEvent(new Event('kingpong-background'));});
   assert.equal((await state(p)).phase,'failed');
   await p.keyboard.press('Escape');
   assert.equal(await p.evaluate(() => onlineMatchFlow === null && document.body.classList.contains('title-active')),true);

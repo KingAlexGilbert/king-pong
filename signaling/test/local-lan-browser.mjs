@@ -1,3 +1,4 @@
+import {presenceBrowserChecks} from './presence-browser-checks.mjs';
 import assert from 'node:assert/strict';
 import {automaticServeChecks} from './automatic-serve-cases.mjs';
 import {rematchBackChecks} from './rematch-cases.mjs';
@@ -68,6 +69,7 @@ try{
  await host.waitForFunction(()=>!onlineMatchFlowBlocksPlay(),{},{timeout:12000});
  await guest.waitForFunction(()=>!onlineMatchFlowBlocksPlay(),{},{timeout:12000});
  console.log('PASS local signaling, approval, ready/countdown; '+(controlled?'controlled RTC':'actual WebRTC'));
+ await presenceBrowserChecks(host,guest,'offline LAN');
  await automaticServeChecks(host,guest,'offline LAN');
  if(verify){
   await rematchBackChecks(host,guest);

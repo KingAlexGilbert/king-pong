@@ -1109,6 +1109,7 @@ function showLocalPlay() {
 }
 
 function handleRoyalMenuKey(event) {
+  if (typeof royalPortraitVisible === 'function' && royalPortraitVisible()) return handleRoyalUiKey(event);
   if (event.key === 'Escape' && window.KingPongFullscreen?.consumesEscape()) return false;
   if (galleryKind) {
     const controls = [...byId('royalGallery').querySelectorAll('button:not(:disabled)')];

@@ -236,7 +236,8 @@ class LocalLan:
         try:
             while not self.closed and not p.closed:
                 now = time.monotonic()
-                if now-last_read > 20 or not p.approved and now-p.started > 60:
+                # Do not preempt the game's 30-second background recovery window.
+                if now-last_read > 40 or not p.approved and now-p.started > 60:
                     raise TimeoutError()
                 if now-last_ping >= 5:
                     p.send(dict(type='ping')); last_ping = now

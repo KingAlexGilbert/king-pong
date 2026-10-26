@@ -139,18 +139,7 @@ async function copyLanText() {
   try { await navigator.clipboard.writeText(output.value); }
   catch { try { document.execCommand('copy'); } catch {} }
 }
-// Backgrounded native hosts cannot maintain reliable WebRTC while their WebView
-// is suspended. Close explicitly; return to setup instead of resuming stale play.
-document.addEventListener('kingpong-background', () => {
-  if (onlineSession instanceof KingPongLocalRoom) onlineSession.fail('connection_lost');
-});
-window.addEventListener('pagehide', () => {
-  if (onlineSession instanceof KingPongLocalRoom) onlineSession.close();
-});
-
-document.addEventListener('visibilitychange', () => {
-  if (document.hidden && onlineSession instanceof KingPongLocalRoom) onlineSession.fail('connection_lost');
-});
+// Availability and bounded recovery are shared with online sessions.
 
 // Compact direct fallback; the UI never displays addresses or device names.
 function localLanInvitation(address, port, room, code) {

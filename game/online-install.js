@@ -27,7 +27,11 @@ function installOnlineSupport() {
   for (const name of ['update', 'requestServeOrContinue', 'requestTogglePause', 'requestRetryLevel']) {
     const original = window[name];
     window[name] = (...args) => {
-      if (name === 'update') { tickOnlineMatchFlow(); tickMultiplayerRematch(); }
+      if (name === 'update') {
+        tickMultiplayerPresence();
+        if (!multiplayerSuspended()) { tickOnlineMatchFlow(); tickMultiplayerRematch(); }
+      }
+      if (multiplayerSuspended()) return;
       if (name === 'requestServeOrContinue' && multiplayerRematchVisible()) return;
       if (name === 'requestRetryLevel' && mode === 2 && onlineSession && (gameOver || lanRole === 'guest')) return;
       if (name === 'requestServeOrContinue' && onlineMatchFlowBlocksPlay()) return;
@@ -40,7 +44,7 @@ function installOnlineSupport() {
     window[name] = (...args) => {
       if (mode === 2 && onlineSession && (name === 'retryLevel' && (gameOver || lanRole === 'guest') ||
           name === 'serveOrContinue' && gameOver)) return;
-      if (onlineMatchFlowBlocksPlay()) return;
+      if (onlineMatchFlowBlocksPlay() || multiplayerSuspended()) return;
       return original(...args);
     };
   }
@@ -55,6 +59,8 @@ function installOnlineSupport() {
       raw = JSON.stringify(message);
     }
     if (onlineSession && message?.type === 'net-format') { receiveOnlineWireHello(message); return; }
+    if (message?.type === 'presence') { receiveMultiplayerPresence(message); return; }
+    if (!acceptMultiplayerPresence(message)) return;
     if (message?.type === 'rematch') { receiveMultiplayerRematch(message); return; }
     if (onlineSession && !acceptMultiplayerRound(message)) return;
     // A remote legacy Retry action is not consent from the host. The host's
@@ -64,7 +70,9 @@ function installOnlineSupport() {
     if (onlineMatchFlowBlocksPlay() && message?.type === 'action') return;
     const needsState = onlineMatchFlow?.configured && !onlineHasState;
     receive(raw);
-    if (message?.type === 'state' && message.seq === lanLastStateSeq) finishMultiplayerRematchSnapshot();
+    if (message?.type === 'state' && message.seq === lanLastStateSeq) {
+      finishPresenceSnapshot(message); finishMultiplayerRematchSnapshot(); noteMultiplayerTraffic();
+    } else if (message?.type === 'input' && message.seq === lanLastInputSeq) noteMultiplayerTraffic();
     // Acknowledge the first accepted snapshot immediately; no extra retry delay.
     if (needsState && onlineHasState && lanRole === 'guest' && onlineMatchFlow)
       sendOnlineMatchSetup('initialized', {configuration: onlineMatchFlow.configuration});

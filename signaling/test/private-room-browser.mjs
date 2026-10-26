@@ -1,3 +1,4 @@
+import {presenceBrowserChecks} from './presence-browser-checks.mjs';
 import assert from 'node:assert/strict';
 import {automaticServeChecks} from './automatic-serve-cases.mjs';
 import {rematchBackChecks} from './rematch-cases.mjs';
@@ -388,6 +389,7 @@ try {
     console.log('PASS encrypted lag/buffering, reliable command deduplication, transport continuity and host-only scores');
   }
 
+  await presenceBrowserChecks(host,peer,await host.evaluate(()=>onlineSession.secure.mode));
   await automaticServeChecks(host,peer,await host.evaluate(()=>onlineSession.secure.mode));
 
   await host.locator('#arenaKick').click();

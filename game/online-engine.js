@@ -6,12 +6,18 @@ function onlineLanSend(payload) {
   /* END ROYAL POLISH */
   if (payload.type !== 'net-format') negotiateOnlineWire();
   if (onlineRematchReady && ['state', 'input', 'action'].includes(payload.type)) payload.round = multiplayerRematch().round;
-  const channel = (payload.type === "rematch" || payload.type === "action" || payload.type === "selection" || payload.type === "rules" || payload.type === "match-setup" || payload.type === "net-format") ?
+  const presence = typeof multiplayerPresence === 'function' && multiplayerPresence();
+  if (presence && ['state', 'input', 'action', 'match-setup'].includes(payload.type)) payload.presenceEpoch = presence.epoch;
+  if (presence?.suspended && ['state', 'input', 'action', 'match-setup', 'rematch'].includes(payload.type) &&
+      !presence.sendingSnapshot && !(payload.type === 'rematch' && payload.kind === 'leave')) return false;
+  if (presence?.sendingSnapshot && payload.type === 'state') payload.presenceSnapshot = true;
+  const channel = (payload.presenceSnapshot || payload.type === 'presence' || payload.type === "rematch" || payload.type === "action" || payload.type === "selection" || payload.type === "rules" || payload.type === "match-setup" || payload.type === "net-format") ?
     onlineControlChannel : lanChannel;
   if (!channel || channel.readyState !== "open") return false;
   try {
     if (channel.bufferedAmount > 65536) return false;
-    channel.send(JSON.stringify(onlineWireReady && ['state', 'input'].includes(payload.type) ? encodeOnlineWire(payload) : payload));
+    channel.send(JSON.stringify(onlineWireReady && !payload.presenceSnapshot && ['state', 'input'].includes(payload.type) ? encodeOnlineWire(payload) : payload));
+    if (presence) presence.lastSent = Date.now();
     return true;
   } catch {
     if (onlineSession) onlineSession.fail("connection_lost");

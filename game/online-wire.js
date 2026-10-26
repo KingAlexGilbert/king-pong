@@ -14,7 +14,11 @@ const ONLINE_WIRE_FIELDS = Object.freeze({
 function encodeOnlineWire(m) {
   const pack = (kind, value) => value === null ? null : ONLINE_WIRE_FIELDS[kind].map(k => value[k]);
   const head = ['kp', ONLINE_WIRE_VERSION, m.type === 'input' ? 'i' : 's', m.room, m.seq];
-  if (m.type === 'input') return onlineRematchReady ? [...head, m.axis, m.targetY, m.round] : [...head, m.axis, m.targetY];
+  if (m.type === 'input') {
+    const input = onlineRematchReady ? [...head, m.axis, m.targetY, m.round] : [...head, m.axis, m.targetY];
+    if (m.presenceEpoch !== undefined) input.push(m.presenceEpoch);
+    return input;
+  }
   if (m.type !== 'state') return m;
   const r = m.royal;
   const state = [...head, m.tick, m.inputSeq, pack('selection', m.selection), pack('rules', m.rules),
@@ -27,6 +31,7 @@ function encodeOnlineWire(m) {
   // Keep legacy v1 tuples unchanged unless the peer acknowledged this extension.
   if (onlinePointServeReady || onlineRematchReady) state.push(m.pointServeMs ?? 0);
   if (onlineRematchReady) state.push(m.round);
+  if (m.presenceEpoch !== undefined) state.push(m.presenceEpoch);
   return state;
 }
 
@@ -36,8 +41,10 @@ function decodeOnlineWire(a) {
   const m = {v: LAN_SIGNAL_VERSION, gameplay: 'royal', matchRules: 'presets', room: a[3], seq: a[4]};
   if (a[2] === 'i' && tuple(a, 7)) return {...m, type: 'input', axis: a[5], targetY: a[6]};
   if (a[2] === 'i' && onlineRematchReady && tuple(a, 8)) return {...m, type: 'input', axis: a[5], targetY: a[6], round: a[7]};
-  if (a.length === 18 && !onlineRematchReady) return null;
-  if (a[2] !== 's' || !(tuple(a, 16) || tuple(a, 17) || tuple(a, 18)) || !tuple(a[9], 6) || !tuple(a[11], 5) ||
+  const presence = typeof multiplayerPresence === 'function' && multiplayerPresence();
+  if (a[2] === 'i' && presence && tuple(a, 9)) return {...m, type: 'input', axis: a[5], targetY: a[6], round: a[7], presenceEpoch: a[8]};
+  if (a.length >= 18 && !onlineRematchReady || a.length === 19 && !presence) return null;
+  if (a[2] !== 's' || !(tuple(a, 16) || tuple(a, 17) || tuple(a, 18) || tuple(a, 19)) || !tuple(a[9], 6) || !tuple(a[11], 5) ||
       !tuple(a[13], 9) || !tuple(a[13][4], 2) || !tuple(a[13][5], 2) ||
       !Array.isArray(a[13][8]) || a[13][8].length > 16 || !Array.isArray(a[14]) || a[14].length > 128) return null;
   // Shape errors are rejected here; the existing gameplay validators then enforce
@@ -60,7 +67,8 @@ function decodeOnlineWire(a) {
       powerupPulse: unpack('pulse', r[6], true), cueSeq: r[7], cues: r[8].map(c => unpack('cue', c))},
     hazards: a[14].map(h => unpack('hazard', h)), endMessage: a[15]});
   if (a.length >= 17) m.pointServeMs = a[16];
-  if (a.length === 18) m.round = a[17];
+  if (a.length >= 18) m.round = a[17];
+  if (a.length === 19) m.presenceEpoch = a[18];
   return valid ? m : null;
 }
 
@@ -87,7 +95,7 @@ function resetOnlineWire() {
 function sendOnlineWireHello(ack = false) {
   return onlineLanSend({v: LAN_SIGNAL_VERSION, type: 'net-format', room: lanRoomCode,
     format: ONLINE_WIRE_VERSION, ack, inputIntent: 1, pointServe: 1,
-    rematch: 1, rematchToken: multiplayerRematch()?.token});
+    presence: 1, rematch: 1, rematchToken: multiplayerRematch()?.token});
 }
 
 function negotiateOnlineWire() {
@@ -102,6 +110,7 @@ function receiveOnlineWireHello(m) {
       m.gameplay !== 'royal' || m.matchRules !== 'presets' || m.format !== ONLINE_WIRE_VERSION ||
       typeof m.ack !== 'boolean') return;
   receiveRematchHello(m);
+  if (typeof receivePresenceHello === 'function') receivePresenceHello(m);
   if (m.ack) { onlineWireReady = true; onlineIntentReady = m.inputIntent === 1; onlinePointServeReady = m.pointServe === 1; }
   else sendOnlineWireHello(true);
 }

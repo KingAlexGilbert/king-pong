@@ -34,6 +34,17 @@ test('compact snapshots preserve every production field, across all arenas and R
   }
 });
 
+test('negotiated recovery epochs survive compact input/state without changing legacy tuples',()=>{
+  const h=game();h.run('onlineRematchReady=true;function multiplayerPresence(){return {epoch:3}}');
+  h.context.packet={...snapshot(h),round:2,presenceEpoch:3};
+  assert.deepEqual(h.json('decodeOnlineWire(encodeOnlineWire(packet))'),h.context.packet);
+  h.context.input={type:'input',room:'ABCDEF',seq:7,axis:0,targetY:null,round:2,presenceEpoch:3};
+  assert.equal(h.run('decodeOnlineWire(encodeOnlineWire(input)).presenceEpoch'),3);
+  assert.equal(h.run('decodeOnlineWire(encodeOnlineWire(input)).round'),2);
+  h.run('onlineRematchReady=false;multiplayerPresence=()=>null');
+  assert.equal(h.run('decodeOnlineWire(encodeOnlineWire(input))'),null,'unnegotiated extension is rejected');
+});
+
 test('lost snapshots need no baseline; nulls clear powerups and stale packets cannot roll back scores',()=>{
   const h=game(), packets=[];
   for(let seq=0;seq<6;seq++) {
