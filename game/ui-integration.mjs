@@ -132,6 +132,10 @@ export function integrateRoyalUi(source) {
     'setMenusVisible(true);',
     "if (typeof multiplayerPresence !== 'function' || !multiplayerPresence()) setMenusVisible(true);\n    else syncRoyalUi(true);"
   ) + source.slice(focusEnd);
+  // A foreground visibility event is sufficient for negotiated presence;
+  // document.hasFocus() may still be false until after this event returns.
+  source = source.replace('gameWindowFocused = document.hasFocus();',
+    'gameWindowFocused = Boolean(multiplayerPresence()) || document.hasFocus();');
   source = source.replace('if (royalPortraitVisible()) return {axis: 0, targetY: null};',
     'if (royalInputModal()) return {axis: 0, targetY: null};');
   source = source.replace('if (royalPortraitVisible()) { refreshGamepadConnection(pads); return []; }',

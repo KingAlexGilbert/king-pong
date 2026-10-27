@@ -85,7 +85,7 @@ function orientationHarness() {
   const ui = readFileSync(new URL('game/royal-ui.js', root), 'utf8');
   const timers = new Map(); let timer = 0;
   const context = vm.createContext({setTimeout: fn => {timers.set(++timer,fn);return timer;}, clearTimeout: id => timers.delete(id)});
-  vm.runInContext(`let locks=0,fullscreens=0,unlocks=0,nativeRequests=0,galleryKind=null,bossIntroActive=false,creditsActive=false;
+  vm.runInContext(`let locks=0,fullscreens=0,unlocks=0,nativeRequests=0,multiplayerDisconnect=null,galleryKind=null,bossIntroActive=false,creditsActive=false;
     function KingPongRoom(){}
     const nodes=Object.fromEntries(['rotateDevice','rotatePlay','rotateDismiss','matchSetup','matchMenu'].map(id=>[id,{hidden:true,focus(){document.activeElement=this}}]));
     const byId=id=>nodes[id];
@@ -184,7 +184,7 @@ test('native rotation requires advertised capability and confirms both native an
 
 test('network victory follows local identity and authoritative scores while shared-screen labels remain specific', () => {
   const context = vm.createContext({});
-  vm.runInContext(`let mode=2,lanRole='none',connected=true;const left={score:5},right={score:2};
+  vm.runInContext(`let mode=2,lanRole='none',connected=true,multiplayerDisconnect=null;const left={score:5},right={score:2};
     function isLanActive(){return connected && ['host','guest'].includes(lanRole)}
     function isLanGuestActive(){return isLanActive()&&lanRole==='guest'}
     ${readFileSync(new URL('game/arena-perspective.js', root), 'utf8')}`, context);

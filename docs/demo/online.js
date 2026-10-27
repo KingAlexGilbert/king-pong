@@ -537,6 +537,18 @@ class KingPongSecureTransport {
 }
 
 /* Room admission and transport setup. Existing LAN packet handlers own gameplay. */
+// Resolve only after queued WebSocket frames can no longer be transmitted.
+function closeOnlineSocket(socket) {
+  return new Promise(resolve => {
+    if (!socket || socket.readyState === 3) { resolve(); return; }
+    socket.onopen = socket.onmessage = socket.onerror = null;
+    socket.onclose = () => { socket.onclose = null; resolve(); };
+    socket.close();
+    // The native iframe bridge and test adapters tear down synchronously.
+    if (socket.readyState === 3) { socket.onclose = null; resolve(); }
+  });
+}
+
 class KingPongRoom {
   constructor(baseUrl, hooks) {
     this.baseUrl = baseUrl;
@@ -566,13 +578,16 @@ class KingPongRoom {
     this.hooks.status('Connecting...');
     this.openTimer = setTimeout(() => this.fail('timeout'), 12_000);
     this.socket.onopen = () => {
+      if (this.closed) return;
       this.lastPong = Date.now();
       this.heartbeat = setInterval(() => {
+        if (this.closed) return;
         if (Date.now() - this.lastPong > 60_000) this.fail('connection_lost');
         else if (this.socket.readyState === WebSocket.OPEN) this.socket.send('ping');
       }, 20_000);
     };
     this.socket.onmessage = event => {
+      if (this.closed) return;
       if (event.data === 'pong') { this.lastPong = Date.now(); return; }
       if (typeof event.data !== 'string' || event.data.length > 65536) { this.fail('negotiation_failed'); return; }
       if (typeof event.data === 'string' && event.data.length <= 24000 && event.data.startsWith('{"type":"secure-frame"')) {
@@ -600,7 +615,7 @@ class KingPongRoom {
 
   kickGuest() {
     if (!this.managed || this.role !== 'host' || !this.connected || this.removingGuest || this.closed) return;
-    this.removingGuest = true;
+    this.removingGuest = true; this.kickedGuest = true;
     this.send({type: 'kick', slot: 1});
     // The guest may close RTC before the server's departed acknowledgement
     // reaches the host. Keep the room socket alive for that acknowledgement.
@@ -622,6 +637,7 @@ class KingPongRoom {
   }
 
   async receive(message) {
+    if (this.closed) return;
     if (message.type === 'secure') {
       if (message.kind === 'init') {
         if (this.awaitingApproval || this.secure || !/^[a-f0-9-]{36}$/.test(message.session || '') || message.epoch !== 0 ||
@@ -853,7 +869,7 @@ class KingPongRoom {
   }
 
   close() {
-    if (this.closed) return;
+    if (this.closed) return this.socketClosed;
     if (typeof stopMultiplayerPresence === 'function') stopMultiplayerPresence(this);
     this.closed = true;
     this.secure?.close();
@@ -862,10 +878,9 @@ class KingPongRoom {
     clearTimeout(this.totalTimer);
     clearInterval(this.heartbeat);
     this.dropPeer();
-    if (this.socket) {
-      this.socket.onopen = this.socket.onmessage = this.socket.onerror = this.socket.onclose = null;
-      this.socket.close();
-    }
+    const socket = this.socket;
+    this.socketClosed = closeOnlineSocket(socket);
+    return this.socketClosed;
   }
 
   fail(code) {
@@ -931,7 +946,7 @@ function closeOnlineConnection(showMessage = true, keepQueue = false) {
   if (saveConfirmation?.roomSession === onlineSession) finishSaveConfirmation(false);
   resetOnlineMatchFlow();
   resetOnlineWire();
-  if (!keepQueue) stopMatchmaking();
+  const queueClosed = !keepQueue ? stopMatchmaking() : null;
   onlineMatchAssignment = null;
   if (matchmakingPreviousRules === null) matchRuleId = playerPreference('matchRuleId');
   matchPowerupsEnabled = playerPreference('royalPowerupsEnabled');
@@ -943,7 +958,7 @@ function closeOnlineConnection(showMessage = true, keepQueue = false) {
   onlineAppliedInputSeq = -1;
   const session = onlineSession;
   onlineSession = null;
-  if (session) session.close();
+  const closed = session?.close();
   lanPeer = lanChannel = onlineControlChannel = null;
   lanConnected = false;
   lanRole = 'none';
@@ -958,9 +973,10 @@ function closeOnlineConnection(showMessage = true, keepQueue = false) {
   if (showMessage) { paused = true; setLanStatus('Find an opponent or create/join a private room.'); }
   updateLanPanelVisibility();
   updateModeControls();
+  return Promise.all([closed, queueClosed]);
 }
 
-function startOnlineSetup(fromTitle = false, offline = false) {
+function startOnlineSetup(fromTitle = false, offline = false, observe = true) {
   if (!offline) { onlineManualLanSelected = false; onlineLocalLanSelected = false; }
   closeLanConnection(false);
   onlineTransportSelected = true;
@@ -974,7 +990,7 @@ function startOnlineSetup(fromTitle = false, offline = false) {
   }
   setLanPanelOpen(true);
   setMenusVisible(true);
-  if (!(typeof onlineManualLanSelected !== 'undefined' && onlineManualLanSelected)) observeMatchmaking();
+  if (observe && !(typeof onlineManualLanSelected !== 'undefined' && onlineManualLanSelected)) observeMatchmaking();
 }
 
 function hostOnlineMatch() { openOnlineRoom('host'); }
@@ -1074,9 +1090,9 @@ function openOnlineRoom(role, code = '', assignment = null) {
     error: code => {
       if (onlineSession !== session) return;
       // A connected but incompatible client still needs the existing setup
-      // explanation/Retry UI; terminal departures return directly to the menu.
+      // explanation/Retry UI; terminal departures require local acknowledgement.
       if (session.multiplayerEstablished && code !== 'incompatible') {
-        leaveMultiplayerSession(ONLINE_ERRORS[code] || ONLINE_ERRORS.connection_lost, false);
+        endMultiplayerSession(ONLINE_ERRORS[code] || ONLINE_ERRORS.connection_lost);
         return;
       }
       if (assignment) { failOnlineMatchFlow(code); return; }
@@ -1436,11 +1452,9 @@ function stopMatchmaking() {
   matchmakingPowerupsPreference = null;
   matchmakingState = 'offline';
   matchmakingWaiting = null;
-  if (socket) {
-    socket.onopen = socket.onmessage = socket.onclose = socket.onerror = null;
-    socket.close();
-  }
+  const closed = closeOnlineSocket(socket);
   syncMatchmakingUi();
+  return closed;
 }
 
 function matchmakingError(code) {
@@ -1459,7 +1473,7 @@ function matchmakingFailed(code) {
 }
 
 function observeMatchmaking() {
-  if (matchmakingSocket || document.hidden || !window.KING_PONG_SIGNALING_URL) return;
+  if (multiplayerDisconnect || matchmakingSocket || document.hidden || !window.KING_PONG_SIGNALING_URL) return;
   let socket;
   try {
     const url = new URL(window.KING_PONG_SIGNALING_URL);
@@ -2407,7 +2421,7 @@ function receiveMultiplayerRematch(message) {
   if (message.kind === 'leave' && (message.round === state.round ||
       state.phase === 'awaiting-state' && message.round === state.round - 1 ||
       state.phase === 'starting' && message.round === state.round + 1)) {
-    return leaveMultiplayerSession('Opponent left the match.', false);
+    return endMultiplayerSession('Opponent left the match.');
   }
   if (lanRole === 'guest' && message.kind === 'start') {
     if (state.phase === 'awaiting-state' && message.round === state.round - 1) {
@@ -2464,7 +2478,7 @@ function tickMultiplayerRematch() {
   if (state.phase === 'starting' || state.phase === 'awaiting-state') {
     if (!blocked) state.activeWait += Math.max(0, now - (state.at ?? now));
     state.at = now;
-    if (state.activeWait > 12000) { leaveMultiplayerSession(ONLINE_ERRORS.connection_lost); return; }
+    if (state.activeWait > 12000) { endMultiplayerSession(ONLINE_ERRORS.connection_lost); return; }
   }
   if (blocked || now - state.lastSend < 500) return;
   if (state.phase === 'starting') sendRematch('start');
@@ -2480,6 +2494,48 @@ function finishMultiplayerRematchSnapshot() {
     clearHeldInput();
     syncRoyalUi(true);
   }
+}
+
+// The terminal dialog owns only local UI state. Detach the session before any
+// async close completes, so late callbacks cannot revive it or navigate away.
+let multiplayerDisconnect = null;
+
+function endMultiplayerSession(message = 'Opponent disconnected.') {
+  if (multiplayerDisconnect || !onlineSession) return;
+  const ended = multiplayerDisconnect = {origin: onlineSession.multiplayerOrigin ||
+    (onlineManualLanSelected ? 'lan' : 'private'), role: lanRole, ready: false};
+  onlineGameBlocked = paused = true;
+  clearHeldInput();
+  const closed = closeOnlineConnection(false);
+  onlineGameBlocked = paused = true;
+  setMenusVisible(false);
+  byId('classicLanDialog').hidden = true;
+  setLanStatus(message);
+  // Native LAN acknowledges socket/discovery shutdown; WebSockets must finish
+  // closing (including already queued frames) before the local popup appears.
+  Promise.resolve(closed).then(() => {
+    if (multiplayerDisconnect !== ended) return;
+    ended.ready = true;
+    byId('multiplayerDisconnected').hidden = false;
+    syncRoyalUi(true);
+    byId('multiplayerReturn').focus({preventScroll: true});
+  });
+}
+
+function acknowledgeMultiplayerDisconnect() {
+  if (!multiplayerDisconnect?.ready) return;
+  const {origin} = multiplayerDisconnect;
+  multiplayerDisconnect = null;
+  byId('multiplayerDisconnected').hidden = true;
+  resetFrameClock();
+  // Returning is local navigation, not consent to reopen the queue socket.
+  if (origin === 'lan') openOfflineLanSetup(false);
+  else {
+    startOnlineSetup(false, false, false);
+    if (origin === 'private') byId('onlinePrivateRooms').open = true;
+  }
+  onlineGameBlocked = paused = true;
+  syncRoyalUi(true);
 }
 
 function leaveMultiplayerSession(message = '', notify = true) {
@@ -2587,8 +2643,7 @@ function suspendMultiplayerPresence(reason = 'peer-hold') {
   }
   p.suspended = true; p.since = Date.now(); p.flowAt = performance.now();
   p.reason = reason;
-  p.wasPaused = p.focusPause?.paused ?? paused; p.countdown = p.focusPause?.countdown ?? resumeCountdownRemainingMs();
-  p.focusPause = null;
+  p.wasPaused = paused; p.countdown = resumeCountdownRemainingMs();
   p.phase = 'held';
   if (lanRole === 'host') p.epoch++;
   onlineGameBlocked = paused = true;
@@ -2601,7 +2656,7 @@ function suspendMultiplayerPresence(reason = 'peer-hold') {
 
 function presenceExpired(p = multiplayerPresence()) {
   if (!p?.suspended || Date.now() - p.since < MULTIPLAYER_PRESENCE.grace) return false;
-  leaveMultiplayerSession('Opponent disconnected.');
+  endMultiplayerSession();
   return true;
 }
 
@@ -2683,7 +2738,7 @@ function receiveMultiplayerPresence(m) {
       m.token !== multiplayerRematch().token || !Number.isSafeInteger(m.epoch) || m.epoch < 0 ||
       !Number.isSafeInteger(m.revision) || m.revision < 0 || typeof m.active !== 'boolean' ||
       !['status', 'status-ack', 'ping', 'pong', 'hold', 'offer', 'ready', 'snapshot-ack', 'resume', 'leave'].includes(m.kind)) return;
-  if (m.kind === 'leave') { leaveMultiplayerSession('Opponent disconnected.', false); return; }
+  if (m.kind === 'leave') { endMultiplayerSession(); return; }
   if (presenceExpired(p)) return;
   if (m.revision < p.remoteRevision) return;
   p.remoteRevision = m.revision; p.remoteActive = m.active; p.lastHeard = Date.now();
@@ -2764,22 +2819,26 @@ function multiplayerPageHide(event) {
 }
 
 window.addEventListener('pagehide', multiplayerPageHide);
-window.addEventListener('pageshow', () => setMultiplayerAvailability(!document.hidden && !window.KingPongBackgrounded));
-document.addEventListener('visibilitychange', () => setMultiplayerAvailability(!document.hidden && !window.KingPongBackgrounded));
-document.addEventListener('kingpong-background', () => setMultiplayerAvailability(!document.hidden && !window.KingPongBackgrounded));
+function refreshMultiplayerAvailability() {
+  const active = !document.hidden && !window.KingPongBackgrounded;
+  // hasFocus() can lag visibilitychange/pageshow. A visible return must also
+  // release the legacy input gate, even if no separate focus event follows.
+  if (active && multiplayerPresence()) gameWindowFocused = true;
+  setMultiplayerAvailability(active);
+}
+window.addEventListener('pageshow', refreshMultiplayerAvailability);
+document.addEventListener('visibilitychange', refreshMultiplayerAvailability);
+document.addEventListener('kingpong-background', refreshMultiplayerAvailability);
 
-// blur can precede visibilitychange on mobile. Preserve the state from before
-// the legacy blur handler pauses the host, rather than treating it as a user's
-// manual Pause choice. A visible permission prompt keeps its existing behavior.
+// Focus and visibility must suspend through the same protocol. The legacy
+// blur pause has no matching resume and used to leave an active peer frozen
+// when a browser omitted/reordered visibility events. Presence takes ownership
+// before that handler can turn automatic suspension into a manual Pause.
 function recordMultiplayerFocusLoss() {
-  const p = multiplayerPresence();
-  if (p && !p.suspended && !p.focusPause) p.focusPause = {paused, countdown: resumeCountdownRemainingMs()};
-  if (document.hidden || window.KingPongBackgrounded) setMultiplayerAvailability(false);
+  setMultiplayerAvailability(false);
 }
 function recordMultiplayerFocusReturn() {
-  if (!document.hidden && !window.KingPongBackgrounded) setMultiplayerAvailability(true);
-  const p = multiplayerPresence();
-  if (p) p.focusPause = null;
+  refreshMultiplayerAvailability();
 }
 
 // Native LAN functions remain intact. Route only online sessions through the
@@ -2811,7 +2870,7 @@ function installOnlineSupport() {
   for (const name of ['update', 'requestServeOrContinue', 'requestTogglePause', 'requestRetryLevel']) {
     const original = window[name];
     window[name] = (...args) => {
-      if (name !== 'update' && royalInputModal()) return;
+      if (multiplayerDisconnect || name !== 'update' && royalInputModal()) return;
       if (name === 'update') {
         tickMultiplayerPresence();
         if (!multiplayerSuspended()) { tickOnlineMatchFlow(); tickMultiplayerRematch(); }
@@ -2829,12 +2888,13 @@ function installOnlineSupport() {
     window[name] = (...args) => {
       if (mode === 2 && onlineSession && (name === 'retryLevel' && (gameOver || lanRole === 'guest') ||
           name === 'serveOrContinue' && gameOver)) return;
-      if (onlineMatchFlowBlocksPlay() || multiplayerSuspended()) return;
+      if (multiplayerDisconnect || onlineMatchFlowBlocksPlay() || multiplayerSuspended()) return;
       return original(...args);
     };
   }
   const receive = handleLanMessage;
   window.handleLanMessage = raw => {
+    if (multiplayerDisconnect) return;
     if (typeof raw !== 'string' || raw.length > 8192) return;
     let message;
     try { message = JSON.parse(raw); } catch { return; }

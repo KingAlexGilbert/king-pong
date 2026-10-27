@@ -56,8 +56,7 @@ function suspendMultiplayerPresence(reason = 'peer-hold') {
   }
   p.suspended = true; p.since = Date.now(); p.flowAt = performance.now();
   p.reason = reason;
-  p.wasPaused = p.focusPause?.paused ?? paused; p.countdown = p.focusPause?.countdown ?? resumeCountdownRemainingMs();
-  p.focusPause = null;
+  p.wasPaused = paused; p.countdown = resumeCountdownRemainingMs();
   p.phase = 'held';
   if (lanRole === 'host') p.epoch++;
   onlineGameBlocked = paused = true;
@@ -70,7 +69,7 @@ function suspendMultiplayerPresence(reason = 'peer-hold') {
 
 function presenceExpired(p = multiplayerPresence()) {
   if (!p?.suspended || Date.now() - p.since < MULTIPLAYER_PRESENCE.grace) return false;
-  leaveMultiplayerSession('Opponent disconnected.');
+  endMultiplayerSession();
   return true;
 }
 
@@ -152,7 +151,7 @@ function receiveMultiplayerPresence(m) {
       m.token !== multiplayerRematch().token || !Number.isSafeInteger(m.epoch) || m.epoch < 0 ||
       !Number.isSafeInteger(m.revision) || m.revision < 0 || typeof m.active !== 'boolean' ||
       !['status', 'status-ack', 'ping', 'pong', 'hold', 'offer', 'ready', 'snapshot-ack', 'resume', 'leave'].includes(m.kind)) return;
-  if (m.kind === 'leave') { leaveMultiplayerSession('Opponent disconnected.', false); return; }
+  if (m.kind === 'leave') { endMultiplayerSession(); return; }
   if (presenceExpired(p)) return;
   if (m.revision < p.remoteRevision) return;
   p.remoteRevision = m.revision; p.remoteActive = m.active; p.lastHeard = Date.now();
@@ -233,20 +232,24 @@ function multiplayerPageHide(event) {
 }
 
 window.addEventListener('pagehide', multiplayerPageHide);
-window.addEventListener('pageshow', () => setMultiplayerAvailability(!document.hidden && !window.KingPongBackgrounded));
-document.addEventListener('visibilitychange', () => setMultiplayerAvailability(!document.hidden && !window.KingPongBackgrounded));
-document.addEventListener('kingpong-background', () => setMultiplayerAvailability(!document.hidden && !window.KingPongBackgrounded));
+function refreshMultiplayerAvailability() {
+  const active = !document.hidden && !window.KingPongBackgrounded;
+  // hasFocus() can lag visibilitychange/pageshow. A visible return must also
+  // release the legacy input gate, even if no separate focus event follows.
+  if (active && multiplayerPresence()) gameWindowFocused = true;
+  setMultiplayerAvailability(active);
+}
+window.addEventListener('pageshow', refreshMultiplayerAvailability);
+document.addEventListener('visibilitychange', refreshMultiplayerAvailability);
+document.addEventListener('kingpong-background', refreshMultiplayerAvailability);
 
-// blur can precede visibilitychange on mobile. Preserve the state from before
-// the legacy blur handler pauses the host, rather than treating it as a user's
-// manual Pause choice. A visible permission prompt keeps its existing behavior.
+// Focus and visibility must suspend through the same protocol. The legacy
+// blur pause has no matching resume and used to leave an active peer frozen
+// when a browser omitted/reordered visibility events. Presence takes ownership
+// before that handler can turn automatic suspension into a manual Pause.
 function recordMultiplayerFocusLoss() {
-  const p = multiplayerPresence();
-  if (p && !p.suspended && !p.focusPause) p.focusPause = {paused, countdown: resumeCountdownRemainingMs()};
-  if (document.hidden || window.KingPongBackgrounded) setMultiplayerAvailability(false);
+  setMultiplayerAvailability(false);
 }
 function recordMultiplayerFocusReturn() {
-  if (!document.hidden && !window.KingPongBackgrounded) setMultiplayerAvailability(true);
-  const p = multiplayerPresence();
-  if (p) p.focusPause = null;
+  refreshMultiplayerAvailability();
 }

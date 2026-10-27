@@ -1,4 +1,4 @@
-import {presenceBrowserChecks} from './presence-browser-checks.mjs';
+import {presenceBrowserChecks, watchSessionShutdown, disconnectedBrowserChecks} from './presence-browser-checks.mjs';
 import assert from 'node:assert/strict';
 import {automaticServeChecks} from './automatic-serve-cases.mjs';
 import {rematchBackChecks} from './rematch-cases.mjs';
@@ -76,9 +76,13 @@ try{
   for(const p of [host,guest])assert.equal(await p.locator('#classicLanDialog').isVisible(),true,
     'Back from a LAN rematch returns both players to LAN pairing');
  }else{
+ await watchSessionShutdown(guest);
+ // Cancel an in-flight discovery as well as the established native session.
+ await guest.evaluate(()=>{byId('localLanScan').disabled=false;scanLocalLan()});
  await host.evaluate(()=>onlineSession.kickGuest());await host.waitForFunction(()=>!lanConnected&&onlineSession?.code);
  await guest.waitForFunction(()=>!onlineSession);assert.equal(await host.evaluate(()=>onlineSession.code),code);
- assert.equal(await guest.locator('#classicLanDialog').isVisible(),true,'departed LAN guest returns to LAN pairing');
+ await disconnectedBrowserChecks(guest, 'lan');
+ assert.equal(await guest.locator('#localLanScan').isEnabled(),true,'shutdown restores explicit discovery for the next session');
  console.log('PASS kick retains host room; guest stops');
  }
  await host.evaluate(()=>showTitleScreen());assert.equal(await host.evaluate(()=>onlineSession),null);

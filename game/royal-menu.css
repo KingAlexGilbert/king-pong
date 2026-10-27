@@ -1500,8 +1500,8 @@ body.royal-panel-open .match-footer #controlHint {
 #onlinePrivateRules summary { font-size: 11px; line-height: 1.5; }
 #onlinePrivateRules #matchRules { padding-top: 0; }
 #onlinePrivateRules .match-rule-options button { margin: 0; padding: 6px 8px; font-size: 10px; }
-@media (min-width: 900px) and (min-height: 650px), (min-width: 921px) {
-  .online-setup .royal-selection-row canvas { height: clamp(80px, calc(15dvh - 28px), 110px); }
+@media (min-width: 900px) and (min-height: 650px) {
+  .online-setup .royal-selection-row canvas { height: 64px; }
   .online-setup #matchmakingPanel { padding-bottom: 10px; }
   .online-setup #matchmakingPanel p, .online-setup #onlinePrivateRooms p { margin: 6px 0; }
   .online-setup #matchmakingPanel h3, .online-setup #onlinePrivateRooms h3 { margin: 6px 0; }
@@ -1557,7 +1557,7 @@ body.royal-panel-open .match-footer #controlHint {
   .match-bar button { padding: 7px 8px; }
   .match-bar:has(#arenaKick:not([hidden])) .match-identity { display: none; }
 }
-@media (max-height: 520px) and (min-width: 421px) and (max-width: 920px) {
+@media (max-height: 520px) and (min-width: 421px) {
   /* Keep choices fully visible below the shared top Back row on short screens. */
   #matchSetup .royal-selection-row button { display: grid; grid-template-columns: minmax(0, 1fr) 56px; gap: 2px 6px; padding: 8px; }
   #matchSetup .royal-selection-row .setup-caption { grid-column: 1 / -1; }
@@ -1565,10 +1565,9 @@ body.royal-panel-open .match-footer #controlHint {
   #matchSetup .royal-selection-row .setup-change { grid-column: 1; margin-top: 2px; text-align: left; }
 }
 
-/* Short screens use a horizontal choice card so preview space does not
-   compete with labels. Preserve readable phone and scaled-laptop thumbnails. */
-@media (orientation: landscape) and (max-height: 520px) and (max-width: 920px),
-       (min-width: 921px) and (max-height: 600px) {
+/* Short phone landscape screens can scroll; do not crush selector previews
+   to tiny thumbnails just to fit an entire menu in one screenful. */
+@media (orientation: landscape) and (max-height: 520px) and (max-width: 920px) {
   #matchSetup > .match-card { padding: 12px 16px; }
   #matchSetup .match-card h2 { margin-bottom: 10px; }
   #matchSetup .royal-selection-row button {
@@ -1704,29 +1703,11 @@ body:has(#browserFullscreen) .match-bar { box-sizing: border-box; }
   overflow-wrap: anywhere;
   pointer-events: none;
 }
-#multiplayerLeave {
+#multiplayerLeave, #multiplayerDisconnected {
   inset: 0;
   z-index: 2147482990;
   touch-action: none;
 }
-#multiplayerLeave > .match-card { width: min(100%, 380px); padding: 20px; }
-#multiplayerLeaveTitle { font-size: 18px; }
+#multiplayerLeave > .match-card, #multiplayerDisconnected > .match-card { width: min(100%, 380px); padding: 20px; }
+#multiplayerLeaveTitle, #multiplayerDisconnectedTitle { font-size: 18px; }
 #multiplayerLeave .match-actions { flex-wrap: wrap; }
-
-/* Scaled laptops retain readable previews. Available height determines the
-   compact treatment; aspect ratio alone never shrinks the choices. */
-@media (min-width: 921px) {
-  #matchSetup .royal-selection-row canvas { height: 110px; }
-  #matchSetup.online-setup > .match-card { padding-block: clamp(12px, calc(8dvh - 42px), 24px); }
-  #matchSetup.online-setup .royal-selection-row canvas { height: clamp(80px, calc(15dvh - 28px), 110px); }
-}
-
-@media (min-width: 921px) and (max-height: 600px) {
-  #matchSetup > .match-card { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px 18px; align-content: start; }
-  #matchSetup > .match-card > .mode-back { grid-column: 1; grid-row: 1; margin: 0; }
-  #matchSetupTitle { grid-column: 2; grid-row: 1; align-self: center; margin: 0; }
-  #matchSetup #matchSetupTitle { margin-bottom: 0; }
-  #matchSetupBody, #matchSetup > .match-card > .match-actions { grid-column: 1 / -1; }
-  #matchSetup .royal-selection-row button { grid-template-columns: minmax(0, 1fr) minmax(108px, 144px); }
-  #matchSetup .royal-selection-row canvas { max-width: 144px; height: 80px; }
-}

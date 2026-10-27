@@ -11,7 +11,7 @@ function pair() {
       setInterval: () => 1, clearInterval() {}});
     const run = text => vm.runInContext(text, ctx);
     run(`let onlineSession={close(){closed++}},lanRole='${role}',lanConnected=true,lanRoomCode='ABCDEF',
-      onlineRematchReady=true,paused=false,waitingForServe=false,gameOver=false,onlineGameBlocked=false,
+      onlineRematchReady=true,gameWindowFocused=true,paused=false,waitingForServe=false,gameOver=false,onlineGameBlocked=false,
       resumeCountdownEndAt=0,lastResumeCountdownNumber=0,onlineLastInput=null,onlineMatchFlow={phase:'playing'},
       onlineInputs=new Map(),sent=[],left={score:2},right={score:3},ball={x:300,y:100,vx:5,vy:3},closed=0,leaves=0;
       const LAN_SIGNAL_VERSION=1,RESUME_COUNTDOWN_MS=3000;
@@ -25,7 +25,7 @@ function pair() {
       function onlineMatchFlowBlocksPlay(){return onlineMatchFlow.phase!=='playing'}
       function clearHeldInput(){}function resetVisualHistory(){}function resetFrameClock(){}
       function suspendPointServeCountdown(){}function syncRoyalUi(){}function stopMatchmaking(){}function sendRematch(){}
-      function leaveMultiplayerSession(){leaves++;stopMultiplayerPresence(onlineSession);onlineSession=null}
+      function endMultiplayerSession(){leaves++;stopMultiplayerPresence(onlineSession);onlineSession=null}
       ${source}
       showMultiplayerUnavailable=()=>{};
       receivePresenceHello({presence:1});`);
@@ -154,4 +154,28 @@ test('duplicate holds, offers and acknowledgements cannot roll back recovery or 
   assert.equal(p.guest.run('multiplayerSuspended()'),false);
   p.advance(1000);p.guest.run('receiveMultiplayerPresence(message)');p.flush();
   assert.equal(p.host.run('resumeCountdownRemainingMs()'),2000);
+});
+
+
+test('focus-only and reordered tab returns share presence recovery without turning focus loss into manual pause', () => {
+  for (const who of ['host', 'guest']) for (const order of ['focus-only','focus-before-visible','visible-before-focus','visible-only']) {
+    const p=pair(), peer=p[who];
+    peer.run('recordMultiplayerFocusLoss(); if (!onlineGameBlocked) paused=true');
+    p.flush();
+    assert.equal(p.host.run('multiplayerSuspended()'),true, who+' '+order+' suspends immediately');
+    if (order !== 'focus-only') peer.run('document.hidden=true;setMultiplayerAvailability(false)');
+    p.advance(2500);
+    if(order==='focus-before-visible') {
+      peer.run('recordMultiplayerFocusReturn()');p.flush();
+      assert.equal(p.host.run('multiplayerSuspended()'),true,'focus alone cannot resume a still-hidden page');
+    }
+    peer.run('document.hidden=false;setMultiplayerAvailability(true)');
+    if(order!=='visible-only')peer.run('recordMultiplayerFocusReturn()');
+    p.flush();
+    assert.equal(p.host.run('multiplayerSuspended()'),false);
+    assert.equal(p.host.run('resumeCountdownRemainingMs()'),3000,'one synchronized countdown');
+    p.advance(500);peer.run('recordMultiplayerFocusReturn();setMultiplayerAvailability(true)');p.flush();
+    assert.equal(p.host.run('resumeCountdownRemainingMs()'),2500,'duplicates do not restart countdown');
+    assert.equal(p.host.run('left.score+right.score'),5);
+  }
 });

@@ -67,6 +67,7 @@ test('online scripts parse and all new user-facing messages have every supported
   vm.runInContext(readFileSync(new URL('../docs/demo/online-localization.js', import.meta.url), 'utf8'), context);
   const tables = context.window.KING_PONG_ONLINE_TRANSLATIONS;
   const keys = Object.keys(tables.es);
+  for (const key of ['Your opponent disconnected', 'Return to Menu']) assert.ok(keys.includes(key));
   for (const language of ['es', 'fr', 'de', 'pt', 'it', 'nl', 'ja', 'ko', 'zh']) {
     assert.deepEqual(Object.keys(tables[language]), keys);
     for (const key of keys) assert.ok(typeof tables[language][key] === 'string' && tables[language][key].length, `${language}: ${key}`);
@@ -213,6 +214,15 @@ test('closing during an interruption does not leave a late disconnect timer', as
   h.peers[0].state('disconnected'); h.fire(3000);
   assert.equal(h.timers.size, 0);
   assert.equal(h.room.closed, true);
+  const pending=harness();pending.room.open('host');pending.room.socket.onopen();
+  const staleOpen=pending.room.socket.onopen;
+  pending.room.socket.close=()=>{pending.room.socket.readyState=2;};
+  let complete=false;const closed=pending.room.close().then(()=>complete=true);
+  staleOpen();await pending.room.receive(direct);await Promise.resolve();
+  assert.equal(complete,false,'network shutdown waits for WebSocket close completion');
+  assert.equal(pending.intervals.size,0);assert.equal(pending.peers.length,0,'late signaling cannot create a peer');
+  pending.room.socket.readyState=3;pending.room.socket.onclose();await closed;
+  assert.equal(complete,true);
 });
 
 test('negotiation rejection exposes no raw error, and cancellation prevents late setup', async () => {

@@ -136,7 +136,7 @@ try {
         assert.equal(await b.locator('#onlineRetryButton').isVisible(),true);
         await b.locator('#onlineFlowBack').click();
       } else {
-        assert.equal(await b.locator('#matchSetup').isVisible(),true,'departed match returns automatically to the online menu');
+        assert.equal(await b.locator('#matchSetup').isVisible(),true,'acknowledged departure returns to the online menu');
       }
       assert.equal(await b.locator('#findMatchButton').isVisible(),true);
       await a.close();await b.close();

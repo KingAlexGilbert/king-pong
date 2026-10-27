@@ -83,6 +83,46 @@ export async function presenceBrowserChecks(host, guest, label) {
     await host.evaluate(() => {resumeCountdownEndAt=0;paused=true;sendLanState(true)});
     await guest.waitForFunction(() => paused && !hasResumeCountdown());
   }
+  // Desktop focus-only changes and either visibility/focus order must use
+  // the same handshake. Exercise real production event handlers, not just APIs.
+  for (const interrupted of [host,guest]) for (const order of ['focus-only','focus-first','visibility-only','visibility-first']) {
+    await host.evaluate(() => {paused=false;waitingForServe=false;resumeCountdownEndAt=0;ball.vx=ball.vy=0;sendLanState(true)});
+    await guest.waitForFunction(() => !paused);
+    await interrupted.evaluate(order => {
+      window.dispatchEvent(new Event('blur'));
+      if(order!=='focus-only') {window.simulatedHidden=true;document.dispatchEvent(new Event('visibilitychange'));}
+    }, order);
+    await Promise.all([host,guest].map(p=>p.waitForFunction(()=>multiplayerSuspended())));
+    const before=await host.evaluate(()=>JSON.stringify([left.score,right.score,ball.x,ball.y,left.y,right.y,royalPickup,royalSplitBall,royalGuards]));
+    await interrupted.evaluate(order => {
+      if(order==='focus-first')window.dispatchEvent(new Event('focus'));
+      if(order!=='focus-only') {
+        window.simulatedHidden=false;
+        const focused=document.hasFocus;document.hasFocus=()=>false;
+        document.dispatchEvent(new Event('visibilitychange'));document.hasFocus=focused;
+      }
+      if(order!=='visibility-only')window.dispatchEvent(new Event('focus'));
+    }, order);
+    await Promise.all([host,guest].map(p=>p.waitForFunction(()=>!multiplayerSuspended()&&hasResumeCountdown())));
+    assert.equal(await host.evaluate(()=>JSON.stringify([left.score,right.score,ball.x,ball.y,left.y,right.y,royalPickup,royalSplitBall,royalGuards])),before);
+    const end=await host.evaluate(()=>resumeCountdownEndAt);
+    await interrupted.evaluate(()=>{window.dispatchEvent(new Event('focus'));document.dispatchEvent(new Event('visibilitychange'));window.dispatchEvent(new Event('pageshow'));});
+    await host.waitForTimeout(80);
+    assert.equal(await interrupted.evaluate(()=>gameWindowFocused),true,'visible return releases input even when hasFocus lags');
+    assert.equal(await host.evaluate(()=>resumeCountdownEndAt),end,'duplicate return events preserve the countdown');
+    assert.equal(await host.locator('#multiplayerDisconnected').isVisible(),false,'temporary absence is not terminal');
+  }
+  // A deliberate pause, including one made by opening Menu, survives return.
+  for (const menu of [false,true]) {
+    await host.evaluate(menu=>{resumeCountdownEndAt=0;paused=true;setMenusVisible(menu);sendLanState(true)},menu);
+    await guest.waitForFunction(()=>paused&&!hasResumeCountdown());
+    await guest.evaluate(()=>window.changeVisibility(true));
+    await host.waitForFunction(()=>multiplayerSuspended());
+    await guest.evaluate(()=>window.changeVisibility(false));
+    await Promise.all([host,guest].map(p=>p.waitForFunction(()=>!multiplayerSuspended())));
+    assert.equal(await host.evaluate(()=>paused&&!hasResumeCountdown()),true,'explicit pause remains paused');
+    assert.equal(await host.locator('#matchMenu').isVisible(),menu,'existing menu is preserved');
+  }
   for (const p of [host,guest]) {
     assert.equal(await p.locator('#multiplayerUnavailable').isVisible(),false);
     const before=await p.evaluate(()=>[paused,multiplayerPresence().epoch]);
@@ -91,4 +131,72 @@ export async function presenceBrowserChecks(host, guest, label) {
     await p.evaluate(() => {delete document.hidden;gameWindowFocused=true;setMenusVisible(false)});
   }
   console.log('PASS: ' + label + ' host/guest visibility, mutual pause, fresh state, stale-packet fence and connection reuse');
+}
+
+// Observe actual application sends, including native bridge commands. The
+// physical TURN/socket teardown remains a native-device verification item.
+export async function watchSessionShutdown(page) {
+  await page.evaluate(() => {
+    const session = onlineSession;
+    window.shutdownSession = session;
+    window.shutdownSends = [];
+    const track = (object, name, label) => {
+      if (!object?.[name]) return;
+      const original = object[name];
+      object[name] = function(...args) { window.shutdownSends.push(label); return original.apply(this, args); };
+    };
+    track(session.socket, 'send', 'signaling/ws');
+    track(matchmakingSocket, 'send', 'queue');
+    track(session.secure?.rtcControl || session.control, 'send', 'rtc-control');
+    track(session.secure?.rtcData || session.data, 'send', 'rtc-data');
+    track(window, 'nativeLanCommand', 'native-lan');
+    window.shutdownStaleOpen = session.socket?.onopen;
+    window.shutdownStaleReceive = session.socket?.onmessage;
+    window.shutdownStaleConnected = session.hooks.connected;
+    window.shutdownStaleResume = session.hooks.resumed;
+    const end = endMultiplayerSession;
+    window.endMultiplayerSession = (...args) => {
+      if (!multiplayerDisconnect && onlineSession) window.shutdownFinalState = JSON.stringify([left.score, right.score, left.y, right.y, ball, royalPickup, royalSplitBall, royalGuards]);
+      return end(...args);
+    };
+  });
+}
+
+export async function disconnectedBrowserChecks(page, origin) {
+  await page.locator('#multiplayerDisconnected').waitFor({state:'visible'});
+  assert.equal(await page.locator('#multiplayerDisconnectedTitle').textContent(), 'Your opponent disconnected');
+  assert.equal(await page.locator('#multiplayerReturn').textContent(), 'Return to Menu');
+  assert.equal(await page.locator('#matchSetup').isVisible(), false, 'no automatic navigation');
+  assert.equal(await page.evaluate(() => !onlineSession && !lanConnected && paused && onlineGameBlocked &&
+    !matchmakingSocket && shutdownSession.closed && !shutdownSession.presence &&
+    (!shutdownSession.secure || shutdownSession.secure.closed) &&
+    (!shutdownSession.socket || shutdownSession.socket.readyState === 3)), true, 'shutdown finishes before popup');
+  const count = await page.evaluate(() => shutdownSends.length);
+  await page.evaluate(async () => {
+    tickMultiplayerPresence(); tickMultiplayerRematch(); tickOnlineMatchFlow();
+    observeMatchmaking(); sendLanState(true); sendLanInput([], true);
+    shutdownStaleOpen?.(); shutdownStaleReceive?.({data:'pong'});
+    shutdownStaleConnected?.(); shutdownStaleResume?.();
+    shutdownSession.send({type:'connected'});
+    await shutdownSession.receive({type:'start',attempt:1,iceServers:[]});
+    await shutdownSession.secure?.flush(); shutdownSession.secure?.credit();
+    document.dispatchEvent(new Event('visibilitychange')); window.dispatchEvent(new Event('focus'));
+    byId('matchPause').click(); byId('menuToggle').click();
+    endMultiplayerSession();
+  });
+  await page.keyboard.press('Escape'); await page.keyboard.press('m'); await page.keyboard.press('2');
+  await page.locator('#multiplayerDisconnected').click({position:{x:2,y:2}});
+  await page.waitForTimeout(2100); // Cross the normal presence-probe interval.
+  assert.equal(await page.evaluate(() => shutdownSends.length), count, 'no session sends after popup, including stale callbacks');
+  assert.equal(await page.evaluate(() => JSON.stringify([left.score, right.score, left.y, right.y, ball, royalPickup, royalSplitBall, royalGuards])),
+    await page.evaluate(() => shutdownFinalState), 'final arena state remains unchanged');
+  assert.equal(await page.locator('#multiplayerDisconnected').isVisible(), true, 'only acknowledgement dismisses');
+  assert.equal(await page.evaluate(() => document.activeElement.id), 'multiplayerReturn');
+  await page.locator('#multiplayerReturn').click();
+  assert.equal(await page.locator(origin === 'lan' ? '#classicLanDialog' : '#matchSetup').isVisible(), true);
+  if (origin === 'private') assert.equal(await page.locator('#onlinePrivateRooms').isVisible(), true);
+  assert.equal(await page.evaluate(() => !multiplayerDisconnect && !onlineSession && !matchmakingSocket), true, 'return does not start networking');
+  await page.waitForTimeout(100);
+  assert.equal(await page.evaluate(() => shutdownSends.length), count);
+  console.log('PASS '+origin+' terminal shutdown, frozen modal, zero subsequent application sends and acknowledged return');
 }

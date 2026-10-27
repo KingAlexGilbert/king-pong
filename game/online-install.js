@@ -27,7 +27,7 @@ function installOnlineSupport() {
   for (const name of ['update', 'requestServeOrContinue', 'requestTogglePause', 'requestRetryLevel']) {
     const original = window[name];
     window[name] = (...args) => {
-      if (name !== 'update' && royalInputModal()) return;
+      if (multiplayerDisconnect || name !== 'update' && royalInputModal()) return;
       if (name === 'update') {
         tickMultiplayerPresence();
         if (!multiplayerSuspended()) { tickOnlineMatchFlow(); tickMultiplayerRematch(); }
@@ -45,12 +45,13 @@ function installOnlineSupport() {
     window[name] = (...args) => {
       if (mode === 2 && onlineSession && (name === 'retryLevel' && (gameOver || lanRole === 'guest') ||
           name === 'serveOrContinue' && gameOver)) return;
-      if (onlineMatchFlowBlocksPlay() || multiplayerSuspended()) return;
+      if (multiplayerDisconnect || onlineMatchFlowBlocksPlay() || multiplayerSuspended()) return;
       return original(...args);
     };
   }
   const receive = handleLanMessage;
   window.handleLanMessage = raw => {
+    if (multiplayerDisconnect) return;
     if (typeof raw !== 'string' || raw.length > 8192) return;
     let message;
     try { message = JSON.parse(raw); } catch { return; }

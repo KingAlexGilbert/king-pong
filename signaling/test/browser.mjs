@@ -1,3 +1,4 @@
+import {watchSessionShutdown, disconnectedBrowserChecks} from './presence-browser-checks.mjs';
 import assert from 'node:assert/strict';
 import {
   createServer
@@ -275,26 +276,27 @@ try {
   await third.locator('#onlineJoinSubmit').click();
   await waitFor(third, "lanStatus.textContent.includes('already full')");
   await third.close();
+  await watchSessionShutdown(host);
   await guest.close();
-  // Private rooms deliberately retain the host's signaling socket and room
-  // code after a guest leaves so another guest can join the same room.
-  await waitFor(host, "!lanConnected && onlineSession?.managed && lanRole === 'host'");
-  assert.equal(await host.locator('#matchSetup').isVisible(), true);
-  assert.equal(await host.evaluate(() => onlineGameBlocked && paused && !lanPeer && !lanChannel), true);
-  assert.equal(await host.locator('#onlineRoomCode').textContent(), code);
-  console.log('PASS: room full and guest disconnect leave a paused host room with the same code');
+  await disconnectedBrowserChecks(host, 'private');
+  console.log('PASS: room full and guest tab closure terminate the session before acknowledgement');
 
+  // A fresh session starts only after the host explicitly requests a new room.
+  await host.locator('#lanHostButton').click();
+  await waitFor(host, 'lanRoomCode.length === 6');
+  const nextCode=await host.evaluate(()=>lanRoomCode);
   const secondGuest = await page();
   await secondGuest.locator('#lanJoinButton').click();
-  await secondGuest.locator('#lanRoomCodeInput').fill(code);
+  await secondGuest.locator('#lanRoomCodeInput').fill(nextCode);
   await secondGuest.locator('#onlineJoinSubmit').click();
   await host.locator('#saveConfirmAccept').click();
   await Promise.all([waitFor(host, 'lanConnected'), waitFor(secondGuest, 'lanConnected && onlineHasState')]);
   await Promise.all([waitFor(host, "onlineMatchFlow?.phase === 'ready'"),
     waitFor(secondGuest, "onlineMatchFlow?.phase === 'ready'")]);
-  console.log('PASS: replacement guest joins the retained private room and reaches Ready');
+  console.log('PASS: replacement guest joins the explicitly created private room and reaches Ready');
   // The RTC channel can close before the signaling server sends 'host_left'.
   // Keep private-room signaling alive so the guest receives that reason.
+  await watchSessionShutdown(secondGuest);
   await secondGuest.evaluate(() => {
     if(onlineSession.secure?.mode==='rtc')onlineSession.secure.rtcControl.onclose();
     else if(!onlineSession.secure)onlineControlChannel.onclose();
@@ -303,6 +305,7 @@ try {
   await host.keyboard.press('Escape');
   await waitFor(secondGuest, "lanStatus.textContent.includes('Host disconnected')");
   assert.equal(await secondGuest.evaluate(() => onlineGameBlocked && paused), true);
+  await disconnectedBrowserChecks(secondGuest, 'private');
   await secondGuest.close();
   console.log('PASS: leaving for the title screen closes the room and stops the guest');
 

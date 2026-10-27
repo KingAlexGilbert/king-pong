@@ -17,7 +17,7 @@ function peer(role) {
    function hideFirstStartControls(){}function setMenusVisible(){}function beginPointServeCountdown(){countdowns++}
    function sendLanState(){}const document={body:{classList:{contains:()=>false}}};
    ${code}
-   leaveMultiplayerSession=()=>{leaves++;onlineSession=null;lanConnected=false};
+   endMultiplayerSession=()=>{leaves++;onlineSession=null;lanConnected=false};
    multiplayerRematch();`);
  return {run,ctx,json:s=>JSON.parse(JSON.stringify(run(s)))};
 }

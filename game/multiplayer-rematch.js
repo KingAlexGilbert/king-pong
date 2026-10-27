@@ -58,7 +58,7 @@ function receiveMultiplayerRematch(message) {
   if (message.kind === 'leave' && (message.round === state.round ||
       state.phase === 'awaiting-state' && message.round === state.round - 1 ||
       state.phase === 'starting' && message.round === state.round + 1)) {
-    return leaveMultiplayerSession('Opponent left the match.', false);
+    return endMultiplayerSession('Opponent left the match.');
   }
   if (lanRole === 'guest' && message.kind === 'start') {
     if (state.phase === 'awaiting-state' && message.round === state.round - 1) {
@@ -115,7 +115,7 @@ function tickMultiplayerRematch() {
   if (state.phase === 'starting' || state.phase === 'awaiting-state') {
     if (!blocked) state.activeWait += Math.max(0, now - (state.at ?? now));
     state.at = now;
-    if (state.activeWait > 12000) { leaveMultiplayerSession(ONLINE_ERRORS.connection_lost); return; }
+    if (state.activeWait > 12000) { endMultiplayerSession(ONLINE_ERRORS.connection_lost); return; }
   }
   if (blocked || now - state.lastSend < 500) return;
   if (state.phase === 'starting') sendRematch('start');
@@ -131,6 +131,48 @@ function finishMultiplayerRematchSnapshot() {
     clearHeldInput();
     syncRoyalUi(true);
   }
+}
+
+// The terminal dialog owns only local UI state. Detach the session before any
+// async close completes, so late callbacks cannot revive it or navigate away.
+let multiplayerDisconnect = null;
+
+function endMultiplayerSession(message = 'Opponent disconnected.') {
+  if (multiplayerDisconnect || !onlineSession) return;
+  const ended = multiplayerDisconnect = {origin: onlineSession.multiplayerOrigin ||
+    (onlineManualLanSelected ? 'lan' : 'private'), role: lanRole, ready: false};
+  onlineGameBlocked = paused = true;
+  clearHeldInput();
+  const closed = closeOnlineConnection(false);
+  onlineGameBlocked = paused = true;
+  setMenusVisible(false);
+  byId('classicLanDialog').hidden = true;
+  setLanStatus(message);
+  // Native LAN acknowledges socket/discovery shutdown; WebSockets must finish
+  // closing (including already queued frames) before the local popup appears.
+  Promise.resolve(closed).then(() => {
+    if (multiplayerDisconnect !== ended) return;
+    ended.ready = true;
+    byId('multiplayerDisconnected').hidden = false;
+    syncRoyalUi(true);
+    byId('multiplayerReturn').focus({preventScroll: true});
+  });
+}
+
+function acknowledgeMultiplayerDisconnect() {
+  if (!multiplayerDisconnect?.ready) return;
+  const {origin} = multiplayerDisconnect;
+  multiplayerDisconnect = null;
+  byId('multiplayerDisconnected').hidden = true;
+  resetFrameClock();
+  // Returning is local navigation, not consent to reopen the queue socket.
+  if (origin === 'lan') openOfflineLanSetup(false);
+  else {
+    startOnlineSetup(false, false, false);
+    if (origin === 'private') byId('onlinePrivateRooms').open = true;
+  }
+  onlineGameBlocked = paused = true;
+  syncRoyalUi(true);
 }
 
 function leaveMultiplayerSession(message = '', notify = true) {

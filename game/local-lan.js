@@ -3,6 +3,8 @@
 let onlineLocalLanSelected = false;
 let localLanGeneration = 0;
 let localLanScan = 0;
+let localLanScanTimer = null;
+const localLanClosures = new Map();
 let localLanRooms = [];
 function hasNativeLan() { return Boolean(window.KingPongLan?.postMessage || window.KingPongNativeLan); }
 function nativeLanCommand(op, generation, fields = {}) {
@@ -48,6 +50,7 @@ class KingPongLocalRoom extends KingPongRoom {
     } else if (event.type === 'departed') {
       this.pendingRequests = []; syncClassicApproval({pending: []});
       await this.receive({type: 'departed'});
+      if (this.closed) return;
       byId('classicLanDialog').hidden = false; syncRoyalFocus();
     } else if (event.type === 'error') this.fail(event.code === 'room_full' ? 'full' : event.code);
   }
@@ -57,7 +60,7 @@ class KingPongLocalRoom extends KingPongRoom {
       nativeLanCommand('approve', this.generation, {request: message.request, accept: message.type === 'approve'});
     } else if (['description', 'candidate', 'connected'].includes(message.type)) nativeLanCommand('send', this.generation, {message});
   }
-  kickGuest() { if (this.role === 'host' && !this.closed) nativeLanCommand('release', this.generation, {block: true}); }
+  kickGuest() { if (this.role === 'host' && !this.closed) { this.kickedGuest = true; nativeLanCommand('release', this.generation, {block: true}); } }
   waitForGuestDeparture() {
     if (this.role !== 'host' || this.closed) return false;
     nativeLanCommand('release', this.generation); return true;
@@ -67,13 +70,22 @@ class KingPongLocalRoom extends KingPongRoom {
     else this.fail('timeout');
   }
   close() {
-    if (this.closed) return;
-    super.close(); nativeLanCommand('close', this.generation);
+    if (this.closed) return this.networkClosed;
+    this.networkClosed = new Promise(resolve => localLanClosures.set(this.generation, resolve));
+    super.close();
+    clearTimeout(localLanScanTimer); localLanScan = 0;
+    byId('localLanScan').disabled = false;
+    nativeLanCommand('close', this.generation);
     clearLanQr(); byId('localLanAddress').textContent = ''; byId('localLanRoomCode').textContent = '';
+    return this.networkClosed;
   }
 }
 window.KingPongLanReceive = event => {
   if (!event || typeof event !== 'object') return;
+  if (event.type === 'closed') {
+    const finish = localLanClosures.get(event.generation);
+    localLanClosures.delete(event.generation); finish?.(); return;
+  }
   if (event.type === 'rooms' && event.generation === localLanScan && !byId('classicLanDialog')?.hidden) {
     localLanRooms = Array.isArray(event.rooms) ? event.rooms.slice(0, 32) : [];
     const select = byId('localLanRooms'); select.replaceChildren();
@@ -97,7 +109,7 @@ function scanLocalLan() {
   nativeLanCommand('discover', localLanScan);
   setLocalizedText(byId('localLanHint'), 'Searching local network...');
   const generation = localLanScan;
-  setTimeout(() => { if (localLanScan === generation) byId('localLanScan').disabled = false; }, 4000);
+  localLanScanTimer = setTimeout(() => { if (localLanScan === generation) byId('localLanScan').disabled = false; }, 4000);
 }
 function joinLocalLan() {
   const raw = byId('localLanCode').value.trim();

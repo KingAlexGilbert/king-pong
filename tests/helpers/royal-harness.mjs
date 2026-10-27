@@ -47,7 +47,7 @@ function script(platform) {
     let frame=0,mode=2,activeCampaign=0,levelIndex=0,paused=false,waitingForServe=false,gameOver=false,levelCleared=false,campaignCleared=false,shakeFrames=0;
     let bossIntroActive=false,creditsActive=false,bossBalls=[],hazards=[],bossAdaptiveProfile=null;
     let lanRole='none',lanLastInputSeq=-1,lanLastStateSeq=-1,lanStateSeq=0,lanLastActionAt=-Infinity,lanRemoteInput={},lanRoomCode='ABCDE';
-    let onlineAppliedInputSeq=-1,endMessage='',nextCpuModeServeDirection=-1;
+    let onlineAppliedInputSeq=-1,endMessage='',nextCpuModeServeDirection=-1,multiplayerDisconnect=null;
     let rallyLaunchFramesRemaining=0,rallyLaunchTargetSpeed=0,rallySpawnPulseX=320,rallySpawnPulseY=240;
     let hazardTrapHitCount=0,hazardTrapWindowStartFrame=-9999,lastHazardTrapHitFrame=-9999,framesSincePaddleContact=0;
     const left={x:32,y:208,score:0},right={x:600,y:208,score:0};

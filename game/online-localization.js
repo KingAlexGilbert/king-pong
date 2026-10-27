@@ -820,3 +820,19 @@ for (const [language, values] of Object.entries({
     window.KING_PONG_ONLINE_TRANSLATIONS[language][key] = values[index];
   });
 }
+
+for (const [language, values] of Object.entries({
+  es: ['Tu oponente se ha desconectado', 'Volver al menú'],
+  fr: ['Votre adversaire s’est déconnecté', 'Retour au menu'],
+  de: ['Dein Gegner hat die Verbindung getrennt', 'Zurück zum Menü'],
+  pt: ['Seu adversário se desconectou', 'Voltar ao menu'],
+  it: ['Il tuo avversario si è disconnesso', 'Torna al menu'],
+  nl: ['Je tegenstander heeft de verbinding verbroken', 'Terug naar het menu'],
+  ja: ['対戦相手が切断しました', 'メニューに戻る'],
+  ko: ['상대방의 연결이 끊어졌습니다', '메뉴로 돌아가기'],
+  zh: ['对手已断开连接', '返回菜单']
+})) {
+  ['Your opponent disconnected', 'Return to Menu'].forEach((key, index) => {
+    window.KING_PONG_ONLINE_TRANSLATIONS[language][key] = values[index];
+  });
+}

@@ -72,6 +72,27 @@ class LocalLanTests(unittest.TestCase):
     def test_version_and_oversized_frames(self):
         for data in [dict(v=2,type='join'),dict(v=1,type='join',junk='x'*66000)]:
             s=self.raw(data);self.assertEqual(s.recv(4096),b'')
+    def test_close_acknowledges_socket_and_discovery_shutdown(self):
+        self.host.close()
+        lan = self.lan; events = queue.Queue(); bridge = lan.LanBridge(events.put)
+        def wait(kind):
+            deadline = time.monotonic() + 4
+            while time.monotonic() < deadline:
+                event = events.get(timeout=4)
+                if event['type'] == kind: return event
+            self.fail('missing ' + kind)
+        try:
+            bridge.handle(json.dumps(dict(op='host', generation=21)))
+            info = wait('hosting'); room = bridge.active
+            bridge.handle(json.dumps(dict(op='discover', generation=22)))
+            bridge.handle(json.dumps(dict(op='close', generation=21)))
+            self.assertEqual(wait('closed')['generation'], 21)
+            self.assertTrue(room.closed)
+            self.assertFalse(room.discovery_thread.is_alive())
+            self.assertFalse(bridge.scan_thread.is_alive())
+            with self.assertRaises(OSError): socket.create_connection(('127.0.0.1', info['port']), timeout=.2)
+        finally: bridge.close()
+
     def test_closed_room_releases_tcp_port(self):
         self.host.close();time.sleep(.6)
         with self.assertRaises(OSError):socket.create_connection(('127.0.0.1',self.info['port']),timeout=.5)

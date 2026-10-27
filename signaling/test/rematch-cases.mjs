@@ -1,3 +1,4 @@
+import {watchSessionShutdown, disconnectedBrowserChecks} from './presence-browser-checks.mjs';
 import assert from 'node:assert/strict';
 
 // Reused by existing private, matchmaking and offline-LAN page pairs, including
@@ -75,9 +76,12 @@ export async function rematchBackChecks(host, guest) {
  await guest.locator('#multiplayerRematch').waitFor({state:'visible'});
  await guest.locator('#multiplayerRematch').click();
  await host.waitForFunction(()=>multiplayerRematch().remote);
+ await watchSessionShutdown(guest);
+ const origin=await guest.evaluate(()=>onlineSession.multiplayerOrigin);
  await host.locator('#multiplayerBack').click();
  await Promise.all([host,guest].map(p=>p.waitForFunction(()=>!onlineSession&&!lanConnected&&paused&&onlineGameBlocked)));
- for(const p of [host,guest])assert.equal(await p.locator('#matchSetup').isVisible(),true);
+ assert.equal(await host.locator('#matchSetup').isVisible(),true);
+ await disconnectedBrowserChecks(guest,origin);
  assert.equal(await guest.locator('#multiplayerResult').isVisible(),false);
- console.log('PASS pending rematch Back notifies the opponent, cleans up and returns both players to setup');
+ console.log('PASS pending rematch Back notifies the opponent, cleans up and acknowledges the disconnected opponent before returning to setup');
 }

@@ -22,10 +22,11 @@ for(const [platform,path] of Object.entries(builds)) for(const [width,height,dpr
    const previews=await p.locator('#matchSetup .royal-selection-row canvas').evaluateAll(nodes=>nodes.filter(e=>e.getClientRects().length).map(e=>{
      const r=e.getBoundingClientRect(),b=e.parentElement.getBoundingClientRect();return {width:r.width,height:r.height,fits:r.left>=b.left&&r.right<=b.right&&r.bottom<=b.bottom};
    }));
-   assert.ok(previews.length>=2&&previews.every(r=>r.width>=100&&r.height>=80&&r.height<=111&&r.fits),`${platform} ${width}x${height} readable bounded desktop/laptop previews`);
+   const expectedHeight=height<=520?32:state==='online'&&height>=650?64:110;
+   assert.ok(previews.length>=2&&previews.every(r=>Math.abs(r.height-expectedHeight)<1&&r.fits),`${platform} ${width}x${height} restored ${expectedHeight}px previews`);
    if(platform==='Browser')console.log('PREVIEW '+JSON.stringify({width,height,dpr,state,previews}));
   }
-  if(state==='online'&&height<=520&&width>height){
+  if(state==='online'&&height<=520&&width>height&&width<=920){
    const preview=await p.locator('#matchSetup .royal-selection-row canvas').first().boundingBox();
    assert.ok(preview?.width>=72&&preview.height>=60,`${platform} ${width} landscape keeps readable paddle and arena previews`);
   }

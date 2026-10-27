@@ -20,14 +20,16 @@ let multiplayerLeaveApproved = false;
 
 function royalPortraitVisible() { return Boolean(byId('rotateDevice') && !byId('rotateDevice').hidden); }
 
-// Both blocking dialogs share the existing focus/input boundary. A departure
+// Blocking dialogs share the existing focus/input boundary. A departure
 // prompt consumes local input only; it never pauses the authoritative simulation.
 function royalInputModal() {
+  if (multiplayerDisconnect) return byId('multiplayerDisconnected');
   if (royalPortraitVisible()) return byId('rotateDevice');
   return multiplayerLeaveRequest ? byId('multiplayerLeave') : null;
 }
 
 function guardMultiplayerLeave(action) {
+  if (multiplayerDisconnect) return true;
   if (multiplayerLeaveApproved || !onlineSession || !lanConnected || mode !== 2 || gameOver) return false;
   if (onlineMatchFlow && !['countdown', 'go', 'playing'].includes(onlineMatchFlow.phase)) return false;
   if (multiplayerLeaveRequest) return true;
@@ -54,7 +56,7 @@ function finishMultiplayerLeave(leave = false) {
 // Android's intercepted Back remains an in-game action. Browser tab/window
 // termination still uses pagehide and never opens a custom departure prompt.
 window.KingPongMatchNavigation = {back() {
-  if (royalPortraitVisible()) return true;
+  if (multiplayerDisconnect || royalPortraitVisible()) return true;
   if (multiplayerLeaveRequest) { finishMultiplayerLeave(false); return true; }
   if (!onlineSession || !lanConnected) return false;
   if (!guardMultiplayerLeave(() => leaveMultiplayerSession())) leaveMultiplayerSession();
@@ -101,7 +103,7 @@ function installRoyalPortraitModal() {
   // Block bubbling to the legacy fullscreen paddle/touch handlers even on the
   // two permitted buttons. Their own click handlers still run at the target.
   for (const type of ['pointerdown', 'pointermove', 'pointerup', 'touchstart', 'touchmove', 'touchend'])
-    for (const id of ['rotateDevice', 'multiplayerLeave'])
+    for (const id of ['rotateDevice', 'multiplayerLeave', 'multiplayerDisconnected'])
       byId(id).addEventListener(type, event => event.stopPropagation());
   window.addEventListener('keyup', event => {
     if (royalInputModal()) { event.preventDefault(); event.stopImmediatePropagation(); }
@@ -427,6 +429,10 @@ function initRoyalUi() {
   leaveActions.append(royalButton('multiplayerStay', 'Stay', () => finishMultiplayerLeave(false), 'match-primary'),
     royalButton('multiplayerLeaveConfirm', 'Leave Match', () => finishMultiplayerLeave(true)));
   leave.append(leaveActions);
+  const disconnected = royalDialog('multiplayerDisconnected', 'Your opponent disconnected');
+  const disconnectedActions = document.createElement('div'); disconnectedActions.className = 'match-actions';
+  disconnectedActions.append(royalButton('multiplayerReturn', 'Return to Menu', acknowledgeMultiplayerDisconnect, 'match-primary'));
+  disconnected.append(disconnectedActions);
   installRoyalPortraitModal();
   // Capture exit buttons before legacy handlers change mode or close transports.
   window.addEventListener('click', event => {
@@ -652,8 +658,8 @@ function syncRoyalUi(force = false) {
   const online = royalOnlineMode();
   const fixedMatch = typeof matchmakingLocked === 'function' && matchmakingLocked();
   const joining = online && byId('onlineJoinForm') && !byId('onlineJoinForm').hidden;
-  const setup = !title && !bossIntroActive && !creditsActive && royalNeedsSetup();
-  const menu = !bossIntroActive && !creditsActive && menusVisible && (!setup || royalMenuRequested);
+  const setup = !multiplayerDisconnect && !title && !bossIntroActive && !creditsActive && royalNeedsSetup();
+  const menu = !multiplayerDisconnect && !bossIntroActive && !creditsActive && menusVisible && (!setup || royalMenuRequested);
   const desktopPause = paused && !waitingForServe && !gameOver && !levelCleared && !campaignCleared &&
     !hasResumeCountdown() && !multiplayerSuspended();
   const signature = [title, online, setup, menu, desktopPause, galleryKind, bossIntroActive, creditsActive, mode, activeCampaign,
@@ -915,7 +921,7 @@ function syncRoyalOrientation() {
   button.hidden = !royalLandscapeRoute();
   button.disabled = Boolean(request);
   if (button.hidden && document.activeElement === button) byId('rotateDismiss').focus({preventScroll: true});
-  const visible = royalPhoneViewport() && (window.innerHeight > window.innerWidth || request?.fromPortrait) && !royalRotateDismissed &&
+  const visible = !multiplayerDisconnect && royalPhoneViewport() && (window.innerHeight > window.innerWidth || request?.fromPortrait) && !royalRotateDismissed &&
     !document.body.classList.contains('title-active') && !galleryKind && !bossIntroActive && !creditsActive &&
     (!overlay.hidden || byId('matchSetup').hidden && byId('matchMenu').hidden);
   overlay.hidden = !visible;
@@ -936,7 +942,7 @@ function royalActiveDialog() {
 function royalFocusables(panel) {
   return [...panel.querySelectorAll(
       'button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),summary')]
-    .concat(!['rotateDevice', 'multiplayerLeave'].includes(panel.id) && byId('browserFullscreen') ? [byId('browserFullscreen')] : [])
+    .concat(!['rotateDevice', 'multiplayerLeave', 'multiplayerDisconnected'].includes(panel.id) && byId('browserFullscreen') ? [byId('browserFullscreen')] : [])
     .filter(element => {
       if (!element.getClientRects().length || element.closest('[hidden],[inert]') ||
           getComputedStyle(element).visibility === 'hidden') return false;
@@ -1056,7 +1062,7 @@ function pollRoyalUiGamepad(now) {
   if ((gamepadButtonJustPressed(pad, GAMEPAD_BUTTONS.B) && panel.id !== 'titleScreen') ||
     gamepadButtonJustPressed(pad, GAMEPAD_BUTTONS.SELECT)) {
     if (panel.id === 'multiplayerResult') leaveMultiplayerSession();
-    else if (panel.id === 'rotateDevice') return;
+    else if (panel.id === 'rotateDevice' || panel.id === 'multiplayerDisconnected') return;
     else if (panel.id === 'multiplayerLeave') finishMultiplayerLeave(false);
     else if (panel.id === 'matchSetup' && onlineTransportSelected) showTitleScreen();
     else toggleRoyalMenu();

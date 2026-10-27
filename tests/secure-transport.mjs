@@ -181,7 +181,13 @@ test('backpressure coalesces snapshots, expires stale unsent data, and sends rel
   owner.socket.bufferedAmount=0;await t.flush();
   assert.deepEqual(sent.map(m=>m.lane),['c','d']);
   assert.equal((await receiver.open(sent[0],0)).raw,'pause');
-  assert.equal((await receiver.open(sent[1],0)).raw,'latest');t.close();
+  assert.equal((await receiver.open(sent[1],0)).raw,'latest');
+  let release;
+  t.crypto.seal=()=>new Promise(resolve=>release=resolve);
+  t.latest='queued when terminated';const pending=t.flush();
+  t.close();release({});await pending;t.credit();
+  assert.equal(sent.length,2,'closing discards in-flight encryption and all queued sends');
+  assert.equal(t.pending.size,0);assert.equal(t.latest,null);
 });
 
 test('provider diagnostics require an exact selected local candidate URL, never type/IP/protocol guesses',()=>{

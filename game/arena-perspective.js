@@ -1,7 +1,7 @@
 // A horizontal reflection changes presentation only. Vertical input, physics,
 // snapshots and interpolation stay in world coordinates on every transport.
 function twoPlayerViewMirrored() {
-  return mode === 2 && isLanGuestActive();
+  return mode === 2 && (isLanGuestActive() || multiplayerDisconnect?.role === 'guest');
 }
 
 function applyArenaPerspective() {

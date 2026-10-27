@@ -42,11 +42,9 @@ function stopMatchmaking() {
   matchmakingPowerupsPreference = null;
   matchmakingState = 'offline';
   matchmakingWaiting = null;
-  if (socket) {
-    socket.onopen = socket.onmessage = socket.onclose = socket.onerror = null;
-    socket.close();
-  }
+  const closed = closeOnlineSocket(socket);
   syncMatchmakingUi();
+  return closed;
 }
 
 function matchmakingError(code) {
@@ -65,7 +63,7 @@ function matchmakingFailed(code) {
 }
 
 function observeMatchmaking() {
-  if (matchmakingSocket || document.hidden || !window.KING_PONG_SIGNALING_URL) return;
+  if (multiplayerDisconnect || matchmakingSocket || document.hidden || !window.KING_PONG_SIGNALING_URL) return;
   let socket;
   try {
     const url = new URL(window.KING_PONG_SIGNALING_URL);

@@ -293,6 +293,9 @@ class LocalLan:
 
     def close(self):
         self.closed = True
+        if self.listener:
+            try: self.listener.shutdown(socket.SHUT_RDWR)
+            except OSError: pass
         for s in (self.listener, self.udp):
             if s: s.close()
         # A blocked recvfrom() can retain the UDP port after close() on Linux.
@@ -303,7 +306,7 @@ class LocalLan:
         self.peer = None
 
 
-def discover(emit, generation):
+def discover(emit, generation, cancelled=None):
     nonce = secrets.token_hex(16); rooms = {}
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
         s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1); s.bind(('', 0)); s.settimeout(.25)
@@ -317,10 +320,11 @@ def discover(emit, generation):
                 except OSError: pass
         except ImportError: pass
         for address in destinations:
+            if cancelled and cancelled.is_set(): break
             try: s.sendto(packet, (address, PORT))
             except OSError: pass
         until = time.monotonic()+2
-        while time.monotonic() < until:
+        while time.monotonic() < until and not (cancelled and cancelled.is_set()):
             try:
                 data, addr = s.recvfrom(1025); m = parse(data.decode("utf-8"))
                 if len(data) <= 1024 and local_ip(addr[0]) and m.get('v') == VERSION and m.get('type') == 'room' and m.get('nonce') == nonce and isinstance(m.get('room'), str) and re.fullmatch('[a-f0-9]{32}', m['room']) and type(m.get('port')) is int and 1024 <= m['port'] <= 65535 and len(rooms) < 32:
@@ -333,6 +337,7 @@ class LanBridge:
     def __init__(self, emit):
         self.emit = emit; self.active = None; self.lock = threading.Lock()
         self.scan_generation = None; self.closed = False; self.lifecycle = 0
+        self.scan_cancelled = threading.Event(); self.scan_thread = None
         self.commands = queue.Queue(maxsize=128)
         threading.Thread(target=self.run, daemon=True).start()
 
@@ -355,6 +360,7 @@ class LanBridge:
                     if op == 'discover':
                         if self.scan_generation is not None: return
                         self.scan_generation = gen
+                        self.scan_cancelled.clear()
                     elif op in ('host','join'):
                         if self.active: self.active.close()
                         self.active = LocalLan(self.emit, gen)
@@ -362,10 +368,11 @@ class LanBridge:
                     room = self.active
                 if op == 'discover':
                     def scan():
-                        try: discover(self.emit, gen)
+                        try: discover(self.emit, gen, self.scan_cancelled)
                         except OSError: self.emit(dict(type='rooms',generation=gen,rooms=[]))
                         finally: self.scan_generation = None
-                    threading.Thread(target=scan, daemon=True).start()
+                    self.scan_thread = threading.Thread(target=scan, daemon=True)
+                    self.scan_thread.start()
                 elif op == 'host': pass
                 elif op == 'join':
                     def connect():
@@ -373,7 +380,11 @@ class LanBridge:
                         except (OSError, ValueError, KeyError, TypeError): room.emit('error',code='connection_lost'); room.close()
                     threading.Thread(target=connect, daemon=True).start()
                 elif room and room.generation == gen:
-                    if op == 'close': room.close()
+                    if op == 'close':
+                        room.close()
+                        self.scan_cancelled.set()
+                        if self.scan_thread: self.scan_thread.join()
+                        self.emit(dict(type='closed', generation=gen))
                     elif op == 'send': room.send(m['message'])
                     elif op == 'approve': room.approve(m['request'],m['accept'] is True)
                     elif op == 'release': room.release(m.get('block') is True, 'kicked' if m.get('block') else 'guest_left')

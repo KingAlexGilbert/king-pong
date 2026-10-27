@@ -24,6 +24,7 @@ final class LocalLan implements Closeable {
     final Consumer<String> emit;
     final ThreadPoolExecutor commands=new ThreadPoolExecutor(1,1,0,TimeUnit.SECONDS,new ArrayBlockingQueue<>(128),r->{Thread t=new Thread(r,"KingPong LAN");t.setDaemon(true);return t;},new ThreadPoolExecutor.DiscardPolicy());
     final AtomicBoolean scanning=new AtomicBoolean();
+    volatile boolean scanCancelled; Thread scanThread;
     volatile Room active;
     volatile int lifecycle;
     volatile boolean closed;
@@ -66,12 +67,12 @@ final class LocalLan implements Closeable {
         commands.execute(()->{synchronized(this){
             if(closed||epoch!=lifecycle)return;
             try{
-                if("discover".equals(op)){if(scanning.compareAndSet(false,true))thread(()->{try{discover(generation);}finally{scanning.set(false);}});}
+                if("discover".equals(op)){if(scanning.compareAndSet(false,true)){scanCancelled=false;scanThread=new Thread(()->{try{discover(generation);}finally{scanning.set(false);}},"KingPong LAN scan");scanThread.setDaemon(true);scanThread.start();}}
                 else if("host".equals(op)||"join".equals(op)){
                     if(active!=null)active.close();Room room=new Room(generation);active=room;
                     if("host".equals(op))room.host();else thread(()->{try{room.join(m);}catch(Exception e){room.event("error","code","connection_lost");room.close();}});
                 }else{Room room=active;if(room==null||room.generation!=generation)return;
-                    if("close".equals(op))room.close();
+                    if("close".equals(op)){room.close();scanCancelled=true;if(scanThread!=null)scanThread.join();emit.accept(obj("type","closed","generation",generation).toString());}
                     else if("send".equals(op))room.send(m.optJSONObject("message"));
                     else if("approve".equals(op))room.approve(text(m,"request"),m.optBoolean("accept",false));
                     else if("release".equals(op))room.release(m.optBoolean("block",false),m.optBoolean("block",false)?"kicked":"guest_left");
@@ -85,9 +86,9 @@ final class LocalLan implements Closeable {
             socket.setBroadcast(true);socket.setSoTimeout(250);
             Set<String> destinations=new HashSet<>(addresses(true));destinations.add("255.255.255.255");destinations.add("127.0.0.1");
             byte[] data=obj("v",1,"type","discover","nonce",nonce).toString().getBytes(StandardCharsets.UTF_8);
-            for(String ip:destinations)try{socket.send(new DatagramPacket(data,data.length,InetAddress.getByName(ip),PORT));}catch(IOException ignored){}
+            for(String ip:destinations){if(scanCancelled)break;try{socket.send(new DatagramPacket(data,data.length,InetAddress.getByName(ip),PORT));}catch(IOException ignored){}}
             long end=now()+2000;
-            while(!closed&&now()<end)try{
+            while(!closed&&!scanCancelled&&now()<end)try{
                 DatagramPacket packet=new DatagramPacket(new byte[1025],1025);socket.receive(packet);
                 if(packet.getLength()>1024||!local(packet.getAddress().getHostAddress()))continue;
                 JSONObject m=parse(new String(packet.getData(),0,packet.getLength(),StandardCharsets.UTF_8));String id=text(m,"room");int port=m.optInt("port",0);

@@ -38,6 +38,30 @@ export async function multiplayerNavigationChecks({page, pass, bounds}) {
       assert.equal(await p.evaluate(()=>!onlineSession&&navClosed===1&&!multiplayerLeaveRequest),true);
       assert.equal(await p.locator(origin==='lan'?'#classicLanDialog':'#matchSetup').isVisible(),true);
       await p.evaluate(()=>{byId('classicLanDialog').hidden=true;syncRoyalFocus()});
+      // Terminal cleanup is one-shot and asynchronous socket/native shutdown
+      // completes before the acknowledgement becomes available.
+      await p.evaluate(({origin,role})=>{
+        startTwoPlayerFromTitle();waitingForServe=false;paused=false;gameOver=false;
+        lanRole=role;lanConnected=true;onlineGameBlocked=false;left.score=2;right.score=3;
+        window.terminalCloses=0;window.terminalClosed=new Promise(resolve=>window.finishTerminalClose=resolve);
+        onlineSession={multiplayerOrigin:origin,close(){window.terminalCloses++;return window.terminalClosed}};
+        setMenusVisible(false);endMultiplayerSession();endMultiplayerSession();
+      },{origin,role});
+      assert.equal(await p.locator('#multiplayerDisconnected').isVisible(),false,'wait for actual resource shutdown');
+      await p.keyboard.press('2');
+      assert.equal(await p.evaluate(()=>mode===2&&paused&&terminalCloses===1),true);
+      await p.evaluate(()=>window.finishTerminalClose());
+      await p.locator('#multiplayerDisconnected').waitFor({state:'visible'});
+      assert.equal(await p.evaluate(()=>twoPlayerViewMirrored()),role==='guest','preserve final arena perspective');
+      await p.keyboard.press('Escape');await p.keyboard.press('m');await p.keyboard.press('Tab');
+      await p.evaluate(()=>{byId('matchContinue').click();byId('menuToggle').click();KingPongMatchNavigation.back()});
+      assert.equal(await p.evaluate(()=>Boolean(multiplayerDisconnect)&&!onlineSession&&paused&&left.score===2&&right.score===3&&terminalCloses===1),true);
+      assert.equal(await p.locator('#matchSetup').isVisible(),false);
+      assert.equal(await p.locator('#multiplayerDisconnected button').count(),1);
+      await p.locator('#multiplayerReturn').tap();
+      assert.equal(await p.evaluate(()=>!multiplayerDisconnect&&!onlineSession&&!matchmakingSocket&&!canvas.inert),true);
+      assert.equal(await p.locator(origin==='lan'?'#classicLanDialog':'#matchSetup').isVisible(),true);
+      await p.evaluate(()=>{byId('classicLanDialog').hidden=true;syncRoyalFocus()});
     }
     // A result can be left immediately; a new active round restores protection.
     await p.evaluate(()=>{

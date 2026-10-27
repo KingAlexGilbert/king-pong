@@ -1,4 +1,16 @@
 /* Room admission and transport setup. Existing LAN packet handlers own gameplay. */
+// Resolve only after queued WebSocket frames can no longer be transmitted.
+function closeOnlineSocket(socket) {
+  return new Promise(resolve => {
+    if (!socket || socket.readyState === 3) { resolve(); return; }
+    socket.onopen = socket.onmessage = socket.onerror = null;
+    socket.onclose = () => { socket.onclose = null; resolve(); };
+    socket.close();
+    // The native iframe bridge and test adapters tear down synchronously.
+    if (socket.readyState === 3) { socket.onclose = null; resolve(); }
+  });
+}
+
 class KingPongRoom {
   constructor(baseUrl, hooks) {
     this.baseUrl = baseUrl;
@@ -28,13 +40,16 @@ class KingPongRoom {
     this.hooks.status('Connecting...');
     this.openTimer = setTimeout(() => this.fail('timeout'), 12_000);
     this.socket.onopen = () => {
+      if (this.closed) return;
       this.lastPong = Date.now();
       this.heartbeat = setInterval(() => {
+        if (this.closed) return;
         if (Date.now() - this.lastPong > 60_000) this.fail('connection_lost');
         else if (this.socket.readyState === WebSocket.OPEN) this.socket.send('ping');
       }, 20_000);
     };
     this.socket.onmessage = event => {
+      if (this.closed) return;
       if (event.data === 'pong') { this.lastPong = Date.now(); return; }
       if (typeof event.data !== 'string' || event.data.length > 65536) { this.fail('negotiation_failed'); return; }
       if (typeof event.data === 'string' && event.data.length <= 24000 && event.data.startsWith('{"type":"secure-frame"')) {
@@ -62,7 +77,7 @@ class KingPongRoom {
 
   kickGuest() {
     if (!this.managed || this.role !== 'host' || !this.connected || this.removingGuest || this.closed) return;
-    this.removingGuest = true;
+    this.removingGuest = true; this.kickedGuest = true;
     this.send({type: 'kick', slot: 1});
     // The guest may close RTC before the server's departed acknowledgement
     // reaches the host. Keep the room socket alive for that acknowledgement.
@@ -84,6 +99,7 @@ class KingPongRoom {
   }
 
   async receive(message) {
+    if (this.closed) return;
     if (message.type === 'secure') {
       if (message.kind === 'init') {
         if (this.awaitingApproval || this.secure || !/^[a-f0-9-]{36}$/.test(message.session || '') || message.epoch !== 0 ||
@@ -315,7 +331,7 @@ class KingPongRoom {
   }
 
   close() {
-    if (this.closed) return;
+    if (this.closed) return this.socketClosed;
     if (typeof stopMultiplayerPresence === 'function') stopMultiplayerPresence(this);
     this.closed = true;
     this.secure?.close();
@@ -324,10 +340,9 @@ class KingPongRoom {
     clearTimeout(this.totalTimer);
     clearInterval(this.heartbeat);
     this.dropPeer();
-    if (this.socket) {
-      this.socket.onopen = this.socket.onmessage = this.socket.onerror = this.socket.onclose = null;
-      this.socket.close();
-    }
+    const socket = this.socket;
+    this.socketClosed = closeOnlineSocket(socket);
+    return this.socketClosed;
   }
 
   fail(code) {
@@ -393,7 +408,7 @@ function closeOnlineConnection(showMessage = true, keepQueue = false) {
   if (saveConfirmation?.roomSession === onlineSession) finishSaveConfirmation(false);
   resetOnlineMatchFlow();
   resetOnlineWire();
-  if (!keepQueue) stopMatchmaking();
+  const queueClosed = !keepQueue ? stopMatchmaking() : null;
   onlineMatchAssignment = null;
   if (matchmakingPreviousRules === null) matchRuleId = playerPreference('matchRuleId');
   matchPowerupsEnabled = playerPreference('royalPowerupsEnabled');
@@ -405,7 +420,7 @@ function closeOnlineConnection(showMessage = true, keepQueue = false) {
   onlineAppliedInputSeq = -1;
   const session = onlineSession;
   onlineSession = null;
-  if (session) session.close();
+  const closed = session?.close();
   lanPeer = lanChannel = onlineControlChannel = null;
   lanConnected = false;
   lanRole = 'none';
@@ -420,9 +435,10 @@ function closeOnlineConnection(showMessage = true, keepQueue = false) {
   if (showMessage) { paused = true; setLanStatus('Find an opponent or create/join a private room.'); }
   updateLanPanelVisibility();
   updateModeControls();
+  return Promise.all([closed, queueClosed]);
 }
 
-function startOnlineSetup(fromTitle = false, offline = false) {
+function startOnlineSetup(fromTitle = false, offline = false, observe = true) {
   if (!offline) { onlineManualLanSelected = false; onlineLocalLanSelected = false; }
   closeLanConnection(false);
   onlineTransportSelected = true;
@@ -436,7 +452,7 @@ function startOnlineSetup(fromTitle = false, offline = false) {
   }
   setLanPanelOpen(true);
   setMenusVisible(true);
-  if (!(typeof onlineManualLanSelected !== 'undefined' && onlineManualLanSelected)) observeMatchmaking();
+  if (observe && !(typeof onlineManualLanSelected !== 'undefined' && onlineManualLanSelected)) observeMatchmaking();
 }
 
 function hostOnlineMatch() { openOnlineRoom('host'); }
@@ -536,9 +552,9 @@ function openOnlineRoom(role, code = '', assignment = null) {
     error: code => {
       if (onlineSession !== session) return;
       // A connected but incompatible client still needs the existing setup
-      // explanation/Retry UI; terminal departures return directly to the menu.
+      // explanation/Retry UI; terminal departures require local acknowledgement.
       if (session.multiplayerEstablished && code !== 'incompatible') {
-        leaveMultiplayerSession(ONLINE_ERRORS[code] || ONLINE_ERRORS.connection_lost, false);
+        endMultiplayerSession(ONLINE_ERRORS[code] || ONLINE_ERRORS.connection_lost);
         return;
       }
       if (assignment) { failOnlineMatchFlow(code); return; }

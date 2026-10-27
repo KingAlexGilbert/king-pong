@@ -51,8 +51,9 @@ class KingPongManualRoom extends KingPongRoom {
     } catch { this.hooks.status('Invalid or expired LAN answer.'); }
   }
   close() {
-    super.close(); clearLanQr();
+    const closed = super.close(); clearLanQr();
     byId('classicLanOutput').value = ''; byId('classicLanInput').value = '';
+    return closed;
   }
   send() {}
   relay() { this.fail('timeout'); }
@@ -119,6 +120,8 @@ function syncPrivateRoomControls() {
 // blocked-session list remain alive until the host explicitly closes the room.
 function privateGuestDeparted(session) {
   if (onlineSession !== session) return;
+  if (session.multiplayerEstablished && !session.kickedGuest) { endMultiplayerSession('Opponent left the match.'); return; }
+  session.kickedGuest = false;
   finishMultiplayerLeave(false);
   if (typeof stopMultiplayerPresence === 'function') stopMultiplayerPresence(session);
   const established = session.multiplayerEstablished;
@@ -180,7 +183,9 @@ function installMultiplayerSafety() {
     if (typeof raw === 'string' && raw.length < 8192 && isLanGuestActive()) {
       let message; try { message = JSON.parse(raw); } catch {}
       if (message?.type === 'room-removed' && message.room === lanRoomCode) {
-        closeLanConnection(false); onlineGameBlocked = true; paused = true; setMenusVisible(true); setLanStatus('The host removed you from this room.'); return;
+        if (onlineSession?.multiplayerEstablished) endMultiplayerSession('The host removed you from this room.');
+        else { closeLanConnection(false); onlineGameBlocked = true; paused = true; setMenusVisible(true); setLanStatus('The host removed you from this room.'); }
+        return;
       }
     }
     receive(raw);

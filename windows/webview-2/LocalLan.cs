@@ -25,6 +25,7 @@ namespace KingPongWebView2
         readonly object lifecycleGate = new object();
         int lifecycle;
         int scanning;
+        volatile bool scanCancelled; Thread scanThread;
         volatile bool disposed;
         public LocalLanBridge(Action<string> emit)
         {
@@ -81,13 +82,13 @@ namespace KingPongWebView2
                 if (disposed || epoch != lifecycle) return;
                 try {
                     if (op == "discover") {
-                        if (Interlocked.CompareExchange(ref scanning, 1, 0) == 0) new Thread(() => { try { Discover(gen); } finally { scanning = 0; } }) { IsBackground = true }.Start();
+                        if (Interlocked.CompareExchange(ref scanning, 1, 0) == 0) { scanCancelled = false; scanThread = new Thread(() => { try { Discover(gen); } finally { scanning = 0; } }) { IsBackground = true }; scanThread.Start(); }
                     } else if (op == "host" || op == "join") {
                         if (active != null) active.Dispose(); active = new Room(gen, emit); var room = active;
                         if (op == "host") room.Host();
                         else new Thread(() => { try { room.Join(m); } catch { room.Emit("error", "code", "connection_lost"); room.Dispose(); } }) { IsBackground = true }.Start();
                     } else if (active != null && active.Generation == gen) {
-                        if (op == "close") active.Dispose();
+                        if (op == "close") { active.Dispose(); scanCancelled = true; if (scanThread != null) scanThread.Join(); emit(Json(Map("type", "closed", "generation", gen))); }
                         else if (op == "send") active.Send(Value(m, "message") as Dictionary<string, object>);
                         else if (op == "approve") active.Approve(Text(m, "request"), Yes(m, "accept"));
                         else if (op == "release") active.Release(Yes(m, "block"), Yes(m, "block") ? "kicked" : "guest_left");
@@ -101,9 +102,9 @@ namespace KingPongWebView2
             try { using (var udp = new UdpClient(0)) {
                 udp.EnableBroadcast = true; udp.Client.ReceiveTimeout = 250;
                 var message = Encoding.UTF8.GetBytes(Json(Map("v", 1, "type", "discover", "nonce", nonce)));
-                foreach (string address in Addresses(true).Concat(new[] { "255.255.255.255", "127.0.0.1" }).Distinct()) { try { udp.Send(message, message.Length, new IPEndPoint(IPAddress.Parse(address), Port)); } catch (SocketException) { } }
+                foreach (string address in Addresses(true).Concat(new[] { "255.255.255.255", "127.0.0.1" }).Distinct()) { if (scanCancelled) break; try { udp.Send(message, message.Length, new IPEndPoint(IPAddress.Parse(address), Port)); } catch (SocketException) { } }
                 long end = Clock.ElapsedMilliseconds + 2000;
-                while (!disposed && Clock.ElapsedMilliseconds < end) { try {
+                while (!disposed && !scanCancelled && Clock.ElapsedMilliseconds < end) { try {
                     IPEndPoint from = new IPEndPoint(IPAddress.Any, 0); byte[] data = udp.Receive(ref from); if (data.Length > 1024 || !Local(from.Address.ToString())) continue;
                     var m = Parse(Encoding.UTF8.GetString(data)); int port = Number(m, "port"); string id = Text(m, "room");
                     if (Number(m, "v") == 1 && Text(m, "type") == "room" && Text(m, "nonce") == nonce && Hex(id, 32) && port >= 1024 && port <= 65535 && rooms.Count < 32)

@@ -1,4 +1,4 @@
-import {presenceBrowserChecks} from './presence-browser-checks.mjs';
+import {presenceBrowserChecks, watchSessionShutdown, disconnectedBrowserChecks} from './presence-browser-checks.mjs';
 import assert from 'node:assert/strict';
 import {automaticServeChecks} from './automatic-serve-cases.mjs';
 import {rematchBackChecks} from './rematch-cases.mjs';
@@ -395,12 +395,14 @@ try {
   await host.locator('#arenaKick').click();
   await host.locator('#saveConfirmCancel').click();
   assert.equal(await host.evaluate(() => lanConnected), true);
+  await watchSessionShutdown(peer);
   await host.locator('#arenaKick').click();
   await host.locator('#saveConfirmAccept').click();
   await waitFor(peer, 'lanLastStatus === ONLINE_ERRORS.kicked');
   assert.deepEqual(await peer.evaluate(()=>[matchRuleId,matchPowerupsEnabled]),['endless',true]);
   await waitFor(host, "!lanConnected && onlineSession?.managed && lanRole === 'host'");
   assert.equal(await host.evaluate(() => lanRoomCode), code);
+  await disconnectedBrowserChecks(peer, 'private');
   await join(peer);
   await waitFor(peer, 'lanLastStatus === ONLINE_ERRORS.blocked');
   console.log('PASS kick confirmation, guest notification, retained host room and reconnect block');
@@ -414,10 +416,11 @@ try {
   await waitFor(replacement,"onlineMatchFlow?.phase === 'countdown'");
   await replacement.locator('#onlineFlowBack').click();
   assert.equal(await replacement.evaluate(()=>lanConnected),true);
+  await watchSessionShutdown(host);
   await replacement.locator('#multiplayerLeaveConfirm').click();
   await waitFor(host,"onlineMatchFlow === null && !lanConnected");
   assert.deepEqual(await host.evaluate(()=>[waitingForServe,paused,resumeCountdownEndAt,royalPickup,royalSplitBall]),[true,true,0,null,null]);
-  assert.equal(await host.evaluate(()=>lanRoomCode),code);
+  await disconnectedBrowserChecks(host, 'private');
   console.log('PASS retained-room replacement, new initialization and countdown-disconnect cleanup');
   await replacement.context().close();
 
@@ -464,8 +467,10 @@ try {
     await closingGuest.evaluate(()=>(onlineSession.secure?.rtcControl || onlineControlChannel).onclose());
     assert.equal(await closingGuest.evaluate(()=>Boolean(onlineSession&&!onlineSession.closed&&onlineGameBlocked&&paused)),true);
   }
-  await closingHost.evaluate(()=>showTitleScreen());
+  await watchSessionShutdown(closingGuest);
+  await closingHost.close();
   await waitFor(closingGuest,'lanLastStatus === ONLINE_ERRORS.host_left');
+  await disconnectedBrowserChecks(closingGuest, 'private');
   console.log('PASS '+departureTransport+' private guest receives authoritative host departure');
   assert.deepEqual(errors, []);
   }

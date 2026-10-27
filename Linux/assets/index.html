@@ -2712,8 +2712,8 @@ body.royal-panel-open .match-footer #controlHint {
 #onlinePrivateRules summary { font-size: 11px; line-height: 1.5; }
 #onlinePrivateRules #matchRules { padding-top: 0; }
 #onlinePrivateRules .match-rule-options button { margin: 0; padding: 6px 8px; font-size: 10px; }
-@media (min-width: 900px) and (min-height: 650px), (min-width: 921px) {
-  .online-setup .royal-selection-row canvas { height: clamp(80px, calc(15dvh - 28px), 110px); }
+@media (min-width: 900px) and (min-height: 650px) {
+  .online-setup .royal-selection-row canvas { height: 64px; }
   .online-setup #matchmakingPanel { padding-bottom: 10px; }
   .online-setup #matchmakingPanel p, .online-setup #onlinePrivateRooms p { margin: 6px 0; }
   .online-setup #matchmakingPanel h3, .online-setup #onlinePrivateRooms h3 { margin: 6px 0; }
@@ -2769,7 +2769,7 @@ body.royal-panel-open .match-footer #controlHint {
   .match-bar button { padding: 7px 8px; }
   .match-bar:has(#arenaKick:not([hidden])) .match-identity { display: none; }
 }
-@media (max-height: 520px) and (min-width: 421px) and (max-width: 920px) {
+@media (max-height: 520px) and (min-width: 421px) {
   /* Keep choices fully visible below the shared top Back row on short screens. */
   #matchSetup .royal-selection-row button { display: grid; grid-template-columns: minmax(0, 1fr) 56px; gap: 2px 6px; padding: 8px; }
   #matchSetup .royal-selection-row .setup-caption { grid-column: 1 / -1; }
@@ -2777,10 +2777,9 @@ body.royal-panel-open .match-footer #controlHint {
   #matchSetup .royal-selection-row .setup-change { grid-column: 1; margin-top: 2px; text-align: left; }
 }
 
-/* Short screens use a horizontal choice card so preview space does not
-   compete with labels. Preserve readable phone and scaled-laptop thumbnails. */
-@media (orientation: landscape) and (max-height: 520px) and (max-width: 920px),
-       (min-width: 921px) and (max-height: 600px) {
+/* Short phone landscape screens can scroll; do not crush selector previews
+   to tiny thumbnails just to fit an entire menu in one screenful. */
+@media (orientation: landscape) and (max-height: 520px) and (max-width: 920px) {
   #matchSetup > .match-card { padding: 12px 16px; }
   #matchSetup .match-card h2 { margin-bottom: 10px; }
   #matchSetup .royal-selection-row button {
@@ -2916,32 +2915,14 @@ body:has(#browserFullscreen) .match-bar { box-sizing: border-box; }
   overflow-wrap: anywhere;
   pointer-events: none;
 }
-#multiplayerLeave {
+#multiplayerLeave, #multiplayerDisconnected {
   inset: 0;
   z-index: 2147482990;
   touch-action: none;
 }
-#multiplayerLeave > .match-card { width: min(100%, 380px); padding: 20px; }
-#multiplayerLeaveTitle { font-size: 18px; }
+#multiplayerLeave > .match-card, #multiplayerDisconnected > .match-card { width: min(100%, 380px); padding: 20px; }
+#multiplayerLeaveTitle, #multiplayerDisconnectedTitle { font-size: 18px; }
 #multiplayerLeave .match-actions { flex-wrap: wrap; }
-
-/* Scaled laptops retain readable previews. Available height determines the
-   compact treatment; aspect ratio alone never shrinks the choices. */
-@media (min-width: 921px) {
-  #matchSetup .royal-selection-row canvas { height: 110px; }
-  #matchSetup.online-setup > .match-card { padding-block: clamp(12px, calc(8dvh - 42px), 24px); }
-  #matchSetup.online-setup .royal-selection-row canvas { height: clamp(80px, calc(15dvh - 28px), 110px); }
-}
-
-@media (min-width: 921px) and (max-height: 600px) {
-  #matchSetup > .match-card { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px 18px; align-content: start; }
-  #matchSetup > .match-card > .mode-back { grid-column: 1; grid-row: 1; margin: 0; }
-  #matchSetupTitle { grid-column: 2; grid-row: 1; align-self: center; margin: 0; }
-  #matchSetup #matchSetupTitle { margin-bottom: 0; }
-  #matchSetupBody, #matchSetup > .match-card > .match-actions { grid-column: 1 / -1; }
-  #matchSetup .royal-selection-row button { grid-template-columns: minmax(0, 1fr) minmax(108px, 144px); }
-  #matchSetup .royal-selection-row canvas { max-width: 144px; height: 80px; }
-}
 </style>
 </head>
 
@@ -3867,6 +3848,22 @@ for (const [language, values] of Object.entries({
     window.KING_PONG_ONLINE_TRANSLATIONS[language][key] = values[index];
   });
 }
+
+for (const [language, values] of Object.entries({
+  es: ['Tu oponente se ha desconectado', 'Volver al menú'],
+  fr: ['Votre adversaire s’est déconnecté', 'Retour au menu'],
+  de: ['Dein Gegner hat die Verbindung getrennt', 'Zurück zum Menü'],
+  pt: ['Seu adversário se desconectou', 'Voltar ao menu'],
+  it: ['Il tuo avversario si è disconnesso', 'Torna al menu'],
+  nl: ['Je tegenstander heeft de verbinding verbroken', 'Terug naar het menu'],
+  ja: ['対戦相手が切断しました', 'メニューに戻る'],
+  ko: ['상대방의 연결이 끊어졌습니다', '메뉴로 돌아가기'],
+  zh: ['对手已断开连接', '返回菜单']
+})) {
+  ['Your opponent disconnected', 'Return to Menu'].forEach((key, index) => {
+    window.KING_PONG_ONLINE_TRANSLATIONS[language][key] = values[index];
+  });
+}
 // Generated by tools/sync-gameplay.mjs from the existing arenas/rules and compatibility revision.
 const KING_PONG_MATCHMAKING = Object.freeze({
   "protocol": "royal-bca5c4f7ce3770e1",
@@ -4406,6 +4403,18 @@ class KingPongSecureTransport {
 }
 
 /* Room admission and transport setup. Existing LAN packet handlers own gameplay. */
+// Resolve only after queued WebSocket frames can no longer be transmitted.
+function closeOnlineSocket(socket) {
+  return new Promise(resolve => {
+    if (!socket || socket.readyState === 3) { resolve(); return; }
+    socket.onopen = socket.onmessage = socket.onerror = null;
+    socket.onclose = () => { socket.onclose = null; resolve(); };
+    socket.close();
+    // The native iframe bridge and test adapters tear down synchronously.
+    if (socket.readyState === 3) { socket.onclose = null; resolve(); }
+  });
+}
+
 class KingPongRoom {
   constructor(baseUrl, hooks) {
     this.baseUrl = baseUrl;
@@ -4435,13 +4444,16 @@ class KingPongRoom {
     this.hooks.status('Connecting...');
     this.openTimer = setTimeout(() => this.fail('timeout'), 12_000);
     this.socket.onopen = () => {
+      if (this.closed) return;
       this.lastPong = Date.now();
       this.heartbeat = setInterval(() => {
+        if (this.closed) return;
         if (Date.now() - this.lastPong > 60_000) this.fail('connection_lost');
         else if (this.socket.readyState === WebSocket.OPEN) this.socket.send('ping');
       }, 20_000);
     };
     this.socket.onmessage = event => {
+      if (this.closed) return;
       if (event.data === 'pong') { this.lastPong = Date.now(); return; }
       if (typeof event.data !== 'string' || event.data.length > 65536) { this.fail('negotiation_failed'); return; }
       if (typeof event.data === 'string' && event.data.length <= 24000 && event.data.startsWith('{"type":"secure-frame"')) {
@@ -4469,7 +4481,7 @@ class KingPongRoom {
 
   kickGuest() {
     if (!this.managed || this.role !== 'host' || !this.connected || this.removingGuest || this.closed) return;
-    this.removingGuest = true;
+    this.removingGuest = true; this.kickedGuest = true;
     this.send({type: 'kick', slot: 1});
     // The guest may close RTC before the server's departed acknowledgement
     // reaches the host. Keep the room socket alive for that acknowledgement.
@@ -4491,6 +4503,7 @@ class KingPongRoom {
   }
 
   async receive(message) {
+    if (this.closed) return;
     if (message.type === 'secure') {
       if (message.kind === 'init') {
         if (this.awaitingApproval || this.secure || !/^[a-f0-9-]{36}$/.test(message.session || '') || message.epoch !== 0 ||
@@ -4722,7 +4735,7 @@ class KingPongRoom {
   }
 
   close() {
-    if (this.closed) return;
+    if (this.closed) return this.socketClosed;
     if (typeof stopMultiplayerPresence === 'function') stopMultiplayerPresence(this);
     this.closed = true;
     this.secure?.close();
@@ -4731,10 +4744,9 @@ class KingPongRoom {
     clearTimeout(this.totalTimer);
     clearInterval(this.heartbeat);
     this.dropPeer();
-    if (this.socket) {
-      this.socket.onopen = this.socket.onmessage = this.socket.onerror = this.socket.onclose = null;
-      this.socket.close();
-    }
+    const socket = this.socket;
+    this.socketClosed = closeOnlineSocket(socket);
+    return this.socketClosed;
   }
 
   fail(code) {
@@ -4800,7 +4812,7 @@ function closeOnlineConnection(showMessage = true, keepQueue = false) {
   if (saveConfirmation?.roomSession === onlineSession) finishSaveConfirmation(false);
   resetOnlineMatchFlow();
   resetOnlineWire();
-  if (!keepQueue) stopMatchmaking();
+  const queueClosed = !keepQueue ? stopMatchmaking() : null;
   onlineMatchAssignment = null;
   if (matchmakingPreviousRules === null) matchRuleId = playerPreference('matchRuleId');
   matchPowerupsEnabled = playerPreference('royalPowerupsEnabled');
@@ -4812,7 +4824,7 @@ function closeOnlineConnection(showMessage = true, keepQueue = false) {
   onlineAppliedInputSeq = -1;
   const session = onlineSession;
   onlineSession = null;
-  if (session) session.close();
+  const closed = session?.close();
   lanPeer = lanChannel = onlineControlChannel = null;
   lanConnected = false;
   lanRole = 'none';
@@ -4827,9 +4839,10 @@ function closeOnlineConnection(showMessage = true, keepQueue = false) {
   if (showMessage) { paused = true; setLanStatus('Find an opponent or create/join a private room.'); }
   updateLanPanelVisibility();
   updateModeControls();
+  return Promise.all([closed, queueClosed]);
 }
 
-function startOnlineSetup(fromTitle = false, offline = false) {
+function startOnlineSetup(fromTitle = false, offline = false, observe = true) {
   if (!offline) { onlineManualLanSelected = false; onlineLocalLanSelected = false; }
   closeLanConnection(false);
   onlineTransportSelected = true;
@@ -4843,7 +4856,7 @@ function startOnlineSetup(fromTitle = false, offline = false) {
   }
   setLanPanelOpen(true);
   setMenusVisible(true);
-  if (!(typeof onlineManualLanSelected !== 'undefined' && onlineManualLanSelected)) observeMatchmaking();
+  if (observe && !(typeof onlineManualLanSelected !== 'undefined' && onlineManualLanSelected)) observeMatchmaking();
 }
 
 function hostOnlineMatch() { openOnlineRoom('host'); }
@@ -4943,9 +4956,9 @@ function openOnlineRoom(role, code = '', assignment = null) {
     error: code => {
       if (onlineSession !== session) return;
       // A connected but incompatible client still needs the existing setup
-      // explanation/Retry UI; terminal departures return directly to the menu.
+      // explanation/Retry UI; terminal departures require local acknowledgement.
       if (session.multiplayerEstablished && code !== 'incompatible') {
-        leaveMultiplayerSession(ONLINE_ERRORS[code] || ONLINE_ERRORS.connection_lost, false);
+        endMultiplayerSession(ONLINE_ERRORS[code] || ONLINE_ERRORS.connection_lost);
         return;
       }
       if (assignment) { failOnlineMatchFlow(code); return; }
@@ -5305,11 +5318,9 @@ function stopMatchmaking() {
   matchmakingPowerupsPreference = null;
   matchmakingState = 'offline';
   matchmakingWaiting = null;
-  if (socket) {
-    socket.onopen = socket.onmessage = socket.onclose = socket.onerror = null;
-    socket.close();
-  }
+  const closed = closeOnlineSocket(socket);
   syncMatchmakingUi();
+  return closed;
 }
 
 function matchmakingError(code) {
@@ -5328,7 +5339,7 @@ function matchmakingFailed(code) {
 }
 
 function observeMatchmaking() {
-  if (matchmakingSocket || document.hidden || !window.KING_PONG_SIGNALING_URL) return;
+  if (multiplayerDisconnect || matchmakingSocket || document.hidden || !window.KING_PONG_SIGNALING_URL) return;
   let socket;
   try {
     const url = new URL(window.KING_PONG_SIGNALING_URL);
@@ -6276,7 +6287,7 @@ function receiveMultiplayerRematch(message) {
   if (message.kind === 'leave' && (message.round === state.round ||
       state.phase === 'awaiting-state' && message.round === state.round - 1 ||
       state.phase === 'starting' && message.round === state.round + 1)) {
-    return leaveMultiplayerSession('Opponent left the match.', false);
+    return endMultiplayerSession('Opponent left the match.');
   }
   if (lanRole === 'guest' && message.kind === 'start') {
     if (state.phase === 'awaiting-state' && message.round === state.round - 1) {
@@ -6333,7 +6344,7 @@ function tickMultiplayerRematch() {
   if (state.phase === 'starting' || state.phase === 'awaiting-state') {
     if (!blocked) state.activeWait += Math.max(0, now - (state.at ?? now));
     state.at = now;
-    if (state.activeWait > 12000) { leaveMultiplayerSession(ONLINE_ERRORS.connection_lost); return; }
+    if (state.activeWait > 12000) { endMultiplayerSession(ONLINE_ERRORS.connection_lost); return; }
   }
   if (blocked || now - state.lastSend < 500) return;
   if (state.phase === 'starting') sendRematch('start');
@@ -6349,6 +6360,48 @@ function finishMultiplayerRematchSnapshot() {
     clearHeldInput();
     syncRoyalUi(true);
   }
+}
+
+// The terminal dialog owns only local UI state. Detach the session before any
+// async close completes, so late callbacks cannot revive it or navigate away.
+let multiplayerDisconnect = null;
+
+function endMultiplayerSession(message = 'Opponent disconnected.') {
+  if (multiplayerDisconnect || !onlineSession) return;
+  const ended = multiplayerDisconnect = {origin: onlineSession.multiplayerOrigin ||
+    (onlineManualLanSelected ? 'lan' : 'private'), role: lanRole, ready: false};
+  onlineGameBlocked = paused = true;
+  clearHeldInput();
+  const closed = closeOnlineConnection(false);
+  onlineGameBlocked = paused = true;
+  setMenusVisible(false);
+  byId('classicLanDialog').hidden = true;
+  setLanStatus(message);
+  // Native LAN acknowledges socket/discovery shutdown; WebSockets must finish
+  // closing (including already queued frames) before the local popup appears.
+  Promise.resolve(closed).then(() => {
+    if (multiplayerDisconnect !== ended) return;
+    ended.ready = true;
+    byId('multiplayerDisconnected').hidden = false;
+    syncRoyalUi(true);
+    byId('multiplayerReturn').focus({preventScroll: true});
+  });
+}
+
+function acknowledgeMultiplayerDisconnect() {
+  if (!multiplayerDisconnect?.ready) return;
+  const {origin} = multiplayerDisconnect;
+  multiplayerDisconnect = null;
+  byId('multiplayerDisconnected').hidden = true;
+  resetFrameClock();
+  // Returning is local navigation, not consent to reopen the queue socket.
+  if (origin === 'lan') openOfflineLanSetup(false);
+  else {
+    startOnlineSetup(false, false, false);
+    if (origin === 'private') byId('onlinePrivateRooms').open = true;
+  }
+  onlineGameBlocked = paused = true;
+  syncRoyalUi(true);
 }
 
 function leaveMultiplayerSession(message = '', notify = true) {
@@ -6456,8 +6509,7 @@ function suspendMultiplayerPresence(reason = 'peer-hold') {
   }
   p.suspended = true; p.since = Date.now(); p.flowAt = performance.now();
   p.reason = reason;
-  p.wasPaused = p.focusPause?.paused ?? paused; p.countdown = p.focusPause?.countdown ?? resumeCountdownRemainingMs();
-  p.focusPause = null;
+  p.wasPaused = paused; p.countdown = resumeCountdownRemainingMs();
   p.phase = 'held';
   if (lanRole === 'host') p.epoch++;
   onlineGameBlocked = paused = true;
@@ -6470,7 +6522,7 @@ function suspendMultiplayerPresence(reason = 'peer-hold') {
 
 function presenceExpired(p = multiplayerPresence()) {
   if (!p?.suspended || Date.now() - p.since < MULTIPLAYER_PRESENCE.grace) return false;
-  leaveMultiplayerSession('Opponent disconnected.');
+  endMultiplayerSession();
   return true;
 }
 
@@ -6552,7 +6604,7 @@ function receiveMultiplayerPresence(m) {
       m.token !== multiplayerRematch().token || !Number.isSafeInteger(m.epoch) || m.epoch < 0 ||
       !Number.isSafeInteger(m.revision) || m.revision < 0 || typeof m.active !== 'boolean' ||
       !['status', 'status-ack', 'ping', 'pong', 'hold', 'offer', 'ready', 'snapshot-ack', 'resume', 'leave'].includes(m.kind)) return;
-  if (m.kind === 'leave') { leaveMultiplayerSession('Opponent disconnected.', false); return; }
+  if (m.kind === 'leave') { endMultiplayerSession(); return; }
   if (presenceExpired(p)) return;
   if (m.revision < p.remoteRevision) return;
   p.remoteRevision = m.revision; p.remoteActive = m.active; p.lastHeard = Date.now();
@@ -6633,22 +6685,26 @@ function multiplayerPageHide(event) {
 }
 
 window.addEventListener('pagehide', multiplayerPageHide);
-window.addEventListener('pageshow', () => setMultiplayerAvailability(!document.hidden && !window.KingPongBackgrounded));
-document.addEventListener('visibilitychange', () => setMultiplayerAvailability(!document.hidden && !window.KingPongBackgrounded));
-document.addEventListener('kingpong-background', () => setMultiplayerAvailability(!document.hidden && !window.KingPongBackgrounded));
+function refreshMultiplayerAvailability() {
+  const active = !document.hidden && !window.KingPongBackgrounded;
+  // hasFocus() can lag visibilitychange/pageshow. A visible return must also
+  // release the legacy input gate, even if no separate focus event follows.
+  if (active && multiplayerPresence()) gameWindowFocused = true;
+  setMultiplayerAvailability(active);
+}
+window.addEventListener('pageshow', refreshMultiplayerAvailability);
+document.addEventListener('visibilitychange', refreshMultiplayerAvailability);
+document.addEventListener('kingpong-background', refreshMultiplayerAvailability);
 
-// blur can precede visibilitychange on mobile. Preserve the state from before
-// the legacy blur handler pauses the host, rather than treating it as a user's
-// manual Pause choice. A visible permission prompt keeps its existing behavior.
+// Focus and visibility must suspend through the same protocol. The legacy
+// blur pause has no matching resume and used to leave an active peer frozen
+// when a browser omitted/reordered visibility events. Presence takes ownership
+// before that handler can turn automatic suspension into a manual Pause.
 function recordMultiplayerFocusLoss() {
-  const p = multiplayerPresence();
-  if (p && !p.suspended && !p.focusPause) p.focusPause = {paused, countdown: resumeCountdownRemainingMs()};
-  if (document.hidden || window.KingPongBackgrounded) setMultiplayerAvailability(false);
+  setMultiplayerAvailability(false);
 }
 function recordMultiplayerFocusReturn() {
-  if (!document.hidden && !window.KingPongBackgrounded) setMultiplayerAvailability(true);
-  const p = multiplayerPresence();
-  if (p) p.focusPause = null;
+  refreshMultiplayerAvailability();
 }
 
 // Native LAN functions remain intact. Route only online sessions through the
@@ -6680,7 +6736,7 @@ function installOnlineSupport() {
   for (const name of ['update', 'requestServeOrContinue', 'requestTogglePause', 'requestRetryLevel']) {
     const original = window[name];
     window[name] = (...args) => {
-      if (name !== 'update' && royalInputModal()) return;
+      if (multiplayerDisconnect || name !== 'update' && royalInputModal()) return;
       if (name === 'update') {
         tickMultiplayerPresence();
         if (!multiplayerSuspended()) { tickOnlineMatchFlow(); tickMultiplayerRematch(); }
@@ -6698,12 +6754,13 @@ function installOnlineSupport() {
     window[name] = (...args) => {
       if (mode === 2 && onlineSession && (name === 'retryLevel' && (gameOver || lanRole === 'guest') ||
           name === 'serveOrContinue' && gameOver)) return;
-      if (onlineMatchFlowBlocksPlay() || multiplayerSuspended()) return;
+      if (multiplayerDisconnect || onlineMatchFlowBlocksPlay() || multiplayerSuspended()) return;
       return original(...args);
     };
   }
   const receive = handleLanMessage;
   window.handleLanMessage = raw => {
+    if (multiplayerDisconnect) return;
     if (typeof raw !== 'string' || raw.length > 8192) return;
     let message;
     try { message = JSON.parse(raw); } catch { return; }
@@ -17739,7 +17796,7 @@ function syncPlayerPreferenceControls() {
 // A horizontal reflection changes presentation only. Vertical input, physics,
 // snapshots and interpolation stay in world coordinates on every transport.
 function twoPlayerViewMirrored() {
-  return mode === 2 && isLanGuestActive();
+  return mode === 2 && (isLanGuestActive() || multiplayerDisconnect?.role === 'guest');
 }
 
 function applyArenaPerspective() {
@@ -17793,14 +17850,16 @@ let multiplayerLeaveApproved = false;
 
 function royalPortraitVisible() { return Boolean(byId('rotateDevice') && !byId('rotateDevice').hidden); }
 
-// Both blocking dialogs share the existing focus/input boundary. A departure
+// Blocking dialogs share the existing focus/input boundary. A departure
 // prompt consumes local input only; it never pauses the authoritative simulation.
 function royalInputModal() {
+  if (multiplayerDisconnect) return byId('multiplayerDisconnected');
   if (royalPortraitVisible()) return byId('rotateDevice');
   return multiplayerLeaveRequest ? byId('multiplayerLeave') : null;
 }
 
 function guardMultiplayerLeave(action) {
+  if (multiplayerDisconnect) return true;
   if (multiplayerLeaveApproved || !onlineSession || !lanConnected || mode !== 2 || gameOver) return false;
   if (onlineMatchFlow && !['countdown', 'go', 'playing'].includes(onlineMatchFlow.phase)) return false;
   if (multiplayerLeaveRequest) return true;
@@ -17827,7 +17886,7 @@ function finishMultiplayerLeave(leave = false) {
 // Android's intercepted Back remains an in-game action. Browser tab/window
 // termination still uses pagehide and never opens a custom departure prompt.
 window.KingPongMatchNavigation = {back() {
-  if (royalPortraitVisible()) return true;
+  if (multiplayerDisconnect || royalPortraitVisible()) return true;
   if (multiplayerLeaveRequest) { finishMultiplayerLeave(false); return true; }
   if (!onlineSession || !lanConnected) return false;
   if (!guardMultiplayerLeave(() => leaveMultiplayerSession())) leaveMultiplayerSession();
@@ -17874,7 +17933,7 @@ function installRoyalPortraitModal() {
   // Block bubbling to the legacy fullscreen paddle/touch handlers even on the
   // two permitted buttons. Their own click handlers still run at the target.
   for (const type of ['pointerdown', 'pointermove', 'pointerup', 'touchstart', 'touchmove', 'touchend'])
-    for (const id of ['rotateDevice', 'multiplayerLeave'])
+    for (const id of ['rotateDevice', 'multiplayerLeave', 'multiplayerDisconnected'])
       byId(id).addEventListener(type, event => event.stopPropagation());
   window.addEventListener('keyup', event => {
     if (royalInputModal()) { event.preventDefault(); event.stopImmediatePropagation(); }
@@ -18200,6 +18259,10 @@ function initRoyalUi() {
   leaveActions.append(royalButton('multiplayerStay', 'Stay', () => finishMultiplayerLeave(false), 'match-primary'),
     royalButton('multiplayerLeaveConfirm', 'Leave Match', () => finishMultiplayerLeave(true)));
   leave.append(leaveActions);
+  const disconnected = royalDialog('multiplayerDisconnected', 'Your opponent disconnected');
+  const disconnectedActions = document.createElement('div'); disconnectedActions.className = 'match-actions';
+  disconnectedActions.append(royalButton('multiplayerReturn', 'Return to Menu', acknowledgeMultiplayerDisconnect, 'match-primary'));
+  disconnected.append(disconnectedActions);
   installRoyalPortraitModal();
   // Capture exit buttons before legacy handlers change mode or close transports.
   window.addEventListener('click', event => {
@@ -18425,8 +18488,8 @@ function syncRoyalUi(force = false) {
   const online = royalOnlineMode();
   const fixedMatch = typeof matchmakingLocked === 'function' && matchmakingLocked();
   const joining = online && byId('onlineJoinForm') && !byId('onlineJoinForm').hidden;
-  const setup = !title && !bossIntroActive && !creditsActive && royalNeedsSetup();
-  const menu = !bossIntroActive && !creditsActive && menusVisible && (!setup || royalMenuRequested);
+  const setup = !multiplayerDisconnect && !title && !bossIntroActive && !creditsActive && royalNeedsSetup();
+  const menu = !multiplayerDisconnect && !bossIntroActive && !creditsActive && menusVisible && (!setup || royalMenuRequested);
   const desktopPause = paused && !waitingForServe && !gameOver && !levelCleared && !campaignCleared &&
     !hasResumeCountdown() && !multiplayerSuspended();
   const signature = [title, online, setup, menu, desktopPause, galleryKind, bossIntroActive, creditsActive, mode, activeCampaign,
@@ -18688,7 +18751,7 @@ function syncRoyalOrientation() {
   button.hidden = !royalLandscapeRoute();
   button.disabled = Boolean(request);
   if (button.hidden && document.activeElement === button) byId('rotateDismiss').focus({preventScroll: true});
-  const visible = royalPhoneViewport() && (window.innerHeight > window.innerWidth || request?.fromPortrait) && !royalRotateDismissed &&
+  const visible = !multiplayerDisconnect && royalPhoneViewport() && (window.innerHeight > window.innerWidth || request?.fromPortrait) && !royalRotateDismissed &&
     !document.body.classList.contains('title-active') && !galleryKind && !bossIntroActive && !creditsActive &&
     (!overlay.hidden || byId('matchSetup').hidden && byId('matchMenu').hidden);
   overlay.hidden = !visible;
@@ -18709,7 +18772,7 @@ function royalActiveDialog() {
 function royalFocusables(panel) {
   return [...panel.querySelectorAll(
       'button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),summary')]
-    .concat(!['rotateDevice', 'multiplayerLeave'].includes(panel.id) && byId('browserFullscreen') ? [byId('browserFullscreen')] : [])
+    .concat(!['rotateDevice', 'multiplayerLeave', 'multiplayerDisconnected'].includes(panel.id) && byId('browserFullscreen') ? [byId('browserFullscreen')] : [])
     .filter(element => {
       if (!element.getClientRects().length || element.closest('[hidden],[inert]') ||
           getComputedStyle(element).visibility === 'hidden') return false;
@@ -18829,7 +18892,7 @@ function pollRoyalUiGamepad(now) {
   if ((gamepadButtonJustPressed(pad, GAMEPAD_BUTTONS.B) && panel.id !== 'titleScreen') ||
     gamepadButtonJustPressed(pad, GAMEPAD_BUTTONS.SELECT)) {
     if (panel.id === 'multiplayerResult') leaveMultiplayerSession();
-    else if (panel.id === 'rotateDevice') return;
+    else if (panel.id === 'rotateDevice' || panel.id === 'multiplayerDisconnected') return;
     else if (panel.id === 'multiplayerLeave') finishMultiplayerLeave(false);
     else if (panel.id === 'matchSetup' && onlineTransportSelected) showTitleScreen();
     else toggleRoyalMenu();
@@ -18889,8 +18952,9 @@ class KingPongManualRoom extends KingPongRoom {
     } catch { this.hooks.status('Invalid or expired LAN answer.'); }
   }
   close() {
-    super.close(); clearLanQr();
+    const closed = super.close(); clearLanQr();
     byId('classicLanOutput').value = ''; byId('classicLanInput').value = '';
+    return closed;
   }
   send() {}
   relay() { this.fail('timeout'); }
@@ -18957,6 +19021,8 @@ function syncPrivateRoomControls() {
 // blocked-session list remain alive until the host explicitly closes the room.
 function privateGuestDeparted(session) {
   if (onlineSession !== session) return;
+  if (session.multiplayerEstablished && !session.kickedGuest) { endMultiplayerSession('Opponent left the match.'); return; }
+  session.kickedGuest = false;
   finishMultiplayerLeave(false);
   if (typeof stopMultiplayerPresence === 'function') stopMultiplayerPresence(session);
   const established = session.multiplayerEstablished;
@@ -19018,7 +19084,9 @@ function installMultiplayerSafety() {
     if (typeof raw === 'string' && raw.length < 8192 && isLanGuestActive()) {
       let message; try { message = JSON.parse(raw); } catch {}
       if (message?.type === 'room-removed' && message.room === lanRoomCode) {
-        closeLanConnection(false); onlineGameBlocked = true; paused = true; setMenusVisible(true); setLanStatus('The host removed you from this room.'); return;
+        if (onlineSession?.multiplayerEstablished) endMultiplayerSession('The host removed you from this room.');
+        else { closeLanConnection(false); onlineGameBlocked = true; paused = true; setMenusVisible(true); setLanStatus('The host removed you from this room.'); }
+        return;
       }
     }
     receive(raw);
@@ -19111,6 +19179,8 @@ function installMultiplayerSafety() {
 let onlineLocalLanSelected = false;
 let localLanGeneration = 0;
 let localLanScan = 0;
+let localLanScanTimer = null;
+const localLanClosures = new Map();
 let localLanRooms = [];
 function hasNativeLan() { return Boolean(window.KingPongLan?.postMessage || window.KingPongNativeLan); }
 function nativeLanCommand(op, generation, fields = {}) {
@@ -19156,6 +19226,7 @@ class KingPongLocalRoom extends KingPongRoom {
     } else if (event.type === 'departed') {
       this.pendingRequests = []; syncClassicApproval({pending: []});
       await this.receive({type: 'departed'});
+      if (this.closed) return;
       byId('classicLanDialog').hidden = false; syncRoyalFocus();
     } else if (event.type === 'error') this.fail(event.code === 'room_full' ? 'full' : event.code);
   }
@@ -19165,7 +19236,7 @@ class KingPongLocalRoom extends KingPongRoom {
       nativeLanCommand('approve', this.generation, {request: message.request, accept: message.type === 'approve'});
     } else if (['description', 'candidate', 'connected'].includes(message.type)) nativeLanCommand('send', this.generation, {message});
   }
-  kickGuest() { if (this.role === 'host' && !this.closed) nativeLanCommand('release', this.generation, {block: true}); }
+  kickGuest() { if (this.role === 'host' && !this.closed) { this.kickedGuest = true; nativeLanCommand('release', this.generation, {block: true}); } }
   waitForGuestDeparture() {
     if (this.role !== 'host' || this.closed) return false;
     nativeLanCommand('release', this.generation); return true;
@@ -19175,13 +19246,22 @@ class KingPongLocalRoom extends KingPongRoom {
     else this.fail('timeout');
   }
   close() {
-    if (this.closed) return;
-    super.close(); nativeLanCommand('close', this.generation);
+    if (this.closed) return this.networkClosed;
+    this.networkClosed = new Promise(resolve => localLanClosures.set(this.generation, resolve));
+    super.close();
+    clearTimeout(localLanScanTimer); localLanScan = 0;
+    byId('localLanScan').disabled = false;
+    nativeLanCommand('close', this.generation);
     clearLanQr(); byId('localLanAddress').textContent = ''; byId('localLanRoomCode').textContent = '';
+    return this.networkClosed;
   }
 }
 window.KingPongLanReceive = event => {
   if (!event || typeof event !== 'object') return;
+  if (event.type === 'closed') {
+    const finish = localLanClosures.get(event.generation);
+    localLanClosures.delete(event.generation); finish?.(); return;
+  }
   if (event.type === 'rooms' && event.generation === localLanScan && !byId('classicLanDialog')?.hidden) {
     localLanRooms = Array.isArray(event.rooms) ? event.rooms.slice(0, 32) : [];
     const select = byId('localLanRooms'); select.replaceChildren();
@@ -19205,7 +19285,7 @@ function scanLocalLan() {
   nativeLanCommand('discover', localLanScan);
   setLocalizedText(byId('localLanHint'), 'Searching local network...');
   const generation = localLanScan;
-  setTimeout(() => { if (localLanScan === generation) byId('localLanScan').disabled = false; }, 4000);
+  localLanScanTimer = setTimeout(() => { if (localLanScan === generation) byId('localLanScan').disabled = false; }, 4000);
 }
 function joinLocalLan() {
   const raw = byId('localLanCode').value.trim();
@@ -19792,7 +19872,7 @@ document.addEventListener("visibilitychange", () => {
     stopMusicAudioKeepAlive();
     if (audioCtx && audioCtx.state === "running") audioCtx.suspend().catch(() => {});
   } else {
-    gameWindowFocused = document.hasFocus();
+    gameWindowFocused = Boolean(multiplayerPresence()) || document.hasFocus();
     if (gameWindowFocused) handleGameFocusReturn();
     if (musicEnabled && !musicTimer) scheduleMusicLoop();
   }

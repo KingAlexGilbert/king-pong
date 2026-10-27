@@ -271,8 +271,9 @@ try {
     } else {
       // This fixture disables RAF; poll the asynchronous channel-close deadline.
       await a.waitForFunction(() => onlineSession === null, null, {polling: 20, timeout: 3000});
-      assert.equal(await a.locator('#matchSetup').isVisible(),true,
-        'an established session returns automatically after an irrecoverable disconnect');
+      await a.locator('#multiplayerDisconnected').waitFor({state:'visible'});
+      assert.equal(await a.locator('#matchSetup').isVisible(),false,
+        'an established session requires acknowledgement after permanent termination');
       assert.equal(await a.evaluate(() => paused && onlineGameBlocked),true);
     }
     await step(a,10000);
@@ -282,6 +283,11 @@ try {
     await a.evaluate(() => { testOldSession.hooks.connected(); testOldSession.hooks.resumed(); testOldSession.hooks.peer({}); });
     assert.equal(await a.evaluate(() => onlineSession),null);
     if (phase === 'connecting') await a.locator('#onlineFlowBack').click();
+    else {
+      assert.equal(await a.locator('#multiplayerDisconnected').isVisible(),true);
+      await a.locator('#multiplayerReturn').click();
+      assert.equal(await a.evaluate(()=>matchmakingSocket),null,'acknowledging does not reopen the queue');
+    }
     assert.equal(await a.locator('#matchSetup').isVisible(),true);
     assert.equal(await a.evaluate(() => matchRuleId),'winTwo');
     await b.locator('#onlineFlowBack').click();
