@@ -1,3 +1,4 @@
+import {multiplayerNavigationChecks} from './multiplayer-navigation-checks.mjs';
 import {reviewBrowserChecks} from './review-browser-checks.mjs';
 import {homepageBrowserChecks} from './homepage-browser-checks.mjs';
 import {orientationBrowserChecks} from './orientation-browser-checks.mjs';
@@ -734,6 +735,7 @@ try {
   for (let i = 0; i < 2; i++) {
     const p = [host, guest][i];
     await p.evaluate(() => {
+      closeOnlineConnection(false); // Fixture teardown; voluntary exits are tested separately.
       showTitleScreen();
       startCampaignFromSave();
     });
@@ -836,6 +838,7 @@ try {
   await phone.context().close();
   pass('portrait prompt, navigation, dismissal, one lock attempt, listener lifetime and local/online rotation state');
   await orientationBrowserChecks({page,bounds,pass});
+  await multiplayerNavigationChecks({page,bounds,pass});
   const titleInput = await page();
   const controllerTitle = await titleMenuState(titleInput);
   await titleInput.evaluate(() => {
@@ -924,12 +927,12 @@ try {
     updateGamepadInput();
   });
   assert.equal(await inputs.evaluate(() => paused), true);
-  assert.equal(await inputs.locator('#matchMenu').isVisible(), true);
+  assert.equal(await inputs.locator('#matchMenu').isVisible(), false, 'Start pauses without opening Menu');
   await inputs.evaluate(() => {
     testPad.buttons[9].pressed = false;
-    pollRoyalUiGamepad(1360);
+    updateGamepadInput();
     testPad.buttons[9].pressed = true;
-    pollRoyalUiGamepad(1400);
+    updateGamepadInput();
   });
   assert.equal(await inputs.evaluate(() => hasResumeCountdown()), true);
   assert.equal(await inputs.locator('#matchMenu').isVisible(), false);

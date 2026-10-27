@@ -27,6 +27,7 @@ function installOnlineSupport() {
   for (const name of ['update', 'requestServeOrContinue', 'requestTogglePause', 'requestRetryLevel']) {
     const original = window[name];
     window[name] = (...args) => {
+      if (name !== 'update' && royalInputModal()) return;
       if (name === 'update') {
         tickMultiplayerPresence();
         if (!multiplayerSuspended()) { tickOnlineMatchFlow(); tickMultiplayerRematch(); }

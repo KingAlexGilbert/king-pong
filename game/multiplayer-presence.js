@@ -35,20 +35,16 @@ function sendMultiplayerPresence(kind, fields = {}) {
 function showMultiplayerUnavailable() {
   let panel = document.getElementById('multiplayerUnavailable');
   if (!panel) {
-    panel = document.createElement('section');
-    panel.id = 'multiplayerUnavailable'; panel.className = 'online-match-flow match-ui';
+    panel = document.createElement('p');
+    panel.id = 'multiplayerUnavailable'; panel.className = 'multiplayer-status';
     panel.setAttribute('role', 'status'); panel.setAttribute('aria-live', 'polite');
-    const card = document.createElement('div'); card.className = 'online-flow-card';
-    const text = document.createElement('p');
-    setLocalizedText(text, 'Opponent temporarily unavailable.');
-    card.append(text, royalButton('multiplayerUnavailableBack', 'Back', () => leaveMultiplayerSession()));
-    panel.append(card); document.body.append(panel);
+    setLocalizedText(panel, 'Opponent unavailable — Game paused.');
+    document.getElementById('matchBar').append(panel);
   }
   panel.hidden = !multiplayerSuspended();
-  syncRoyalFocus();
 }
 
-function suspendMultiplayerPresence() {
+function suspendMultiplayerPresence(reason = 'peer-hold') {
   const p = multiplayerPresence();
   if (!p) return;
   if (p.suspended) {
@@ -59,6 +55,7 @@ function suspendMultiplayerPresence() {
     return;
   }
   p.suspended = true; p.since = Date.now(); p.flowAt = performance.now();
+  p.reason = reason;
   p.wasPaused = p.focusPause?.paused ?? paused; p.countdown = p.focusPause?.countdown ?? resumeCountdownRemainingMs();
   p.focusPause = null;
   p.phase = 'held';
@@ -83,16 +80,16 @@ function setMultiplayerAvailability(active) {
   active = Boolean(active);
   if (p.localActive === active) return;
   p.localActive = active; p.revision++;
-  if (!active) suspendMultiplayerPresence();
+  if (!active) suspendMultiplayerPresence('local-background');
   sendMultiplayerPresence('status');
   maybeResumeMultiplayer();
 }
 
-function multiplayerTransportInterrupted() {
+function multiplayerTransportInterrupted(reason = 'transport-recovery') {
   const p = multiplayerPresence();
   if (!p) return false;
   p.transportDown = true;
-  suspendMultiplayerPresence();
+  suspendMultiplayerPresence(reason);
   return true;
 }
 
@@ -129,7 +126,7 @@ function commitMultiplayerResume() {
   // older control can still be in flight; do not charge its suspended time
   // against the normal 12-second delivery deadline after committing recovery.
   for (const control of onlineSession.secure?.pending?.values() || []) control.created = Date.now();
-  p.suspended = false; p.phase = 'playing'; p.awaitingProbe = 0;
+  p.suspended = false; p.phase = 'playing'; p.awaitingProbe = 0; p.reason = 'snapshot-committed';
   const elapsed = performance.now() - p.flowAt;
   if (onlineMatchFlow) for (const key of ['handshakeDeadline', 'connectedUntil', 'goUntil'])
     if (Number.isFinite(onlineMatchFlow[key])) onlineMatchFlow[key] += elapsed;
@@ -159,7 +156,7 @@ function receiveMultiplayerPresence(m) {
   if (presenceExpired(p)) return;
   if (m.revision < p.remoteRevision) return;
   p.remoteRevision = m.revision; p.remoteActive = m.active; p.lastHeard = Date.now();
-  if (!m.active) suspendMultiplayerPresence();
+  if (!m.active) suspendMultiplayerPresence('peer-background');
   if (m.kind === 'status') sendMultiplayerPresence('status-ack');
   if (m.kind === 'ping' && Number.isSafeInteger(m.probe) && m.probe > 0)
     sendMultiplayerPresence('pong', {probe: m.probe});
@@ -170,7 +167,7 @@ function receiveMultiplayerPresence(m) {
       if (m.kind === 'offer') sendMultiplayerPresence(p.phase === 'acknowledged' ? 'snapshot-ack' : 'ready');
       return; // A duplicate hold/offer cannot roll back an in-flight handshake.
     }
-    suspendMultiplayerPresence();
+    suspendMultiplayerPresence('peer-hold');
     p.epoch = m.epoch;
     if (m.kind === 'offer' && p.localActive && m.active && !p.transportDown) {
       p.phase = 'snapshot'; sendMultiplayerPresence('ready');
@@ -208,7 +205,7 @@ function tickMultiplayerPresence() {
   if (!p || presenceExpired(p)) return;
   const now = Date.now();
   if (now - p.lastHeard >= MULTIPLAYER_PRESENCE.stale) {
-    suspendMultiplayerPresence();
+    suspendMultiplayerPresence('traffic-timeout');
     // Reuse the existing ICE restart -> TURN -> encrypted WebSocket recovery.
     // An explicitly backgrounded peer may simply have suspended its JS timers.
     if (p.remoteActive && p.localActive && !p.transportDown && onlineSession.secure?.mode === 'rtc')

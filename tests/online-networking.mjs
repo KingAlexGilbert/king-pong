@@ -118,12 +118,17 @@ test('connection waits for both channels; a departed guest leaves the managed ho
   peer.state('connected'); assert.equal(h.ready, 1); assert.equal(h.resumed, 0);
   assert.equal(peer.channels[0].options.ordered, false);
   assert.equal(peer.channels[1].options, undefined);
-  peer.state('disconnected'); assert.equal(h.interrupted, 1);
+  peer.state('disconnected'); assert.equal(h.interrupted, 0);
+  peer.state('connected'); assert.equal(h.resumed, 0);
+  h.room.presence={lastHeard:Date.now()};
+  peer.state('disconnected'); h.fire(3000); assert.equal(h.interrupted,0,'recent validated LAN traffic outweighs ICE state');
+  h.room.presence=null; h.fire(3000); assert.equal(h.interrupted, 1);
   peer.state('connected'); assert.equal(h.resumed, 1);
   h.fire(8000); assert.deepEqual(h.errors, []);
   peer.channels[0].close(); h.fire(250);
   assert.deepEqual(h.errors, [], 'RTC close must not preempt the server departure event');
   assert.equal(h.room.closed, false);
+  peer.state('disconnected'); // A queued ICE event can follow the channel close.
   await h.message({type:'departed', slot:1, reason:'guest_left'});
   h.fire(8000);
   assert.deepEqual(h.errors, []);
@@ -131,6 +136,10 @@ test('connection waits for both channels; a departed guest leaves the managed ho
   assert.equal(h.room.socket.readyState, 1);
   await h.message(direct);
   assert.equal(h.peers.length, 2, 'a replacement guest can use the retained room');
+  const replacement = h.peers[1];
+  replacement.state('connected'); replacement.channels.forEach(channel => channel.open());
+  replacement.state('disconnected');
+  assert.ok(h.room.disconnectTimer, 'replacement peer gets its own stabilization timer');
   h.room.close();
 });
 
@@ -201,7 +210,7 @@ test('a lost kick acknowledgement times out rather than leaving a stuck moderati
 test('closing during an interruption does not leave a late disconnect timer', async () => {
   const h = harness(); h.room.open('host'); await h.message(direct);
   h.room.hooks.interrupted = () => h.room.close();
-  h.peers[0].state('disconnected');
+  h.peers[0].state('disconnected'); h.fire(3000);
   assert.equal(h.timers.size, 0);
   assert.equal(h.room.closed, true);
 });

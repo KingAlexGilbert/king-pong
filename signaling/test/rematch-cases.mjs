@@ -56,6 +56,12 @@ export async function rematchChecks(host,guest,label) {
    assert.equal(await host.evaluate(()=>pointServeCountdownActive()),true);
    await Promise.all([host,guest].map(p=>p.waitForFunction(()=>!waitingForServe,null,{timeout:5000})));
  }
+ for(const p of [host,guest]) {
+   await p.evaluate(()=>showTitleScreen());
+   assert.equal(await p.locator('#multiplayerLeave').isVisible(),true,'an active rematch requires confirmation again');
+   await p.locator('#multiplayerStay').click();
+   assert.equal(await p.evaluate(()=>onlineSession===window.rematchSession&&lanConnected),true);
+ }
  for(const p of [host,guest])await p.evaluate(()=>{window.startLevel=window.rematchReset;});
  await host.evaluate(()=>{paused=true;sendLanState(true)});
  console.log('PASS: '+label+' local win/loss, mutual/repeated rematch, host authority, clean reset, connection reuse and automatic countdown');

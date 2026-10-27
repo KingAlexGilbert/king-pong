@@ -413,6 +413,8 @@ try {
   await host.locator('#onlineReadyButton').click();await replacement.locator('#onlineReadyButton').click();
   await waitFor(replacement,"onlineMatchFlow?.phase === 'countdown'");
   await replacement.locator('#onlineFlowBack').click();
+  assert.equal(await replacement.evaluate(()=>lanConnected),true);
+  await replacement.locator('#multiplayerLeaveConfirm').click();
   await waitFor(host,"onlineMatchFlow === null && !lanConnected");
   assert.deepEqual(await host.evaluate(()=>[waitingForServe,paused,resumeCountdownEndAt,royalPickup,royalSplitBall]),[true,true,0,null,null]);
   assert.equal(await host.evaluate(()=>lanRoomCode),code);

@@ -19,6 +19,23 @@ export async function presenceBrowserChecks(host, guest, label) {
       };
     });
   }
+  // Advisory RTC changes must not start a recovery epoch while channels work.
+  if(await host.evaluate(()=>onlineSession.secure?.mode==='rtc')) {
+    const before=await host.evaluate(()=>multiplayerPresence().epoch);
+    for(let i=0;i<3;i++) {
+      await host.evaluate(()=>{const peer=onlineSession.secure.peer;
+        Object.defineProperty(peer,'connectionState',{configurable:true,value:'disconnected'});
+        Object.defineProperty(peer,'iceConnectionState',{configurable:true,value:'disconnected'});
+        onlineSession.secure.rtcState();onlineSession.secure.rtcState();});
+      await host.waitForTimeout(150);
+      assert.equal(await host.evaluate(()=>multiplayerSuspended()),false);
+      await host.evaluate(()=>{const peer=onlineSession.secure.peer;
+        Object.defineProperty(peer,'connectionState',{configurable:true,value:'connected'});
+        Object.defineProperty(peer,'iceConnectionState',{configurable:true,value:'connected'});
+        onlineSession.secure.rtcState();});
+    }
+    assert.equal(await host.evaluate(()=>multiplayerPresence().epoch),before,'jitter creates no recovery/countdown');
+  }
   for (const interrupted of [host, guest]) {
     await host.evaluate(() => {
       startLevel(); waitingForServe = false; paused = false; gameWindowFocused = true;
@@ -33,6 +50,18 @@ export async function presenceBrowserChecks(host, guest, label) {
     assert.equal(await host.evaluate(() => JSON.stringify([frame, left.score, right.score, ball])), stopped,
       label + ': host simulation stops, including when the guest is hidden');
     assert.equal(await (interrupted === host ? guest : host).locator('#multiplayerUnavailable').isVisible(), true);
+    for (const p of [host,guest]) {
+      assert.equal(await p.locator('#multiplayerUnavailable').isVisible(),true,'both peers keep the HUD visible after blur-before-hide');
+      assert.equal(await p.locator('#matchMenu').isVisible(),false,'backgrounding does not open a menu');
+      assert.equal(await p.locator('#multiplayerUnavailable').getAttribute('role'),'status');
+      const fits=await p.evaluate(()=>{const status=byId('multiplayerUnavailable').getBoundingClientRect(),arena=canvas.getBoundingClientRect();
+        return status.height<55 && status.bottom<=arena.top+1 && royalActiveDialog()?.id!=='multiplayerUnavailable';});
+      assert.equal(fits,true,'compact HUD status reserves space and does not trap focus');
+      await p.evaluate(()=>showTitleScreen());
+      assert.equal(await p.locator('#multiplayerLeave').isVisible(),true,'departure also protected during suspension');
+      await p.locator('#multiplayerStay').click();
+      assert.equal(await p.evaluate(()=>multiplayerSuspended()&&onlineSession===window.presenceSession),true);
+    }
     const epoch = await host.evaluate(() => multiplayerPresence().epoch);
     await interrupted.evaluate(() => {window.changeVisibility(true);window.changeVisibility(false)});
     await Promise.all([host, guest].map(p => p.waitForFunction(() => !multiplayerSuspended() && hasResumeCountdown())));
@@ -54,6 +83,12 @@ export async function presenceBrowserChecks(host, guest, label) {
     await host.evaluate(() => {resumeCountdownEndAt=0;paused=true;sendLanState(true)});
     await guest.waitForFunction(() => paused && !hasResumeCountdown());
   }
-  for (const p of [host,guest]) await p.evaluate(() => {delete document.hidden;gameWindowFocused=true;setMenusVisible(false)});
+  for (const p of [host,guest]) {
+    assert.equal(await p.locator('#multiplayerUnavailable').isVisible(),false);
+    const before=await p.evaluate(()=>[paused,multiplayerPresence().epoch]);
+    await p.evaluate(()=>showTitleScreen());await p.locator('#multiplayerStay').click();
+    assert.deepEqual(await p.evaluate(()=>[paused,multiplayerPresence().epoch]),before,'Stay does not pause or start recovery');
+    await p.evaluate(() => {delete document.hidden;gameWindowFocused=true;setMenusVisible(false)});
+  }
   console.log('PASS: ' + label + ' host/guest visibility, mutual pause, fresh state, stale-packet fence and connection reuse');
 }

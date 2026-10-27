@@ -168,15 +168,14 @@ class KingPongRoom {
           }
           else this.relay();
         } else if (peer.connectionState === 'disconnected') {
-          clearTimeout(this.disconnectTimer);
-          this.hooks.status('Connection interrupted. Reconnecting...');
-          this.hooks.interrupted?.();
-          if (this.closed || this.peer !== peer) return;
-          this.disconnectTimer = setTimeout(() => this.fail('connection_lost'), this.presence ? MULTIPLAYER_PRESENCE.grace : 8000);
+          if (!this.disconnectTimer) this.disconnectTimer = setTimeout(() => this.checkRtcDegradation(peer), 3000);
         } else if (peer.connectionState === 'connected') {
           clearTimeout(this.directTimer);
           clearTimeout(this.disconnectTimer);
-          if (this.connected) { this.hooks.status('Connected!'); this.hooks.resumed?.(); }
+          this.disconnectTimer = null;
+          if (this.connected && this.temporaryDisconnect) {
+            this.temporaryDisconnect = false; this.hooks.status('Connected!'); this.hooks.resumed?.();
+          }
           else this.maybeConnected(peer);
         }
       };
@@ -259,6 +258,21 @@ class KingPongRoom {
     };
   }
 
+  checkRtcDegradation(peer) {
+    this.disconnectTimer = null;
+    if (this.closed || this.peer !== peer || peer.connectionState !== 'disconnected') return;
+    const quiet = Date.now() - (this.presence?.lastHeard || 0);
+    if (quiet < 3000 && this.data?.readyState === 'open' && this.control?.readyState === 'open') {
+      this.disconnectTimer = setTimeout(() => this.checkRtcDegradation(peer), 3000 - quiet);
+      return;
+    }
+    this.temporaryDisconnect = true;
+    this.hooks.status('Connection interrupted. Reconnecting...');
+    this.hooks.interrupted?.('rtc-degraded-no-traffic');
+    if (this.closed || this.peer !== peer) return;
+    this.disconnectTimer = setTimeout(() => this.fail('connection_lost'), this.presence ? MULTIPLAYER_PRESENCE.grace : 8000);
+  }
+
   maybeConnected(peer) {
     if (this.closed || this.peer !== peer || this.relayPending || this.connected ||
         peer.connectionState !== 'connected' || this.data?.readyState !== 'open' ||
@@ -288,6 +302,8 @@ class KingPongRoom {
     this.removingGuest = false;
     clearTimeout(this.directTimer);
     clearTimeout(this.disconnectTimer);
+    this.disconnectTimer = null;
+    this.temporaryDisconnect = false;
     clearTimeout(this.peerLostTimer);
     const peer = this.peer;
     this.peer = null;
@@ -372,6 +388,7 @@ function setOnlineControls(busy, joining = false) {
 }
 
 function closeOnlineConnection(showMessage = true, keepQueue = false) {
+  if (typeof finishMultiplayerLeave === 'function') finishMultiplayerLeave(false);
   clearPointServeCountdown();
   if (saveConfirmation?.roomSession === onlineSession) finishSaveConfirmation(false);
   resetOnlineMatchFlow();
@@ -473,9 +490,9 @@ function openOnlineRoom(role, code = '', assignment = null) {
       if (control) onlineControlChannel = channel; else lanChannel = channel;
     },
     message: raw => { if (onlineSession === session) handleLanMessage(raw); },
-    interrupted: () => {
+    interrupted: reason => {
       if (onlineSession !== session) return;
-      if (multiplayerTransportInterrupted()) return;
+      if (multiplayerTransportInterrupted(reason)) return;
       suspendPointServeCountdown();
       // Matchmaking leaves a failed setup immediately. Private-room players
       // keep signaling alive long enough to receive the authoritative departure

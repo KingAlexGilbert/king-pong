@@ -108,7 +108,7 @@ test('recovery requires a new two-peer commit; transient ICE state cannot activa
   let resumed=0;owner.hooks.resumed=()=>resumed++;
   t.keyReady=true;t.phase='active';t.everConnected=true;t.readySent=true;
   t.peer.connectionState=t.peer.iceConnectionState='disconnected';t.rtcState();
-  assert.equal(t.temporaryDisconnect,true);assert.equal(t.phase,'negotiating');
+  assert.equal(t.phase,'active','advisory disconnect alone leaves traffic flowing');
   t.rtcFailed();assert.equal(t.temporaryDisconnect,false);
   await t.receive({session:'one',epoch:1,kind:'rtc',restart:true,iceServers:[]});
   assert.equal(t.disconnectTimer,null);
@@ -207,4 +207,30 @@ test('all nine translations include Metered and generic TURN labels for supporte
   const ctx=vm.createContext({window:{}});vm.runInContext(source('online-localization.js'),ctx);
   for(const lang of ['es','fr','de','pt','it','nl','ja','ko','zh'])for(const label of ['Metered TURN','TURN relay'])for(const suffix of ['',' — UDP',' — TCP',' — TLS'])
     assert.equal(typeof ctx.window.KING_PONG_ONLINE_TRANSLATIONS[lang][label+suffix],'string');
+});
+
+// Controlled time exercises jitter independently of browser ICE timing.
+test('degraded RTC uses authenticated traffic and a three-second stabilization period, without repeated freezes',async()=>{
+  const {t,owner,ctx,timers,sent}=transportHarness();await t.startRtc({iceServers:[]});
+  let now=1000,freezes=0,resumes=0;ctx.Date={now:()=>now};
+  owner.hooks.interrupted=()=>freezes++;owner.hooks.resumed=()=>resumes++;
+  t.keyReady=true;t.phase='active';t.everConnected=true;t.lastPeerTraffic=now;
+  for(const c of t.peer.channels)c.readyState='open';
+  for(let i=0;i<5;i++){
+    t.peer.connectionState=t.peer.iceConnectionState='disconnected';t.rtcState();const timer=t.disconnectTimer;t.rtcState();
+    assert.equal(t.disconnectTimer,timer,'duplicate states share a timer');
+    now+=200;t.lastPeerTraffic=now;
+    t.peer.connectionState=t.peer.iceConnectionState='connected';t.rtcState();
+    assert.equal(t.phase,'active');assert.equal(t.disconnectTimer,null);
+  }
+  assert.equal(freezes,0);assert.equal(resumes,0);
+  t.peer.connectionState=t.peer.iceConnectionState='disconnected';t.rtcState();
+  now+=3000;t.lastPeerTraffic=now-20;timers.get(t.disconnectTimer).fn();
+  assert.equal(t.phase,'active','recent traffic outweighs a degraded state');
+  now+=3000;timers.get(t.disconnectTimer).fn();
+  assert.equal(t.phase,'negotiating');assert.equal(freezes,1);
+  assert.equal(t.transitionReason,'rtc-degraded-no-traffic');
+  t.rtcFailed();assert.equal(freezes,1);assert.equal(sent.filter(m=>m.kind==='restart').length,1);
+  t.peer.connectionState=t.peer.iceConnectionState='connected';t.rtcState();
+  assert.equal(t.phase,'negotiating','connected events cannot bypass recovery commit');t.close();
 });

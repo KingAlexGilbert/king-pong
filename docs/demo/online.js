@@ -250,7 +250,7 @@ class KingPongSecureTransport {
       if(m.epoch<this.epoch || m.epoch>this.epoch+1)return;
       const changed=m.epoch!==this.epoch;
       if(changed){
-        this.freeze();this.epoch=m.epoch;this.candidates=[];this.early=[];
+        this.freeze('transport-replaced');this.epoch=m.epoch;this.candidates=[];this.early=[];
         this.temporaryDisconnect=false;clearTimeout(this.disconnectTimer);this.disconnectTimer=null;
       }
       this.phase='negotiating';this.mode=m.kind==='rtc'?'rtc':'ws';this.readySent=false;
@@ -299,6 +299,7 @@ class KingPongSecureTransport {
     } else if(m.kind==='activate') {
       if(m.mode!==this.mode || this.phase!=='preparing')throw Error('transport disagreement');
       this.phase='active';this.recovering=false;this.temporaryDisconnect=false;
+      this.lastPeerTraffic=Date.now();this.transitionReason='transport-active';
       clearTimeout(this.deadline);clearTimeout(this.disconnectTimer);this.disconnectTimer=null;
       this.owner.connected=true;this.owner.lastTransport=this.mode==='ws'?'WebSocket relay':'WebRTC';
       for(const item of this.pending.values()){item.sentAt=0;item.created=Date.now();}
@@ -337,8 +338,8 @@ class KingPongSecureTransport {
         this.owner.peer=peer;
         this.owner.hooks.peerChanged?.(peer);
         if(!this.initializedGame){this.initializedGame=true;this.owner.hooks.peer(peer);}
-        peer.onconnectionstatechange=()=>this.rtcState();
-        peer.oniceconnectionstatechange=()=>this.rtcState();
+        peer.onconnectionstatechange=()=>{if(this.peer===peer)this.rtcState();};
+        peer.oniceconnectionstatechange=()=>{if(this.peer===peer)this.rtcState();};
         if(this.owner.role==='host') {
           this.wire(peer.createDataChannel('pong-lan-input-v1',{ordered:false,maxRetransmits:1}),false);
           this.wire(peer.createDataChannel('pong-control-v1'),true);
@@ -395,7 +396,8 @@ class KingPongSecureTransport {
   wire(channel,control) {
     if(control)this.rtcControl=channel;else this.rtcData=channel;
     channel.onopen=()=>this.maybeReady();
-    channel.onclose=channel.onerror=()=>{if(this.mode==='rtc'&&!this.closed)this.rtcFailed();};
+    channel.onclose=channel.onerror=()=>{if(this.mode==='rtc'&&!this.closed &&
+      (control?this.rtcControl:this.rtcData)===channel)this.rtcFailed('channel-unavailable');};
     channel.onmessage=e=>{
       if(this.mode!=='rtc'||this.closed)return;
       if(typeof e.data!=='string'||e.data.length>24000){this.fail();return;}
@@ -404,19 +406,32 @@ class KingPongSecureTransport {
   }
   rtcState() {
     if(this.closed || this.mode!=='rtc' || !this.peer)return;
-    if(this.peer.connectionState==='failed'||this.peer.iceConnectionState==='failed')this.rtcFailed();
+    if(this.peer.connectionState==='failed'||this.peer.iceConnectionState==='failed')this.rtcFailed('rtc-failed');
     else if(this.peer.connectionState==='connected' && ['connected','completed'].includes(this.peer.iceConnectionState)) {
       clearTimeout(this.disconnectTimer);this.disconnectTimer=null;
-      if(this.temporaryDisconnect && this.requestedEpoch!==this.epoch){this.temporaryDisconnect=false;this.phase='active';this.owner.hooks.resumed?.();this.flush();}
-      else this.maybeReady();
+      if(this.phase==='active')this.transitionReason='rtc-stable';
+      this.maybeReady();
     } else if((this.peer.connectionState==='disconnected'||this.peer.iceConnectionState==='disconnected')&&!this.disconnectTimer) {
-      this.temporaryDisconnect=this.phase==='active';this.freeze();this.disconnectTimer=setTimeout(()=>{this.disconnectTimer=null;this.rtcFailed();},3000);
+      // ICE "disconnected" is advisory. Keep usable channels running while
+      // authenticated peer traffic still arrives; never freeze on this event alone.
+      this.transitionReason='rtc-degraded';
+      this.disconnectTimer=setTimeout(()=>this.checkRtcDegradation(),3000);
     }
   }
-  rtcFailed() {
+  checkRtcDegradation() {
+    this.disconnectTimer=null;
+    if(this.closed || this.mode!=='rtc' || !this.peer ||
+        ![this.peer.connectionState,this.peer.iceConnectionState].includes('disconnected'))return;
+    const quiet=Date.now()-(this.lastPeerTraffic || 0);
+    if(this.phase==='active' && quiet<3000 && [this.rtcData,this.rtcControl].every(c=>c?.readyState==='open')) {
+      this.disconnectTimer=setTimeout(()=>this.checkRtcDegradation(),3000-quiet);
+    } else this.rtcFailed('rtc-degraded-no-traffic');
+  }
+  rtcFailed(reason='rtc-recovery') {
     if(this.closed || this.mode!=='rtc' || this.requestedEpoch===this.epoch)return;
     if(!this.keyReady){this.rtcFailurePending=true;return;}
-    this.requestedEpoch=this.epoch;this.temporaryDisconnect=false;this.freeze();
+    this.requestedEpoch=this.epoch;this.temporaryDisconnect=false;
+    clearTimeout(this.disconnectTimer);this.disconnectTimer=null;this.freeze(reason);
     this.owner.hooks.status('Connection interrupted. Reconnecting...');
     this.signal(this.recovering?'fallback':'restart');
     this.armTimeout(15000,()=>this.fail());
@@ -428,8 +443,9 @@ class KingPongSecureTransport {
       this.rtcData?.readyState!=='open' || this.rtcControl?.readyState!=='open' || this.remoteEpoch!==this.epoch))return;
     this.readySent=true;this.signal('ready',{mode:this.mode});
   }
-  freeze() {
-    if(this.phase==='active'||this.everConnected)this.owner.hooks.interrupted?.();
+  freeze(reason='transport-recovery') {
+    this.transitionReason=reason;
+    if(this.phase==='active'||this.everConnected)this.owner.hooks.interrupted?.(reason);
     this.phase='negotiating';this.latest=null;
   }
   bufferedAmount() {
@@ -499,6 +515,7 @@ class KingPongSecureTransport {
         if(typeof value.raw!=='string')throw Error('data');
         this.owner.hooks.message(value.raw);
       }
+      this.lastPeerTraffic=Date.now();
     }).catch(()=>this.fail()).finally(()=>this.rxCount--);
   }
   credit() {
@@ -689,15 +706,14 @@ class KingPongRoom {
           }
           else this.relay();
         } else if (peer.connectionState === 'disconnected') {
-          clearTimeout(this.disconnectTimer);
-          this.hooks.status('Connection interrupted. Reconnecting...');
-          this.hooks.interrupted?.();
-          if (this.closed || this.peer !== peer) return;
-          this.disconnectTimer = setTimeout(() => this.fail('connection_lost'), this.presence ? MULTIPLAYER_PRESENCE.grace : 8000);
+          if (!this.disconnectTimer) this.disconnectTimer = setTimeout(() => this.checkRtcDegradation(peer), 3000);
         } else if (peer.connectionState === 'connected') {
           clearTimeout(this.directTimer);
           clearTimeout(this.disconnectTimer);
-          if (this.connected) { this.hooks.status('Connected!'); this.hooks.resumed?.(); }
+          this.disconnectTimer = null;
+          if (this.connected && this.temporaryDisconnect) {
+            this.temporaryDisconnect = false; this.hooks.status('Connected!'); this.hooks.resumed?.();
+          }
           else this.maybeConnected(peer);
         }
       };
@@ -780,6 +796,21 @@ class KingPongRoom {
     };
   }
 
+  checkRtcDegradation(peer) {
+    this.disconnectTimer = null;
+    if (this.closed || this.peer !== peer || peer.connectionState !== 'disconnected') return;
+    const quiet = Date.now() - (this.presence?.lastHeard || 0);
+    if (quiet < 3000 && this.data?.readyState === 'open' && this.control?.readyState === 'open') {
+      this.disconnectTimer = setTimeout(() => this.checkRtcDegradation(peer), 3000 - quiet);
+      return;
+    }
+    this.temporaryDisconnect = true;
+    this.hooks.status('Connection interrupted. Reconnecting...');
+    this.hooks.interrupted?.('rtc-degraded-no-traffic');
+    if (this.closed || this.peer !== peer) return;
+    this.disconnectTimer = setTimeout(() => this.fail('connection_lost'), this.presence ? MULTIPLAYER_PRESENCE.grace : 8000);
+  }
+
   maybeConnected(peer) {
     if (this.closed || this.peer !== peer || this.relayPending || this.connected ||
         peer.connectionState !== 'connected' || this.data?.readyState !== 'open' ||
@@ -809,6 +840,8 @@ class KingPongRoom {
     this.removingGuest = false;
     clearTimeout(this.directTimer);
     clearTimeout(this.disconnectTimer);
+    this.disconnectTimer = null;
+    this.temporaryDisconnect = false;
     clearTimeout(this.peerLostTimer);
     const peer = this.peer;
     this.peer = null;
@@ -893,6 +926,7 @@ function setOnlineControls(busy, joining = false) {
 }
 
 function closeOnlineConnection(showMessage = true, keepQueue = false) {
+  if (typeof finishMultiplayerLeave === 'function') finishMultiplayerLeave(false);
   clearPointServeCountdown();
   if (saveConfirmation?.roomSession === onlineSession) finishSaveConfirmation(false);
   resetOnlineMatchFlow();
@@ -994,9 +1028,9 @@ function openOnlineRoom(role, code = '', assignment = null) {
       if (control) onlineControlChannel = channel; else lanChannel = channel;
     },
     message: raw => { if (onlineSession === session) handleLanMessage(raw); },
-    interrupted: () => {
+    interrupted: reason => {
       if (onlineSession !== session) return;
-      if (multiplayerTransportInterrupted()) return;
+      if (multiplayerTransportInterrupted(reason)) return;
       suspendPointServeCountdown();
       // Matchmaking leaves a failed setup immediately. Private-room players
       // keep signaling alive long enough to receive the authoritative departure
@@ -2532,20 +2566,16 @@ function sendMultiplayerPresence(kind, fields = {}) {
 function showMultiplayerUnavailable() {
   let panel = document.getElementById('multiplayerUnavailable');
   if (!panel) {
-    panel = document.createElement('section');
-    panel.id = 'multiplayerUnavailable'; panel.className = 'online-match-flow match-ui';
+    panel = document.createElement('p');
+    panel.id = 'multiplayerUnavailable'; panel.className = 'multiplayer-status';
     panel.setAttribute('role', 'status'); panel.setAttribute('aria-live', 'polite');
-    const card = document.createElement('div'); card.className = 'online-flow-card';
-    const text = document.createElement('p');
-    setLocalizedText(text, 'Opponent temporarily unavailable.');
-    card.append(text, royalButton('multiplayerUnavailableBack', 'Back', () => leaveMultiplayerSession()));
-    panel.append(card); document.body.append(panel);
+    setLocalizedText(panel, 'Opponent unavailable — Game paused.');
+    document.getElementById('matchBar').append(panel);
   }
   panel.hidden = !multiplayerSuspended();
-  syncRoyalFocus();
 }
 
-function suspendMultiplayerPresence() {
+function suspendMultiplayerPresence(reason = 'peer-hold') {
   const p = multiplayerPresence();
   if (!p) return;
   if (p.suspended) {
@@ -2556,6 +2586,7 @@ function suspendMultiplayerPresence() {
     return;
   }
   p.suspended = true; p.since = Date.now(); p.flowAt = performance.now();
+  p.reason = reason;
   p.wasPaused = p.focusPause?.paused ?? paused; p.countdown = p.focusPause?.countdown ?? resumeCountdownRemainingMs();
   p.focusPause = null;
   p.phase = 'held';
@@ -2580,16 +2611,16 @@ function setMultiplayerAvailability(active) {
   active = Boolean(active);
   if (p.localActive === active) return;
   p.localActive = active; p.revision++;
-  if (!active) suspendMultiplayerPresence();
+  if (!active) suspendMultiplayerPresence('local-background');
   sendMultiplayerPresence('status');
   maybeResumeMultiplayer();
 }
 
-function multiplayerTransportInterrupted() {
+function multiplayerTransportInterrupted(reason = 'transport-recovery') {
   const p = multiplayerPresence();
   if (!p) return false;
   p.transportDown = true;
-  suspendMultiplayerPresence();
+  suspendMultiplayerPresence(reason);
   return true;
 }
 
@@ -2626,7 +2657,7 @@ function commitMultiplayerResume() {
   // older control can still be in flight; do not charge its suspended time
   // against the normal 12-second delivery deadline after committing recovery.
   for (const control of onlineSession.secure?.pending?.values() || []) control.created = Date.now();
-  p.suspended = false; p.phase = 'playing'; p.awaitingProbe = 0;
+  p.suspended = false; p.phase = 'playing'; p.awaitingProbe = 0; p.reason = 'snapshot-committed';
   const elapsed = performance.now() - p.flowAt;
   if (onlineMatchFlow) for (const key of ['handshakeDeadline', 'connectedUntil', 'goUntil'])
     if (Number.isFinite(onlineMatchFlow[key])) onlineMatchFlow[key] += elapsed;
@@ -2656,7 +2687,7 @@ function receiveMultiplayerPresence(m) {
   if (presenceExpired(p)) return;
   if (m.revision < p.remoteRevision) return;
   p.remoteRevision = m.revision; p.remoteActive = m.active; p.lastHeard = Date.now();
-  if (!m.active) suspendMultiplayerPresence();
+  if (!m.active) suspendMultiplayerPresence('peer-background');
   if (m.kind === 'status') sendMultiplayerPresence('status-ack');
   if (m.kind === 'ping' && Number.isSafeInteger(m.probe) && m.probe > 0)
     sendMultiplayerPresence('pong', {probe: m.probe});
@@ -2667,7 +2698,7 @@ function receiveMultiplayerPresence(m) {
       if (m.kind === 'offer') sendMultiplayerPresence(p.phase === 'acknowledged' ? 'snapshot-ack' : 'ready');
       return; // A duplicate hold/offer cannot roll back an in-flight handshake.
     }
-    suspendMultiplayerPresence();
+    suspendMultiplayerPresence('peer-hold');
     p.epoch = m.epoch;
     if (m.kind === 'offer' && p.localActive && m.active && !p.transportDown) {
       p.phase = 'snapshot'; sendMultiplayerPresence('ready');
@@ -2705,7 +2736,7 @@ function tickMultiplayerPresence() {
   if (!p || presenceExpired(p)) return;
   const now = Date.now();
   if (now - p.lastHeard >= MULTIPLAYER_PRESENCE.stale) {
-    suspendMultiplayerPresence();
+    suspendMultiplayerPresence('traffic-timeout');
     // Reuse the existing ICE restart -> TURN -> encrypted WebSocket recovery.
     // An explicitly backgrounded peer may simply have suspended its JS timers.
     if (p.remoteActive && p.localActive && !p.transportDown && onlineSession.secure?.mode === 'rtc')
@@ -2780,6 +2811,7 @@ function installOnlineSupport() {
   for (const name of ['update', 'requestServeOrContinue', 'requestTogglePause', 'requestRetryLevel']) {
     const original = window[name];
     window[name] = (...args) => {
+      if (name !== 'update' && royalInputModal()) return;
       if (name === 'update') {
         tickMultiplayerPresence();
         if (!multiplayerSuspended()) { tickOnlineMatchFlow(); tickMultiplayerRematch(); }

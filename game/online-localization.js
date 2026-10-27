@@ -758,3 +758,65 @@ Object.entries({
     'Je tegenstander heeft de verbinding verbroken.', '対戦相手との接続が切れました。',
     '상대의 연결이 끊어졌습니다.', '对手已断开连接。'][i];
 });
+
+// Shared HUD and voluntary multiplayer departure controls.
+for (const [language, values] of Object.entries({
+  "es": [
+    "Rival no disponible — Partida en pausa.",
+    "¿Salir de esta partida?",
+    "Quedarme",
+    "Salir de la partida"
+  ],
+  "fr": [
+    "Adversaire indisponible — Partie en pause.",
+    "Quitter cette partie ?",
+    "Rester",
+    "Quitter la partie"
+  ],
+  "de": [
+    "Gegner nicht erreichbar — Spiel pausiert.",
+    "Dieses Spiel verlassen?",
+    "Bleiben",
+    "Spiel verlassen"
+  ],
+  "pt": [
+    "Adversário indisponível — Jogo pausado.",
+    "Sair desta partida?",
+    "Ficar",
+    "Sair da partida"
+  ],
+  "it": [
+    "Avversario non disponibile — Partita in pausa.",
+    "Uscire dalla partita?",
+    "Resta",
+    "Esci dalla partita"
+  ],
+  "nl": [
+    "Tegenstander niet beschikbaar — Spel gepauzeerd.",
+    "Deze wedstrijd verlaten?",
+    "Blijven",
+    "Wedstrijd verlaten"
+  ],
+  "ja": [
+    "対戦相手に接続できません — 一時停止中。",
+    "この対戦から退出しますか？",
+    "続ける",
+    "対戦から退出"
+  ],
+  "ko": [
+    "상대방 연결 불가 — 게임 일시 정지.",
+    "이 대전에서 나가시겠습니까?",
+    "계속하기",
+    "대전 나가기"
+  ],
+  "zh": [
+    "对手暂时离线 — 游戏已暂停。",
+    "离开这场比赛？",
+    "留下",
+    "离开比赛"
+  ]
+})) {
+  ['Opponent unavailable — Game paused.', 'Leave this match?', 'Stay', 'Leave Match'].forEach((key, index) => {
+    window.KING_PONG_ONLINE_TRANSLATIONS[language][key] = values[index];
+  });
+}

@@ -398,7 +398,8 @@ public final class MainActivity extends Activity {
         }
         // Let Back cancel the in-game confirmation before leaving the app.
         webView.evaluateJavascript(
-                "Boolean(window.KingPongSaveTransfer && window.KingPongSaveTransfer.cancelConfirmation())",
+                "Boolean((window.KingPongSaveTransfer && window.KingPongSaveTransfer.cancelConfirmation()) || " +
+                "(window.KingPongMatchNavigation && window.KingPongMatchNavigation.back()))",
                 handled -> {
                     if (isFinishing() || isDestroyed() || "true".equals(handled)) return;
                     navigateBackOrExit();

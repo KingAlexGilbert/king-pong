@@ -285,6 +285,10 @@ try {
     assert.equal(await a.locator('#matchSetup').isVisible(),true);
     assert.equal(await a.evaluate(() => matchRuleId),'winTwo');
     await b.locator('#onlineFlowBack').click();
+    if (phase === 'countdown') {
+      assert.equal(await b.evaluate(() => lanConnected),true,'opening leave confirmation retains the session');
+      await b.locator('#multiplayerLeaveConfirm').click();
+    }
     await step(b,10000);
     assert.equal(await b.evaluate(() => onlineSession),null);
     assert.equal((await state(b)).waiting,true);
@@ -324,8 +328,12 @@ try {
     testPad.buttons[0].pressed = false; testPad.buttons[1].pressed = true;
     pollRoyalUiGamepad(200040);
   });
+  assert.equal(await controller.locator('#multiplayerLeave').isVisible(),true,'controller Back protects an accepted countdown');
+  assert.equal(await controller.evaluate(()=>lanConnected),true);
+  await controller.locator('#multiplayerLeaveConfirm').click();
   assert.equal(await controller.evaluate(() => onlineSession === null && document.body.classList.contains('title-active')), true);
   await touch.locator('#onlineFlowBack').tap();
+  await touch.locator('#multiplayerLeaveConfirm').tap();
   await touch.locator('#setupMenuButton').tap();
   assert.equal(await touch.evaluate(() => document.body.classList.contains('title-active')),true);
   await controller.close(); await touch.close();

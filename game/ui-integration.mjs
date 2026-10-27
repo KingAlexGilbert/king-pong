@@ -109,11 +109,39 @@ const hooks = {
 };
 
 export function integrateRoyalUi(source) {
+  // Guard voluntary navigation at its entry, before any session or mode mutation.
+  for (const name of ['showTitleScreen', 'startCampaignFromSave', 'startTwoPlayerFromTitle',
+      'startBossFromTitle', 'startCustomMode', 'setCampaign', 'requestExitGame'].filter(name => source.includes('function ' + name + '('))) {
+    const [start, end] = functionRange(source, name);
+    const original = source.slice(start, end);
+    const guard = '\n  if (guardMultiplayerLeave(() => ' + name + '(...arguments))) return;';
+    if (!original.includes(guard)) {
+      const brace = original.indexOf('{') + 1;
+      source = source.slice(0, start) + original.slice(0, brace) + guard + original.slice(brace) + source.slice(end);
+    }
+  }
+  // Pause has one job on touch and desktop alike. Menu remains an explicit action.
+  const [pauseStart, pauseEnd] = functionRange(source, 'togglePause');
+  source = source.slice(0, pauseStart) + source.slice(pauseStart, pauseEnd)
+    .replaceAll('setMenusVisible(true);', 'syncRoyalUi(true);') + source.slice(pauseEnd);
+  // Android may blur before visibilitychange. Keep that legacy focus pause
+  // from opening a menu over the peer-presence HUD or the recovery countdown.
+  const [focusStart, focusEnd] = functionRange(source, 'handleGameFocusLoss');
+  const focus = source.slice(focusStart, focusEnd);
+  if (!focus.includes('!multiplayerPresence()')) source = source.slice(0, focusStart) + focus.replace(
+    'setMenusVisible(true);',
+    "if (typeof multiplayerPresence !== 'function' || !multiplayerPresence()) setMenusVisible(true);\n    else syncRoyalUi(true);"
+  ) + source.slice(focusEnd);
+  source = source.replace('if (royalPortraitVisible()) return {axis: 0, targetY: null};',
+    'if (royalInputModal()) return {axis: 0, targetY: null};');
+  source = source.replace('if (royalPortraitVisible()) { refreshGamepadConnection(pads); return []; }',
+    'if (royalInputModal()) { refreshGamepadConnection(pads); return []; }');
+
   const input = 'function readLocalLanInput(gamepads = null) {';
-  const neutral = "\n  if (royalPortraitVisible()) return {axis: 0, targetY: null};";
+  const neutral = "\n  if (royalInputModal()) return {axis: 0, targetY: null};";
   if (!source.includes(input + neutral)) source = source.replace(input, input + neutral);
   const pads = '  if (creditsActive || galleryKind || royalUiConsumesGamepad()) {';
-  const block = '  if (royalPortraitVisible()) { refreshGamepadConnection(pads); return []; }\n';
+  const block = '  if (royalInputModal()) { refreshGamepadConnection(pads); return []; }\n';
   if (!source.includes(block + pads)) source = source.replace(pads, block + pads);
   // The current shell hides the legacy first-launch controls. A hidden panel
   // must not suppress the canvas serve prompt before the player's first serve.

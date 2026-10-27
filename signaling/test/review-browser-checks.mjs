@@ -127,7 +127,7 @@ export async function reviewBrowserChecks({page, bounds, snap, pass}) {
     await start(p);
     const playing = (await rects(p)).arena;
     await pause(p);
-    assert.equal(await p.locator('#matchBar').evaluate(el => el.classList.contains('match-bar-paused')), false);
+    assert.equal(await p.evaluate(() => paused && byId('matchMenu').hidden), true, 'touch Pause does not open Menu');
     assert.deepEqual((await rects(p)).arena, playing);
     for (const selector of ['#game', '#matchBar', '#menuToggle', '#matchPause']) await bounds(p, selector);
     await snap(p, `pause-mobile-${width}x${height}`);

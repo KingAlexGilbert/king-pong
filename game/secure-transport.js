@@ -27,7 +27,7 @@ class KingPongSecureTransport {
       if(m.epoch<this.epoch || m.epoch>this.epoch+1)return;
       const changed=m.epoch!==this.epoch;
       if(changed){
-        this.freeze();this.epoch=m.epoch;this.candidates=[];this.early=[];
+        this.freeze('transport-replaced');this.epoch=m.epoch;this.candidates=[];this.early=[];
         this.temporaryDisconnect=false;clearTimeout(this.disconnectTimer);this.disconnectTimer=null;
       }
       this.phase='negotiating';this.mode=m.kind==='rtc'?'rtc':'ws';this.readySent=false;
@@ -76,6 +76,7 @@ class KingPongSecureTransport {
     } else if(m.kind==='activate') {
       if(m.mode!==this.mode || this.phase!=='preparing')throw Error('transport disagreement');
       this.phase='active';this.recovering=false;this.temporaryDisconnect=false;
+      this.lastPeerTraffic=Date.now();this.transitionReason='transport-active';
       clearTimeout(this.deadline);clearTimeout(this.disconnectTimer);this.disconnectTimer=null;
       this.owner.connected=true;this.owner.lastTransport=this.mode==='ws'?'WebSocket relay':'WebRTC';
       for(const item of this.pending.values()){item.sentAt=0;item.created=Date.now();}
@@ -114,8 +115,8 @@ class KingPongSecureTransport {
         this.owner.peer=peer;
         this.owner.hooks.peerChanged?.(peer);
         if(!this.initializedGame){this.initializedGame=true;this.owner.hooks.peer(peer);}
-        peer.onconnectionstatechange=()=>this.rtcState();
-        peer.oniceconnectionstatechange=()=>this.rtcState();
+        peer.onconnectionstatechange=()=>{if(this.peer===peer)this.rtcState();};
+        peer.oniceconnectionstatechange=()=>{if(this.peer===peer)this.rtcState();};
         if(this.owner.role==='host') {
           this.wire(peer.createDataChannel('pong-lan-input-v1',{ordered:false,maxRetransmits:1}),false);
           this.wire(peer.createDataChannel('pong-control-v1'),true);
@@ -172,7 +173,8 @@ class KingPongSecureTransport {
   wire(channel,control) {
     if(control)this.rtcControl=channel;else this.rtcData=channel;
     channel.onopen=()=>this.maybeReady();
-    channel.onclose=channel.onerror=()=>{if(this.mode==='rtc'&&!this.closed)this.rtcFailed();};
+    channel.onclose=channel.onerror=()=>{if(this.mode==='rtc'&&!this.closed &&
+      (control?this.rtcControl:this.rtcData)===channel)this.rtcFailed('channel-unavailable');};
     channel.onmessage=e=>{
       if(this.mode!=='rtc'||this.closed)return;
       if(typeof e.data!=='string'||e.data.length>24000){this.fail();return;}
@@ -181,19 +183,32 @@ class KingPongSecureTransport {
   }
   rtcState() {
     if(this.closed || this.mode!=='rtc' || !this.peer)return;
-    if(this.peer.connectionState==='failed'||this.peer.iceConnectionState==='failed')this.rtcFailed();
+    if(this.peer.connectionState==='failed'||this.peer.iceConnectionState==='failed')this.rtcFailed('rtc-failed');
     else if(this.peer.connectionState==='connected' && ['connected','completed'].includes(this.peer.iceConnectionState)) {
       clearTimeout(this.disconnectTimer);this.disconnectTimer=null;
-      if(this.temporaryDisconnect && this.requestedEpoch!==this.epoch){this.temporaryDisconnect=false;this.phase='active';this.owner.hooks.resumed?.();this.flush();}
-      else this.maybeReady();
+      if(this.phase==='active')this.transitionReason='rtc-stable';
+      this.maybeReady();
     } else if((this.peer.connectionState==='disconnected'||this.peer.iceConnectionState==='disconnected')&&!this.disconnectTimer) {
-      this.temporaryDisconnect=this.phase==='active';this.freeze();this.disconnectTimer=setTimeout(()=>{this.disconnectTimer=null;this.rtcFailed();},3000);
+      // ICE "disconnected" is advisory. Keep usable channels running while
+      // authenticated peer traffic still arrives; never freeze on this event alone.
+      this.transitionReason='rtc-degraded';
+      this.disconnectTimer=setTimeout(()=>this.checkRtcDegradation(),3000);
     }
   }
-  rtcFailed() {
+  checkRtcDegradation() {
+    this.disconnectTimer=null;
+    if(this.closed || this.mode!=='rtc' || !this.peer ||
+        ![this.peer.connectionState,this.peer.iceConnectionState].includes('disconnected'))return;
+    const quiet=Date.now()-(this.lastPeerTraffic || 0);
+    if(this.phase==='active' && quiet<3000 && [this.rtcData,this.rtcControl].every(c=>c?.readyState==='open')) {
+      this.disconnectTimer=setTimeout(()=>this.checkRtcDegradation(),3000-quiet);
+    } else this.rtcFailed('rtc-degraded-no-traffic');
+  }
+  rtcFailed(reason='rtc-recovery') {
     if(this.closed || this.mode!=='rtc' || this.requestedEpoch===this.epoch)return;
     if(!this.keyReady){this.rtcFailurePending=true;return;}
-    this.requestedEpoch=this.epoch;this.temporaryDisconnect=false;this.freeze();
+    this.requestedEpoch=this.epoch;this.temporaryDisconnect=false;
+    clearTimeout(this.disconnectTimer);this.disconnectTimer=null;this.freeze(reason);
     this.owner.hooks.status('Connection interrupted. Reconnecting...');
     this.signal(this.recovering?'fallback':'restart');
     this.armTimeout(15000,()=>this.fail());
@@ -205,8 +220,9 @@ class KingPongSecureTransport {
       this.rtcData?.readyState!=='open' || this.rtcControl?.readyState!=='open' || this.remoteEpoch!==this.epoch))return;
     this.readySent=true;this.signal('ready',{mode:this.mode});
   }
-  freeze() {
-    if(this.phase==='active'||this.everConnected)this.owner.hooks.interrupted?.();
+  freeze(reason='transport-recovery') {
+    this.transitionReason=reason;
+    if(this.phase==='active'||this.everConnected)this.owner.hooks.interrupted?.(reason);
     this.phase='negotiating';this.latest=null;
   }
   bufferedAmount() {
@@ -276,6 +292,7 @@ class KingPongSecureTransport {
         if(typeof value.raw!=='string')throw Error('data');
         this.owner.hooks.message(value.raw);
       }
+      this.lastPeerTraffic=Date.now();
     }).catch(()=>this.fail()).finally(()=>this.rxCount--);
   }
   credit() {

@@ -2749,8 +2749,8 @@ body.royal-panel-open .match-footer #controlHint {
 #onlinePrivateRules summary { font-size: 11px; line-height: 1.5; }
 #onlinePrivateRules #matchRules { padding-top: 0; }
 #onlinePrivateRules .match-rule-options button { margin: 0; padding: 6px 8px; font-size: 10px; }
-@media (min-width: 900px) and (min-height: 650px) {
-  .online-setup .royal-selection-row canvas { height: 64px; }
+@media (min-width: 900px) and (min-height: 650px), (min-width: 921px) {
+  .online-setup .royal-selection-row canvas { height: clamp(80px, calc(15dvh - 28px), 110px); }
   .online-setup #matchmakingPanel { padding-bottom: 10px; }
   .online-setup #matchmakingPanel p, .online-setup #onlinePrivateRooms p { margin: 6px 0; }
   .online-setup #matchmakingPanel h3, .online-setup #onlinePrivateRooms h3 { margin: 6px 0; }
@@ -2806,7 +2806,7 @@ body.royal-panel-open .match-footer #controlHint {
   .match-bar button { padding: 7px 8px; }
   .match-bar:has(#arenaKick:not([hidden])) .match-identity { display: none; }
 }
-@media (max-height: 520px) and (min-width: 421px) {
+@media (max-height: 520px) and (min-width: 421px) and (max-width: 920px) {
   /* Keep choices fully visible below the shared top Back row on short screens. */
   #matchSetup .royal-selection-row button { display: grid; grid-template-columns: minmax(0, 1fr) 56px; gap: 2px 6px; padding: 8px; }
   #matchSetup .royal-selection-row .setup-caption { grid-column: 1 / -1; }
@@ -2814,9 +2814,10 @@ body.royal-panel-open .match-footer #controlHint {
   #matchSetup .royal-selection-row .setup-change { grid-column: 1; margin-top: 2px; text-align: left; }
 }
 
-/* Short phone landscape screens can scroll; do not crush selector previews
-   to tiny thumbnails just to fit an entire menu in one screenful. */
-@media (orientation: landscape) and (max-height: 520px) and (max-width: 920px) {
+/* Short screens use a horizontal choice card so preview space does not
+   compete with labels. Preserve readable phone and scaled-laptop thumbnails. */
+@media (orientation: landscape) and (max-height: 520px) and (max-width: 920px),
+       (min-width: 921px) and (max-height: 600px) {
   #matchSetup > .match-card { padding: 12px 16px; }
   #matchSetup .match-card h2 { margin-bottom: 10px; }
   #matchSetup .royal-selection-row button {
@@ -2931,6 +2932,53 @@ body:has(#browserFullscreen) .match-bar { box-sizing: border-box; }
   padding: 8px 12px;
 }
 #multiplayerResult .online-flow-actions button { text-transform: uppercase; }
+
+/* Availability is a HUD row, not a dialog. Reserve its space above the arena. */
+.match-bar:has(> #multiplayerUnavailable:not([hidden])) {
+  height: auto;
+  min-height: 50px;
+  flex-wrap: wrap;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  row-gap: 4px;
+}
+#multiplayerUnavailable {
+  order: 5;
+  flex: 0 0 100%;
+  margin: 0;
+  color: #ffd469;
+  text-align: center;
+  font-size: 11px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+}
+#multiplayerLeave {
+  inset: 0;
+  z-index: 2147482990;
+  touch-action: none;
+}
+#multiplayerLeave > .match-card { width: min(100%, 380px); padding: 20px; }
+#multiplayerLeaveTitle { font-size: 18px; }
+#multiplayerLeave .match-actions { flex-wrap: wrap; }
+
+/* Scaled laptops retain readable previews. Available height determines the
+   compact treatment; aspect ratio alone never shrinks the choices. */
+@media (min-width: 921px) {
+  #matchSetup .royal-selection-row canvas { height: 110px; }
+  #matchSetup.online-setup > .match-card { padding-block: clamp(12px, calc(8dvh - 42px), 24px); }
+  #matchSetup.online-setup .royal-selection-row canvas { height: clamp(80px, calc(15dvh - 28px), 110px); }
+}
+
+@media (min-width: 921px) and (max-height: 600px) {
+  #matchSetup > .match-card { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px 18px; align-content: start; }
+  #matchSetup > .match-card > .mode-back { grid-column: 1; grid-row: 1; margin: 0; }
+  #matchSetupTitle { grid-column: 2; grid-row: 1; align-self: center; margin: 0; }
+  #matchSetup #matchSetupTitle { margin-bottom: 0; }
+  #matchSetupBody, #matchSetup > .match-card > .match-actions { grid-column: 1 / -1; }
+  #matchSetup .royal-selection-row button { grid-template-columns: minmax(0, 1fr) minmax(108px, 144px); }
+  #matchSetup .royal-selection-row canvas { max-width: 144px; height: 80px; }
+}
 </style>
 </head>
 
@@ -7182,7 +7230,7 @@ function togglePause() {
     resumeCountdownEndAt = 0;
     lastResumeCountdownNumber = 0;
     paused = true;
-    setMenusVisible(true);
+    syncRoyalUi(true);
     return;
   }
   if (paused) {
@@ -7199,7 +7247,7 @@ function togglePause() {
   resumeCountdownEndAt = 0;
   lastResumeCountdownNumber = 0;
   paused = true;
-  setMenusVisible(true);
+  syncRoyalUi(true);
 }
 
 // BEGIN SHARED TOUCH-INPUT
@@ -7446,7 +7494,7 @@ function updateGamepadInput() {
       button.pressed))));
     return [];
   }
-  if (royalPortraitVisible()) { refreshGamepadConnection(pads); return []; }
+  if (royalInputModal()) { refreshGamepadConnection(pads); return []; }
   if (creditsActive || galleryKind || royalUiConsumesGamepad()) {
     refreshGamepadConnection(pads);
     return pads;
@@ -7527,7 +7575,7 @@ function lanSend(payload) {
 }
 
 function readLocalLanInput(gamepads = null) {
-  if (royalPortraitVisible()) return {axis: 0, targetY: null};
+  if (royalInputModal()) return {axis: 0, targetY: null};
   if (document.hidden || !gameWindowFocused) return {
     axis: 0,
     targetY: null
@@ -8813,6 +8861,7 @@ function titleScreenDefaultMessage() {
 }
 
 function showTitleScreen(message = titleScreenDefaultMessage()) {
+  if (guardMultiplayerLeave(() => showTitleScreen(...arguments))) return;
   /* ROYAL UI */
   resetRoyalUiForTitle();
   /* END ROYAL UI */
@@ -8856,6 +8905,7 @@ function hideTitleScreen() {
 }
 
 function startCampaignFromSave() {
+  if (guardMultiplayerLeave(() => startCampaignFromSave(...arguments))) return;
   /* ROYAL UI */
   levelSelectEncounter = null;
   requestRoyalLandscape();
@@ -8890,6 +8940,7 @@ function startCustomFromSave() {
 }
 
 function startTwoPlayerFromTitle() {
+  if (guardMultiplayerLeave(() => startTwoPlayerFromTitle(...arguments))) return;
   /* ROYAL UI */
   closeLanConnection(false);
   /* END ROYAL UI */
@@ -8958,6 +9009,7 @@ function startEndingCreditsSequence() {
 }
 
 function startBossFromTitle() {
+  if (guardMultiplayerLeave(() => startBossFromTitle(...arguments))) return;
   /* ROYAL UI */
   if (isBossUnlocked()) requestRoyalLandscape();
   /* END ROYAL UI */
@@ -9294,6 +9346,7 @@ function updateModeControls() {
 }
 
 function startCustomMode(restart = true) {
+  if (guardMultiplayerLeave(() => startCustomMode(...arguments))) return;
   /* ROYAL UI */
   resetRoyalLocalSetup();
   /* END ROYAL UI */
@@ -9630,6 +9683,7 @@ function startLevel() {
 }
 
 function setCampaign(index, hideMenus = false) {
+  if (guardMultiplayerLeave(() => setCampaign(...arguments))) return;
   levelSelectEncounter = null;
   const campaignIndex = clamp(Number(index), 0, CAMPAIGNS.length - 1);
   const firstLevelOfCampaign = campaignIndex * 6;
@@ -13780,15 +13834,64 @@ let royalRotateDismissed = false;
 let royalUiGamepadDirection = 0;
 let royalUiGamepadAt = 0;
 const royalPortraitInert = new Map();
+let royalModalPanel = null;
+let multiplayerLeaveRequest = null;
+let multiplayerLeaveApproved = false;
 
 function royalPortraitVisible() { return Boolean(byId('rotateDevice') && !byId('rotateDevice').hidden); }
 
+// Both blocking dialogs share the existing focus/input boundary. A departure
+// prompt consumes local input only; it never pauses the authoritative simulation.
+function royalInputModal() {
+  if (royalPortraitVisible()) return byId('rotateDevice');
+  return multiplayerLeaveRequest ? byId('multiplayerLeave') : null;
+}
+
+function guardMultiplayerLeave(action) {
+  if (multiplayerLeaveApproved || !onlineSession || !lanConnected || mode !== 2 || gameOver) return false;
+  if (onlineMatchFlow && !['countdown', 'go', 'playing'].includes(onlineMatchFlow.phase)) return false;
+  if (multiplayerLeaveRequest) return true;
+  multiplayerLeaveRequest = {session: onlineSession, action};
+  byId('multiplayerLeave').hidden = false;
+  syncRoyalFocus();
+  return true;
+}
+
+function finishMultiplayerLeave(leave = false) {
+  const request = multiplayerLeaveRequest;
+  if (!request) return;
+  multiplayerLeaveRequest = null;
+  byId('multiplayerLeave').hidden = true;
+  syncRoyalFocus();
+  if (!leave || request.session !== onlineSession) return;
+  multiplayerLeaveApproved = true;
+  try {
+    sendMultiplayerPresence('leave'); sendRematch('leave');
+    request.action();
+  } finally { multiplayerLeaveApproved = false; }
+}
+
+// Android's intercepted Back remains an in-game action. Browser tab/window
+// termination still uses pagehide and never opens a custom departure prompt.
+window.KingPongMatchNavigation = {back() {
+  if (royalPortraitVisible()) return true;
+  if (multiplayerLeaveRequest) { finishMultiplayerLeave(false); return true; }
+  if (!onlineSession || !lanConnected) return false;
+  if (!guardMultiplayerLeave(() => leaveMultiplayerSession())) leaveMultiplayerSession();
+  return true;
+}};
+
 function syncRoyalPortraitModal() {
-  const active = royalPortraitVisible();
-  const changed = active !== (royalPortraitInert.size > 0);
+  const panel = royalInputModal();
+  const active = Boolean(panel), changed = panel !== royalModalPanel;
+  if (changed) {
+    for (const [node, inert] of royalPortraitInert) node.inert = inert;
+    royalPortraitInert.clear();
+    royalModalPanel = panel;
+  }
   if (active) {
     for (const node of document.body.children) {
-      if (node.id === 'rotateDevice' || ['SCRIPT', 'STYLE'].includes(node.tagName)) continue;
+      if (node === panel || ['SCRIPT', 'STYLE'].includes(node.tagName)) continue;
       if (!royalPortraitInert.has(node)) royalPortraitInert.set(node, node.inert);
       node.inert = true;
     }
@@ -13808,22 +13911,24 @@ function installRoyalPortraitModal() {
   for (const type of ['pointerdown', 'pointermove', 'pointerup', 'pointercancel', 'click', 'dblclick',
       'touchstart', 'touchmove', 'touchend', 'wheel', 'contextmenu']) {
     window.addEventListener(type, event => {
-      if (!royalPortraitVisible()) return;
-      const action = event.target.closest?.('#rotatePlay,#rotateDismiss');
-      if (action && !action.hidden && !action.disabled) return;
+      const panel = royalInputModal();
+      if (!panel) return;
+      const action = event.target.closest?.('button');
+      if (action && panel.contains(action) && !action.hidden && !action.disabled) return;
       event.preventDefault(); event.stopImmediatePropagation();
     }, {capture: true, passive: false});
   }
   // Block bubbling to the legacy fullscreen paddle/touch handlers even on the
   // two permitted buttons. Their own click handlers still run at the target.
   for (const type of ['pointerdown', 'pointermove', 'pointerup', 'touchstart', 'touchmove', 'touchend'])
-    byId('rotateDevice').addEventListener(type, event => event.stopPropagation());
+    for (const id of ['rotateDevice', 'multiplayerLeave'])
+      byId(id).addEventListener(type, event => event.stopPropagation());
   window.addEventListener('keyup', event => {
-    if (royalPortraitVisible()) { event.preventDefault(); event.stopImmediatePropagation(); }
+    if (royalInputModal()) { event.preventDefault(); event.stopImmediatePropagation(); }
   }, true);
   window.addEventListener('focusin', event => {
-    if (royalPortraitVisible() && !byId('rotateDevice').contains(event.target))
-      royalFocusables(byId('rotateDevice'))[0]?.focus({preventScroll: true});
+    const panel = royalInputModal();
+    if (panel && !panel.contains(event.target)) royalFocusables(panel)[0]?.focus({preventScroll: true});
   }, true);
 }
 
@@ -14137,7 +14242,22 @@ function initRoyalUi() {
   rotatePlay.hidden = true;
   rotateActions.append(rotatePlay, royalButton('rotateDismiss', 'Continue in portrait', dismissRoyalOrientation));
   rotate.append(rotateActions);
+  const leave = royalDialog('multiplayerLeave', 'Leave this match?');
+  const leaveActions = document.createElement('div'); leaveActions.className = 'match-actions';
+  leaveActions.append(royalButton('multiplayerStay', 'Stay', () => finishMultiplayerLeave(false), 'match-primary'),
+    royalButton('multiplayerLeaveConfirm', 'Leave Match', () => finishMultiplayerLeave(true)));
+  leave.append(leaveActions);
   installRoyalPortraitModal();
+  // Capture exit buttons before legacy handlers change mode or close transports.
+  window.addEventListener('click', event => {
+    const button = event.target.closest?.('button');
+    if (!button || multiplayerLeaveApproved) return;
+    if (![titleJumpButton, customModeButton, twoPlayerModeButton, lanModeButton, lanDisconnectButton,
+        ...campaignButtons, byId('menuCampaign'), byId('menuBoss'), byId('menuOnline'),
+        byId('localLanClose'), byId('classicLanClose'), byId('setupBackButton'), byId('onlineFlowBack'),
+        byId('exitGameButton'), byId('onlineDisconnectButton')].includes(button)) return;
+    if (guardMultiplayerLeave(() => button.click())) { event.preventDefault(); event.stopImmediatePropagation(); }
+  }, true);
 
   // The legacy nodes remain available to their platform code; the focused shell owns their presentation.
   document.querySelector('.menu-stack').hidden = true;
@@ -14311,7 +14431,7 @@ function royalContinue() {
 function toggleRoyalMenu() {
   if (multiplayerRematchVisible()) return;
   if (bossIntroActive || creditsActive) return;
-  if (onlineMatchFlowBlocksPlay()) { showTitleScreen(); return; }
+  if (onlineMatchFlowBlocksPlay() && !multiplayerSuspended()) { showTitleScreen(); return; }
   const title = document.body.classList.contains('title-active');
   const open = byId('matchMenu') && !byId('matchMenu').hidden;
   royalMenuRequested = !open;
@@ -14344,6 +14464,7 @@ function paintRoyalChoice(button, number, label, entry, kind) {
 function syncRoyalUi(force = false) {
   syncBossAudio();
   if (!byId('matchSetup')) return;
+  if (multiplayerLeaveRequest && (multiplayerLeaveRequest.session !== onlineSession || gameOver)) finishMultiplayerLeave(false);
   syncOnlineMatchFlowUi();
   syncMultiplayerRematchUi();
   syncPrivateRoomControls();
@@ -14354,7 +14475,7 @@ function syncRoyalUi(force = false) {
   const setup = !title && !bossIntroActive && !creditsActive && royalNeedsSetup();
   const menu = !bossIntroActive && !creditsActive && menusVisible && (!setup || royalMenuRequested);
   const desktopPause = paused && !waitingForServe && !gameOver && !levelCleared && !campaignCleared &&
-    !hasResumeCountdown() && window.matchMedia('(pointer: fine), (pointer: none)').matches;
+    !hasResumeCountdown() && !multiplayerSuspended();
   const signature = [title, online, setup, menu, desktopPause, galleryKind, bossIntroActive, creditsActive, mode, activeCampaign,
     levelIndex, waitingForServe, paused, gameOver,
     levelCleared, campaignCleared, lanRole, lanConnected, lanLastStatus, matchArenaId, matchPaddles.left, matchPaddles
@@ -14622,8 +14743,7 @@ function syncRoyalOrientation() {
 }
 
 function royalActiveDialog() {
-  if (royalPortraitVisible()) return byId('rotateDevice');
-  if (typeof multiplayerSuspended === 'function' && multiplayerSuspended()) return byId('multiplayerUnavailable');
+  if (royalInputModal()) return royalInputModal();
   if (multiplayerRematchVisible()) return byId('multiplayerResult');
   if (byId('pairingDialog') && !byId('pairingDialog').hidden) return byId('pairingDialog');
   if (galleryKind) return byId('royalGallery');
@@ -14636,7 +14756,7 @@ function royalActiveDialog() {
 function royalFocusables(panel) {
   return [...panel.querySelectorAll(
       'button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),summary')]
-    .concat(panel.id !== 'rotateDevice' && byId('browserFullscreen') ? [byId('browserFullscreen')] : [])
+    .concat(!['rotateDevice', 'multiplayerLeave'].includes(panel.id) && byId('browserFullscreen') ? [byId('browserFullscreen')] : [])
     .filter(element => {
       if (!element.getClientRects().length || element.closest('[hidden],[inert]') ||
           getComputedStyle(element).visibility === 'hidden') return false;
@@ -14655,10 +14775,10 @@ function syncRoyalFocus() {
   const dialog = royalActiveDialog();
   // The gallery covers the toolbar; its Close button must stay unobstructed.
   const fullscreen = byId('browserFullscreen');
-  if (fullscreen) fullscreen.hidden = dialog?.id === 'royalGallery' || royalPortraitVisible();
+  if (fullscreen) fullscreen.hidden = dialog?.id === 'royalGallery' || Boolean(royalInputModal());
   for (const id of ['multiplayerResult', 'matchBar', 'matchSetup', 'matchMenu', 'titleScreen', 'onlineMatchFlow', 'classicLanDialog', 'pairingDialog']) {
     const node = byId(id);
-    if (node && !royalPortraitVisible()) node.inert = Boolean(dialog && node !== dialog);
+    if (node && !royalInputModal()) node.inert = Boolean(dialog && node !== dialog);
   }
   if (dialog === royalLastDialog) return;
   if (dialog) {
@@ -14682,10 +14802,12 @@ function syncRoyalFocus() {
 }
 
 function handleRoyalUiKey(event) {
-  if (royalPortraitVisible()) {
-    const controls = royalFocusables(byId('rotateDevice'));
+  if (royalInputModal()) {
+    const panel = royalInputModal();
+    const controls = royalFocusables(panel);
     const index = controls.indexOf(document.activeElement);
-    if (['Tab', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) {
+    if (event.key === 'Escape' && panel.id === 'multiplayerLeave') finishMultiplayerLeave(false);
+    else if (['Tab', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) {
       const previous = event.shiftKey || ['ArrowLeft', 'ArrowUp'].includes(event.key);
       controls[(index + (previous ? -1 : 1) + controls.length) % controls.length]?.focus();
     } else if (['Enter', ' '].includes(event.key) && !event.repeat && index >= 0) controls[index].click();
@@ -14696,6 +14818,11 @@ function handleRoyalUiKey(event) {
   const dialog = royalActiveDialog();
   const form = event.target instanceof HTMLInputElement || event.target instanceof HTMLSelectElement || event
     .target instanceof HTMLTextAreaElement;
+  if (!form && !event.repeat && ['1', '2', '3', '4'].includes(event.key) &&
+      guardMultiplayerLeave(() => ({'1': startCampaignFromSave, '2': startTwoPlayerFromTitle,
+        '3': () => startCustomMode(true), '4': startBossFromTitle})[event.key]())) {
+    event.preventDefault(); event.stopImmediatePropagation(); return true;
+  }
   if (dialog && event.key === 'Tab') {
     const controls = royalFocusables(dialog),
       index = controls.indexOf(document.activeElement);
@@ -14750,6 +14877,7 @@ function pollRoyalUiGamepad(now) {
     gamepadButtonJustPressed(pad, GAMEPAD_BUTTONS.SELECT)) {
     if (panel.id === 'multiplayerResult') leaveMultiplayerSession();
     else if (panel.id === 'rotateDevice') return;
+    else if (panel.id === 'multiplayerLeave') finishMultiplayerLeave(false);
     else if (panel.id === 'matchSetup' && onlineTransportSelected) showTitleScreen();
     else toggleRoyalMenu();
   }
@@ -14876,6 +15004,7 @@ function syncPrivateRoomControls() {
 // blocked-session list remain alive until the host explicitly closes the room.
 function privateGuestDeparted(session) {
   if (onlineSession !== session) return;
+  finishMultiplayerLeave(false);
   if (typeof stopMultiplayerPresence === 'function') stopMultiplayerPresence(session);
   const established = session.multiplayerEstablished;
   session.rematch = null;
@@ -15683,7 +15812,8 @@ function handleGameFocusLoss() {
     resumeCountdownEndAt = 0;
     lastResumeCountdownNumber = 0;
     paused = true;
-    setMenusVisible(true);
+    if (typeof multiplayerPresence !== 'function' || !multiplayerPresence()) setMenusVisible(true);
+    else syncRoyalUi(true);
     if (isLanHostActive()) sendLanState(true);
   }
 }
@@ -15718,6 +15848,7 @@ document.addEventListener("visibilitychange", () => {
 });
 
 function requestExitGame() {
+  if (guardMultiplayerLeave(() => requestExitGame(...arguments))) return;
   let nativeExitRequested = false;
   try {
     if (window.chrome && window.chrome.webview && typeof window.chrome.webview.postMessage === "function") {
