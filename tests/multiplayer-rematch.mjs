@@ -85,3 +85,78 @@ test('recovery preserves consent, resends a lost start acknowledgement and suspe
  assert.equal(q.a.run('leaves'),0);assert.equal(q.a.run('multiplayerRematch().local'),true);
  q.a.run('onlineGameBlocked=false;performance.now=()=>43001;tickMultiplayerRematch()');assert.equal(q.a.run('leaves'),1);
 });
+
+function shutdownPeer(origin, role, failure) {
+ const timers=new Map();let id=0;
+ const ctx=vm.createContext({setTimeout:(fn,ms)=>{timers.set(++id,{fn,ms});return id},clearTimeout:id=>timers.delete(id)});
+ const run=s=>vm.runInContext(s,ctx);
+ const leave=readFileSync(new URL('../game/royal-ui.js',import.meta.url),'utf8').split("// Android's intercepted Back")[0];
+ run(`let onlineSession,lanRole='${role}',lanConnected=true,lanRoomCode='ABCDEF',mode=2,gameOver=false,
+   onlineGameBlocked=false,paused=false,onlineManualLanSelected=false,onlineMatchFlow={phase:'playing'};
+   let closes=0,retries=0,releases=0,navigations=0,actions=0,sends=0,focus='',departOnSend=false,departOnFocus=false;
+   const nodes=new Map(),window={};
+   function byId(id){if(!nodes.has(id))nodes.set(id,{id,hidden:true,focus(){focus=id}});return nodes.get(id)}
+   function royalText(node,text){node.textContent=text}
+   function clearHeldInput(){}function setMenusVisible(){}function setLanStatus(){}function resetFrameClock(){}
+   function syncRoyalUi(){}function syncRoyalFocus(){if(departOnFocus){departOnFocus=false;endMultiplayerSession()}}
+   function sendMultiplayerPresence(){if(onlineSession)sends++;if(departOnSend){departOnSend=false;endMultiplayerSession()}}
+   function startOnlineSetup(a,b,observe){if(observe!==false)throw Error('queue reopened');navigations++}
+   function openOfflineLanSetup(){navigations++}
+   function closeOnlineConnection(){const s=onlineSession;onlineSession=null;lanConnected=false;return s.close()}
+   let finishClose,rejectClose;
+   const networkClosed=new Promise((resolve,reject)=>{finishClose=resolve;rejectClose=reject});
+   networkClosed.retry=()=>{retries++};networkClosed.release=()=>{releases++};
+   onlineSession={multiplayerOrigin:'${origin}',close(){closes++;${failure==='throw'?"throw Error('close failed')":'return networkClosed'}}};
+   ${leave}
+   ${code}
+   sendRematch=()=>{if(onlineSession)sends++};
+   guardMultiplayerLeave(()=>{actions++;onlineSession=null});`);
+ return {run,timers,async settle(){for(let i=0;i<4;i++)await Promise.resolve()},fire(){for(const [id,t]of timers){timers.delete(id);t.fn()}}};
+}
+
+test('terminal watchdog bounds UI waiting without claiming closure; late completion cannot revive old sessions',async()=>{
+ for(const origin of ['matchmaking','private','lan'])for(const role of ['host','guest'])
+ for(const failure of ['normal','never','late','reject','throw']) {
+   const h=shutdownPeer(origin,role,failure);
+   h.run('endMultiplayerSession();endMultiplayerSession();finishMultiplayerLeave(true)');
+   assert.equal(h.run('!onlineSession&&!multiplayerLeaveRequest&&actions===0&&closes===1&&paused'),true);
+   assert.equal(h.run("byId('multiplayerLeave').hidden"),true);
+   assert.deepEqual([...h.timers.values()].map(t=>t.ms),[5000]);
+   if(failure==='normal')h.run('finishClose()');
+   if(failure==='reject')h.run("rejectClose(Error('native acknowledgement failed'))");
+   await h.settle();
+   if(['never','late'].includes(failure)) {
+     assert.equal(h.run('multiplayerDisconnect.ready'),false);
+     h.run('acknowledgeMultiplayerDisconnect()');assert.equal(h.run('navigations'),0);
+     h.fire();await h.settle();
+   }
+   assert.equal(h.run('multiplayerDisconnect.ready'),true);
+   assert.equal(h.run('multiplayerDisconnect.confirmed'),failure==='normal');
+   assert.equal(h.timers.size,0);
+   if(failure==='late'){h.run('finishClose()');await h.settle();assert.equal(h.run('multiplayerDisconnect.confirmed'),true);}
+   h.run('endMultiplayerSession();finishMultiplayerLeave(true);finishMultiplayerLeave(false)');
+   assert.equal(h.run('closes'),1);assert.equal(h.run('actions'),0);
+   h.run('acknowledgeMultiplayerDisconnect();acknowledgeMultiplayerDisconnect()');
+   assert.equal(h.run('navigations'),1);
+   h.run('finishClose();onlineSession={newSession:true}');await h.settle();
+   assert.equal(h.run('!multiplayerDisconnect&&onlineSession.newSession'),true,'late completion is generation fenced');
+   assert.equal(h.run("byId('multiplayerDisconnected').hidden"),true);
+   assert.ok(h.run('retries')<=1);assert.equal(h.run('sends'),0);
+ }
+});
+
+test('terminal departure wins pending Leave callbacks and confirm/cancel races without duplicate navigation',async()=>{
+ for(const origin of ['matchmaking','private','lan'])for(const role of ['host','guest'])for(const order of ['confirm','cancel','local-first']) {
+   const h=shutdownPeer(origin,role,'normal');
+   if(order==='confirm')h.run('departOnSend=true;finishMultiplayerLeave(true)');
+   if(order==='cancel')h.run('departOnFocus=true;finishMultiplayerLeave(false)');
+   if(order==='local-first')h.run('finishMultiplayerLeave(true);endMultiplayerSession()');
+   h.run('finishClose()');await h.settle();
+   if(order==='local-first')assert.equal(h.run('actions===1&&!multiplayerDisconnect'),true);
+   else {
+     assert.equal(h.run('actions===0&&multiplayerDisconnect.confirmed&&closes===1'),true);
+     h.run('finishMultiplayerLeave(true);finishMultiplayerLeave(false)');
+     assert.equal(h.run('actions'),0);
+   }
+ }
+});

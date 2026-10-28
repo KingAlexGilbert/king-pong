@@ -114,6 +114,17 @@ async function page(locale = 'en-US') {
     locale
   });
   const page = await context.newPage();
+  if (process.argv.includes('--blocked-visibility')) await page.addInitScript(() => {
+    // Simulate uBO aeld registration suppression before any game script runs.
+    const add = EventTarget.prototype.addEventListener;
+    window.blockedLifecycleRegistrations = [];
+    EventTarget.prototype.addEventListener = function(type, ...args) {
+      if (type === 'visibilitychange' || type === 'pagehide') {
+        blockedLifecycleRegistrations.push(type); return;
+      }
+      return add.call(this, type, ...args);
+    };
+  });
   page.on('pageerror', error => errors.push(error.message));
   page.on('websocket', socket => { if(socket.url().includes('/v1/queue/'))socket.on('framesent',e=>{if(e.payload!=='ping')queueTraffic.push({url:socket.url(),message:JSON.parse(e.payload)});}); });
   page.on('dialog', async dialog => {
@@ -396,6 +407,7 @@ try {
   await host.locator('#saveConfirmCancel').click();
   assert.equal(await host.evaluate(() => lanConnected), true);
   await watchSessionShutdown(peer);
+  await peer.evaluate(()=>guardMultiplayerLeave(()=>{throw Error('stale Leave callback ran')}));
   await host.locator('#arenaKick').click();
   await host.locator('#saveConfirmAccept').click();
   await waitFor(peer, 'lanLastStatus === ONLINE_ERRORS.kicked');
@@ -468,9 +480,20 @@ try {
     assert.equal(await closingGuest.evaluate(()=>Boolean(onlineSession&&!onlineSession.closed&&onlineGameBlocked&&paused)),true);
   }
   await watchSessionShutdown(closingGuest);
+  if(controlledChannels)await closingGuest.evaluate(()=>{
+    // Fault injection: real Worker/socket, but closure acknowledgement and
+    // observed readyState are unavailable to the application.
+    const socket=onlineSession.socket;
+    window.finishFaultedSocket=()=>{delete socket.readyState;socket.onclose?.()};
+    Object.defineProperty(socket,'readyState',{configurable:true,value:2});
+  });
   await closingHost.close();
   await waitFor(closingGuest,'lanLastStatus === ONLINE_ERRORS.host_left');
-  await disconnectedBrowserChecks(closingGuest, 'private');
+  await disconnectedBrowserChecks(closingGuest, 'private', controlledChannels ? false : undefined);
+  if(controlledChannels){
+    await closingGuest.evaluate(()=>window.finishFaultedSocket());
+    assert.equal(await closingGuest.locator('#multiplayerDisconnected').isVisible(),false,'late socket completion after fallback navigation is inert');
+  }
   console.log('PASS '+departureTransport+' private guest receives authoritative host departure');
   assert.deepEqual(errors, []);
   }

@@ -66,16 +66,22 @@ class KingPongLocalRoom extends KingPongRoom {
     nativeLanCommand('release', this.generation); return true;
   }
   relay() { // RTC failures never contact the online signaling/relay service.
+    if (this.closed) return;
     if (this.role === 'host') nativeLanCommand('release', this.generation);
     else this.fail('timeout');
   }
   close() {
     if (this.closed) return this.networkClosed;
     this.networkClosed = new Promise(resolve => localLanClosures.set(this.generation, resolve));
+    this.networkClosed.retry = () => {
+      if (!localLanClosures.has(this.generation)) return;
+      try { nativeLanCommand('close', this.generation); } catch { /* Unconfirmed native shutdown. */ }
+    };
+    this.networkClosed.release = () => localLanClosures.delete(this.generation);
     super.close();
     clearTimeout(localLanScanTimer); localLanScan = 0;
     byId('localLanScan').disabled = false;
-    nativeLanCommand('close', this.generation);
+    this.networkClosed.retry();
     clearLanQr(); byId('localLanAddress').textContent = ''; byId('localLanRoomCode').textContent = '';
     return this.networkClosed;
   }

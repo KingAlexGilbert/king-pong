@@ -1,14 +1,27 @@
 /* Room admission and transport setup. Existing LAN packet handlers own gameplay. */
 // Resolve only after queued WebSocket frames can no longer be transmitted.
 function closeOnlineSocket(socket) {
-  return new Promise(resolve => {
-    if (!socket || socket.readyState === 3) { resolve(); return; }
+  let finish, confirmed = false;
+  const closed = new Promise(resolve => { finish = () => {
+    if (socket && socket.readyState !== 3) return;
+    confirmed = true;
+    if (socket) socket.onclose = null;
+    resolve();
+  }; });
+  closed.retry = () => {
+    if (confirmed) return;
+    if (!socket || socket.readyState === 3) { finish(); return; }
     socket.onopen = socket.onmessage = socket.onerror = null;
-    socket.onclose = () => { socket.onclose = null; resolve(); };
-    socket.close();
+    socket.onclose = finish;
+    // A refused close is not evidence of closure. The terminal watchdog may
+    // try once more, then expose unconfirmed shutdown without reviving sends.
+    try { socket.close(); } catch { /* Keep waiting for confirmed closure. */ }
     // The native iframe bridge and test adapters tear down synchronously.
-    if (socket.readyState === 3) { socket.onclose = null; resolve(); }
-  });
+    finish();
+  };
+  closed.release = () => { if (socket) socket.onclose = null; };
+  closed.retry();
+  return closed;
 }
 
 class KingPongRoom {
@@ -420,7 +433,9 @@ function closeOnlineConnection(showMessage = true, keepQueue = false) {
   onlineAppliedInputSeq = -1;
   const session = onlineSession;
   onlineSession = null;
-  const closed = session?.close();
+  let closed;
+  try { closed = session?.close(); }
+  catch (error) { closed = Promise.reject(error); }
   lanPeer = lanChannel = onlineControlChannel = null;
   lanConnected = false;
   lanRole = 'none';
@@ -435,7 +450,12 @@ function closeOnlineConnection(showMessage = true, keepQueue = false) {
   if (showMessage) { paused = true; setLanStatus('Find an opponent or create/join a private room.'); }
   updateLanPanelVisibility();
   updateModeControls();
-  return Promise.all([closed, queueClosed]);
+  const completion = Promise.all([closed, queueClosed]);
+  completion.retry = () => { closed?.retry?.(); queueClosed?.retry?.(); };
+  completion.release = () => { closed?.release?.(); queueClosed?.release?.(); };
+  // Nonterminal setup callers intentionally do not await closure.
+  completion.catch(() => {});
+  return completion;
 }
 
 function startOnlineSetup(fromTitle = false, offline = false, observe = true) {

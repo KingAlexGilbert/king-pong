@@ -74,11 +74,12 @@ function observeMatchmaking() {
     socket = matchmakingSocket = kingPongSignalingSocket(url);
   } catch { matchmakingFailed('unavailable'); return; }
   matchmakingState = 'opening';
-  matchmakingOpenTimer = setTimeout(() => matchmakingFailed('timeout'), 12_000);
+  matchmakingOpenTimer = setTimeout(() => { if (socket === matchmakingSocket) matchmakingFailed('timeout'); }, 12_000);
   socket.onopen = () => {
     if (socket !== matchmakingSocket) return;
     matchmakingLastPong = Date.now();
     matchmakingHeartbeat = setInterval(() => {
+      if (socket !== matchmakingSocket) return;
       if (Date.now() - matchmakingLastPong > 60_000) matchmakingFailed('connection_lost');
       else if (socket.readyState === 1) socket.send('ping');
     }, 20_000);

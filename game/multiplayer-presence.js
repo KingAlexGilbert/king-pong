@@ -77,10 +77,12 @@ function setMultiplayerAvailability(active) {
   const p = multiplayerPresence();
   if (!p || presenceExpired(p)) return;
   active = Boolean(active);
-  if (p.localActive === active) return;
+  if (p.localActive === active) { maybeResumeMultiplayer(); return; }
   p.localActive = active; p.revision++;
   if (!active) suspendMultiplayerPresence('local-background');
-  sendMultiplayerPresence('status');
+  const held = active && p.suspended && lanRole === 'guest';
+  if (held) p.foregroundStatusEpoch = p.epoch;
+  sendMultiplayerPresence('status', held ? {held: true} : {});
   maybeResumeMultiplayer();
 }
 
@@ -156,6 +158,10 @@ function receiveMultiplayerPresence(m) {
   if (m.revision < p.remoteRevision) return;
   p.remoteRevision = m.revision; p.remoteActive = m.active; p.lastHeard = Date.now();
   if (!m.active) suspendMultiplayerPresence('peer-background');
+  // A returning guest may still be held while its host considers it active.
+  // Only the host advances the epoch and starts the fresh-snapshot agreement.
+  if (lanRole === 'host' && m.kind === 'status' && m.held === true && m.epoch === p.epoch && !p.suspended)
+    suspendMultiplayerPresence('peer-hold');
   if (m.kind === 'status') sendMultiplayerPresence('status-ack');
   if (m.kind === 'ping' && Number.isSafeInteger(m.probe) && m.probe > 0)
     sendMultiplayerPresence('pong', {probe: m.probe});
@@ -203,6 +209,13 @@ function tickMultiplayerPresence() {
   const p = multiplayerPresence();
   if (!p || presenceExpired(p)) return;
   const now = Date.now();
+  // Also called by the simulation: property polling keeps the watchdog's
+  // existing cadence rather than following display refresh rate.
+  if (now - (p.lastAvailabilityCheck ?? -Infinity) >= MULTIPLAYER_PRESENCE.poll) {
+    p.lastAvailabilityCheck = now;
+    reconcileMultiplayerAvailability();
+    if (multiplayerPresence() !== p) return;
+  }
   if (now - p.lastHeard >= MULTIPLAYER_PRESENCE.stale) {
     suspendMultiplayerPresence('traffic-timeout');
     // Reuse the existing ICE restart -> TURN -> encrypted WebSocket recovery.
@@ -232,6 +245,27 @@ function multiplayerPageHide(event) {
 }
 
 window.addEventListener('pagehide', multiplayerPageHide);
+// Privacy extensions may suppress lifecycle listeners. A polled return needs
+// affirmative focus as well as visibility; input alone never proves presence.
+function reconcileMultiplayerAvailability() {
+  const p = multiplayerPresence();
+  if (!p || presenceExpired(p)) return;
+  if (document.hidden || window.KingPongBackgrounded) { setMultiplayerAvailability(false); return; }
+  if (document.hidden !== false || typeof document.hasFocus !== 'function' || !document.hasFocus()) return;
+  const wasActive = p.localActive;
+  refreshMultiplayerAvailability();
+  // A guest cannot offer a snapshot. One status per held epoch lets the host
+  // reconcile a missed return even when local availability was already true.
+  if (wasActive && p.suspended && p.phase === 'held' && p.remoteActive && !p.transportDown &&
+      lanRole === 'guest' && p.foregroundStatusEpoch !== p.epoch) {
+    p.foregroundStatusEpoch = p.epoch;
+    sendMultiplayerPresence('status', {held: true});
+  }
+}
+for (const type of ['pointerdown', 'touchstart', 'keydown']) window.addEventListener(type, event => {
+  if (event.isTrusted) reconcileMultiplayerAvailability();
+}, {capture: true, passive: true});
+
 function refreshMultiplayerAvailability() {
   const active = !document.hidden && !window.KingPongBackgrounded;
   // hasFocus() can lag visibilitychange/pageshow. A visible return must also

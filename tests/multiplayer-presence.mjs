@@ -4,7 +4,7 @@ import vm from 'node:vm';
 import {readFileSync} from 'node:fs';
 
 const source = readFileSync(new URL('../game/multiplayer-presence.js', import.meta.url), 'utf8');
-function pair() {
+function pair(blockedEvents = []) {
   let now = 1000;
   function peer(role) {
     const ctx = vm.createContext({Date: {now: () => now}, performance: {now: () => now},
@@ -15,8 +15,11 @@ function pair() {
       resumeCountdownEndAt=0,lastResumeCountdownNumber=0,onlineLastInput=null,onlineMatchFlow={phase:'playing'},
       onlineInputs=new Map(),sent=[],left={score:2},right={score:3},ball={x:300,y:100,vx:5,vy:3},closed=0,leaves=0;
       const LAN_SIGNAL_VERSION=1,RESUME_COUNTDOWN_MS=3000;
-      const document={hidden:false,addEventListener(){},getElementById(){return null}};
-      const window={addEventListener(){}};
+      const listeners=new Map(),blockedEvents=${JSON.stringify(blockedEvents)};
+      function listen(type,fn){if(!blockedEvents.includes(type))listeners.set(type,fn)}
+      const document={hidden:false,focused:true,hasFocus(){return this.focused},addEventListener:listen,getElementById(){return null}};
+      const window={addEventListener:listen};
+      function emit(type,event={}){listeners.get(type)?.(event)}
       function multiplayerRematch(){return {token:'0123456789abcdef0123456789abcdef'}}
       function lanSend(m){sent.push({...m,gameplay:'royal',matchRules:'presets'});return true}
       function sendLanState(){const p=multiplayerPresence();lanSend({type:'state',presenceEpoch:p.epoch,
@@ -154,6 +157,9 @@ test('duplicate holds, offers and acknowledgements cannot roll back recovery or 
   assert.equal(p.guest.run('multiplayerSuspended()'),false);
   p.advance(1000);p.guest.run('receiveMultiplayerPresence(message)');p.flush();
   assert.equal(p.host.run('resumeCountdownRemainingMs()'),2000);
+  p.guest.run("sendMultiplayerPresence('status',{held:true,epoch:multiplayerPresence().epoch-1})");p.flush();
+  assert.equal(p.host.run('multiplayerSuspended()'),false,'late held status cannot create another recovery');
+  assert.equal(p.host.run('resumeCountdownRemainingMs()'),2000);
 });
 
 
@@ -177,5 +183,59 @@ test('focus-only and reordered tab returns share presence recovery without turni
     p.advance(500);peer.run('recordMultiplayerFocusReturn();setMultiplayerAvailability(true)');p.flush();
     assert.equal(p.host.run('resumeCountdownRemainingMs()'),2500,'duplicates do not restart countdown');
     assert.equal(p.host.run('left.score+right.score'),5);
+  }
+});
+
+test('blocked lifecycle listeners recover through observed foreground state, never input activity alone', () => {
+  for (const blocked of [['visibilitychange'],['pagehide'],['visibilitychange','pagehide']])
+  for (const who of ['host','guest']) for (const via of ['watchdog','pointerdown','touchstart','keydown']) {
+    const p=pair(blocked), peer=p[who];
+    peer.run("recordMultiplayerFocusLoss();document.hidden=true;document.focused=false;emit('visibilitychange')");p.flush();
+    peer.run("recordMultiplayerFocusReturn();emit('pointerdown',{isTrusted:true});tickMultiplayerPresence()");p.flush();
+    assert.equal(p.host.run('multiplayerSuspended()'),true,'hidden interaction cannot resume');
+    p.advance(500);peer.run('document.hidden=false;document.focused=true');
+    if(via==='watchdog')peer.run('tickMultiplayerPresence()');
+    else {
+      peer.run(`emit('${via}',{isTrusted:false})`);p.flush();
+      assert.equal(p.host.run('multiplayerSuspended()'),true,'synthetic interaction cannot resume');
+      peer.run(`emit('${via}',{isTrusted:true})`);
+      peer.run("emit('touchstart',{isTrusted:true});emit('keydown',{isTrusted:true})");
+      assert.equal(peer.run("sent.filter(m=>m.kind==='status').length"),1,'overlapping trusted inputs send one return status');
+    }
+    p.flush();
+    assert.equal(p.host.run('multiplayerSuspended()'),false,`${blocked}/${who}/${via}`);
+    assert.equal(p.guest.run('multiplayerSuspended()'),false);
+    assert.equal(p.host.run('resumeCountdownRemainingMs()'),3000);
+    p.advance(500);
+    for(let i=0;i<5;i++) {peer.run("tickMultiplayerPresence();emit('keydown',{isTrusted:true})");p.flush();}
+    assert.equal(p.host.run('resumeCountdownRemainingMs()'),2500,'no duplicate countdown');
+    assert.equal(peer.run('multiplayerPresence().revision'),2,'no redundant availability updates');
+    assert.equal(peer.run('sent.length'),0);
+  }
+  for(const who of ['host','guest']) {
+    const p=pair(['visibilitychange','pagehide']), peer=p[who];
+    peer.run('recordMultiplayerFocusLoss();document.focused=false');p.flush();
+    peer.run('tickMultiplayerPresence()');p.flush();
+    assert.equal(p.host.run('multiplayerSuspended()'),true,'visible but unfocused stays held');
+    p.advance(30000);peer.run("document.focused=true;emit('pointerdown',{isTrusted:true});tickMultiplayerPresence()");
+    assert.equal(peer.run('leaves'),1,'foreground cannot revive expired sessions');
+    peer.run("emit('keydown',{isTrusted:true});tickMultiplayerPresence()");
+    assert.equal(peer.run('leaves'),1);
+  }
+});
+
+test('foreground reconciliation repairs active held states while preserving pause, consent and transport recovery', () => {
+  for(const who of ['host','guest']) for(const mode of ['playing','paused','ready']) {
+    const p=pair(), peer=p[who];
+    for(const side of [p.host,p.guest]) side.run(`paused=${mode!=='playing'};onlineMatchFlow.phase='${mode==='ready'?'ready':'playing'}'`);
+    peer.run('suspendMultiplayerPresence();multiplayerPresence().transportDown=true');p.flush();
+    peer.run('tickMultiplayerPresence()');p.flush();
+    assert.equal(peer.run('multiplayerSuspended()'),true,'live transport is required');
+    p.advance(500);peer.run('multiplayerPresence().transportDown=false;tickMultiplayerPresence()');p.flush();
+    assert.equal(p.host.run('multiplayerSuspended()'),false,who);
+    assert.equal(p.guest.run('multiplayerSuspended()'),false,who);
+    assert.equal(p.host.run('resumeCountdownRemainingMs()'),mode==='playing'?3000:0);
+    assert.equal(p.host.run('paused'),true);
+    if(mode==='ready')assert.equal(p.host.run('onlineGameBlocked'),true);
   }
 });

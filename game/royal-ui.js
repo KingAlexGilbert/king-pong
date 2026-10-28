@@ -45,11 +45,11 @@ function finishMultiplayerLeave(leave = false) {
   multiplayerLeaveRequest = null;
   byId('multiplayerLeave').hidden = true;
   syncRoyalFocus();
-  if (!leave || request.session !== onlineSession) return;
+  if (!leave || multiplayerDisconnect || request.session !== onlineSession) return;
   multiplayerLeaveApproved = true;
   try {
     sendMultiplayerPresence('leave'); sendRematch('leave');
-    request.action();
+    if (!multiplayerDisconnect && request.session === onlineSession) request.action();
   } finally { multiplayerLeaveApproved = false; }
 }
 
@@ -430,6 +430,11 @@ function initRoyalUi() {
     royalButton('multiplayerLeaveConfirm', 'Leave Match', () => finishMultiplayerLeave(true)));
   leave.append(leaveActions);
   const disconnected = royalDialog('multiplayerDisconnected', 'Your opponent disconnected');
+  const disconnectNote = document.createElement('p');
+  disconnectNote.id = 'multiplayerDisconnectNote'; disconnectNote.className = 'match-note';
+  disconnectNote.hidden = true;
+  setLocalizedText(disconnectNote, 'The match has ended. Connection closure could not be confirmed. You can return to the menu.');
+  disconnected.append(disconnectNote);
   const disconnectedActions = document.createElement('div'); disconnectedActions.className = 'match-actions';
   disconnectedActions.append(royalButton('multiplayerReturn', 'Return to Menu', acknowledgeMultiplayerDisconnect, 'match-primary'));
   disconnected.append(disconnectedActions);

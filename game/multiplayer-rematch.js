@@ -136,32 +136,53 @@ function finishMultiplayerRematchSnapshot() {
 // The terminal dialog owns only local UI state. Detach the session before any
 // async close completes, so late callbacks cannot revive it or navigate away.
 let multiplayerDisconnect = null;
+const MULTIPLAYER_SHUTDOWN_WATCHDOG_MS = 5000;
+
+function showMultiplayerDisconnect(ended, confirmed) {
+  if (multiplayerDisconnect !== ended) return;
+  clearTimeout(ended.watchdog);
+  ended.ready = true;
+  ended.confirmed = confirmed;
+  royalText(byId('multiplayerDisconnectedTitle'), confirmed ? 'Your opponent disconnected' : 'Finishing disconnect...');
+  byId('multiplayerDisconnectNote').hidden = confirmed;
+  byId('multiplayerDisconnected').hidden = false;
+  syncRoyalUi(true);
+  byId('multiplayerReturn').focus({preventScroll: true});
+}
+
+function escalateMultiplayerShutdown(ended) {
+  if (multiplayerDisconnect !== ended || ended.ready) return;
+  // One best-effort retry before exposing the fallback. A timeout cannot
+  // certify closure, and neither path reopens a retired session.
+  try { ended.closed?.retry?.(); } catch { /* Keep the session quarantined. */ }
+  showMultiplayerDisconnect(ended, false);
+}
 
 function endMultiplayerSession(message = 'Opponent disconnected.') {
   if (multiplayerDisconnect || !onlineSession) return;
   const ended = multiplayerDisconnect = {origin: onlineSession.multiplayerOrigin ||
     (onlineManualLanSelected ? 'lan' : 'private'), role: lanRole, ready: false};
+  finishMultiplayerLeave(false);
   onlineGameBlocked = paused = true;
   clearHeldInput();
-  const closed = closeOnlineConnection(false);
+  ended.watchdog = setTimeout(() => escalateMultiplayerShutdown(ended), MULTIPLAYER_SHUTDOWN_WATCHDOG_MS);
+  try { ended.closed = closeOnlineConnection(false); }
+  catch (error) { ended.closed = Promise.reject(error); }
   onlineGameBlocked = paused = true;
   setMenusVisible(false);
   byId('classicLanDialog').hidden = true;
   setLanStatus(message);
   // Native LAN acknowledges socket/discovery shutdown; WebSockets must finish
   // closing (including already queued frames) before the local popup appears.
-  Promise.resolve(closed).then(() => {
-    if (multiplayerDisconnect !== ended) return;
-    ended.ready = true;
-    byId('multiplayerDisconnected').hidden = false;
-    syncRoyalUi(true);
-    byId('multiplayerReturn').focus({preventScroll: true});
-  });
+  Promise.resolve(ended.closed).then(() => showMultiplayerDisconnect(ended, true),
+    () => escalateMultiplayerShutdown(ended));
 }
 
 function acknowledgeMultiplayerDisconnect() {
   if (!multiplayerDisconnect?.ready) return;
   const {origin} = multiplayerDisconnect;
+  clearTimeout(multiplayerDisconnect.watchdog);
+  multiplayerDisconnect.closed?.release?.();
   multiplayerDisconnect = null;
   byId('multiplayerDisconnected').hidden = true;
   resetFrameClock();

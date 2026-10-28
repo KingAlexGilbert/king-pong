@@ -5,11 +5,17 @@ import assert from 'node:assert/strict';
 export async function presenceBrowserChecks(host, guest, label) {
   for (const p of [host, guest]) {
     await p.waitForFunction(() => Boolean(multiplayerPresence()));
+    const blocked=await p.evaluate(()=>window.blockedLifecycleRegistrations);
+    if(blocked)for(const type of ['visibilitychange','pagehide'])assert.ok(blocked.includes(type),'listener registration actually suppressed: '+type);
     await p.evaluate(() => {
       window.presenceSession = onlineSession;
       window.presenceTransport = onlineSession.secure || lanPeer;
       window.simulatedHidden = false;
+      window.simulatedFocus = true;
       Object.defineProperty(document, 'hidden', {configurable: true, get: () => window.simulatedHidden});
+      document.hasFocus = () => window.simulatedFocus;
+      window.addEventListener('blur', () => {window.simulatedFocus=false;});
+      window.addEventListener('focus', () => {window.simulatedFocus=true;});
       window.changeVisibility = hidden => {
         // Android can blur before notifying visibility; either order must work.
         if (hidden) window.dispatchEvent(new Event('blur'));
@@ -98,6 +104,7 @@ export async function presenceBrowserChecks(host, guest, label) {
       if(order==='focus-first')window.dispatchEvent(new Event('focus'));
       if(order!=='focus-only') {
         window.simulatedHidden=false;
+        window.simulatedFocus=true;
         const focused=document.hasFocus;document.hasFocus=()=>false;
         document.dispatchEvent(new Event('visibilitychange'));document.hasFocus=focused;
       }
@@ -111,6 +118,28 @@ export async function presenceBrowserChecks(host, guest, label) {
     assert.equal(await interrupted.evaluate(()=>gameWindowFocused),true,'visible return releases input even when hasFocus lags');
     assert.equal(await host.evaluate(()=>resumeCountdownEndAt),end,'duplicate return events preserve the countdown');
     assert.equal(await host.locator('#multiplayerDisconnected').isVisible(),false,'temporary absence is not terminal');
+  }
+  // Properties return to foreground but neither lifecycle notification arrives.
+  for (const interrupted of [host,guest]) for (const via of ['watchdog','input']) {
+    await host.evaluate(()=>{paused=false;resumeCountdownEndAt=0;waitingForServe=false;ball.vx=ball.vy=0;sendLanState(true)});
+    await guest.waitForFunction(()=>!paused);
+    await interrupted.evaluate(()=>{window.changeVisibility(true);clearInterval(multiplayerPresence().timer)});
+    await Promise.all([host,guest].map(p=>p.waitForFunction(()=>multiplayerSuspended())));
+    await interrupted.evaluate(via=>{
+      window.dispatchEvent(new Event('focus')); // Still hidden: cannot resume yet.
+      window.simulatedHidden=false;window.simulatedFocus=true;
+      if(via==='input')multiplayerPresence().lastAvailabilityCheck=Date.now()+5000;
+    },via);
+    if(via==='watchdog') await interrupted.evaluate(()=>{
+      multiplayerPresence().timer=setInterval(tickMultiplayerPresence,MULTIPLAYER_PRESENCE.poll);
+    });
+    else await interrupted.keyboard.press('Shift');
+    await Promise.all([host,guest].map(p=>p.waitForFunction(()=>!multiplayerSuspended()&&hasResumeCountdown())));
+    if(via==='input') await interrupted.evaluate(()=>{
+      multiplayerPresence().lastAvailabilityCheck=0;
+      multiplayerPresence().timer=setInterval(tickMultiplayerPresence,MULTIPLAYER_PRESENCE.poll);
+    });
+    assert.equal(await interrupted.evaluate(()=>onlineSession===presenceSession),true,'no reconnect for missed events');
   }
   // A deliberate pause, including one made by opening Menu, survives return.
   for (const menu of [false,true]) {
@@ -128,7 +157,7 @@ export async function presenceBrowserChecks(host, guest, label) {
     const before=await p.evaluate(()=>[paused,multiplayerPresence().epoch]);
     await p.evaluate(()=>showTitleScreen());await p.locator('#multiplayerStay').click();
     assert.deepEqual(await p.evaluate(()=>[paused,multiplayerPresence().epoch]),before,'Stay does not pause or start recovery');
-    await p.evaluate(() => {delete document.hidden;gameWindowFocused=true;setMenusVisible(false)});
+    await p.evaluate(() => {delete document.hidden;delete document.hasFocus;gameWindowFocused=true;setMenusVisible(false)});
   }
   console.log('PASS: ' + label + ' host/guest visibility, mutual pause, fresh state, stale-packet fence and connection reuse');
 }
@@ -162,15 +191,21 @@ export async function watchSessionShutdown(page) {
   });
 }
 
-export async function disconnectedBrowserChecks(page, origin) {
+export async function disconnectedBrowserChecks(page, origin, expectedConfirmation) {
   await page.locator('#multiplayerDisconnected').waitFor({state:'visible'});
-  assert.equal(await page.locator('#multiplayerDisconnectedTitle').textContent(), 'Your opponent disconnected');
+  // Actual socket-close handshakes can exceed five seconds in Miniflare too.
+  // Either UI is valid only if it reports its confirmation state truthfully.
+  const confirmed=await page.evaluate(()=>multiplayerDisconnect.confirmed);
+  if(expectedConfirmation!==undefined)assert.equal(confirmed,expectedConfirmation);
+  assert.equal(await page.locator('#multiplayerDisconnectedTitle').textContent(), confirmed ? 'Your opponent disconnected' : 'Finishing disconnect...');
+  assert.equal(await page.locator('#multiplayerDisconnectNote').isVisible(),!confirmed);
   assert.equal(await page.locator('#multiplayerReturn').textContent(), 'Return to Menu');
   assert.equal(await page.locator('#matchSetup').isVisible(), false, 'no automatic navigation');
-  assert.equal(await page.evaluate(() => !onlineSession && !lanConnected && paused && onlineGameBlocked &&
+  assert.equal(await page.evaluate(confirmed => !onlineSession && !lanConnected && paused && onlineGameBlocked &&
     !matchmakingSocket && shutdownSession.closed && !shutdownSession.presence &&
     (!shutdownSession.secure || shutdownSession.secure.closed) &&
-    (!shutdownSession.socket || shutdownSession.socket.readyState === 3)), true, 'shutdown finishes before popup');
+    (!confirmed || !shutdownSession.socket || shutdownSession.socket.readyState === 3),confirmed), true, 'application shutdown precedes either terminal UI');
+  assert.equal(await page.locator('#multiplayerLeave').isVisible(),false,'terminal UI supersedes Leave');
   const count = await page.evaluate(() => shutdownSends.length);
   await page.evaluate(async () => {
     tickMultiplayerPresence(); tickMultiplayerRematch(); tickOnlineMatchFlow();
@@ -182,6 +217,7 @@ export async function disconnectedBrowserChecks(page, origin) {
     await shutdownSession.secure?.flush(); shutdownSession.secure?.credit();
     document.dispatchEvent(new Event('visibilitychange')); window.dispatchEvent(new Event('focus'));
     byId('matchPause').click(); byId('menuToggle').click();
+    finishMultiplayerLeave(true);finishMultiplayerLeave(false);
     endMultiplayerSession();
   });
   await page.keyboard.press('Escape'); await page.keyboard.press('m'); await page.keyboard.press('2');
@@ -198,5 +234,5 @@ export async function disconnectedBrowserChecks(page, origin) {
   assert.equal(await page.evaluate(() => !multiplayerDisconnect && !onlineSession && !matchmakingSocket), true, 'return does not start networking');
   await page.waitForTimeout(100);
   assert.equal(await page.evaluate(() => shutdownSends.length), count);
-  console.log('PASS '+origin+' terminal shutdown, frozen modal, zero subsequent application sends and acknowledged return');
+  console.log('PASS '+origin+' terminal '+(confirmed?'confirmed shutdown':'unconfirmed shutdown fallback')+', frozen modal, zero subsequent application sends and acknowledged return');
 }

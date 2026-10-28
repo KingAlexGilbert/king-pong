@@ -67,7 +67,8 @@ test('online scripts parse and all new user-facing messages have every supported
   vm.runInContext(readFileSync(new URL('../docs/demo/online-localization.js', import.meta.url), 'utf8'), context);
   const tables = context.window.KING_PONG_ONLINE_TRANSLATIONS;
   const keys = Object.keys(tables.es);
-  for (const key of ['Your opponent disconnected', 'Return to Menu']) assert.ok(keys.includes(key));
+  for (const key of ['Your opponent disconnected', 'Return to Menu', 'Finishing disconnect...',
+      'The match has ended. Connection closure could not be confirmed. You can return to the menu.']) assert.ok(keys.includes(key));
   for (const language of ['es', 'fr', 'de', 'pt', 'it', 'nl', 'ja', 'ko', 'zh']) {
     assert.deepEqual(Object.keys(tables[language]), keys);
     for (const key of keys) assert.ok(typeof tables[language][key] === 'string' && tables[language][key].length, `${language}: ${key}`);
@@ -223,6 +224,71 @@ test('closing during an interruption does not leave a late disconnect timer', as
   assert.equal(pending.intervals.size,0);assert.equal(pending.peers.length,0,'late signaling cannot create a peer');
   pending.room.socket.readyState=3;pending.room.socket.onclose();await closed;
   assert.equal(complete,true);
+  for(const failure of ['missing-event','throws','closed-without-event']) {
+    const h=harness();h.room.open('host');h.room.socket.onopen();
+    let calls=0,done=false;
+    h.room.socket.close=()=>{calls++;if(failure==='throws')throw Error('refused');h.room.socket.readyState=2;};
+    const completion=h.room.close();completion.then(()=>done=true);
+    assert.equal(h.room.close(),completion,'duplicate close shares its original completion');
+    await Promise.resolve();assert.equal(done,false);assert.equal(h.intervals.size,0);
+    if(failure==='closed-without-event')h.room.socket.readyState=3;
+    completion.retry();await Promise.resolve();
+    assert.equal(done,failure==='closed-without-event','retry never assumes an unconfirmed close succeeded');
+    assert.equal(calls,failure==='closed-without-event'?1:2);
+    if(!done){h.room.socket.readyState=3;h.room.socket.onclose();await completion;}
+    completion.release();assert.equal(h.room.socket.onclose,null);
+  }
+});
+
+test('native LAN close waits for its own generation and safely retires missing acknowledgements', async () => {
+  for(const scenario of ['delayed','missing','bridge-throws']) {
+    const ctx=vm.createContext({clearTimeout(){}});
+    const run=s=>vm.runInContext(s,ctx);
+    run(`const sent=[],window={KingPongLan:{postMessage(raw){sent.push(JSON.parse(raw));${scenario==='bridge-throws'?"throw Error('bridge unavailable')":''}}}};
+      let onlineSession=null,completed=false;
+      const nodes=new Map();function byId(id){if(!nodes.has(id))nodes.set(id,{});return nodes.get(id)}
+      function clearLanQr(){}
+      class KingPongRoom{close(){this.closed=true}}
+      ${readFileSync(new URL('../game/local-lan.js',import.meta.url),'utf8')}
+      const room=new KingPongLocalRoom();room.generation=17;room.role='host';
+      const completion=room.close();completion.then(()=>completed=true);room.close();
+      room.send({type:'connected'});room.relay();`);
+    assert.equal(run('sent.length'),1);assert.equal(run('room.closed'),true);
+    run("window.KingPongLanReceive({type:'closed',generation:16})");await Promise.resolve();
+    assert.equal(run('completed'),false);
+    run('completion.retry()');assert.equal(run('sent.length'),2);
+    if(scenario==='delayed'){
+      run("window.KingPongLanReceive({type:'closed',generation:17})");await Promise.resolve();
+      assert.equal(run('completed'),true);
+    }else{
+      run('completion.release()');
+      run("window.KingPongLanReceive({type:'closed',generation:17});completion.retry()");await Promise.resolve();
+      assert.equal(run('completed'),false,'retired acknowledgement cannot revive UI');
+    }
+    assert.equal(run('localLanClosures.size'),0);
+    assert.equal(run('sent.length'),2,'no retired native sends or retries after local navigation');
+    assert.equal(run('sent.every(m=>m.op==="close"&&m.generation===17)'),true);
+  }
+});
+
+test('retired matchmaking timers cannot send through an unclosed socket or affect a new queue',async()=>{
+  const ctx=vm.createContext({URL,Date});const run=s=>vm.runInContext(s,ctx);
+  run(`let multiplayerDisconnect=null,onlineSession=null,onlineMatchAssignment=null,failures=0;
+    const document={hidden:false,addEventListener(){}},window={KING_PONG_SIGNALING_URL:'https://signal.example'};
+    const KING_PONG_MATCHMAKING={protocol:1},sockets=[],timers=[],beats=[];
+    function byId(){return null}
+    function setTimeout(fn){timers.push(fn)}function clearTimeout(){}
+    function setInterval(fn){beats.push(fn)}function clearInterval(){}
+    function kingPongSignalingSocket(){const s={readyState:1,sent:[],send(m){this.sent.push(m)},close(){}};sockets.push(s);return s}
+    ${readFileSync(new URL('../game/online.js',import.meta.url),'utf8').split('class KingPongRoom')[0]}
+    ${readFileSync(new URL('../game/matchmaking.js',import.meta.url),'utf8')}
+    matchmakingFailed=()=>{failures++};observeMatchmaking();sockets[0].onopen();
+    stopMatchmaking();multiplayerDisconnect={};beats[0]();timers[0]();observeMatchmaking();`);
+  assert.equal(run('sockets[0].sent.length'),0);assert.equal(run('sockets.length'),1);
+  assert.equal(run('failures'),0);
+  run('multiplayerDisconnect=null;observeMatchmaking();beats[0]();timers[0]()');
+  assert.equal(run('sockets.length'),2);assert.equal(run('sockets[0].sent.length'),0);
+  assert.equal(run('matchmakingSocket===sockets[1]&&failures===0'),true);
 });
 
 test('negotiation rejection exposes no raw error, and cancellation prevents late setup', async () => {

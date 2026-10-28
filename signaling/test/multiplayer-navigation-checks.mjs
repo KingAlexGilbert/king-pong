@@ -45,8 +45,12 @@ export async function multiplayerNavigationChecks({page, pass, bounds}) {
         lanRole=role;lanConnected=true;onlineGameBlocked=false;left.score=2;right.score=3;
         window.terminalCloses=0;window.terminalClosed=new Promise(resolve=>window.finishTerminalClose=resolve);
         onlineSession={multiplayerOrigin:origin,close(){window.terminalCloses++;return window.terminalClosed}};
-        setMenusVisible(false);endMultiplayerSession();endMultiplayerSession();
+        window.staleLeaveActions=0;
+        setMenusVisible(false);guardMultiplayerLeave(()=>{window.staleLeaveActions++;showTitleScreen()});
+        endMultiplayerSession();endMultiplayerSession();finishMultiplayerLeave(true);finishMultiplayerLeave(false);
       },{origin,role});
+      assert.equal(await p.locator('#multiplayerLeave').isVisible(),false,'terminal departure dismisses Leave immediately');
+      assert.equal(await p.evaluate(()=>staleLeaveActions),0);
       assert.equal(await p.locator('#multiplayerDisconnected').isVisible(),false,'wait for actual resource shutdown');
       await p.keyboard.press('2');
       assert.equal(await p.evaluate(()=>mode===2&&paused&&terminalCloses===1),true);
@@ -61,6 +65,35 @@ export async function multiplayerNavigationChecks({page, pass, bounds}) {
       await p.locator('#multiplayerReturn').tap();
       assert.equal(await p.evaluate(()=>!multiplayerDisconnect&&!onlineSession&&!matchmakingSocket&&!canvas.inert),true);
       assert.equal(await p.locator(origin==='lan'?'#classicLanDialog':'#matchSetup').isVisible(),true);
+      await p.evaluate(()=>{byId('classicLanDialog').hidden=true;syncRoyalFocus()});
+      // A lost acknowledgement cannot strand the modal. The clock boundary is
+      // tested by unit timers; here exercise real focus/input and local routing.
+      await p.evaluate(({origin,role})=>{
+        startTwoPlayerFromTitle();waitingForServe=false;paused=false;gameOver=false;
+        lanRole=role;lanConnected=true;onlineGameBlocked=false;
+        window.stalledCloses=0;window.stalledRetries=0;
+        const pending=new Promise(resolve=>window.finishStalledClose=resolve);
+        pending.retry=()=>{window.stalledRetries++};
+        onlineSession={multiplayerOrigin:origin,close(){window.stalledCloses++;return pending}};
+        setMenusVisible(false);guardMultiplayerLeave(()=>{window.staleLeaveActions++});
+        endMultiplayerSession();escalateMultiplayerShutdown(multiplayerDisconnect);
+        escalateMultiplayerShutdown(multiplayerDisconnect);finishMultiplayerLeave(true);
+      },{origin,role});
+      await p.locator('#multiplayerDisconnected').waitFor({state:'visible'});
+      assert.equal(await p.locator('#multiplayerDisconnectedTitle').textContent(),'Finishing disconnect...');
+      assert.equal(await p.locator('#multiplayerDisconnectNote').isVisible(),true);
+      assert.equal(await p.evaluate(()=>!multiplayerDisconnect.confirmed&&stalledRetries===1&&stalledCloses===1&&staleLeaveActions===0),true);
+      assert.equal(await p.locator('#multiplayerLeave').isVisible(),false);
+      await p.keyboard.press('Escape');await p.keyboard.press('Tab');
+      assert.equal(await p.evaluate(()=>document.activeElement.id),'multiplayerReturn');
+      await p.evaluate(()=>{byId('menuToggle').click();byId('matchPause').click();KingPongMatchNavigation.back()});
+      await bounds(p,'#multiplayerDisconnected .match-card');
+      assert.equal(await p.evaluate(()=>multiplayerDisconnect.ready&&!onlineSession&&!matchmakingSocket),true);
+      await p.locator('#multiplayerReturn').tap();
+      await p.evaluate(()=>window.finishStalledClose());
+      assert.equal(await p.locator('#multiplayerDisconnected').isVisible(),false,'late close cannot reopen terminal UI');
+      assert.equal(await p.locator(origin==='lan'?'#classicLanDialog':'#matchSetup').isVisible(),true);
+      assert.equal(await p.evaluate(()=>!onlineSession&&!matchmakingSocket&&!multiplayerLeaveRequest),true);
       await p.evaluate(()=>{byId('classicLanDialog').hidden=true;syncRoyalFocus()});
     }
     // A result can be left immediately; a new active round restores protection.

@@ -836,3 +836,46 @@ for (const [language, values] of Object.entries({
     window.KING_PONG_ONLINE_TRANSLATIONS[language][key] = values[index];
   });
 }
+
+for (const [language, values] of Object.entries({
+  "es": [
+    "Finalizando desconexión...",
+    "La partida ha terminado. No se pudo confirmar el cierre de la conexión. Puedes volver al menú."
+  ],
+  "fr": [
+    "Déconnexion en cours...",
+    "La partie est terminée. La fermeture de la connexion n’a pas pu être confirmée. Vous pouvez retourner au menu."
+  ],
+  "de": [
+    "Verbindung wird getrennt...",
+    "Das Spiel ist beendet. Das Schließen der Verbindung konnte nicht bestätigt werden. Du kannst zum Menü zurückkehren."
+  ],
+  "pt": [
+    "Finalizando desconexão...",
+    "A partida terminou. Não foi possível confirmar o encerramento da conexão. Você pode voltar ao menu."
+  ],
+  "it": [
+    "Disconnessione in corso...",
+    "La partita è terminata. Non è stato possibile confermare la chiusura della connessione. Puoi tornare al menu."
+  ],
+  "nl": [
+    "Verbinding wordt verbroken...",
+    "De wedstrijd is afgelopen. Het sluiten van de verbinding kon niet worden bevestigd. Je kunt terug naar het menu."
+  ],
+  "ja": [
+    "切断処理中...",
+    "対戦は終了しました。接続が閉じられたことを確認できませんでした。メニューに戻ることができます。"
+  ],
+  "ko": [
+    "연결 종료 중...",
+    "경기가 종료되었습니다. 연결이 완전히 종료되었는지 확인할 수 없습니다. 메뉴로 돌아갈 수 있습니다."
+  ],
+  "zh": [
+    "正在完成断开连接...",
+    "比赛已结束。无法确认连接已关闭。你可以返回菜单。"
+  ]
+})) {
+  ['Finishing disconnect...', 'The match has ended. Connection closure could not be confirmed. You can return to the menu.'].forEach((key, index) => {
+    window.KING_PONG_ONLINE_TRANSLATIONS[language][key] = values[index];
+  });
+}
