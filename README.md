@@ -20,8 +20,6 @@ King Pong can now be played directly in your web browser with no installation re
 
 Choose **Play Online** to find another player automatically, or create/join a private room with a room code. Browser, Android, Windows, and Linux players use the same queue. Choose **Campaign** for single-player games against the computer.
 
-Find Match shows whether someone is waiting. Pick **Any Arena** or an arena preference, then leave the search open or cancel at any time. Automatic matches use Classic rules (first to 10); private rooms keep their custom settings. The online room service is in `signaling/`. Browser files and deployment notes are in [`docs/`](docs/README.md).
-
 ### Browser Version
 
 [Play King Pong on GitHub Pages](https://kingalexgilbert.github.io/king-pong/demo/)
