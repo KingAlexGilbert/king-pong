@@ -4,7 +4,7 @@
 
 <h1 align="center">King Pong</h1>
 
-King Pong is a retro arcade Pong game featuring an 18-level campaign, custom games, local, LAN, and cross-platform online multiplayer, progressive paddle shapes, save slots, multiple languages, and a secret ending.
+King Pong is a retro arcade Pong game featuring an 18-level campaign, custom power-ups, local, LAN, and cross-platform online multiplayer, progressive paddle shapes, save slots, multiple languages, and a secret ending.
 
 Play directly in your browser or download King Pong for Windows, Linux, and Android.
 
