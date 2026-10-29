@@ -263,8 +263,8 @@ These files are not required to play or build the current version of King Pong. 
 
 ## License
 
-This project is released under the GNU General Public License v3.0.
+King Pong is released under the GNU Affero General Public License v3.0 (`AGPL-3.0-only`).
 
-Distributed modified versions must follow the terms of the GPLv3. See the `LICENSE` file for the complete license terms.
+See [`LICENSE`](LICENSE) for the full terms or read the [official online license](https://www.gnu.org/licenses/agpl-3.0.html). Modified versions used over a network must also follow the AGPLv3 source-sharing requirements.
 
 Copyright (C) 2026 King Alex Gilbert
