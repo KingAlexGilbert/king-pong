@@ -261,6 +261,10 @@ This repository includes additional documentation for people who want to explore
 
 These files are not required to play or build the current version of King Pong. They are included for transparency, project history, and documentation.
 
+## Credits
+
+Special thanks to Madelee for their work on the secret ending soundtrack, King Pong's first non-procedurally generated music track!
+
 ## License
 
 King Pong is released under the GNU Affero General Public License v3.0 (`AGPL-3.0-only`).
