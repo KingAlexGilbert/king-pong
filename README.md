@@ -95,8 +95,8 @@ If you trust this official GitHub release, choose **More info → Run anyway** i
 
 Download one of the Linux versions from the [latest GitHub release](https://github.com/KingAlexGilbert/king-pong/releases/latest). The exact version number in the filename depends on the release.
 
-- `King-Pong-Linux-vX.Y.Z-all.deb` — for Linux Mint, Ubuntu, Debian, and other Debian-based distributions
-- `King-Pong-Linux-vX.Y.Z-thin-x86_64.AppImage` — thin x86-64 version that uses the system WebKitGTK runtime
+- `King-Pong-Linux-v2.0.0-all.deb` — for Linux Mint, Ubuntu, Debian, and other Debian-based distributions
+- `King-Pong-Linux-v2.0.0-thin-x86_64.AppImage` — thin x86-64 version that uses the system WebKitGTK runtime
 
 #### Install the Debian Package
 
