@@ -6,16 +6,16 @@ These files show how King Pong evolved from a simple Pong-style browser game int
 
 ## Files
 
-- `prompt-history-001-beginnings.md`  
+- `prompt-history-001-beginnings.md`
   Covers the earliest Pong-style prototype and the first steps toward expanding the idea.
 
-- `prompt-history-002-making-the-html-game.md`  
+- `prompt-history-002-html-game.md`
   Covers the major HTML game development process, including campaign levels, menus, music, save slots, controller support, touch support, and the secret boss.
 
-- `king-pong-android-apk-making-of.md`  
+- `king-pong-android-apk-making-of.md`
   Reconstructed making-of notes for the Android/APK conversion process.
 
-- `king-pong-windows-desktop-making-of.md`  
+- `king-pong-windows-desktop-making-of.md`
   Reconstructed making-of notes for the Windows/Desktop conversion process.
 
 ## Note

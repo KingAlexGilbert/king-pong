@@ -1,78 +1,62 @@
-# King Pong Linux WebKitGTK source
+# King Pong for Linux
 
-This folder builds the compact Linux editions of King Pong v2.0.0.
+The Linux version runs the same game as the browser and Windows versions, using Python, GTK and WebKitGTK to open it in a desktop window.
 
-- The Debian package uses the distribution-provided WebKitGTK runtime.
-- The thin AppImage uses the same host WebKitGTK/Python GI dependencies; it is
-  much smaller than a fully self-contained Chromium AppImage, but it is not a
-  universal dependency-free AppImage.
-- The packaged game is the Windows-derived `assets/index.html`, with native Linux battery updates.
-- Only one pixel-identical 256x256 icon source is stored. The build creates real menu-visible icon files using hard links, avoiding the Cinnamon symlink regression without duplicating compressed payload data.
+This folder builds two packages:
 
-## Build the Debian package
+- A `.deb` for Debian-based systems such as Ubuntu and Linux Mint.
+- A thin AppImage. It is smaller because it uses GTK and WebKitGTK already installed on the computer.
+
+Build from a Linux folder, not directly from a ZIP or a Windows-mounted drive. Run the commands below from `Linux/`.
+
+## Build the Debian Package
+
+Install the packaging tool and run the script:
 
 ```sh
 sudo apt install dpkg-dev
 ./build-deb.sh
 ```
 
-Output: `dist/King-Pong-Linux-v2.0.0-all.deb`
+The package will be in `dist/`.
 
-## Build the thin AppImage
+## Build the AppImage
 
-Install or download `appimagetool`, then run:
+Download `appimagetool` and point the script to it:
 
 ```sh
 APPIMAGETOOL=/path/to/appimagetool ./build-appimage.sh
 ```
 
-Output: `dist/King-Pong-Linux-v2.0.0-thin-x86_64.AppImage`
+The AppImage will also be in `dist/`. Unlike the `.deb`, it cannot install missing system libraries for you.
 
-## Runtime dependencies
+## What the Game Needs
 
-The target system needs:
+The Linux launcher uses Python 3, Python GObject (`python3-gi`), GTK 3 and WebKitGTK 4.1 or 4.0. UPower provides battery information.
 
-- Python 3
-- Python GObject (`python3-gi`)
-- GTK 3 introspection
-- WebKitGTK 4.1 or 4.0 introspection
-- UPower (`upower`) for native battery notifications
-
-On Linux Mint 22 / Ubuntu 24.04, the `.deb` declares these dependencies so APT
-installs them automatically. The thin AppImage cannot install dependencies.
-
-## Controls and diagnostics
-
-- `F11`: toggle fullscreen
-- `Ctrl+Q`: quit
-- `king-pong --diagnose`: show launcher/runtime diagnostics
-- `king-pong --safe-renderer`: use the compatibility renderer
-
-## Battery indicator
-
-The top-right indicator receives battery-change notifications from UPower over
-D-Bus. It reads the initial state once, then updates when battery percentage,
-charging, or presence changes. King Pong does not run a battery polling timer
-or background battery thread.
-
-UPower's aggregate display device combines system batteries and supports UPS
-power. Peripheral batteries do not replace the computer's battery reading.
-The icon hides when no battery is present; unknown or unavailable readings keep
-the unavailable indicator. A full battery remains visible. The listener handles
-UPower restarts and disconnects when the game closes.
-
-The Debian package declares the `upower` dependency. For the thin AppImage, the
-host system must provide UPower as well as the GTK/WebKit dependencies above.
-Rebuild the Debian package and AppImage to include the changes.
-
-Repository tests (from the repository root):
+For example, on Ubuntu 24.04 or Linux Mint 22:
 
 ```sh
-node --test tests/*.mjs
-python3 -B -m unittest discover -s tests -p 'test_*.py'
+sudo apt install python3 python3-gi gir1.2-gtk-3.0 gir1.2-webkit2-4.1 upower
 ```
 
-The automated Linux battery tests simulate state changes, removal, service
-restarts, and shutdown. The broader suite also checks save transfer, shared
-desktop HTML, and release-version consistency. Live battery behavior still
-needs a check on a Linux laptop.
+The `.deb` lists the required packages so the package manager can install them. The AppImage needs these packages on the computer already.
+
+## Controls and Troubleshooting
+
+- `F11` toggles fullscreen.
+- `Ctrl+Q` closes King Pong.
+- `king-pong --diagnose` prints launcher information.
+- `king-pong --safe-renderer` starts the compatibility renderer.
+
+The battery indicator gets updates from UPower. It shows the computer's battery when one is available, without constantly polling for changes. It hides when no battery is present.
+
+The launcher is in `src/king-pong.py`, and the game page is `assets/index.html`. Shared gameplay changes belong in [`../game/`](../game/README.md), not directly in the generated game page.
+
+From the repository root, you can run the shared tests with:
+
+```sh
+node tools/test.mjs core
+```
+
+Battery and window behavior should still be checked on a real Linux computer before distributing a new build.

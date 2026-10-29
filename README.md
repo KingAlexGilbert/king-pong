@@ -20,7 +20,7 @@ King Pong can now be played directly in your web browser with no installation re
 
 Choose **Play Online** to find another player automatically, or create/join a private room with a room code. Browser, Android, Windows, and Linux players use the same queue. Choose **Campaign** for single-player games against the computer.
 
-Find Match shows whether someone is waiting. Pick **Any Arena** or an arena preference, then leave the search open or cancel at any time. Automatic matches use Classic rules (first to 10); private rooms keep their custom settings. See [matchmaking and signaling](signaling/README.md) for arena selection and server setup.
+Find Match shows whether someone is waiting. Pick **Any Arena** or an arena preference, then leave the search open or cancel at any time. Automatic matches use Classic rules (first to 10); private rooms keep their custom settings. The online room service is in `signaling/`. Browser files and deployment notes are in [`docs/`](docs/README.md).
 
 ### Browser Version
 
@@ -95,17 +95,17 @@ If you trust this official GitHub release, choose **More info → Run anyway** i
 
 ### Linux
 
-Download one of the Linux versions from the [latest GitHub release](https://github.com/KingAlexGilbert/king-pong/releases/latest).
+Download one of the Linux versions from the [latest GitHub release](https://github.com/KingAlexGilbert/king-pong/releases/latest). The exact version number in the filename depends on the release.
 
-- `King-Pong-Linux-v2.0.0-all.deb` — recommended for Linux Mint, Ubuntu, Debian, and other Debian-based distributions
-- `King-Pong-Linux-v2.0.0-thin-x86_64.AppImage` — thin x86-64 version that uses the system WebKitGTK runtime
+- `King-Pong-Linux-vX.Y.Z-all.deb` — for Linux Mint, Ubuntu, Debian, and other Debian-based distributions
+- `King-Pong-Linux-vX.Y.Z-thin-x86_64.AppImage` — thin x86-64 version that uses the system WebKitGTK runtime
 
 #### Install the Debian Package
 
 Download the `.deb` file, open it with your distribution's software installer, or install it from a terminal:
 
 ```bash
-sudo apt install ./King-Pong-Linux-v2.0.0-all.deb
+sudo apt install ./King-Pong-Linux-*.deb
 ```
 
 The package manager will automatically install the required GTK and WebKitGTK dependencies.
@@ -125,8 +125,8 @@ On an older Debian-based distribution that does not provide WebKitGTK 4.1, insta
 Make the AppImage executable and run it:
 
 ```bash
-chmod +x King-Pong-Linux-v2.0.0-thin-x86_64.AppImage
-./King-Pong-Linux-v2.0.0-thin-x86_64.AppImage
+chmod +x King-Pong-Linux-*.AppImage
+./King-Pong-Linux-*.AppImage
 ```
 
 The thin AppImage is much smaller than a fully self-contained AppImage because it uses the WebKitGTK libraries already installed on the computer.
@@ -201,9 +201,7 @@ Linux paths are case-sensitive, so use the exact capitalization shown in the ins
 
 ## Source Code
 
-The primary shared game source is located in:
-
-`game/`
+The primary shared game source is in [`game/`](game/README.md).
 
 Make shared gameplay, rendering, audio, and UI changes here. Run `node tools/sync-gameplay.mjs` from the repository root to copy them into the Android, Windows, Linux, and browser HTML files. Do not edit the embedded shared blocks directly; synchronization replaces them.
 
@@ -247,9 +245,9 @@ The browser demo is located at:
 
 `docs/demo/index.html`
 
-Online multiplayer signaling is in `signaling/`. Its `test/` folder covers signaling and browser integration. Other automated tests and regression checks are in `tests/`.
+Online multiplayer signaling is in `signaling/`. Its `test/` folder covers signaling and browser integration. Other tests are explained in [`tests/README.md`](tests/README.md).
 
-Source synchronization tools are in `tools/`. After editing the game, check the generated copies and run the tests:
+Source synchronization tools are explained in [`tools/README.md`](tools/README.md). Platform notes are in [`android/`](android/README.md), [`windows/`](windows/README.md), [`Linux/`](Linux/README.md), and [`docs/`](docs/README.md). After editing the game, check the generated copies and run the tests:
 
 ```bash
 node tools/sync-gameplay.mjs --check

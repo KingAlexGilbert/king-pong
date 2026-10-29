@@ -1,24 +1,17 @@
-# Security Policy
+# King Pong Security Policy
 
-## Reporting Security Issues
+## Reporting a Security Issue
 
-If you find a security issue related to King Pong, please report it through the GitHub Issues page.
+Please avoid posting passwords, private keys, exploit instructions or other sensitive details in a public GitHub issue.
 
-When reporting a security issue, please include:
+If GitHub's private vulnerability reporting is available for this repository, use it. Otherwise, open an issue asking how to contact the maintainer privately, without including details that could be misused.
 
-- A clear description of the issue
-- Steps to reproduce it
-- What version of King Pong you tested
-- Whether the issue affects Android, Windows, Linux, web, or LAN play
+A useful report includes the King Pong version, affected platform and a short description of the problem. Share reproduction details privately once a contact method is arranged.
 
-## LAN Play Note
+## LAN Play
 
-King Pong includes LAN play features intended for trusted local network use.
-
-LAN play should only be used on networks you trust, such as your home network. Avoid using LAN play on public or untrusted networks unless you understand the risks.
+LAN play is meant for networks you trust, such as your home network. Avoid hosting LAN games on public or untrusted networks.
 
 ## Supported Versions
 
-The latest public release is the main supported version of King Pong.
-
-Older versions are preserved for project history and may not receive fixes.
+The latest public release is the supported version. Older versions are kept for project history and may not receive security fixes.

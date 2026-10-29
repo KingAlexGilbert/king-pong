@@ -1,30 +1,30 @@
-King Pong Installer Project
-===========================
+# King Pong Windows Installer
 
-1. Extract the WHOLE windows folder, or copy both complete subfolders:
-   installer exe and webview-2, including webview-2\build-tools.
-   Keep the subfolders beside each other. There is no shared build.bat.
-2. Install a supported .NET SDK, .NET Framework 4.8 Developer Pack, and a current
-   Inno Setup 6 (6.3 or later).
-3. Double-click build-installer.bat. It builds the portable app, validates the
-   x64 files, and compiles the installer; no manual folder copying is needed.
-4. Output: Output\KingPongSetup.exe
-   Portable output: ..\webview-2\dist\KingPong-WebView2-Portable
-5. Run that newly built setup EXE to update the installed game and its version
-   in Windows. Building alone does not update the installed copy.
+This folder builds the Windows setup file. The desktop app itself is in `../webview-2/`.
 
-If you see "Usage: --package SOURCE PUBLISH STAGE", an older build checker is
-being run. Extract both complete folders from the updated ZIP, including
-webview-2\build-tools\BuildChecks.cs. The new scripts rebuild the checker into
-a fresh temporary folder and verify compatibility before compiling the game.
+Keep both folders together when building. You need a .NET SDK, the .NET Framework 4.8 Developer Pack and Inno Setup 6 (version 6.3 or later).
 
-Each launcher has its own build commands and does not call another .bat file.
-For a path-only check, use: build-installer.bat --check-layout --no-pause
+## Build the Installer
 
-The install folder, Start Menu, desktop shortcut, and launch options are kept.
-Setup checks for .NET Framework 4.8 and WebView2, without bundling large runtimes
-or silently downloading/executing prerequisites. Missing prerequisites display
-Microsoft's download URLs and must be installed before continuing.
+Run `build-installer.bat` from this folder. The script builds the portable app, checks its files and creates the installer. You don't have to build or copy the portable version first.
 
-The installer is unsigned unless you sign it with your own trusted certificate.
-This work does not remove Windows UAC or SmartScreen warnings.
+The results are saved here:
+
+- `Output/KingPongSetup.exe` — Windows installer
+- `../webview-2/dist/KingPong-WebView2-Portable/` — portable app
+
+To check that both source folders are complete without running a build:
+
+```bat
+build-installer.bat --check-layout --no-pause
+```
+
+Run the new installer to update an existing installation. Building it does not update the game already installed on your computer.
+
+## Installing and Signing
+
+The installer checks for .NET Framework 4.8 and the Microsoft Edge WebView2 runtime. If either is missing, it shows where to get it rather than downloading it silently.
+
+The installer is not code-signed by default. Windows may show an unknown publisher or SmartScreen warning until you sign it with your own certificate.
+
+For desktop source files and the portable build, see [`../webview-2/`](../webview-2/).
