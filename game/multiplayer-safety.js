@@ -8,8 +8,8 @@ async function gatherClassicLanDescription(room) {
     const timer = setTimeout(finish, 4000); peer.addEventListener('icegatheringstatechange', change);
   });
   clearTimeout(room.directTimer); clearTimeout(room.totalTimer); room.totalTimer = null;
-  if (room.role === 'guest') room.totalTimer = setTimeout(() => room.fail('timeout'), 300000);
   if (room.closed || !peer.localDescription) throw Error('connection_lost');
+  if (room.role === 'guest') room.totalTimer = setTimeout(() => room.fail('timeout'), 300000);
   return pairingDescription(room, peer.localDescription.toJSON());
 }
 class KingPongManualRoom extends KingPongRoom {
@@ -47,8 +47,9 @@ class KingPongManualRoom extends KingPongRoom {
       const m = this.decode(text, 'answer');
       if (this.role !== 'host' || m.nonce !== this.manualNonce || m.room !== this.code || Date.now() - this.manualAt > 300000 || this.peer.remoteDescription) throw Error();
       await this.receive({type: 'description', attempt: 0, description: m.description});
+      if (this.closed) return;
       if (!this.connected) this.totalTimer = setTimeout(() => { if (!this.connected) this.fail('timeout'); }, 45000);
-    } catch { this.hooks.status('Invalid or expired LAN answer.'); }
+    } catch { if (!this.closed) this.hooks.status('Invalid or expired LAN answer.'); }
   }
   close() {
     const closed = super.close(); clearLanQr();

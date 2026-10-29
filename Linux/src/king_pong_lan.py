@@ -132,7 +132,7 @@ class LocalLan:
         self.emit_callback, self.generation = emit, generation
         self.closed = False
         self.host = False
-        self.peer = self.listener = self.udp = self.discovery_thread = None
+        self.peer = self.accepting = self.listener = self.udp = self.discovery_thread = None
         self.lock = threading.RLock()
         self.blocked = set()
         self.rates = {}
@@ -195,13 +195,17 @@ class LocalLan:
                 continue
             p = Peer(sock)
             try:
+                with self.lock:
+                    if self.closed: p.close(); return
+                    self.accepting = p
                 if not local_ip(addr[0]) or not self.allow(addr[0]):
                     p.send(dict(type='error', code='rate_limited')); p.close(); continue
                 if self.peer is not None:
                     p.send(dict(type='error', code='room_full')); p.close(); continue
                 m = p.line(time.monotonic()+5)
                 token = m.get('token', '')
-                if m.get('type') != 'join' or not secrets.compare_digest(str(m.get('code', '')), self.code) or m.get('room', '') not in ('', self.room) or not isinstance(token, str) or len(token) != 32 or any(c not in '0123456789abcdef' for c in token):
+                provided = m.get('code')
+                if m.get('type') != 'join' or not isinstance(provided, str) or not re.fullmatch('[A-HJ-NP-Z2-9]{6}', provided) or not secrets.compare_digest(provided, self.code) or m.get('room', '') not in ('', self.room) or not isinstance(token, str) or len(token) != 32 or any(c not in '0123456789abcdef' for c in token):
                     p.send(dict(type='error', code='invalid_code')); p.close(); continue
                 if token in self.blocked:
                     p.send(dict(type='error', code='rejected')); p.close(); continue
@@ -213,6 +217,9 @@ class LocalLan:
                 threading.Thread(target=self.read_loop, args=(p,), daemon=True).start()
             except (OSError, ValueError, EOFError):
                 p.close()
+            finally:
+                with self.lock:
+                    if self.accepting is p: self.accepting = None
 
     def join(self, address, port, code, room, token):
         if not local_ip(address) or type(port) is not int or not 1024 <= port <= 65535:
@@ -302,8 +309,10 @@ class LocalLan:
         # Wait for the bounded-time listener to exit before another host binds it.
         if self.discovery_thread and self.discovery_thread is not threading.current_thread():
             self.discovery_thread.join(timeout=1)
-        if self.peer: self.peer.close()
-        self.peer = None
+        with self.lock:
+            if self.accepting: self.accepting.close()
+            if self.peer: self.peer.close()
+            self.accepting = self.peer = None
 
 
 def discover(emit, generation, cancelled=None):

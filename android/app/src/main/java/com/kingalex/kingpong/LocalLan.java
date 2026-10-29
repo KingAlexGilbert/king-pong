@@ -123,7 +123,7 @@ final class LocalLan implements Closeable {
     final class Room implements Closeable{
         final int generation;final Object gate=new Object();final Set<String> blocked=new HashSet<>();
         final Map<String,long[]> rates=new HashMap<>();volatile boolean closed;boolean hosting;
-        String code,room;volatile Peer peer;ServerSocketChannel listener;DatagramSocket udp;
+        String code,room;volatile Peer peer,accepting;ServerSocketChannel listener;DatagramSocket udp;
         Room(int generation){this.generation=generation;}
         void event(String type,Object... fields){if(closed)return;JSONObject m=obj(fields);try{m.put("type",type);m.put("generation",generation);emit.accept(m.toString());}catch(Exception ignored){}}
         void host()throws Exception{
@@ -141,6 +141,7 @@ final class LocalLan implements Closeable {
         boolean allow(String ip){long time=now();rates.entrySet().removeIf(e->time-e.getValue()[0]>=30000);long[] value=rates.get(ip);if(value==null)value=new long[]{time,0};if(value[1]>=8||rates.size()>=128&&!rates.containsKey(ip))return false;value[1]++;rates.put(ip,value);return true;}
         void accept(){while(!closed){Peer p=null;try{
             p=new Peer(listener.accept().socket());String ip=p.socket.getInetAddress().getHostAddress();
+            synchronized(gate){if(closed){p.close();return;}accepting=p;}
             if(!local(ip)||!allow(ip)){p.send(obj("type","error","code","rate_limited"));p.close();continue;}
             if(peer!=null){p.send(obj("type","error","code","room_full"));p.close();continue;}
             JSONObject m=p.line(now()+5000);String token=text(m,"token"),requested=m.optString("room","");String provided=m.optString("code","");
@@ -149,7 +150,7 @@ final class LocalLan implements Closeable {
             }
             synchronized(gate){if(blocked.contains(token)){p.send(obj("type","error","code","rejected"));p.close();continue;}if(closed){p.close();return;}p.token=token;peer=p;}
             p.send(obj("type","welcome","code",code,"room",room));event("peer","request",p.request);Peer accepted=p;thread(()->read(accepted));
-        }catch(Exception e){if(p!=null)p.close();}}}
+        }catch(Exception e){if(p!=null)p.close();}finally{synchronized(gate){if(accepting==p)accepting=null;}}}}
         void join(JSONObject m)throws Exception{
             String address=text(m,"address");int port=m.optInt("port",0);if(!local(address)||port<1024||port>65535)throw new IOException("invalid address");
             Socket socket=SocketChannel.open().socket();try{socket.connect(new InetSocketAddress(InetAddress.getByName(address),port),5000);}catch(Exception e){socket.close();throw e;}
@@ -171,6 +172,6 @@ final class LocalLan implements Closeable {
         void approve(String request,boolean accept)throws Exception{synchronized(gate){if(peer==null||!peer.request.equals(request)||peer.approved)return;if(accept){peer.approved=true;peer.send(obj("type","approved"));event("admitted");}else release(true,"rejected");}}
         void send(JSONObject m)throws Exception{synchronized(gate){if(peer!=null&&peer.approved&&signal(m,hosting))peer.send(m);}}
         void release(boolean block,String reason){synchronized(gate){Peer p=peer;if(p==null)return;peer=null;if(block&&blocked.size()<128)blocked.add(p.token);try{p.send(obj("type","error","code",reason));}catch(Exception ignored){}p.close();event("departed");}}
-        public void close(){closed=true;try{if(listener!=null)listener.close();}catch(IOException ignored){}if(udp!=null)udp.close();Peer p=peer;if(p!=null)p.close();synchronized(gate){peer=null;}}
+        public void close(){closed=true;try{if(listener!=null)listener.close();}catch(IOException ignored){}if(udp!=null)udp.close();Peer p=peer,a=accepting;if(a!=null)a.close();if(p!=null)p.close();synchronized(gate){accepting=peer=null;}}
     }
 }

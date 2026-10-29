@@ -140,7 +140,7 @@ namespace KingPongWebView2
         sealed class Room : IDisposable
         {
             internal readonly int Generation; readonly Action<string> emit; readonly object gate = new object();
-            volatile bool closed; bool host; string code, room; TcpListener listener; UdpClient udp; volatile Peer peer;
+            volatile bool closed; bool host; string code, room; TcpListener listener; UdpClient udp; volatile Peer peer, accepting;
             readonly HashSet<string> blocked = new HashSet<string>(); readonly Dictionary<string, Tuple<long,int>> rates = new Dictionary<string, Tuple<long,int>>();
             internal Room(int gen, Action<string> emit) { Generation = gen; this.emit = emit; }
             internal void Emit(string type, params object[] fields) { if (closed) return; var m = Map(fields); m["type"] = type; m["generation"] = Generation; emit(Json(m)); }
@@ -174,6 +174,7 @@ namespace KingPongWebView2
             void Accept() {
                 while(!closed) { Peer p=null; try {
                     p=new Peer(listener.AcceptSocket()); string ip=((IPEndPoint)p.Socket.RemoteEndPoint).Address.ToString();
+                    lock(gate) { if(closed){p.Dispose();return;}accepting=p; }
                     if(!Local(ip)||!Allow(ip)) { p.Send(Map("type","error","code","rate_limited"));p.Dispose();continue; }
                     if(peer!=null) { p.Send(Map("type","error","code","room_full"));p.Dispose();continue; }
                     var m=p.Line(Clock.ElapsedMilliseconds+5000); string token=Text(m,"token"), requested=Text(m,"room")??"";
@@ -182,7 +183,7 @@ namespace KingPongWebView2
                     lock(gate) { if(blocked.Contains(token)) { p.Send(Map("type","error","code","rejected"));p.Dispose();continue; } if(closed){p.Dispose();return;}p.Token=token;peer=p; }
                     p.Send(Map("type","welcome","code",code,"room",room));Emit("peer","request",p.Request);
                     var accepted=p; new Thread(()=>Read(accepted)){IsBackground=true}.Start();
-                } catch { if(p!=null)p.Dispose(); } }
+                } catch { if(p!=null)p.Dispose(); } finally { lock(gate) { if(accepting==p)accepting=null; } } }
             }
             internal void Join(Dictionary<string,object> m) {
                 string address=Text(m,"address");int port=Number(m,"port");if(!Local(address)||port<1024||port>65535)throw new InvalidOperationException();
@@ -210,7 +211,7 @@ namespace KingPongWebView2
             internal void Approve(string request,bool accept) {lock(gate){if(peer==null||peer.Request!=request||peer.Approved)return;if(accept){peer.Approved=true;peer.Send(Map("type","approved"));Emit("admitted");}else Release(true,"rejected");}}
             internal void Send(Dictionary<string,object> m){lock(gate){if(peer!=null&&peer.Approved&&Signal(m,host))peer.Send(m);}}
             internal void Release(bool block,string reason){lock(gate){var p=peer;if(p==null)return;peer=null;if(block&&blocked.Count<128)blocked.Add(p.Token);try{p.Send(Map("type","error","code",reason));}catch{}p.Dispose();Emit("departed");}}
-            public void Dispose(){closed=true;if(listener!=null)listener.Stop();if(udp!=null)udp.Close();lock(gate){if(peer!=null)peer.Dispose();peer=null;}}
+            public void Dispose(){closed=true;if(listener!=null)listener.Stop();if(udp!=null)udp.Close();lock(gate){if(accepting!=null)accepting.Dispose();if(peer!=null)peer.Dispose();accepting=peer=null;}}
         }
     }
 }

@@ -51,7 +51,7 @@ function harness() {
     connected: () => ready++, interrupted: () => interrupted++, resumed: () => resumed++
   });
   return {
-    room, statuses, errors, peers,
+    room, statuses, errors, peers, context,
     get ready() { return ready; }, get interrupted() { return interrupted; }, get resumed() { return resumed; },
     async message(data) { room.socket.onmessage({ data: JSON.stringify(data) }); await room.queue; },
     fire(ms) { for (const [id, timer] of [...timers]) if (timer.ms === ms) { timers.delete(id); timer.fn(); } },
@@ -83,6 +83,57 @@ test('opening timeout cleans up the socket and every timer', () => {
   assert.deepEqual(h.errors, ['timeout']);
   assert.equal(h.room.socket.readyState, 3);
   assert.equal(h.timers.size, 0); assert.equal(h.intervals.size, 0);
+});
+
+test('manual LAN gathering cannot recreate an invitation timeout after navigation closes the room', async () => {
+  for (const closeEarly of [false, true]) {
+    const h = harness();
+    const gather = vm.runInContext(readFileSync(new URL('../game/multiplayer-safety.js', import.meta.url), 'utf8') +
+      '\n gatherClassicLanDescription', h.context);
+    h.room.role = 'guest';
+    await h.room.receive({...direct, iceServers: []});
+    const peer = h.room.peer;
+    await peer.setLocalDescription({type: 'answer', sdp: 'guest'});
+    const listeners = new Set();
+    peer.addEventListener = (_type, fn) => listeners.add(fn);
+    peer.removeEventListener = (_type, fn) => listeners.delete(fn);
+    const gathering = gather(h.room);
+    if (closeEarly) await h.room.close();
+    h.fire(4000);
+    if (closeEarly) {
+      await assert.rejects(gathering, /connection_lost/);
+      assert.equal(h.timers.size, 0, 'a retired room must not regain its five-minute invitation timer');
+    } else {
+      assert.equal((await gathering).type, 'answer');
+      assert.ok([...h.timers.values()].some(timer => timer.ms === 300000));
+      await h.room.close();
+      assert.equal(h.timers.size, 0);
+    }
+    assert.equal(listeners.size, 0);
+  }
+});
+
+test('manual LAN answer completion cannot rearm a closed room or report an obsolete error', async () => {
+  for (const reject of [false, true]) {
+    const h = harness();
+    h.context.byId = id => /^classicLan(Input|Output)$/.test(id) ? {value: ''} : null;
+    h.context.clearLanQr = () => {};
+    const Manual = vm.runInContext(readFileSync(new URL('../game/multiplayer-safety.js', import.meta.url), 'utf8') +
+      '\n KingPongManualRoom', h.context);
+    const room = new Manual('', h.room.hooks);
+    room.role = 'host'; room.code = 'ABCDE'; room.manualNonce = 'nonce'; room.manualAt = Date.now();
+    room.peer = {close() {}};
+    room.decode = () => ({room: room.code, nonce: room.manualNonce, description: {type: 'answer', sdp: 'guest'}});
+    let finish;
+    room.receive = () => new Promise((resolve, rejectPromise) => {
+      finish = () => reject ? rejectPromise(Error('closed peer')) : resolve();
+    });
+    const accepting = room.accept('answer');
+    await room.close();
+    finish(); await accepting;
+    assert.equal(h.timers.size, 0, 'late SDP completion must not add another 45-second timeout');
+    assert.deepEqual(h.statuses, [], 'late rejection must not overwrite the current screen');
+  }
 });
 
 test('ICE arriving before the offer is queued, then applied before answering', async () => {

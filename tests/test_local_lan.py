@@ -60,6 +60,35 @@ class LocalLanTests(unittest.TestCase):
         self.host.approve(pending['request'],False);self.assertEqual(self.wait(q,'error')['code'],'rejected')
         repeat,rq=self.guest(token=token);self.assertEqual(self.wait(rq,'error')['code'],'rejected')
         replacement,rq=self.guest();self.wait(rq,'joined');self.assertIsNotNone(self.host.peer)
+    def test_malformed_join_codes_do_not_stop_host_admission(self):
+        for code in ['éAAAAA', '\ud800AAAAA', None, 42, [], {}]:
+            with self.subTest(code=code):
+                s = self.raw(dict(v=1, type='join', code=code, room=self.info['room'], token=secrets.token_hex(16)))
+                self.assertEqual(json.loads(s.recv(4096))['code'], 'invalid_code')
+                self.assertIsNone(self.host.peer)
+        guest, events = self.guest(); self.wait(events, 'joined')
+        pending = self.wait(self.events, 'peer'); self.host.approve(pending['request'], True)
+        self.wait(self.events, 'admitted')
+        self.host.send(dict(type='start', attempt=0, iceServers=[]))
+        self.assertEqual(self.wait(events, 'signal')['message']['iceServers'], [])
+
+    def test_close_releases_a_socket_stalled_before_join_admission(self):
+        from unittest.mock import patch
+        reading = threading.Event()
+        original = self.lan.Peer.line
+        def line(peer, deadline):
+            reading.set()
+            return original(peer, deadline)
+        with patch.object(self.lan.Peer, 'line', line):
+            s = socket.create_connection(('127.0.0.1', self.info['port']), timeout=2)
+            self.peers.append(s)
+            s.sendall(b'{"v":1,"type":"join"')
+            self.assertTrue(reading.wait(2), 'host must begin reading the incomplete join')
+            self.assertIsNone(self.host.peer)
+            self.host.close()
+            s.settimeout(.5)
+            self.assertEqual(s.recv(1), b'', 'close must release the unadmitted connection')
+
     def test_guest_cannot_self_approve_or_signal_while_pending(self):
         g,q=self.guest();self.wait(q,'joined');self.wait(self.events,'peer')
         g.peer.send(dict(type='approved'))
