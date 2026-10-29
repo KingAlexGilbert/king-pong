@@ -30,7 +30,7 @@ Browser save data is stored locally and is separate from the Android, Windows, a
 
 ## Gameplay Demo
 
-[![King Pong Gameplay Demo](Screenshots/king-pong-thumbnail.png)](https://youtu.be/2Z1foE1dnKw)
+[![King Pong Gameplay Demo](docs/images/king-pong-thumbnail.png)](https://youtu.be/2Z1foE1dnKw)
 
 Watch the official King Pong gameplay demo:
 
@@ -40,19 +40,19 @@ Watch the official King Pong gameplay demo:
 
 ### Title Screen
 
-![King Pong title screen](Screenshots/title-screen.png)
+![King Pong title screen](docs/images/title-screen.png)
 
 ### Gameplay
 
-![King Pong gameplay](Screenshots/gameplay.png)
+![King Pong gameplay](docs/images/gameplay.png)
 
 ### Level Cleared
 
-![King Pong level cleared](Screenshots/level-cleared.png)
+![King Pong level cleared](docs/images/level-cleared.png)
 
 ### Level Failed
 
-![King Pong level failed](Screenshots/level-failed.png)
+![King Pong level failed](docs/images/level-failed.png)
 
 ## Downloads
 
