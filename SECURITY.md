@@ -4,7 +4,7 @@
 
 Please avoid posting passwords, private keys, exploit instructions or other sensitive details in a public GitHub issue.
 
-If GitHub's private vulnerability reporting is available for this repository, use it. Otherwise, open an issue asking how to contact the maintainer privately, without including details that could be misused.
+Use GitHub's private vulnerability reporting when reporting a vulnerability. Do not publish it publicly, attackers will exploit it.
 
 A useful report includes the King Pong version, affected platform and a short description of the problem. Share reproduction details privately once a contact method is arranged.
 
