@@ -24,9 +24,3 @@ The result is in `webview-2/dist/`. The app requires the Microsoft Edge WebView2
 Install Inno Setup 6 (version 6.3 or later), then run `build-installer.bat` from `windows/installer exe/`. It builds and checks the portable app before producing `Output/KingPongSetup.exe`.
 
 See the [installer README](installer%20exe/README.md) for layout checks and installation notes.
-
-## Before Distributing
-
-Test the built app, not just the HTML page. Check controls, save data, fullscreen, audio, online play and LAN connections. The portable folder must stay together; don't distribute only the `.exe`.
-
-The installer is unsigned unless you sign it with your own code-signing certificate.
