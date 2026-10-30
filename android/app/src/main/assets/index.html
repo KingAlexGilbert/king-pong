@@ -1498,6 +1498,13 @@ body.royal-ui-ready #game {
   box-shadow: 0 0 40px #0e1626;
 }
 
+/* Keep the phone's arena at its original 4:3 shape when the toolbar limits height. */
+@media (orientation: landscape) and (max-height: 620px) and (pointer: coarse) {
+  body.royal-ui-ready #game {
+    max-width: calc((100dvh - var(--royal-toolbar-height, 52px) - 32px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) * 4 / 3);
+  }
+}
+
 /* Desktop playfield placement is independent of any menu/host node in the body's flex row.
    Keep the existing touch layout and the same center between the safe-area header/footer. */
 @media (pointer: fine),
@@ -2376,6 +2383,7 @@ body.royal-panel-open .match-footer #controlHint {
 .match-card button {
   background: #08060b;
   border-color: #67543b;
+  border-style: solid;
   color: #e8decb;
   cursor: pointer;
 }
