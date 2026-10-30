@@ -55,6 +55,7 @@ function harness() {
     get ready() { return ready; }, get interrupted() { return interrupted; }, get resumed() { return resumed; },
     async message(data) { room.socket.onmessage({ data: JSON.stringify(data) }); await room.queue; },
     fire(ms) { for (const [id, timer] of [...timers]) if (timer.ms === ms) { timers.delete(id); timer.fn(); } },
+    fireTimer(id) { const timer = timers.get(id); if (!timer) return false; timers.delete(id); timer.fn(); return true; },
     timers, intervals
   };
 }
@@ -173,9 +174,12 @@ test('connection waits for both channels; a departed guest leaves the managed ho
   assert.equal(peer.channels[1].options, undefined);
   peer.state('disconnected'); assert.equal(h.interrupted, 0);
   peer.state('connected'); assert.equal(h.resumed, 0);
-  h.room.presence={lastHeard:Date.now()};
+  h.room.presence={lastHeard:Date.now()-100};
   peer.state('disconnected'); h.fire(3000); assert.equal(h.interrupted,0,'recent validated LAN traffic outweighs ICE state');
-  h.room.presence=null; h.fire(3000); assert.equal(h.interrupted, 1);
+  h.room.presence=null;
+  assert.ok(h.room.disconnectTimer, 'recent traffic should schedule another degradation check');
+  assert.equal(h.fireTimer(h.room.disconnectTimer), true, 'fire the rescheduled check regardless of its exact delay');
+  assert.equal(h.interrupted, 1);
   peer.state('connected'); assert.equal(h.resumed, 1);
   h.fire(8000); assert.deepEqual(h.errors, []);
   peer.channels[0].close(); h.fire(250);
