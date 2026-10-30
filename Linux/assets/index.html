@@ -18054,10 +18054,12 @@ function finishMultiplayerLeave(leave = false) {
     if (!approved || multiplayerDisconnect || request.session !== onlineSession) return;
     sendMultiplayerPresence('leave'); sendRematch('leave');
     if (!multiplayerDisconnect && request.session === onlineSession) {
-      // The chosen menu action may only change the screen. Close the match first,
-      // or its still-connected session will trigger another Leave confirmation.
-      closeLanConnection(false);
+      // The action must see the original session to route LAN, matchmaking and
+      // private-room departures correctly. Approval suppresses re-entrant prompts.
       request.action();
+      // Some navigation actions only change screens. Retire the session if the
+      // action did not already close it, without affecting a replacement session.
+      if (onlineSession === request.session) closeLanConnection(false);
     }
   } finally {
     if (approved) {

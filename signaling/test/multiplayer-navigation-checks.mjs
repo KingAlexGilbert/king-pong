@@ -38,7 +38,8 @@ export async function multiplayerNavigationChecks({page, pass, bounds}) {
       assert.equal(await p.evaluate(()=>!onlineSession&&navClosed===1&&!multiplayerLeaveRequest),true);
       assert.equal(await p.locator('#multiplayerDisconnected').isVisible(),false,
         'confirmed local Back must not show an opponent-disconnected dialog');
-      assert.equal(await p.locator(origin==='lan'?'#classicLanDialog':'#matchSetup').isVisible(),true);
+      assert.equal(await p.locator(origin==='lan'?'#classicLanDialog':'#matchSetup').isVisible(),true,
+        `${platform} ${origin}/${role}: confirmed Leave returns to the correct setup`);
       await p.evaluate(()=>{byId('classicLanDialog').hidden=true;syncRoyalFocus()});
       // Terminal cleanup is one-shot and asynchronous socket/native shutdown
       // completes before the acknowledgement becomes available.

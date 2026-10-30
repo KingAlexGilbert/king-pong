@@ -115,6 +115,22 @@ function shutdownPeer(origin, role, failure) {
  return {run,timers,async settle(){for(let i=0;i<4;i++)await Promise.resolve()},fire(){for(const [id,t]of timers){timers.delete(id);t.fn()}}};
 }
 
+test('confirmed Leave preserves the session origin for navigation and closes once',()=>{
+ for(const origin of ['matchmaking','private','lan']) {
+   for(const actionCloses of [false,true]) {
+     const h=shutdownPeer(origin,'host','normal');
+     h.run(`multiplayerLeaveRequest.action=()=>{
+       window.routeOrigin=onlineSession?.multiplayerOrigin;
+       if(${actionCloses})closeLanConnection(false);
+     };finishMultiplayerLeave(true)`);
+     assert.equal(h.run('window.routeOrigin'),origin,'the navigation action sees the departing origin');
+     assert.equal(h.run('closes'),1,'the original session closes exactly once');
+     assert.equal(h.run('onlineSession'),null,'leaving retires the session');
+     assert.equal(h.run('multiplayerLeaveApproved'),false,'leave approval resets');
+   }
+ }
+});
+
 test('terminal watchdog bounds UI waiting without claiming closure; late completion cannot revive old sessions',async()=>{
  for(const origin of ['matchmaking','private','lan'])for(const role of ['host','guest'])
  for(const failure of ['normal','never','late','reject','throw']) {
