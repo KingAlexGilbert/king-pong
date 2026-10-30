@@ -538,6 +538,7 @@ def main():
         ("enable-javascript", True),
         ("enable-webaudio", True),
         ("enable-media-stream", True),  # QR camera; permission remains scoped to Scan.
+        ("enable-webrtc", True),  # Direct peer connections; encrypted WebSocket fallback remains available.
         ("enable-webgl", True),
         ("enable-accelerated-2d-canvas", True),
         ("media-playback-requires-user-gesture", False),

@@ -1,0 +1,7 @@
+#!/bin/sh
+set -eu
+APPDIR=${APPDIR:-$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)}
+export KING_PONG_LAUNCHER="$APPDIR/usr/lib/king-pong/king-pong.py"
+export KING_PONG_GAME_PATH="$APPDIR/usr/share/king-pong/index.html"
+export KING_PONG_ICON_PATH="$APPDIR/king-pong.png"
+exec "$APPDIR/usr/bin/king-pong" "$@"

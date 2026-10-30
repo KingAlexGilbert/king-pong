@@ -1013,6 +1013,20 @@ function startOnlineSetup(fromTitle = false, offline = false, observe = true) {
   if (observe && !(typeof onlineManualLanSelected !== 'undefined' && onlineManualLanSelected)) observeMatchmaking();
 }
 
+// Keep a diagnostic for embedded engines that expose WebSocket but not the
+// secure-context Web Crypto API required by encrypted multiplayer.
+function onlineCapabilityError(environment = globalThis) {
+  if (typeof environment.WebSocket !== 'function') {
+    return 'Online unavailable: WebSocket is not supported by this browser.';
+  }
+  if (!environment.crypto?.subtle) {
+    return environment.isSecureContext === false
+      ? 'Online unavailable: Web Crypto is blocked because this WebView is not a secure context.'
+      : 'Online unavailable: Web Crypto (crypto.subtle) is not supported by this WebView.';
+  }
+  return '';
+}
+
 function hostOnlineMatch() { openOnlineRoom('host'); }
 function prepareOnlineJoin() {
   closeOnlineConnection(false);
@@ -1034,7 +1048,8 @@ function openOnlineRoom(role, code = '', assignment = null) {
   onlineMatchAssignment = assignment?.match || null;
   if (assignment) matchmakingPreviousRules = matchRuleId;
   onlineGameBlocked = true;
-  if (typeof WebSocket === 'undefined' || !globalThis.crypto?.subtle) { setLanStatus('This browser cannot play online. Try an updated browser.'); return; }
+  const capabilityError = onlineCapabilityError();
+  if (capabilityError) { setLanStatus(capabilityError); return; }
   if (!window.KING_PONG_SIGNALING_URL && !(typeof onlineManualLanSelected !== 'undefined' && onlineManualLanSelected)) { setLanStatus(ONLINE_ERRORS.unavailable); return; }
   lanRole = role;
   startTwoPlayerMode(true, false);

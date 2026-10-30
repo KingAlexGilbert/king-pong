@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=King Pong
+GenericName=Arcade Game
+Comment=Retro Pong campaign arcade game
+Exec=king-pong
+Icon=king-pong
+Terminal=false
+Categories=Game;ArcadeGame;
+Keywords=Pong;Arcade;Retro;Campaign;Two Player;
+StartupNotify=true
+StartupWMClass=KingPong
