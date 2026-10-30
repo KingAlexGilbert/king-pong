@@ -58,7 +58,10 @@ if (args.includes('--list')) {
     let launchError = null;
     // Bound each stream even for newline-free output. Keep stderr separately so
     // a delayed stdout drain cannot erase the actual error from the summary.
-    const capture = (data, stream = 'stderr') => { tails[stream] = (tails[stream] + data).slice(-8192); };
+    const capture = (data, stream = 'stderr') => {
+      const maxBytes = stream === 'stderr' ? 65536 : 8192;
+      tails[stream] = (tails[stream] + data).slice(-maxBytes);
+    };
     const outcome = await new Promise(resolveExit => {
       try {
         child = spawn(suite.command[0], suite.command.slice(1), {
@@ -85,12 +88,12 @@ if (args.includes('--list')) {
     });
     clearTimeout(killTimer);
     child = null;
-    const lines = stream => tails[stream].replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, '')
-      .split(/[\r\n]+/).filter(line => line.trim()).slice(-15).map(line => line.slice(-1000));
-    const output = lines('stdout'), errors = lines('stderr');
-    const errorCount = Math.min(errors.length, Math.max(5, 15 - output.length));
-    const outputTail = [...output.slice(-(15 - errorCount)),
-      ...errors.slice(-errorCount || errors.length).map(line => '[stderr] ' + line)];
+    // The AssertionError header and source location often precede the last few stderr lines.
+    // Keep enough stderr context to diagnose failures directly from the CI summary.
+    const lines = (stream, count) => tails[stream].replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, '')
+      .split(/[\r\n]+/).filter(line => line.trim()).slice(-count).map(line => line.slice(0, 2000));
+    const outputTail = [...lines('stdout', 8),
+      ...lines('stderr', 60).map(line => '[stderr] ' + line)];
     const row = {id: suite.id, exit: outcome.exit,
       seconds: Number(((performance.now() - start) / 1000).toFixed(3)),
       command: displayCommand(suite.command), argv: suite.command, cwd: resolve(root, suite.cwd || '.'),

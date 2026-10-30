@@ -40,7 +40,11 @@ async function page(platform = 'Browser', options = {}) {
     ...options
   });
   const p = await context.newPage();
-  p.on('pageerror', e => errors.push(platform + ': ' + e.message));
+  p.on('pageerror', e => {
+    const detail = e.stack || e.message;
+    errors.push(platform + ': ' + detail);
+    console.error('[PAGEERROR][' + platform + '] ' + detail);
+  });
   await p.addInitScript(() => {
     // UI fixtures stay local; real signaling has its own integration test.
     Object.defineProperty(window, 'KING_PONG_SIGNALING_URL', {get: () => '', set: () => {}});
@@ -838,7 +842,12 @@ try {
   await phone.context().close();
   pass('portrait prompt, navigation, dismissal, one lock attempt, listener lifetime and local/online rotation state');
   await orientationBrowserChecks({page,bounds,pass});
-  await multiplayerNavigationChecks({page,bounds,pass});
+  try {
+    await multiplayerNavigationChecks({page,bounds,pass});
+  } catch (error) {
+    console.error('[UI PHASE FAILED] multiplayerNavigationChecks');
+    throw error;
+  }
   const titleInput = await page();
   const controllerTitle = await titleMenuState(titleInput);
   await titleInput.evaluate(() => {
