@@ -81,6 +81,30 @@ test('Android supports either landscape direction without recreating the WebView
   assert.doesNotMatch(configuration, /loadUrl|pauseGame|localLan\.stop/);
 });
 
+test('Android keyboard resizes the WebView and reveals room codes before typing', () => {
+  const manifest = readFileSync(new URL('android/app/src/main/AndroidManifest.xml', root), 'utf8');
+  const native = readFileSync(new URL('android/app/src/main/java/com/kingalex/kingpong/MainActivity.java', root), 'utf8');
+  assert.match(manifest, /android:windowSoftInputMode="adjustResize"/);
+  assert.match(native, /WindowInsets\.Type\.ime\(\)/);
+  assert.match(native, /params\.bottomMargin = keyboardHeight/);
+  const src = readFileSync(new URL('game/royal-ui.js', root), 'utf8');
+  const code = src.slice(src.indexOf('function keepAndroidRoomInputVisible()'), src.indexOf('function installAndroidRoomInputVisibility()'));
+  let scroll = 0;
+  const scroller = {scrollTop:0,closest:()=>null,getBoundingClientRect:()=>({top:60,bottom:300})};
+  const input = {id:'onlineRoomInput',getBoundingClientRect:()=>({top:285,bottom:327})};
+  const ctx = vm.createContext({window:{KingPongOrientation:{},visualViewport:{offsetTop:0,height:260}},
+    document:{activeElement:input},byId:()=>scroller});
+  vm.runInContext(code, ctx);
+  vm.runInContext('keepAndroidRoomInputVisible()',ctx);
+  assert.equal(scroller.scrollTop,79,'the room code is revealed immediately after IME resize');
+  input.id='lanRoomCodeInput';scroller.scrollTop=0;
+  vm.runInContext('keepAndroidRoomInputVisible()',ctx);
+  assert.equal(scroller.scrollTop,79,'native LAN room codes are also supported');
+  input.id='notAnInput';scroller.scrollTop=0;
+  vm.runInContext('keepAndroidRoomInputVisible()',ctx);
+  assert.equal(scroller.scrollTop,0,'unrelated inputs do not move the menu');
+});
+
 function orientationHarness() {
   const ui = readFileSync(new URL('game/royal-ui.js', root), 'utf8');
   const timers = new Map(); let timer = 0;

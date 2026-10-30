@@ -161,7 +161,8 @@ function escalateMultiplayerShutdown(ended) {
 function endMultiplayerSession(message = 'Opponent disconnected.') {
   // A confirmed local Leave is already closing this session; its callbacks
   // must not turn our own departure into an opponent-disconnected dialog.
-  if (multiplayerLeaveApproved || multiplayerDisconnect || !onlineSession) return;
+  if (multiplayerLeaveApproved || multiplayerDisconnect || !onlineSession ||
+      multiplayerLocallyLeavingSession === onlineSession) return;
   const ended = multiplayerDisconnect = {origin: onlineSession.multiplayerOrigin ||
     (onlineManualLanSelected ? 'lan' : 'private'), role: lanRole, ready: false};
   finishMultiplayerLeave(false);
@@ -199,6 +200,10 @@ function acknowledgeMultiplayerDisconnect() {
 }
 
 function leaveMultiplayerSession(message = '', notify = true) {
+  // Leaving from Back or the result screen can bypass the confirmation path.
+  // Mark ownership before sending leave or shutting down the transport.
+  const departingSession = onlineSession;
+  if (departingSession) multiplayerLocallyLeavingSession = departingSession;
   const origin = onlineSession?.multiplayerOrigin || (onlineManualLanSelected ? 'lan' : 'private');
   if (notify) sendRematch('leave');
   // Closing signaling also supplies a departure notification if the final
@@ -211,6 +216,8 @@ function leaveMultiplayerSession(message = '', notify = true) {
   onlineGameBlocked = paused = true;
   setLanStatus(message || 'Find an opponent or create/join a private room.');
   syncRoyalUi(true);
+  if (multiplayerLocallyLeavingSession === departingSession && onlineSession !== departingSession)
+    multiplayerLocallyLeavingSession = null;
 }
 
 function initMultiplayerRematchUi() {

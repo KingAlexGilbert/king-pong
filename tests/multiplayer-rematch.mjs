@@ -145,6 +145,18 @@ test('terminal watchdog bounds UI waiting without claiming closure; late complet
  }
 });
 
+test('a delayed shutdown callback cannot turn a confirmed local exit into a remote disconnect', async () => {
+ const h=shutdownPeer('private','host','normal');
+ h.run(`multiplayerLeaveRequest.action=()=>{actions++;/* The host socket closes on a later tick. */};
+   finishMultiplayerLeave(true);
+   endMultiplayerSession();`);
+ assert.equal(h.run('actions===1 && !multiplayerDisconnect && onlineSession!==null'),true,
+   'local departure stays marked while the old transport is finishing');
+ h.run('onlineSession={multiplayerOrigin:"private",close(){closes++;return networkClosed}};endMultiplayerSession()');
+ assert.equal(h.run('multiplayerDisconnect!==null'),true,'a genuinely new session still reports departure');
+ h.run('finishClose()');await h.settle();
+});
+
 test('confirmed local Leave does not show an opponent-disconnected dialog; earlier remote departure still wins',async()=>{
  for(const origin of ['matchmaking','private','lan'])for(const role of ['host','guest'])
  for(const order of ['confirm-send','confirm-focus','cancel-focus','remote-first','local-first']) {

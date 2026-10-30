@@ -17,6 +17,7 @@ const royalPortraitInert = new Map();
 let royalModalPanel = null;
 let multiplayerLeaveRequest = null;
 let multiplayerLeaveApproved = false;
+let multiplayerLocallyLeavingSession = null;
 
 function royalPortraitVisible() { return Boolean(byId('rotateDevice') && !byId('rotateDevice').hidden); }
 
@@ -47,13 +48,21 @@ function finishMultiplayerLeave(leave = false) {
   // Local confirmation owns departure before focus changes or leave packets
   // trigger connection callbacks. A prior remote disconnect still takes priority.
   const approved = leave && !multiplayerDisconnect && request.session === onlineSession;
-  if (approved) multiplayerLeaveApproved = true;
+  if (approved) {
+    multiplayerLeaveApproved = true;
+    multiplayerLocallyLeavingSession = request.session;
+  }
   try {
     syncRoyalFocus();
     if (!approved || multiplayerDisconnect || request.session !== onlineSession) return;
     sendMultiplayerPresence('leave'); sendRematch('leave');
     if (!multiplayerDisconnect && request.session === onlineSession) request.action();
-  } finally { if (approved) multiplayerLeaveApproved = false; }
+  } finally {
+    if (approved) {
+      multiplayerLeaveApproved = false;
+      if (onlineSession !== request.session) multiplayerLocallyLeavingSession = null;
+    }
+  }
 }
 
 // Android's intercepted Back remains an in-game action. Browser tab/window
@@ -242,6 +251,37 @@ function royalDialog(id, title) {
   overlay.append(card);
   document.body.append(overlay);
   return card;
+}
+
+// Android's landscape keyboard reduces the WebView height. Reveal the room
+// input on the first keyboard frame, without waiting for the user to type.
+function keepAndroidRoomInputVisible() {
+  if (!window.KingPongOrientation) return;
+  const input = document.activeElement;
+  if (!input || !['onlineRoomInput', 'lanRoomCodeInput'].includes(input.id)) return;
+  const scroller = byId('matchSetupBody');
+  if (!scroller || scroller.closest('[hidden]')) return;
+  const field = input.getBoundingClientRect();
+  const panel = scroller.getBoundingClientRect();
+  const viewport = window.visualViewport;
+  const viewportBottom = viewport ? viewport.offsetTop + viewport.height : window.innerHeight;
+  const bottom = Math.min(panel.bottom, viewportBottom) - 12;
+  const top = panel.top + 12;
+  if (field.bottom > bottom) scroller.scrollTop += field.bottom - bottom;
+  else if (field.top < top) scroller.scrollTop -= top - field.top;
+}
+
+function installAndroidRoomInputVisibility() {
+  if (!window.KingPongOrientation) return;
+  const reveal = () => requestAnimationFrame(keepAndroidRoomInputVisible);
+  document.addEventListener('focusin', event => {
+    if (event.target?.id !== 'onlineRoomInput' && event.target?.id !== 'lanRoomCodeInput') return;
+    reveal();
+    // Some WebView/IME combinations report their final height a little later.
+    setTimeout(reveal, 180);
+  });
+  window.visualViewport?.addEventListener('resize', reveal);
+  window.addEventListener('resize', reveal);
 }
 
 function initRoyalUi() {
@@ -442,6 +482,7 @@ function initRoyalUi() {
   disconnectedActions.append(royalButton('multiplayerReturn', 'Return to Menu', acknowledgeMultiplayerDisconnect, 'match-primary'));
   disconnected.append(disconnectedActions);
   installRoyalPortraitModal();
+  installAndroidRoomInputVisibility();
   // Capture exit buttons before legacy handlers change mode or close transports.
   window.addEventListener('click', event => {
     const button = event.target.closest?.('button');

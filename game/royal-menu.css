@@ -895,11 +895,17 @@ body.royal-panel-open .match-footer #controlHint {
 }
 
 #onlineJoinForm {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
   column-gap: 18px;
   row-gap: 12px;
 }
 
 #onlineJoinForm input {
+  flex: 0 1 220px;
+  width: min(220px, 100%);
+  min-width: 0;
   min-height: 44px;
   box-sizing: border-box;
   padding: 10px;
@@ -910,7 +916,12 @@ body.royal-panel-open .match-footer #controlHint {
 }
 
 #onlineJoinForm input:focus-visible {
-  outline-offset: 1px;
+  outline-offset: 0;
+}
+
+#onlineJoinForm button {
+  flex: none;
+  margin: 0;
 }
 
 #rotateDevice {

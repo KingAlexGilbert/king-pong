@@ -21,6 +21,7 @@ import android.view.Window;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
 import android.view.WindowManager;
+import android.widget.FrameLayout;
 import android.webkit.JavascriptInterface;
 import android.webkit.PermissionRequest;
 import android.webkit.WebChromeClient;
@@ -138,7 +139,27 @@ public final class MainActivity extends Activity {
             }
         });
         webView.setWebViewClient(new LocalOnlyWebViewClient());
-        setContentView(webView);
+        getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
+        FrameLayout gameRoot = new FrameLayout(this);
+        gameRoot.addView(webView, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            // Immersive edge-to-edge windows are not always resized by adjustResize.
+            // Move the WebView above the IME as soon as Android reports its insets.
+            gameRoot.setOnApplyWindowInsetsListener((view, insets) -> {
+                int keyboardHeight = insets.isVisible(WindowInsets.Type.ime())
+                        ? insets.getInsets(WindowInsets.Type.ime()).bottom : 0;
+                if (webView != null) {
+                    FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) webView.getLayoutParams();
+                    if (params.bottomMargin != keyboardHeight) {
+                        params.bottomMargin = keyboardHeight;
+                        webView.setLayoutParams(params);
+                    }
+                }
+                return insets;
+            });
+        }
+        setContentView(gameRoot);
 
         hideSystemUi();
         webView.loadUrl(GAME_URL);
