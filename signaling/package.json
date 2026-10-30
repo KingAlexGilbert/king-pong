@@ -35,5 +35,8 @@
     "miniflare": "5.20261006.1-alpha",
     "playwright": "1.55.1",
     "wrangler": "^4.149.0"
+  },
+  "overrides": {
+    "undici": "7.30.1"
   }
 }
