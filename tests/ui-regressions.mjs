@@ -88,21 +88,26 @@ test('Android keyboard resizes the WebView and reveals room codes before typing'
   assert.match(native, /WindowInsets\.Type\.ime\(\)/);
   assert.match(native, /params\.bottomMargin = keyboardHeight/);
   const src = readFileSync(new URL('game/royal-ui.js', root), 'utf8');
-  const code = src.slice(src.indexOf('function keepAndroidRoomInputVisible()'), src.indexOf('function installAndroidRoomInputVisibility()'));
-  let scroll = 0;
-  const scroller = {scrollTop:0,closest:()=>null,getBoundingClientRect:()=>({top:60,bottom:300})};
-  const input = {id:'onlineRoomInput',getBoundingClientRect:()=>({top:285,bottom:327})};
-  const ctx = vm.createContext({window:{KingPongOrientation:{},visualViewport:{offsetTop:0,height:260}},
-    document:{activeElement:input},byId:()=>scroller});
+  const code = src.slice(src.indexOf('function keepAndroidRoomInputVisible('), src.indexOf('function installAndroidRoomInputVisibility()'));
+  const card = {scrollTop:0,getBoundingClientRect:()=>({top:60,bottom:680})};
+  const body = {scrollTop:0,closest:selector=>selector==='.match-card'?card:null,
+    getBoundingClientRect:()=>({top:60,bottom:680})};
+  const input = {id:'onlineRoomInput',getBoundingClientRect:()=>({top:450,bottom:500})};
+  const ctx = vm.createContext({window:{KingPongOrientation:{},innerHeight:800,
+    visualViewport:{offsetTop:0,height:800}},document:{activeElement:input},byId:()=>body});
   vm.runInContext(code, ctx);
+  vm.runInContext('keepAndroidRoomInputVisible(true)',ctx);
+  assert.equal(card.scrollTop,144,'focus moves the actual scrollable card before the IME opens');
+  assert.equal(body.scrollTop,0,'the non-scrolling body is left alone');
+  card.scrollTop=0;ctx.window.visualViewport.height=340;
   vm.runInContext('keepAndroidRoomInputVisible()',ctx);
-  assert.equal(scroller.scrollTop,79,'the room code is revealed immediately after IME resize');
-  input.id='lanRoomCodeInput';scroller.scrollTop=0;
+  assert.equal(card.scrollTop,172,'IME resize also keeps the field inside the visible viewport');
+  input.id='lanRoomCodeInput';card.scrollTop=0;
   vm.runInContext('keepAndroidRoomInputVisible()',ctx);
-  assert.equal(scroller.scrollTop,79,'native LAN room codes are also supported');
-  input.id='notAnInput';scroller.scrollTop=0;
+  assert.equal(card.scrollTop,172,'native LAN room codes are also supported');
+  input.id='notAnInput';card.scrollTop=0;
   vm.runInContext('keepAndroidRoomInputVisible()',ctx);
-  assert.equal(scroller.scrollTop,0,'unrelated inputs do not move the menu');
+  assert.equal(card.scrollTop,0,'unrelated inputs do not move the menu');
 });
 
 function orientationHarness() {

@@ -102,7 +102,8 @@ function shutdownPeer(origin, role, failure) {
    function sendMultiplayerPresence(){if(onlineSession)sends++;if(departOnSend){departOnSend=false;endMultiplayerSession()}}
    function startOnlineSetup(a,b,observe){if(observe!==false)throw Error('queue reopened');navigations++}
    function openOfflineLanSetup(){navigations++}
-   function closeOnlineConnection(){const s=onlineSession;onlineSession=null;lanConnected=false;return s.close()}
+   function closeOnlineConnection(){const s=onlineSession;onlineSession=null;lanConnected=false;return s?.close()}
+   function closeLanConnection(){return closeOnlineConnection()}
    let finishClose,rejectClose;
    const networkClosed=new Promise((resolve,reject)=>{finishClose=resolve;rejectClose=reject});
    networkClosed.retry=()=>{retries++};networkClosed.release=()=>{releases++};
@@ -145,14 +146,17 @@ test('terminal watchdog bounds UI waiting without claiming closure; late complet
  }
 });
 
-test('a delayed shutdown callback cannot turn a confirmed local exit into a remote disconnect', async () => {
+test('confirmed local leave closes the match even when the menu action only navigates', async () => {
  const h=shutdownPeer('private','host','normal');
- h.run(`multiplayerLeaveRequest.action=()=>{actions++;/* The host socket closes on a later tick. */};
+ h.run(`multiplayerLeaveRequest.action=()=>{actions++; /* Just navigate; do not close anything. */};
    finishMultiplayerLeave(true);
    endMultiplayerSession();`);
- assert.equal(h.run('actions===1 && !multiplayerDisconnect && onlineSession!==null'),true,
-   'local departure stays marked while the old transport is finishing');
- h.run('onlineSession={multiplayerOrigin:"private",close(){closes++;return networkClosed}};endMultiplayerSession()');
+ assert.equal(h.run('actions===1 && closes===1 && !onlineSession && !lanConnected && !multiplayerDisconnect'),true,
+   'closing the outgoing match must not depend on what the menu action does');
+ h.run('guardMultiplayerLeave(()=>{actions++});');
+ assert.equal(h.run('!multiplayerLeaveRequest && actions===1'),true,
+   'later menu navigation must not ask again to leave an already closed match');
+ h.run('onlineSession={multiplayerOrigin:"private",close(){closes++;return networkClosed}};lanConnected=true;endMultiplayerSession()');
  assert.equal(h.run('multiplayerDisconnect!==null'),true,'a genuinely new session still reports departure');
  h.run('finishClose()');await h.settle();
 });
