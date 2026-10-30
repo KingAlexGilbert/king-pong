@@ -246,6 +246,7 @@ function initMatchmakingUi() {
     input.id = 'onlineRoomInput';
     input.maxLength = 5;
     input.autocomplete = 'off';
+    input.autocapitalize = 'characters';
     input.spellcheck = false;
     const join = royalButton('onlineJoinSubmit', 'Join', () => {});
     join.type = 'submit';

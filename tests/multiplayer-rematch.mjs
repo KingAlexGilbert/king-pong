@@ -145,15 +145,20 @@ test('terminal watchdog bounds UI waiting without claiming closure; late complet
  }
 });
 
-test('terminal departure wins pending Leave callbacks and confirm/cancel races without duplicate navigation',async()=>{
- for(const origin of ['matchmaking','private','lan'])for(const role of ['host','guest'])for(const order of ['confirm','cancel','local-first']) {
+test('confirmed local Leave does not show an opponent-disconnected dialog; earlier remote departure still wins',async()=>{
+ for(const origin of ['matchmaking','private','lan'])for(const role of ['host','guest'])
+ for(const order of ['confirm-send','confirm-focus','cancel-focus','remote-first','local-first']) {
    const h=shutdownPeer(origin,role,'normal');
-   if(order==='confirm')h.run('departOnSend=true;finishMultiplayerLeave(true)');
-   if(order==='cancel')h.run('departOnFocus=true;finishMultiplayerLeave(false)');
+   if(order==='confirm-send')h.run('departOnSend=true;finishMultiplayerLeave(true)');
+   if(order==='confirm-focus')h.run('departOnFocus=true;finishMultiplayerLeave(true)');
+   if(order==='cancel-focus')h.run('departOnFocus=true;finishMultiplayerLeave(false)');
+   if(order==='remote-first')h.run('endMultiplayerSession();finishMultiplayerLeave(true)');
    if(order==='local-first')h.run('finishMultiplayerLeave(true);endMultiplayerSession()');
    h.run('finishClose()');await h.settle();
-   if(order==='local-first')assert.equal(h.run('actions===1&&!multiplayerDisconnect'),true);
-   else {
+   if(['confirm-send','confirm-focus','local-first'].includes(order)) {
+     assert.equal(h.run("actions===1&&!multiplayerDisconnect&&!onlineSession&&byId('multiplayerDisconnected').hidden"),true,
+       `${origin}/${role}/${order}: local departure should not show opponent popup`);
+   } else {
      assert.equal(h.run('actions===0&&multiplayerDisconnect.confirmed&&closes===1'),true);
      h.run('finishMultiplayerLeave(true);finishMultiplayerLeave(false)');
      assert.equal(h.run('actions'),0);

@@ -1649,12 +1649,21 @@ textarea:focus-visible {
 }
 
 .exit-game-button {
-  width: auto;
-  min-height: 44px;
-  border: 0;
-  background: transparent;
-  font-size: 12px;
-  margin-top: 6px;
+  width: 100%;
+  min-height: 48px;
+  margin-top: 12px;
+  padding: 9px 12px;
+  font-size: 16px;
+  color: #ffb4b4;
+  border: 1px solid #7a3434;
+  background: linear-gradient(180deg, #1a0909 0%, #0b0303 100%);
+}
+
+.exit-game-button:hover,
+.exit-game-button:focus-visible {
+  color: #fff;
+  border-color: #ff6f6f;
+  box-shadow: 0 0 12px rgba(255, 80, 80, 0.45);
 }
 
 .match-bar {
@@ -2105,6 +2114,11 @@ body.royal-panel-open .match-footer #controlHint {
   margin-top: 8px;
 }
 
+#onlineJoinForm {
+  column-gap: 18px;
+  row-gap: 12px;
+}
+
 #onlineJoinForm input {
   min-height: 44px;
   box-sizing: border-box;
@@ -2112,6 +2126,11 @@ body.royal-panel-open .match-footer #controlHint {
   background: #080b13;
   border: 1px solid #786941;
   color: #ffe1a0;
+  text-transform: uppercase;
+}
+
+#onlineJoinForm input:focus-visible {
+  outline-offset: 1px;
 }
 
 #rotateDevice {
@@ -5576,6 +5595,7 @@ function initMatchmakingUi() {
     input.id = 'onlineRoomInput';
     input.maxLength = 5;
     input.autocomplete = 'off';
+    input.autocapitalize = 'characters';
     input.spellcheck = false;
     const join = royalButton('onlineJoinSubmit', 'Join', () => {});
     join.type = 'submit';
@@ -6443,7 +6463,9 @@ function escalateMultiplayerShutdown(ended) {
 }
 
 function endMultiplayerSession(message = 'Opponent disconnected.') {
-  if (multiplayerDisconnect || !onlineSession) return;
+  // A confirmed local Leave is already closing this session; its callbacks
+  // must not turn our own departure into an opponent-disconnected dialog.
+  if (multiplayerLeaveApproved || multiplayerDisconnect || !onlineSession) return;
   const ended = multiplayerDisconnect = {origin: onlineSession.multiplayerOrigin ||
     (onlineManualLanSelected ? 'lan' : 'private'), role: lanRole, ready: false};
   finishMultiplayerLeave(false);
@@ -17688,13 +17710,16 @@ function finishMultiplayerLeave(leave = false) {
   if (!request) return;
   multiplayerLeaveRequest = null;
   byId('multiplayerLeave').hidden = true;
-  syncRoyalFocus();
-  if (!leave || multiplayerDisconnect || request.session !== onlineSession) return;
-  multiplayerLeaveApproved = true;
+  // Local confirmation owns departure before focus changes or leave packets
+  // trigger connection callbacks. A prior remote disconnect still takes priority.
+  const approved = leave && !multiplayerDisconnect && request.session === onlineSession;
+  if (approved) multiplayerLeaveApproved = true;
   try {
+    syncRoyalFocus();
+    if (!approved || multiplayerDisconnect || request.session !== onlineSession) return;
     sendMultiplayerPresence('leave'); sendRematch('leave');
     if (!multiplayerDisconnect && request.session === onlineSession) request.action();
-  } finally { multiplayerLeaveApproved = false; }
+  } finally { if (approved) multiplayerLeaveApproved = false; }
 }
 
 // Android's intercepted Back remains an in-game action. Browser tab/window

@@ -44,13 +44,16 @@ function finishMultiplayerLeave(leave = false) {
   if (!request) return;
   multiplayerLeaveRequest = null;
   byId('multiplayerLeave').hidden = true;
-  syncRoyalFocus();
-  if (!leave || multiplayerDisconnect || request.session !== onlineSession) return;
-  multiplayerLeaveApproved = true;
+  // Local confirmation owns departure before focus changes or leave packets
+  // trigger connection callbacks. A prior remote disconnect still takes priority.
+  const approved = leave && !multiplayerDisconnect && request.session === onlineSession;
+  if (approved) multiplayerLeaveApproved = true;
   try {
+    syncRoyalFocus();
+    if (!approved || multiplayerDisconnect || request.session !== onlineSession) return;
     sendMultiplayerPresence('leave'); sendRematch('leave');
     if (!multiplayerDisconnect && request.session === onlineSession) request.action();
-  } finally { multiplayerLeaveApproved = false; }
+  } finally { if (approved) multiplayerLeaveApproved = false; }
 }
 
 // Android's intercepted Back remains an in-game action. Browser tab/window

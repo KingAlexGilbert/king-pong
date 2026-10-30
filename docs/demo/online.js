@@ -1676,6 +1676,7 @@ function initMatchmakingUi() {
     input.id = 'onlineRoomInput';
     input.maxLength = 5;
     input.autocomplete = 'off';
+    input.autocapitalize = 'characters';
     input.spellcheck = false;
     const join = royalButton('onlineJoinSubmit', 'Join', () => {});
     join.type = 'submit';
@@ -2543,7 +2544,9 @@ function escalateMultiplayerShutdown(ended) {
 }
 
 function endMultiplayerSession(message = 'Opponent disconnected.') {
-  if (multiplayerDisconnect || !onlineSession) return;
+  // A confirmed local Leave is already closing this session; its callbacks
+  // must not turn our own departure into an opponent-disconnected dialog.
+  if (multiplayerLeaveApproved || multiplayerDisconnect || !onlineSession) return;
   const ended = multiplayerDisconnect = {origin: onlineSession.multiplayerOrigin ||
     (onlineManualLanSelected ? 'lan' : 'private'), role: lanRole, ready: false};
   finishMultiplayerLeave(false);
