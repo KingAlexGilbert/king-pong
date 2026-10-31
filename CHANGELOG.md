@@ -1,5 +1,63 @@
 # Changelog
 
+## King Pong v2.0.0 — Online Multiplayer, UI Overhaul, and MORE!
+
+### Online Multiplayer
+
+The biggest addition to King Pong is **online multiplayer!** Play against friends or challenge players from around the world.
+
+- **Cross-platform multiplayer:** Play across supported platforms using WebRTC and encrypted WebSocket connectivity.
+- **Public matchmaking:** Find and challenge other players automatically.
+- **Private rooms:** Create private matches with optional guest approval and verification.
+- **Customizable matches:** Choose your arena, paddle shape, and whether to enable Royal Powerups.
+- **Rematches:** Challenge your opponent to another round without setting up a new match.
+- **Improved connection handling:** Better management of lag, temporary disconnections, and players leaving matches.
+
+### UI Overhaul
+
+King Pong's interface has received a major redesign, improving usability while preserving its classic arcade personality.
+
+- Redesigned menus with a cleaner, more professional color scheme.
+- Reorganized UI elements to prevent them from obstructing gameplay.
+- Settings now have a dedicated menu instead of overlaying the arena.
+- Made Campaign and Online Multiplayer more prominent and accessible.
+- Added a dedicated **Controls** section.
+- Improved settings controls, including CPU intelligence and paddle speed adjustments.
+- Improved navigation and usability across desktop and mobile devices.
+
+### Royal Powerups
+
+Three brand-new powerups bring exciting new possibilities to King Pong!
+
+- **Royal Split:** Duplicates the ball, forcing your opponent to defend against two balls at once. The duplicate disappears when struck by a paddle.
+- **Crown Rush:** Dramatically increases the ball's speed until it makes contact with a paddle.
+- **Castle Guard:** Activates a protective shield in front of your goal for 10 seconds.
+
+Powerups appear approximately every 30 seconds at random locations throughout the arena. Collect them by hitting their icons with the ball!
+
+### Smarter CPU Opponents
+
+CPU opponents have received a major intelligence overhaul, making matches feel more dynamic and challenging.
+
+- Improved ball tracking, positioning, and decision-making.
+- CPU opponents can make smarter decisions when using and defending against Royal Powerups.
+- Preserved the campaign's intended difficulty progression, with opponents becoming more intelligent as you advance.
+- Improved the secret boss's intelligence and responsiveness.
+- CPU intelligence and paddle speed remain independently adjustable in Custom Games.
+
+### Additional Features and Improvements
+
+- **Level Select:** Replay previously completed campaign levels at their original difficulty.
+- **Fullscreen and Orientation Controls:** Added fullscreen and supported screen rotation controls to the browser version.
+- **Linux Improvements:** The Linux application now runs through a local HTTP server at `127.0.0.1` instead of directly loading through `file://`, improving compatibility.
+- **New Secret Ending Music:** Added non-procedurally generated music by **Madelee** for the secret ending.
+- **LAN QR Pairing:** Generate and scan QR codes to simplify connecting devices for local multiplayer.
+- **Automatic LAN Discovery:** Native versions of King Pong can automatically discover available local multiplayer rooms.
+- **Player perspective:** Both players see their own paddle on the left side of their screen, regardless of which side they're actually playing on.
+- **Performance Optimizations:** Significantly improved rendering performance, visual effects, and overall responsiveness.
+- **Bug Fixes:** Fixed numerous issues affecting gameplay, multiplayer, menus, and platform compatibility.
+- **And Much More:** Countless smaller improvements, refinements, and quality-of-life updates throughout the game!
+
 ## King Pong v1.1.3 - Save Backups and Optimization
 
 - Added Import Saves and Export Saves beside Erase Selected Slot on Android, Windows, and Linux.
