@@ -1,13 +1,20 @@
-King Pong is a retro arcade Pong game with an 18-level campaign, custom games, local and LAN multiplayer, progressive paddle shapes, save slots, multiple languages, touch controls, controller support, and a secret ending.
+King Pong is a retro arcade game inspired by classic Pong, featuring an 18-level campaign, cross-platform online multiplayer, Royal Powerups, smarter CPU opponents, and a secret ending.
 
 Features:
 * 18 campaign levels across three leagues
+* Worldwide online multiplayer with public matchmaking and private rooms
+* Cross-platform matches between Android, Windows, Linux, and browser players
+* Three Royal Powerups: Royal Split, Crown Rush, and Royal Guard
+* Smarter CPU opponents with adjustable intelligence
 * Custom games and local two-player mode
-* Optional LAN multiplayer
+* LAN multiplayer with automatic discovery and QR pairing
+* Level Select to replay completed campaign levels
 * Progressive paddle shapes and changing arenas
 * Touch, keyboard, and controller support
 * Multiple languages and three local save slots
-* Original programmatically generated music and sound
+* Arcade sound effects and music
 * Secret boss battle and ending
 
-King Pong works offline and contains no advertising, analytics, accounts, tracking, or in-app purchases.
+King Pong can be played offline and does not require an account. Online multiplayer is optional.
+
+King Pong contains no advertising, analytics, tracking, or in-app purchases.
