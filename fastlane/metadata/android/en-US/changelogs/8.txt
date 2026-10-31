@@ -1,0 +1,8 @@
+King Pong 2.0.0 is here!
+- Play online across platforms with matchmaking, private rooms, and rematches.
+- Enjoy redesigned menus and improved controls.
+- Collect three new Royal Powerups.
+- Face smarter CPU opponents and an improved secret boss.
+- Replay completed levels in Level Select.
+- Join LAN matches through QR pairing or automatic discovery.
+- Improved performance, stability, and connection handling.
