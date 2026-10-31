@@ -46,7 +46,7 @@ export async function homepageBrowserChecks({browser, pass, artifacts, docsRoot 
         await p.locator('.game-demo-image').evaluate(img => img.decode());
         const box = await preview.boundingBox();
         assert.ok(box.width <= 900 && box.x >= 0 && box.x + box.width <= width);
-        assert.ok(Math.abs(box.width / box.height - 4 / 3) < .01);
+        assert.ok(Math.abs(box.width / box.height - 16 / 9) < .01);
         assert.equal(await p.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
         assert.equal(p.frames().length, 1);
         assert.equal(await p.locator('iframe, canvas, script, embed, object').count(), 0);
