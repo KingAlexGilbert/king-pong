@@ -38,21 +38,21 @@ Watch the official King Pong gameplay demo:
 
 ## Screenshots
 
-### Title Screen
+### Redesigned Main Menu
 
-![King Pong title screen](docs/images/title-screen.png)
+![King Pong v2.0.0 redesigned main menu with Play Online and Campaign](docs/images/title-screen.png)
 
-### Gameplay
+### Online Multiplayer
 
-![King Pong gameplay](docs/images/gameplay.png)
+![King Pong online matchmaking, private rooms, paddle and arena selection](docs/images/online-multiplayer.png)
 
-### Level Cleared
+### Royal Powerups in Gameplay
 
-![King Pong level cleared](docs/images/level-cleared.png)
+![King Pong gameplay featuring the Royal Split powerup](docs/images/gameplay.png)
 
-### Level Failed
+### Advanced Campaign Gameplay
 
-![King Pong level failed](docs/images/level-failed.png)
+![King Pong advanced campaign arena with obstacles, multiple balls, and a Royal Powerup](docs/images/advanced-campaign.png)
 
 ## Downloads
 
