@@ -13,14 +13,8 @@
 .externalNativeBuild
 .cxx
 local.properties
-/android/build/reports
 /android/.idea
 /android/build
-android/build/reports/problems/problems-report.html
-android/build/reports/problems/problems-report.html
-/android/build
-/android/build/reports
-/android/build/reports/problems
 /windows/webview-2/bin
 /windows/webview-2/dist
 /windows/webview-2/obj
@@ -38,3 +32,23 @@ __pycache__/
 *.py[cod]
 .wrangler/
 /audit/
+
+# Android generated files
+/android/app/build/
+
+# Android signing credentials
+*.jks
+*.keystore
+
+# Temporary and backup files
+*.log
+*.tmp
+*.bak
+*~
+
+# Windows-generated files
+Thumbs.db
+
+# APKs
+*.apk
+*.aab
