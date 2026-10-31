@@ -14348,6 +14348,10 @@ function initRoyalUi() {
   const disconnectedActions = document.createElement('div'); disconnectedActions.className = 'match-actions';
   disconnectedActions.append(royalButton('multiplayerReturn', 'Return to Menu', acknowledgeMultiplayerDisconnect, 'match-primary'));
   disconnected.append(disconnectedActions);
+  // Create the restart prompt before binding modal guards. Their capture
+  // listeners must run before exit navigation can open another dialog.
+  initOnlineMatchFlowUi();
+  initMultiplayerRematchUi();
   installRoyalPortraitModal();
   installAndroidRoomInputVisibility();
   // Capture exit buttons before legacy handlers change mode or close transports.
@@ -14370,8 +14374,6 @@ function initRoyalUi() {
     byId(id).addEventListener('toggle', () => syncRoyalFocus());
   }
   prepareAccessibleMenuControls();
-  initOnlineMatchFlowUi();
-  initMultiplayerRematchUi();
   document.body.classList.add('royal-ui-ready');
   updateAudioControls();
   // One listener per page. Rotation only changes presentation, never match or connection state.
@@ -14589,9 +14591,10 @@ function syncRoyalUi(force = false) {
   royalUiSignature = signature;
   byId('matchSetup').hidden = !setup || menu || Boolean(galleryKind);
   byId('matchMenu').hidden = !menu || Boolean(galleryKind);
-  byId('matchBar').hidden = title || menu || creditsActive || bossIntroActive;
-  byId('campaignBack').hidden = (mode !== 1 && mode !== 4) || title || menu || bossIntroActive || creditsActive;
   const onlineSetup = online && onlineTransportSelected;
+  // Online setup supplies its own title and status above the room controls.
+  byId('matchBar').hidden = title || menu || creditsActive || bossIntroActive || (setup && onlineSetup);
+  byId('campaignBack').hidden = (mode !== 1 && mode !== 4) || title || menu || bossIntroActive || creditsActive;
   byId('matchSetup').classList.toggle('online-setup', onlineSetup);
   const back = byId('setupMenuButton');
   const setupCard = byId('matchSetupTitle').parentElement;

@@ -2762,7 +2762,20 @@ body.royal-panel-open .match-footer #controlHint {
 #onlineFlowTitle { color: #ffd469; margin: 0 0 14px; font-size: clamp(18px, 4vw, 28px); }
 #onlineFlowNote { font-size: 11px; line-height: 1.7; color: #d5dfeb; }
 .online-flow-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
-.online-flow-actions button { min-height: 44px; padding: 10px; font-size: 12px; }
+/* Online overlays are outside .match-card, so give their controls the same
+   explicit dark styling. Android WebView otherwise falls back to white buttons. */
+.online-flow-actions button {
+  -webkit-appearance: none; appearance: none;
+  min-height: 44px; padding: 10px 14px; font-size: 12px;
+  color: #e8decb; background: #08060b;
+  border: 2px solid #67543b; border-radius: 0;
+  box-shadow: 4px 4px 0 #261c11; cursor: pointer;
+}
+.online-flow-actions button.match-primary {
+  color: #ffe1a0; border-color: #dcb759; background: #211b0e; font-weight: bold;
+}
+.online-flow-actions button:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+.online-flow-actions button:disabled { opacity: .6; cursor: default; }
 .online-match-flow[data-phase="go"] { pointer-events: none; background: none; }
 .online-match-flow[data-phase="go"] .online-flow-card { border: 0; background: transparent; box-shadow: none; }
 .online-match-flow[data-phase="countdown"] #onlineFlowTitle, .online-match-flow[data-phase="go"] #onlineFlowTitle { font-size: 56px; }
@@ -6372,7 +6385,8 @@ function multiplayerRematch() {
   if (!onlineSession.rematch) {
     onlineSession.rematch = {round: 0, local: false, remote: false, phase: 'playing',
       token: lanRole === 'host' ? Array.from(crypto.getRandomValues(new Uint32Array(4)),
-        n => n.toString(16).padStart(8, '0')).join('') : null, lastSend: -Infinity};
+        n => n.toString(16).padStart(8, '0')).join('') : null, lastSend: -Infinity,
+      restart: null, ignoredRestarts: []};
   }
   return onlineSession.rematch;
 }
@@ -6388,12 +6402,12 @@ function multiplayerRematchVisible() {
   return Boolean(mode === 2 && gameOver && onlineSession && lanConnected);
 }
 
-function sendRematch(kind, round = multiplayerRematch()?.round) {
+function sendRematch(kind, round = multiplayerRematch()?.round, requestId = null) {
   const state = multiplayerRematch();
   if (!state || !onlineRematchReady || !lanConnected) return false;
   state.lastSend = performance.now();
   return lanSend({v: LAN_SIGNAL_VERSION, room: lanRoomCode, type: 'rematch', protocol: 1,
-    token: state.token, round, kind});
+    token: state.token, round, kind, ...(requestId ? {requestId} : {})});
 }
 
 function requestMultiplayerRematch() {
@@ -6405,10 +6419,113 @@ function requestMultiplayerRematch() {
   syncRoyalUi(true);
 }
 
+// Mid-match restarts use the existing authenticated rematch control channel and
+// its host-only start/started/snapshot handshake. Neither peer can reset a live
+// game without the other player's explicit consent.
+function multiplayerRestartVisible() {
+  const state = onlineSession?.rematch;
+  return Boolean(state?.restart && mode === 2 && !gameOver && lanConnected &&
+    state.phase === 'playing' && onlineRematchReady && !multiplayerDisconnect);
+}
+
+function ignoreRestart(state, id) {
+  if (!id) return;
+  state.ignoredRestarts = (state.ignoredRestarts || []).filter(value => value !== id).slice(-7);
+  state.ignoredRestarts.push(id);
+}
+
+// Only the authoritative host freezes simulation while consent is pending.
+// If rejected, restore an existing pause or use the normal resume countdown.
+function holdMultiplayerRestart(state) {
+  if (lanRole !== 'host' || !state.restart || state.restart.beforePause) return;
+  state.restart.beforePause = {paused, remaining: hasResumeCountdown() ? resumeCountdownRemainingMs() : 0};
+  if (typeof suspendPointServeCountdown === 'function') suspendPointServeCountdown();
+  paused = true;
+  resumeCountdownEndAt = 0;
+  lastResumeCountdownNumber = 0;
+  sendLanState(true);
+}
+
+function restoreMultiplayerRestart(state) {
+  const before = state.restart?.beforePause;
+  if (lanRole !== 'host' || !before || state.phase !== 'playing') return;
+  paused = true;
+  resumeCountdownEndAt = !before.paused ? performance.now() + 3000 :
+    before.remaining > 0 ? performance.now() + before.remaining : 0;
+  lastResumeCountdownNumber = 0;
+  sendLanState(true);
+}
+
+function requestMultiplayerRestart() {
+  const state = multiplayerRematch();
+  if (!state || !onlineRematchReady || !lanConnected || onlineGameBlocked || gameOver ||
+      state.phase !== 'playing' || state.restart?.local || onlineMatchFlowBlocksPlay()) return;
+  if (!state.restart) {
+    const id = Array.from(crypto.getRandomValues(new Uint32Array(4)),
+      value => value.toString(16).padStart(8, '0')).join('');
+    state.restart = {id, local: true, remote: false, activeWait: 0, lastAt: performance.now()};
+    sendRematch('restart-request', state.round, id);
+  } else {
+    state.restart.local = true; // Accept the other player's request.
+    sendRematch('restart-accept', state.round, state.restart.id);
+    prepareMultiplayerRematch();
+  }
+  holdMultiplayerRestart(state);
+  setMenusVisible(false);
+  syncRoyalUi(true);
+}
+
+function declineMultiplayerRestart() {
+  const state = onlineSession?.rematch, restart = state?.restart;
+  if (!restart || state.phase !== 'playing') return;
+  sendRematch(restart.local ? 'restart-cancel' : 'restart-decline', state.round, restart.id);
+  ignoreRestart(state, restart.id);
+  restoreMultiplayerRestart(state);
+  state.restart = null;
+  syncRoyalUi(true);
+}
+
+function receiveMultiplayerRestart(message, state) {
+  const id = message.requestId;
+  if (!/^[a-f0-9]{32}$/.test(id || '') || message.round !== state.round ||
+      state.phase !== 'playing' || gameOver || !lanConnected) return;
+  if (message.kind === 'restart-request') {
+    if (state.ignoredRestarts?.includes(id)) return;
+    const pending = state.restart;
+    if (pending && pending.id !== id && lanRole === 'host' && pending.local) {
+      // Simultaneous requests: host's ID wins, but guest's request is consent.
+      pending.remote = true;
+      sendRematch('restart-request', state.round, pending.id);
+      prepareMultiplayerRematch();
+      return;
+    }
+    if (!pending || pending.id !== id) {
+      state.restart = {id, local: Boolean(pending?.local), remote: true,
+        activeWait: 0, lastAt: performance.now(), beforePause: pending?.beforePause};
+    } else state.restart.remote = true;
+    holdMultiplayerRestart(state);
+    if (state.restart.local) sendRematch('restart-accept', state.round, id);
+    prepareMultiplayerRematch();
+  } else if (message.kind === 'restart-accept') {
+    if (!state.restart || state.restart.id !== id || !state.restart.local) return;
+    state.restart.remote = true;
+    prepareMultiplayerRematch();
+  } else if (message.kind === 'restart-decline' || message.kind === 'restart-cancel') {
+    if (!state.restart || state.restart.id !== id) return;
+    ignoreRestart(state, id);
+    restoreMultiplayerRestart(state);
+    state.restart = null;
+  }
+  syncRoyalUi(true);
+}
+
 function prepareMultiplayerRematch() {
   const state = multiplayerRematch();
-  if (lanRole !== 'host' || !state || !gameOver || !state.local || !state.remote ||
-      state.phase === 'starting' || state.round >= Number.MAX_SAFE_INTEGER - 1) return;
+  if (lanRole !== 'host' || !state || state.phase !== 'playing' ||
+      state.round >= Number.MAX_SAFE_INTEGER - 1) return;
+  const restarting = !gameOver && state.restart?.local && state.restart?.remote;
+  if (!restarting && !(gameOver && state.local && state.remote)) return;
+  state.transition = restarting ? 'restart' : 'rematch';
   state.phase = 'starting';
   state.activeWait = 0;
   state.at = performance.now();
@@ -6426,12 +6543,19 @@ function receiveMultiplayerRematch(message) {
       state.phase === 'starting' && message.round === state.round + 1)) {
     return endMultiplayerSession('Opponent left the match.');
   }
+  if (typeof message.kind === 'string' && message.kind.startsWith('restart-')) {
+    receiveMultiplayerRestart(message, state);
+    return;
+  }
   if (lanRole === 'guest' && message.kind === 'start') {
     if (state.phase === 'awaiting-state' && message.round === state.round - 1) {
       sendRematch('started'); // Lost acknowledgement during transport recovery.
       return;
     }
-    if (message.round !== state.round || !state.local || !gameOver || state.phase !== 'playing') return;
+    const restarting = !gameOver && state.restart?.local && state.restart?.remote;
+    if (message.round !== state.round || state.phase !== 'playing' ||
+        !restarting && !(gameOver && state.local)) return;
+    state.transition = restarting ? 'restart' : 'rematch';
     state.round++;
     state.phase = 'awaiting-state';
     state.activeWait = 0;
@@ -6442,10 +6566,14 @@ function receiveMultiplayerRematch(message) {
     resetVisualHistory();
     sendRematch('started');
   } else if (lanRole === 'host' && message.kind === 'started') {
-    if (state.phase !== 'starting' || message.round !== state.round + 1 || !state.local || !state.remote || !gameOver) return;
+    if (state.phase !== 'starting' || message.round !== state.round + 1 ||
+        (state.transition === 'restart' ? !(state.restart?.local && state.restart?.remote) :
+          !(gameOver && state.local && state.remote))) return;
     state.round++;
     state.phase = 'playing'; // Commit before calling reset/UI hooks; duplicates cannot reenter.
     state.local = state.remote = false;
+    state.restart = null;
+    state.transition = null;
     lanRemoteInput = {axis: 0, targetY: null, lastAt: 0};
     onlineInputs.clear();
     onlineLastInput = null;
@@ -6483,9 +6611,23 @@ function tickMultiplayerRematch() {
     state.at = now;
     if (state.activeWait > 12000) { endMultiplayerSession(ONLINE_ERRORS.connection_lost); return; }
   }
+  if (state.restart && state.phase === 'playing') {
+    const pending = state.restart;
+    if (!blocked) pending.activeWait += Math.max(0, now - (pending.lastAt ?? now));
+    pending.lastAt = now;
+    if (gameOver || pending.activeWait > 20000) {
+    sendRematch('restart-cancel', state.round, pending.id);
+    ignoreRestart(state, pending.id);
+    restoreMultiplayerRestart(state);
+    state.restart = null;
+    syncRoyalUi(true);
+    }
+  }
   if (blocked || now - state.lastSend < 500) return;
   if (state.phase === 'starting') sendRematch('start');
   else if (state.phase === 'awaiting-state') sendRematch('started');
+  else if (state.restart?.local && state.phase === 'playing')
+    sendRematch(state.restart.remote ? 'restart-accept' : 'restart-request', state.round, state.restart.id);
   else if (gameOver && state.local) sendRematch('accept');
 }
 
@@ -6494,6 +6636,8 @@ function finishMultiplayerRematchSnapshot() {
   if (state?.phase === 'awaiting-state' && !gameOver) {
     state.phase = 'playing';
     state.local = state.remote = false;
+    state.restart = null;
+    state.transition = null;
     clearHeldInput();
     syncRoyalUi(true);
   }
@@ -6603,9 +6747,46 @@ function initMultiplayerRematchUi() {
   actions.append(royalButton('multiplayerRematch', 'Rematch', requestMultiplayerRematch, 'match-primary'),
     royalButton('multiplayerBack', 'Back', () => leaveMultiplayerSession()));
   card.append(title, score, actions, note); panel.append(card); document.body.append(panel);
+
+  const restartPanel = document.createElement('section');
+  restartPanel.id = 'multiplayerRestartPrompt';
+  restartPanel.className = 'online-match-flow match-ui';
+  restartPanel.hidden = true;
+  restartPanel.setAttribute('role', 'dialog');
+  restartPanel.setAttribute('aria-modal', 'true');
+  restartPanel.setAttribute('aria-labelledby', 'multiplayerRestartTitle');
+  const restartCard = document.createElement('div'); restartCard.className = 'online-flow-card';
+  const restartTitle = document.createElement('h2'); restartTitle.id = 'multiplayerRestartTitle';
+  const restartNote = document.createElement('p'); restartNote.id = 'multiplayerRestartNote';
+  const restartActions = document.createElement('div'); restartActions.className = 'online-flow-actions';
+  restartActions.append(royalButton('multiplayerRestartAccept', 'Accept Restart', requestMultiplayerRestart, 'match-primary'),
+    royalButton('multiplayerRestartDecline', 'Decline', declineMultiplayerRestart));
+  restartCard.append(restartTitle, restartNote, restartActions);
+  restartPanel.append(restartCard); document.body.append(restartPanel);
+
+  // The legacy button calls requestRetryLevel() and resets immediately. The
+  // capture listener handles connected online games before that handler runs.
+  restartButton.addEventListener('click', event => {
+    if (mode !== 2 || !onlineSession || !lanConnected || gameOver) return;
+    event.stopImmediatePropagation();
+    requestMultiplayerRestart();
+  }, true);
 }
 
 function syncMultiplayerRematchUi() {
+  const restartPanel = byId('multiplayerRestartPrompt');
+  if (restartPanel) {
+    const pending = onlineSession?.rematch?.restart;
+    restartPanel.hidden = !multiplayerRestartVisible() ||
+      document.body.classList.contains('title-active');
+    if (!restartPanel.hidden) {
+      royalText(byId('multiplayerRestartTitle'), pending.local ? 'Restart requested' : 'Restart match?');
+      royalText(byId('multiplayerRestartNote'), pending.local ? 'Waiting for your opponent to agree.' :
+        'Your opponent wants to restart this match. Accept or decline?');
+      byId('multiplayerRestartAccept').hidden = pending.local;
+      royalText(byId('multiplayerRestartDecline'), pending.local ? 'Cancel Request' : 'Decline');
+    }
+  }
   const panel = byId('multiplayerResult');
   if (!panel) return;
   panel.hidden = !multiplayerRematchVisible() || document.body.classList.contains('title-active');
@@ -18057,7 +18238,9 @@ function royalPortraitVisible() { return Boolean(byId('rotateDevice') && !byId('
 function royalInputModal() {
   if (multiplayerDisconnect) return byId('multiplayerDisconnected');
   if (royalPortraitVisible()) return byId('rotateDevice');
-  return multiplayerLeaveRequest ? byId('multiplayerLeave') : null;
+  if (multiplayerLeaveRequest) return byId('multiplayerLeave');
+  if (multiplayerRestartVisible()) return byId('multiplayerRestartPrompt');
+  return null;
 }
 
 function guardMultiplayerLeave(action) {
@@ -18108,6 +18291,7 @@ function finishMultiplayerLeave(leave = false) {
 window.KingPongMatchNavigation = {back() {
   if (multiplayerDisconnect || royalPortraitVisible()) return true;
   if (multiplayerLeaveRequest) { finishMultiplayerLeave(false); return true; }
+  if (multiplayerRestartVisible()) { declineMultiplayerRestart(); return true; }
   if (!onlineSession || !lanConnected) return false;
   if (!guardMultiplayerLeave(() => leaveMultiplayerSession())) leaveMultiplayerSession();
   return true;
@@ -18153,7 +18337,7 @@ function installRoyalPortraitModal() {
   // Block bubbling to the legacy fullscreen paddle/touch handlers even on the
   // two permitted buttons. Their own click handlers still run at the target.
   for (const type of ['pointerdown', 'pointermove', 'pointerup', 'touchstart', 'touchmove', 'touchend'])
-    for (const id of ['rotateDevice', 'multiplayerLeave', 'multiplayerDisconnected'])
+    for (const id of ['rotateDevice', 'multiplayerLeave', 'multiplayerDisconnected', 'multiplayerRestartPrompt'])
       byId(id).addEventListener(type, event => event.stopPropagation());
   window.addEventListener('keyup', event => {
     if (royalInputModal()) { event.preventDefault(); event.stopImmediatePropagation(); }
@@ -18524,6 +18708,10 @@ function initRoyalUi() {
   const disconnectedActions = document.createElement('div'); disconnectedActions.className = 'match-actions';
   disconnectedActions.append(royalButton('multiplayerReturn', 'Return to Menu', acknowledgeMultiplayerDisconnect, 'match-primary'));
   disconnected.append(disconnectedActions);
+  // Create the restart prompt before binding modal guards. Their capture
+  // listeners must run before exit navigation can open another dialog.
+  initOnlineMatchFlowUi();
+  initMultiplayerRematchUi();
   installRoyalPortraitModal();
   installAndroidRoomInputVisibility();
   // Capture exit buttons before legacy handlers change mode or close transports.
@@ -18546,8 +18734,6 @@ function initRoyalUi() {
     byId(id).addEventListener('toggle', () => syncRoyalFocus());
   }
   prepareAccessibleMenuControls();
-  initOnlineMatchFlowUi();
-  initMultiplayerRematchUi();
   document.body.classList.add('royal-ui-ready');
   updateAudioControls();
   // One listener per page. Rotation only changes presentation, never match or connection state.
@@ -18765,9 +18951,10 @@ function syncRoyalUi(force = false) {
   royalUiSignature = signature;
   byId('matchSetup').hidden = !setup || menu || Boolean(galleryKind);
   byId('matchMenu').hidden = !menu || Boolean(galleryKind);
-  byId('matchBar').hidden = title || menu || creditsActive || bossIntroActive;
-  byId('campaignBack').hidden = (mode !== 1 && mode !== 4) || title || menu || bossIntroActive || creditsActive;
   const onlineSetup = online && onlineTransportSelected;
+  // Online setup supplies its own title and status above the room controls.
+  byId('matchBar').hidden = title || menu || creditsActive || bossIntroActive || (setup && onlineSetup);
+  byId('campaignBack').hidden = (mode !== 1 && mode !== 4) || title || menu || bossIntroActive || creditsActive;
   byId('matchSetup').classList.toggle('online-setup', onlineSetup);
   const back = byId('setupMenuButton');
   const setupCard = byId('matchSetupTitle').parentElement;
@@ -18878,7 +19065,9 @@ function syncRoyalUi(force = false) {
     online && !waitingForServe;
   byId('menuPaddle').parentElement.hidden = ['menuPaddle', 'menuPaddle2', 'menuArena'].every(id => byId(id).hidden);
   restartButton.hidden = title;
-  restartButton.disabled = online && (!lanConnected || lanRole === 'guest' || gameOver);
+  restartButton.disabled = online && (!lanConnected || gameOver ||
+    (onlineSession ? !onlineRematchReady || onlineMatchFlowBlocksPlay() ||
+      onlineSession.rematch?.phase !== 'playing' || Boolean(onlineSession.rematch?.restart) : lanRole === 'guest'));
   syncMatchRulesUi();
   if (typeof syncOnlineTransportUi === 'function') syncOnlineTransportUi();
   updateRoyalControlHint();
@@ -19034,7 +19223,7 @@ function royalActiveDialog() {
 function royalFocusables(panel) {
   return [...panel.querySelectorAll(
       'button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),summary')]
-    .concat(!['rotateDevice', 'multiplayerLeave', 'multiplayerDisconnected'].includes(panel.id) && byId('browserFullscreen') ? [byId('browserFullscreen')] : [])
+    .concat(!['rotateDevice', 'multiplayerLeave', 'multiplayerDisconnected', 'multiplayerRestartPrompt'].includes(panel.id) && byId('browserFullscreen') ? [byId('browserFullscreen')] : [])
     .filter(element => {
       if (!element.getClientRects().length || element.closest('[hidden],[inert]') ||
           getComputedStyle(element).visibility === 'hidden') return false;
@@ -19085,6 +19274,7 @@ function handleRoyalUiKey(event) {
     const controls = royalFocusables(panel);
     const index = controls.indexOf(document.activeElement);
     if (event.key === 'Escape' && panel.id === 'multiplayerLeave') finishMultiplayerLeave(false);
+    else if (event.key === 'Escape' && panel.id === 'multiplayerRestartPrompt') declineMultiplayerRestart();
     else if (['Tab', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) {
       const previous = event.shiftKey || ['ArrowLeft', 'ArrowUp'].includes(event.key);
       controls[(index + (previous ? -1 : 1) + controls.length) % controls.length]?.focus();
@@ -19156,6 +19346,7 @@ function pollRoyalUiGamepad(now) {
     if (panel.id === 'multiplayerResult') leaveMultiplayerSession();
     else if (panel.id === 'rotateDevice' || panel.id === 'multiplayerDisconnected') return;
     else if (panel.id === 'multiplayerLeave') finishMultiplayerLeave(false);
+    else if (panel.id === 'multiplayerRestartPrompt') declineMultiplayerRestart();
     else if (panel.id === 'matchSetup' && onlineTransportSelected) showTitleScreen();
     else toggleRoyalMenu();
   }

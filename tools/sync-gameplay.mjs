@@ -2,7 +2,7 @@ import {integrateBossAudio} from '../game/boss-audio-integration.mjs';
 import {integrateWallBalls} from '../game/boss-integration.mjs';
 import {integrateSharedSections} from './shared-sections.mjs';
 import {integrateBrowserFullscreen} from '../game/fullscreen-integration.mjs';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { integrateMultiplayerPresentation } from '../game/presentation-integration.mjs';
 import { integrateRoyalUi } from '../game/ui-integration.mjs';
 import { integrateRoyalPolish } from '../game/polish-integration.mjs';
@@ -90,4 +90,15 @@ for (const file of files) {
   } else if (updated !== html) {
     writeFileSync(path, updated);
   }
+}
+
+// The tracked thin-AppImage staging page is a copy, not another platform
+// template. Always derive it from the fully synchronized Linux asset.
+const appImagePage = 'Linux/build-appimage/KingPong.AppDir/usr/share/king-pong/index.html';
+const linuxHtml = readFileSync(new URL('Linux/assets/index.html', root), 'utf8');
+const appImagePath = new URL(appImagePage, root);
+if (!existsSync(appImagePath) || readFileSync(appImagePath, 'utf8') !== linuxHtml) {
+  if (process.argv.includes('--check')) throw new Error(`${appImagePage}: run node tools/sync-gameplay.mjs`);
+  mkdirSync(new URL('.', appImagePath), {recursive: true});
+  writeFileSync(appImagePath, linuxHtml);
 }

@@ -40,8 +40,10 @@ async function page(platform = 'Browser', options = {}) {
     ...options
   });
   const p = await context.newPage();
+  const startupErrors = [];
   p.on('pageerror', e => {
     const detail = e.stack || e.message;
+    startupErrors.push(detail);
     errors.push(platform + ': ' + detail);
     console.error('[PAGEERROR][' + platform + '] ' + detail);
   });
@@ -60,6 +62,18 @@ async function page(platform = 'Browser', options = {}) {
     });
   });
   await p.goto(origin + '/' + builds[platform]);
+  assert.deepEqual(startupErrors, [], platform + ': startup completes without runtime exceptions');
+  assert.equal(await p.evaluate(() => document.body.classList.contains('royal-ui-ready')), true,
+    platform + ': complete Royal UI initialization before interacting with controls');
+  for (const id of ['onlineFlowTitle', 'multiplayerRestartPrompt', 'onlineRequireApproval', 'classicLanDialog']) {
+    assert.equal(await p.locator('#' + id).count(), 1, platform + ': initialize ' + id + ' exactly once');
+  }
+  for (const id of ['onlineFlowBack', 'multiplayerRestartAccept', 'multiplayerRestartDecline']) {
+    const colors = await p.locator('#' + id).evaluate(el =>
+      getComputedStyle(el).backgroundColor.match(/[\d.]+/g).map(Number));
+    assert.ok(colors.slice(0, 3).every(value => value < 80) && (colors[3] ?? 1) === 1,
+      platform + ': ' + id + ' retains an opaque dark button background');
+  }
   return p;
 }
 async function snap(p, name) {
@@ -153,6 +167,33 @@ async function onlineStyle(p) {
   });
 }
 try {
+  const androidKeyboard = await page('Android', {viewport: {width: 844, height: 390}, hasTouch: true});
+  await androidKeyboard.addInitScript(() => { window.KingPongOrientation = {requestLandscape() {}}; });
+  await androidKeyboard.reload();
+  await androidKeyboard.locator('.primary-online').click();
+  await androidKeyboard.locator('#onlineJoinButton').click();
+  const focusedRoom = await androidKeyboard.evaluate(() => {
+    // Keep the game's RAF frozen, but exercise the installed focus/viewport handlers.
+    window.requestAnimationFrame = callback => setTimeout(callback, 0);
+    const reveal = keepAndroidRoomInputVisible;
+    window.roomInputReveals = [];
+    keepAndroidRoomInputVisible = before => { roomInputReveals.push(Boolean(before)); reveal(before); };
+    const input = byId('onlineRoomInput'), card = input.closest('.match-card');
+    input.blur(); card.scrollTop = 0; input.focus({preventScroll: true});
+    return {revealed: roomInputReveals.includes(true), scrolled: card.scrollTop > 0};
+  });
+  assert.deepEqual(focusedRoom, {revealed: true, scrolled: true}, 'Android focus reveals room entry before the IME opens');
+  await androidKeyboard.setViewportSize({width: 844, height: 240});
+  await androidKeyboard.waitForFunction(() => roomInputReveals.includes(false), null, {polling: 20});
+  assert.equal(await androidKeyboard.locator('#onlineRoomInput').evaluate(el => {
+    const field = el.getBoundingClientRect();
+    return field.top >= 0 && field.bottom <= visualViewport.offsetTop + visualViewport.height;
+  }), true, 'Android room entry stays in the resized visible viewport');
+  await androidKeyboard.setViewportSize({width: 844, height: 390});
+  await androidKeyboard.locator('#onlineRoomInput').fill('ABCDEF');
+  assert.equal(await androidKeyboard.locator('#onlineRoomInput').inputValue(), 'ABCDEF');
+  await androidKeyboard.context().close();
+  pass('Android room focus and keyboard viewport resize handlers survive startup');
   for (const platform of Object.keys(builds)) {
     const p = await page(platform);
     assert.equal(await p.locator('#lanPlayerCount').count(), 0, 'obsolete LAN player-count choice is absent');
@@ -168,6 +209,8 @@ try {
     }
     assert.equal(await p.evaluate(() => document.body.classList.contains('title-active')), true);
     await p.locator('.primary-online').click();
+    assert.equal(await p.locator('#matchBar').isVisible(), false,
+      platform + ': online setup does not expose the arena title or save/status text');
     assert.equal(await p.locator('#setupMenuButton').isVisible(), true, 'online retains its top Back button');
     await p.locator('#setupMenuButton').click();
     assert.equal(await p.evaluate(() => document.body.classList.contains('title-active')), true);
@@ -181,6 +224,7 @@ try {
     await p.locator('#setupBackButton').click();
     assert.equal(await p.evaluate(() => document.body.classList.contains('title-active')), true);
     await p.locator('#titleCampaignButton').click();
+    assert.equal(await p.locator('#matchBar').isVisible(), true, platform + ': arena toolbar returns for campaign');
     await p.locator('#menuToggle').click();
     assert.equal(await p.locator('#titleJumpButton').innerText(), 'Back', 'campaign menu has Back');
     await p.locator('#titleJumpButton').click();
