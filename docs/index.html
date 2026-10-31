@@ -3,7 +3,8 @@
 <head>
  <meta charset="UTF-8" />
  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
- <title>King Pong</title>
+ <title>King Pong v2.0.0 — Online Multiplayer &amp; Arcade Campaign</title>
+ <meta name="description" content="Play King Pong v2.0.0 in your browser or download it for Android, Windows, and Linux. Compete in cross-platform online multiplayer, collect Royal Powerups, and tackle an 18-level arcade campaign." />
  <style>
  body {
  margin: 0;
@@ -61,6 +62,17 @@
  padding: 18px;
  border-radius: 10px;
  border: 1px solid #333;
+ line-height: 1.5;
+ text-align: left;
+ }
+ .feature strong {
+ display: block;
+ color: #e7cd8c;
+ margin-bottom: 7px;
+ }
+ .feature span {
+ display: block;
+ color: #ddd;
  }
  .game-demo-shell {
  max-width: 900px;
@@ -70,7 +82,7 @@
  display: block;
  position: relative;
  width: 100%;
- aspect-ratio: 4 / 3;
+ aspect-ratio: 16 / 9;
  overflow: hidden;
  background: #000;
  border: 2px solid #444;
@@ -154,7 +166,8 @@
  <header>
  <h1>King Pong</h1>
  <p class="subtitle">
- A Pong-inspired Android, Linux, and Windows arcade campaign game made by King Alex Gilbert.
+ King Pong v2.0.0 brings worldwide cross-platform online multiplayer, Royal Powerups,
+ smarter CPU opponents, and a redesigned arcade experience to browser, Android, Windows, and Linux.
  </p>
  <div class="buttons">
  <a class="button" href="#play">Play in Browser</a>
@@ -165,31 +178,38 @@
  </div>
  </header>
  <section>
- <h2>About the Game</h2>
+ <h2>About King Pong</h2>
  <p>
- King Pong features campaign progression, progressive paddle shapes, saves, controller support,
- touch controls, local two-player mode, LAN play, battery and clock indicators, and a secret ending.
+ Battle other players through public online matchmaking or invite friends to private rooms with
+ room codes and optional host approval. Rematch your opponent, choose your arena and paddle,
+ and decide whether to enable Royal Powerups. Browser, Android, Windows, and Linux players
+ share the same matchmaking pool.
  </p>
  <p>
- The project was developed with AI-assisted coding and packaging help, then manually
- tested and polished to give it that human touch.
+ Prefer playing solo? Take on an 18-level campaign with increasingly capable CPU opponents,
+ revisit unlocked levels through Level Select, or create a Custom Game. Local two-player and
+ LAN modes are also available, alongside a secret boss and ending.
+ </p>
+ <p>
+ Developed with AI-assisted coding and packaging help, then manually tested, debugged,
+ and polished by King Alex Gilbert.
  </p>
  </section>
  <section id="play">
  <h2>Play King Pong</h2>
- <p>Play King Pong directly in your browser without downloading or installing it.</p>
+ <p>Launch King Pong in your browser with no installation needed. Play the campaign, create a private room, or find an online opponent across supported platforms.</p>
  <div class="game-demo-shell">
  <a class="game-demo-container" href="demo/?kingpong_fullscreen=1" target="_blank" rel="noopener noreferrer"
  aria-label="Play King Pong — opens in a new tab">
- <img class="game-demo-image" src="images/gameplay.png" width="2960" height="1440"
- alt="King Pong gameplay with two paddles, a ball, and a center obstacle on the arcade court"
+ <img class="game-demo-image" src="images/gameplay.png" width="2048" height="1152"
+ alt="King Pong gameplay with two paddles, a ball, and the Royal Split powerup on the arcade court"
  loading="lazy" decoding="async" />
  <span class="game-demo-label">Play King Pong<small>Opens in a new tab</small></span>
  </a>
  </div>
  <p class="demo-note">
- Open the game in its own tab to play with keyboard, controller, or touch controls.
- Browser progress is saved on this device.
+ Open the full game in its own tab for keyboard, controller, or touch controls.
+ For mobile, landscape mode works best. Browser progress is stored separately on this device.
  </p>
  <p>
  <a class="button" href="demo/?kingpong_fullscreen=1" target="_blank" rel="noopener noreferrer">
@@ -210,36 +230,33 @@
  </p>
  </section>
  <section>
- <h2>Features</h2>
+ <h2>What's New in v2.0.0</h2>
+ <p>King Pong's biggest update adds new ways to compete and a cleaner arcade interface.</p>
  <div class="features">
- <div class="feature">Campaign Mode</div>
- <div class="feature">Browser Demo</div>
- <div class="feature">Android APK</div>
- <div class="feature">Linux Packages</div>
- <div class="feature">Windows Installer</div>
- <div class="feature">Portable Windows Version</div>
- <div class="feature">Controller Support</div>
- <div class="feature">Touch Controls</div>
- <div class="feature">Local Two Player</div>
- <div class="feature">LAN Play</div>
- <div class="feature">Progressive Paddle Shapes</div>
- <div class="feature">Secret Ending</div>
+ <div class="feature"><strong>Cross-Platform Online Multiplayer</strong><span>Find opponents through public matchmaking or connect in private rooms across browser, Android, Windows, and Linux.</span></div>
+ <div class="feature"><strong>Private Rooms &amp; Rematches</strong><span>Play with friends using room codes, optional host approval, and rematches without setting up a new match.</span></div>
+ <div class="feature"><strong>Three Royal Powerups</strong><span>Split the ball with Royal Split, speed it up with Crown Rush, or protect your goal using Royal Guard.</span></div>
+ <div class="feature"><strong>Smarter CPU Opponents</strong><span>Improved tracking, positioning, and powerup decisions while preserving the campaign's difficulty progression.</span></div>
+ <div class="feature"><strong>Redesigned Menus</strong><span>A cleaner interface makes Campaign, Play Online, controls, and game settings easier to find and use.</span></div>
+ <div class="feature"><strong>Level Select</strong><span>Replay completed campaign levels at their intended difficulty without restarting the campaign.</span></div>
+ <div class="feature"><strong>More Ways to Play</strong><span>Try local two-player, Custom Games, or LAN play with QR pairing and automatic room discovery on native platforms.</span></div>
+ <div class="feature"><strong>Performance &amp; Stability</strong><span>Rendering improvements, smoother visual effects, and more resilient online connection handling.</span></div>
  </div>
  </section>
  <section class="screenshots">
  <h2>Screenshots</h2>
- <h3>Title Screen</h3>
- <img src="images/title-screen.png" alt="King Pong title screen" />
- <h3>Gameplay</h3>
- <img src="images/gameplay.png" alt="King Pong gameplay" />
- <h3>Level Cleared</h3>
- <img src="images/level-cleared.png" alt="King Pong level cleared" />
- <h3>Level Failed</h3>
- <img src="images/level-failed.png" alt="King Pong level failed" />
+ <h3>Redesigned Main Menu</h3>
+ <img src="images/title-screen.png" alt="King Pong v2.0.0 main menu" />
+ <h3>Online Multiplayer</h3>
+ <img src="images/online-multiplayer.png" alt="King Pong online matchmaking and private room setup" />
+ <h3>Royal Powerups in Gameplay</h3>
+ <img src="images/gameplay.png" alt="King Pong gameplay with the Royal Split powerup" />
+ <h3>Advanced Campaign Gameplay</h3>
+ <img src="images/advanced-campaign.png" alt="King Pong advanced campaign with multiple balls, obstacles, and a Royal Powerup" />
  </section>
  <section>
  <h2>Downloads</h2>
- <p>Download King Pong for Android, Linux, or Windows from F-Droid, itch.io, or GitHub Releases.</p>
+ <p>Download King Pong for Android, Linux, or Windows from F-Droid, itch.io, or GitHub Releases. For full online multiplayer in a browser, launch the GitHub Pages game above.</p>
  <a class="button" href="https://f-droid.org/packages/com.kingalex.kingpong/" target="_blank" rel="noopener noreferrer">Get it on F-Droid</a>
  <a class="button" href="https://king-alex-gilbert.itch.io/king-pong" target="_blank" rel="noopener noreferrer">Download on itch.io</a>
  <a class="button" href="https://github.com/KingAlexGilbert/king-pong/releases" target="_blank" rel="noopener noreferrer">GitHub Releases</a>

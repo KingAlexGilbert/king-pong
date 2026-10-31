@@ -23,11 +23,11 @@ test('preview and dedicated browser link share a repository-relative standalone 
   assert.match(homepage, /\.game-demo-container:focus-visible\s*\{\s*outline:/);
 });
 
-test('preview reuses the existing gameplay screenshot without changing its proportions', () => {
+test('preview reuses the updated widescreen gameplay screenshot without distortion', () => {
   assert.match(homepage, /class="game-demo-image" src="images\/gameplay\.png"/);
   const image = readFileSync(new URL('../docs/images/gameplay.png', import.meta.url));
   assert.equal(image.subarray(1, 4).toString(), 'PNG');
   assert.match(homepage, /object-fit:\s*contain/);
-  assert.match(homepage, /aspect-ratio:\s*4\s*\/\s*3/);
+  assert.match(homepage, /aspect-ratio:\s*16\s*\/\s*9/);
   assert.match(homepage, /alt="King Pong gameplay[^\"]+"/);
 });
