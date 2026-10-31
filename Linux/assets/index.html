@@ -18518,6 +18518,19 @@ function syncRoyalPortraitModal() {
   }
 }
 
+// Only nonessential presentation work may fail open. Required menu, restart,
+// and multiplayer dialogs still fail loudly so release smoke tests catch them.
+function runOptionalRoyalUiStartup(name, initialize) {
+  try {
+    initialize();
+    return true;
+  } catch (error) {
+    console.error(`[King Pong startup] Optional ${name} failed; continuing without it.`, error);
+    (window.kingPongStartupWarnings ||= []).push({name, message: String(error)});
+    return false;
+  }
+}
+
 function installRoyalPortraitModal() {
   for (const type of ['pointerdown', 'pointermove', 'pointerup', 'pointercancel', 'click', 'dblclick',
       'touchstart', 'touchmove', 'touchend', 'wheel', 'contextmenu']) {
@@ -18531,9 +18544,12 @@ function installRoyalPortraitModal() {
   }
   // Block bubbling to the legacy fullscreen paddle/touch handlers even on the
   // two permitted buttons. Their own click handlers still run at the target.
+  // The consent dialog is required; optional platform dialogs may be absent.
+  if (!byId('multiplayerRestartPrompt'))
+    throw new Error('[King Pong startup] Required multiplayer restart prompt is missing');
   for (const type of ['pointerdown', 'pointermove', 'pointerup', 'touchstart', 'touchmove', 'touchend'])
     for (const id of ['rotateDevice', 'multiplayerLeave', 'multiplayerDisconnected', 'multiplayerRestartPrompt'])
-      byId(id).addEventListener(type, event => event.stopPropagation());
+      byId(id)?.addEventListener(type, event => event.stopPropagation());
   window.addEventListener('keyup', event => {
     if (royalInputModal()) { event.preventDefault(); event.stopImmediatePropagation(); }
   }, true);
@@ -18707,7 +18723,17 @@ function installAndroidRoomInputVisibility() {
 }
 
 function initRoyalUi() {
-  if (byId('matchSetup')) return;
+  if (byId('matchSetup')) {
+    if (!document.body.classList.contains('royal-ui-ready'))
+      throw new Error('[King Pong startup] Royal UI was only partially initialized');
+    return;
+  }
+  // Fail before moving legacy nodes into dialogs: a broken critical shell must
+  // not be disguised as a successfully initialized game.
+  const required = ['.title-subtitle', '.menu-stack', '.royal-selection-row', '.music-volume-control'];
+  const missing = required.filter(selector => !document.querySelector(selector));
+  if (missing.length)
+    throw new Error('[King Pong startup] Missing required UI elements: ' + missing.join(', '));
   const subtitle = document.querySelector('.title-subtitle');
   // Keep translated sentences intact. A phrase never leaves its last word on a line alone.
   const phrases = subtitle.textContent.match(/[^.!。！]+[.!。！]?/g) || [subtitle.textContent];
@@ -18930,14 +18956,23 @@ function initRoyalUi() {
   }
   prepareAccessibleMenuControls();
   document.body.classList.add('royal-ui-ready');
-  updateAudioControls();
-  // One listener per page. Rotation only changes presentation, never match or connection state.
-  window.addEventListener('resize', syncRoyalOrientation);
-  window.screen.orientation?.addEventListener?.('change', syncRoyalOrientation);
-  document.addEventListener('fullscreenchange', syncRoyalOrientation);
-  document.addEventListener('kingpong-orientation', syncRoyalOrientation);
-  handleViewportChange();
-  syncRoyalUi(true);
+  // These are nonessential enhancements. Keep mandatory UI and gameplay errors
+  // visible; never catch or silently suppress a failed syncRoyalUi().
+  runOptionalRoyalUiStartup('audio labels', updateAudioControls);
+  runOptionalRoyalUiStartup('orientation listeners', () => {
+    window.addEventListener('resize', syncRoyalOrientation);
+    window.screen.orientation?.addEventListener?.('change', syncRoyalOrientation);
+    document.addEventListener('fullscreenchange', syncRoyalOrientation);
+    document.addEventListener('kingpong-orientation', syncRoyalOrientation);
+  });
+  runOptionalRoyalUiStartup('viewport sizing', handleViewportChange);
+  try {
+    syncRoyalUi(true);
+  } catch (error) {
+    document.body.classList.remove('royal-ui-ready');
+    console.error('[King Pong startup] Required Royal UI synchronization failed.', error);
+    throw error;
+  }
 }
 
 function royalHelpSection(id, label) {
