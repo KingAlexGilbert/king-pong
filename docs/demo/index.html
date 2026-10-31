@@ -2982,6 +2982,21 @@ body:has(#browserFullscreen) .match-bar { box-sizing: border-box; }
   padding: 8px 12px;
 }
 #multiplayerResult .online-flow-actions button { text-transform: uppercase; }
+/* Explicit Android/WebView button palette: only the Level Select Back control. */
+.royal-gallery.level-select-gallery #royalGalleryClose {
+  -webkit-appearance: none;
+  appearance: none;
+  background: #050507;
+  color: #ffe1a0;
+  border: 1px solid #dcb759;
+  font-family: monospace;
+  font-weight: bold;
+  box-shadow: none;
+}
+.royal-gallery.level-select-gallery #royalGalleryClose:focus-visible {
+  outline: 2px solid #ffd469;
+  outline-offset: 2px;
+}
 
 /* Availability is a HUD row, not a dialog. Reserve its space above the arena. */
 .match-bar:has(> #multiplayerUnavailable:not([hidden])) {
@@ -12551,7 +12566,10 @@ function closeRoyalGallery() {
   if (galleryResumePlay && !isLanActive()) paused = false;
   galleryResumePlay = false;
   galleryKind = null;
-  if (byId('royalGallery')) byId('royalGallery').hidden = true;
+  if (byId('royalGallery')) {
+    byId('royalGallery').hidden = true;
+    byId('royalGallery').classList.remove('level-select-gallery');
+  }
   if (byId('royalGalleryList')) byId('royalGalleryList').replaceChildren();
   if (typeof syncRoyalUi === 'function') syncRoyalUi();
   if (selectionReturnFocus && selectionReturnFocus.isConnected) selectionReturnFocus.focus();
@@ -13177,11 +13195,11 @@ function suspendPointServeCountdown() {
   if (pointServeCountdown) pointServeCountdown.at = null;
 }
 
-function beginPointServeCountdown() {
+function beginPointServeCountdown(durationMs = MULTIPLAYER_SERVE_MS) {
   if (mode !== 2 || lanRole === 'guest' || pointServeCountdownActive() ||
       gameOver || levelCleared || campaignCleared) return;
-  pointServeCountdown = {remainingMs: MULTIPLAYER_SERVE_MS, at: performance.now(), networked: isLanActive(),
-    score: left.score + ':' + right.score, soundStep: 3};
+  pointServeCountdown = {remainingMs: durationMs, at: performance.now(), networked: isLanActive(),
+    score: left.score + ':' + right.score, soundStep: Math.ceil(durationMs / 1000) + 1};
   sendLanState(true);
 }
 
@@ -13198,7 +13216,8 @@ function applyPointServeSnapshot(state) {
     !gameOver && !levelCleared && !campaignCleared);
   // Keep local cue progress across snapshots/recovery. Scores identify a new
   // point even when the guest missed every snapshot of the intervening rally.
-  const soundStep = pointServeCountdown?.score === score ? pointServeCountdown.soundStep : 3;
+  const soundStep = pointServeCountdown?.score === score ? pointServeCountdown.soundStep :
+    Math.max(3, Math.ceil((state.pointServeMs || 0) / 1000) + 1);
   pointServeCountdown = state.pointServeMs > 0 && waitingForServe && !gameOver &&
     !levelCleared && !campaignCleared ?
     {remainingMs: state.pointServeMs, at: paused ? null : performance.now(), networked: true, score, soundStep} : null;
@@ -13325,6 +13344,7 @@ function openLevelSelect() {
     list.append(button);
   }
   byId('royalGallery').hidden = false;
+  byId('royalGallery').classList.add('level-select-gallery');
   syncRoyalUi(true);
   (list.querySelector('[aria-pressed="true"]:not(:disabled)') || list.querySelector('button:not(:disabled)')).focus();
 }

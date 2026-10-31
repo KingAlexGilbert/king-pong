@@ -40,6 +40,7 @@ function openLevelSelect() {
     list.append(button);
   }
   byId('royalGallery').hidden = false;
+  byId('royalGallery').classList.add('level-select-gallery');
   syncRoyalUi(true);
   (list.querySelector('[aria-pressed="true"]:not(:disabled)') || list.querySelector('button:not(:disabled)')).focus();
 }

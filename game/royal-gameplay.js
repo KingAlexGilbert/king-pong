@@ -1087,7 +1087,10 @@ function closeRoyalGallery() {
   if (galleryResumePlay && !isLanActive()) paused = false;
   galleryResumePlay = false;
   galleryKind = null;
-  if (byId('royalGallery')) byId('royalGallery').hidden = true;
+  if (byId('royalGallery')) {
+    byId('royalGallery').hidden = true;
+    byId('royalGallery').classList.remove('level-select-gallery');
+  }
   if (byId('royalGalleryList')) byId('royalGalleryList').replaceChildren();
   if (typeof syncRoyalUi === 'function') syncRoyalUi();
   if (selectionReturnFocus && selectionReturnFocus.isConnected) selectionReturnFocus.focus();

@@ -16,11 +16,11 @@ function suspendPointServeCountdown() {
   if (pointServeCountdown) pointServeCountdown.at = null;
 }
 
-function beginPointServeCountdown() {
+function beginPointServeCountdown(durationMs = MULTIPLAYER_SERVE_MS) {
   if (mode !== 2 || lanRole === 'guest' || pointServeCountdownActive() ||
       gameOver || levelCleared || campaignCleared) return;
-  pointServeCountdown = {remainingMs: MULTIPLAYER_SERVE_MS, at: performance.now(), networked: isLanActive(),
-    score: left.score + ':' + right.score, soundStep: 3};
+  pointServeCountdown = {remainingMs: durationMs, at: performance.now(), networked: isLanActive(),
+    score: left.score + ':' + right.score, soundStep: Math.ceil(durationMs / 1000) + 1};
   sendLanState(true);
 }
 
@@ -37,7 +37,8 @@ function applyPointServeSnapshot(state) {
     !gameOver && !levelCleared && !campaignCleared);
   // Keep local cue progress across snapshots/recovery. Scores identify a new
   // point even when the guest missed every snapshot of the intervening rally.
-  const soundStep = pointServeCountdown?.score === score ? pointServeCountdown.soundStep : 3;
+  const soundStep = pointServeCountdown?.score === score ? pointServeCountdown.soundStep :
+    Math.max(3, Math.ceil((state.pointServeMs || 0) / 1000) + 1);
   pointServeCountdown = state.pointServeMs > 0 && waitingForServe && !gameOver &&
     !levelCleared && !campaignCleared ?
     {remainingMs: state.pointServeMs, at: paused ? null : performance.now(), networked: true, score, soundStep} : null;

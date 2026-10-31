@@ -1733,6 +1733,21 @@ body:has(#browserFullscreen) .match-bar { box-sizing: border-box; }
   padding: 8px 12px;
 }
 #multiplayerResult .online-flow-actions button { text-transform: uppercase; }
+/* Explicit Android/WebView button palette: only the Level Select Back control. */
+.royal-gallery.level-select-gallery #royalGalleryClose {
+  -webkit-appearance: none;
+  appearance: none;
+  background: #050507;
+  color: #ffe1a0;
+  border: 1px solid #dcb759;
+  font-family: monospace;
+  font-weight: bold;
+  box-shadow: none;
+}
+.royal-gallery.level-select-gallery #royalGalleryClose:focus-visible {
+  outline: 2px solid #ffd469;
+  outline-offset: 2px;
+}
 
 /* Availability is a HUD row, not a dialog. Reserve its space above the arena. */
 .match-bar:has(> #multiplayerUnavailable:not([hidden])) {
