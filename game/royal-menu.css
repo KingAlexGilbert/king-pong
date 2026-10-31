@@ -1550,7 +1550,20 @@ body.royal-panel-open .match-footer #controlHint {
 #onlineFlowTitle { color: #ffd469; margin: 0 0 14px; font-size: clamp(18px, 4vw, 28px); }
 #onlineFlowNote { font-size: 11px; line-height: 1.7; color: #d5dfeb; }
 .online-flow-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
-.online-flow-actions button { min-height: 44px; padding: 10px; font-size: 12px; }
+/* Online overlays are outside .match-card, so give their controls the same
+   explicit dark styling. Android WebView otherwise falls back to white buttons. */
+.online-flow-actions button {
+  -webkit-appearance: none; appearance: none;
+  min-height: 44px; padding: 10px 14px; font-size: 12px;
+  color: #e8decb; background: #08060b;
+  border: 2px solid #67543b; border-radius: 0;
+  box-shadow: 4px 4px 0 #261c11; cursor: pointer;
+}
+.online-flow-actions button.match-primary {
+  color: #ffe1a0; border-color: #dcb759; background: #211b0e; font-weight: bold;
+}
+.online-flow-actions button:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+.online-flow-actions button:disabled { opacity: .6; cursor: default; }
 .online-match-flow[data-phase="go"] { pointer-events: none; background: none; }
 .online-match-flow[data-phase="go"] .online-flow-card { border: 0; background: transparent; box-shadow: none; }
 .online-match-flow[data-phase="countdown"] #onlineFlowTitle, .online-match-flow[data-phase="go"] #onlineFlowTitle { font-size: 56px; }

@@ -15,6 +15,9 @@ function peer(role) {
    function syncRoyalUi(){uiUpdates++}function resetVisualHistory(){}function clearHeldInput(){}
    function startLevel(){resets++;left.score=right.score=0;gameOver=false;waitingForServe=true;paused=false}
    function hideFirstStartControls(){}function setMenusVisible(){}function beginPointServeCountdown(){countdowns++}
+   function hasResumeCountdown(){return paused&&resumeCountdownEndAt>0}
+   function resumeCountdownRemainingMs(){return Math.max(0,resumeCountdownEndAt-performance.now())}
+   function onlineMatchFlowBlocksPlay(){return false}
    function sendLanState(){}const document={body:{classList:{contains:()=>false}}};
    ${code}
    endMultiplayerSession=()=>{leaves++;onlineSession=null;lanConnected=false};
@@ -84,6 +87,76 @@ test('recovery preserves consent, resends a lost start acknowledgement and suspe
  q.a.run('onlineGameBlocked=true;performance.now=()=>30000;tickMultiplayerRematch()');
  assert.equal(q.a.run('leaves'),0);assert.equal(q.a.run('multiplayerRematch().local'),true);
  q.a.run('onlineGameBlocked=false;performance.now=()=>43001;tickMultiplayerRematch()');assert.equal(q.a.run('leaves'),1);
+});
+
+test('live match restart requires both players to agree and starts directly on the host',()=>{
+ const p=pair(),{a,b}=p;
+ for(const peer of [a,b])peer.run('gameOver=false;left.score=5;right.score=4');
+ a.run('requestMultiplayerRestart()');p.deliver(a,b);
+ assert.equal(a.run('resets'),0);
+ assert.equal(b.run('resets'),0);
+ assert.equal(a.run('paused'),true, 'host freezes play while restart consent is pending');
+ assert.equal(b.run('multiplayerRematch().restart.remote'),true);
+ assert.equal(b.run('multiplayerRematch().restart.local'),false);
+ b.run('requestMultiplayerRestart()');p.flush();
+ assert.equal(a.run('resets'),1);
+ assert.equal(b.run('resets'),0);
+ assert.equal(a.run('countdowns'),1);
+ assert.equal(a.run('multiplayerRematch().round'),1);
+ assert.equal(b.run('multiplayerRematch().round'),1);
+ assert.equal(a.run('left.score===0&&right.score===0'),true);
+ b.run('gameOver=false;finishMultiplayerRematchSnapshot()');
+ assert.equal(b.run('multiplayerRematch().restart'),null);
+});
+
+test('guest may request restart, but host must consent before any reset',()=>{
+ const p=pair(),{a,b}=p;
+ for(const peer of [a,b])peer.run('gameOver=false');
+ b.run('requestMultiplayerRestart()');p.deliver(b,a);
+ assert.equal(a.run('resets'),0);
+ assert.equal(a.run('multiplayerRematch().restart.local'),false);
+ a.run('requestMultiplayerRestart()');p.flush();
+ assert.equal(a.run('resets'),1);
+ assert.equal(a.run('countdowns'),1);
+});
+
+test('restart decline cancels without changing score; stale requests cannot revive it',()=>{
+ const p=pair(),{a,b}=p;
+ for(const peer of [a,b])peer.run('gameOver=false;left.score=6;right.score=3');
+ a.run('requestMultiplayerRestart()');
+ const requests=p.deliver(a,b);
+ b.run('declineMultiplayerRestart()');p.flush();
+ assert.equal(a.run('multiplayerRematch().restart'),null);
+ assert.equal(b.run('multiplayerRematch().restart'),null);
+ assert.equal(a.run('paused'),true, 'decline begins a safe resume countdown');
+ assert.equal(a.run('hasResumeCountdown()'),true);
+ for(const message of requests) {
+   b.ctx.message=message;b.run('receiveMultiplayerRematch(message)');
+ }
+ assert.equal(b.run('multiplayerRematch().restart'),null);
+ for(const peer of [a,b]) {
+   assert.equal(peer.run('resets'),0);
+   assert.equal(peer.run('left.score===6&&right.score===3'),true);
+ }
+});
+
+test('duplicate or forged restart messages cannot initiate an unsolicited reset',()=>{
+ const p=pair(),{a,b}=p;
+ for(const peer of [a,b])peer.run('gameOver=false');
+ const make=id=>({v:1,type:'rematch',room:'ABCDEF',protocol:1,
+   gameplay:'royal',matchRules:'presets',round:0,kind:'restart-accept',
+   requestId:id,token:a.run('multiplayerRematch().token')});
+ for(const m of [make('a'.repeat(32)),{...make('b'.repeat(32)),token:'forged'},
+     {...make('c'.repeat(32)),round:3}]){
+   a.ctx.message=m;a.run('receiveMultiplayerRematch(message)');
+ }
+ assert.equal(a.run('resets'),0);
+ assert.equal(a.run('multiplayerRematch().restart'),null);
+ // Simultaneous host and guest requests must not create two rounds.
+ a.run('requestMultiplayerRestart()');b.run('requestMultiplayerRestart()');p.flush();
+ assert.equal(a.run('resets'),1);
+ assert.equal(a.run('multiplayerRematch().round'),1);
+ assert.equal(b.run('multiplayerRematch().round'),1);
 });
 
 function shutdownPeer(origin, role, failure) {

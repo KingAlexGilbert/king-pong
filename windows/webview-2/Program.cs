@@ -15,8 +15,12 @@ namespace KingPongWebView2
     internal static class Program
     {
         [STAThread]
-        private static void Main()
+        private static void Main(string[] args)
         {
+            // Diagnostic tools are opt-in. Normal installed and portable builds
+            // retain their existing locked-down WebView2 settings.
+            bool debugOnline = Array.Exists(args, arg =>
+                string.Equals(arg, "--debug-online", StringComparison.Ordinal));
             // Must happen before any WinForms/WebView2 window is created.
             // This prevents Windows from bitmap-scaling the app on 4K/high-DPI monitors,
             // which is what makes text and canvas graphics look blurry.
@@ -27,7 +31,7 @@ namespace KingPongWebView2
             // Presence marker for Setup/Uninstall, not a single-instance lock.
             // Multiple game windows (including local LAN testing) still work.
             using (var running = new Mutex(false, @"Local\KingPong.DesktopHD.Running"))
-            using (var form = new KingPongForm())
+            using (var form = new KingPongForm(debugOnline))
             {
                 Application.Run(form);
             }
@@ -79,6 +83,7 @@ namespace KingPongWebView2
     {
         private readonly WebView2 webView;
         private readonly Uri gameUri;
+        private readonly bool debugOnline;
         private Icon ownedIcon;
         private Rectangle windowedBounds;
         private FormBorderStyle windowedBorderStyle;
@@ -168,8 +173,9 @@ namespace KingPongWebView2
             catch (Exception) { lastBatteryScript = null; }
         }
 
-        public KingPongForm()
+        public KingPongForm(bool debugOnline = false)
         {
+            this.debugOnline = debugOnline;
             gameUri = new Uri(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "index.html"));
             Text = "King Pong Desktop HD";
             BackColor = Color.Black;
@@ -269,9 +275,11 @@ namespace KingPongWebView2
                 CoreWebView2 core = webView.CoreWebView2;
                 CoreWebView2Settings settings = core.Settings;
                 settings.AreDefaultContextMenusEnabled = false;
-                settings.AreDevToolsEnabled = false;
+                // Only a deliberate --debug-online launch enables F12/DevTools.
+                // Do not change navigation, permission, or host-object policies.
+                settings.AreDevToolsEnabled = debugOnline;
                 settings.IsStatusBarEnabled = false;
-                settings.AreBrowserAcceleratorKeysEnabled = false;
+                settings.AreBrowserAcceleratorKeysEnabled = debugOnline;
                 settings.IsZoomControlEnabled = false;
                 settings.IsPinchZoomEnabled = false;
                 settings.IsSwipeNavigationEnabled = false;

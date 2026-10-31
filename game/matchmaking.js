@@ -127,7 +127,10 @@ function sendMatchSearch() {
 
 function findOnlineMatch() {
   if (onlineSession || matchmakingRequested || matchmakingState === 'waiting') return;
-  if (!isLanSupported()) { setLanStatus('This browser cannot play online. Try an updated browser.'); return; }
+  // Online matchmaking supports encrypted WebSocket relay even without WebRTC.
+  // The local/manual LAN path still requires RTCPeerConnection.
+  const capabilityError = onlineCapabilityError();
+  if (capabilityError) { setLanStatus(capabilityError); return; }
   if (!KING_PONG_MATCHMAKING.arenas.includes(matchArenaId)) {
     setLanStatus('Choose a campaign arena to find a match.');
     return;

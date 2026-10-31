@@ -10,11 +10,14 @@ import tempfile
 import secrets
 import math
 import time
+import threading
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import urldefrag
+from urllib.parse import urldefrag, urlsplit
 
 SAFE_RENDERER = "--safe-renderer" in sys.argv
 PROBE_ONLY = "--probe" in sys.argv
+DEBUG_ONLINE = os.environ.get("KING_PONG_DEBUG_ONLINE") == "1"
 GTK_ARGV = [
     arg for arg in sys.argv
     if arg not in {"--safe-renderer", "--probe"}
@@ -28,6 +31,85 @@ if SAFE_RENDERER:
 GAME_PATH = Path(os.environ.get("KING_PONG_GAME_PATH", "/usr/share/king-pong/index.html"))
 ICON_PATH = Path(os.environ.get("KING_PONG_ICON_PATH", "/usr/share/pixmaps/king-pong.png"))
 SAVE_FILE_LIMIT = 64 * 1024
+# A stable port keeps localStorage available across launches. Fail closed if
+# another process already owns it rather than silently changing the origin.
+LOOPBACK_PORT = 38761
+
+
+class LocalGameServer:
+    """Read-only, authenticated-path game serving on IPv4 loopback only."""
+
+    def __init__(self, game_path, port=LOOPBACK_PORT):
+        html = Path(game_path).read_bytes()
+        token = secrets.token_urlsafe(32)
+        resource_path = f"/play/{token}/index.html"
+
+        class Handler(BaseHTTPRequestHandler):
+            server_version = "KingPong"
+            sys_version = ""
+
+            def log_message(self, fmt, *args):
+                if os.environ.get("KING_PONG_DEBUG_ONLINE") == "1":
+                    print("King Pong loopback: " + (fmt % args), file=sys.stderr)
+
+            def handle_game_request(self, include_body):
+                expected_host = f"127.0.0.1:{self.server.server_port}"
+                hosts = self.headers.get_all("Host", [])
+                # Reject DNS rebinding and hostile requests from another origin.
+                if (hosts != [expected_host]
+                        or self.headers.get("Origin") not in (None, f"http://{expected_host}")
+                        or urlsplit(self.path).path != resource_path
+                        or urlsplit(self.path).query):
+                    self.send_error(404)
+                    return
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Length", str(len(html)))
+                self.send_header("Cache-Control", "private, no-store")
+                self.send_header("X-Content-Type-Options", "nosniff")
+                self.send_header("X-Frame-Options", "DENY")
+                self.send_header("Referrer-Policy", "no-referrer")
+                self.send_header("Content-Security-Policy", "frame-ancestors 'none'; base-uri 'none'; object-src 'none'")
+                self.send_header("Cross-Origin-Resource-Policy", "same-origin")
+                self.end_headers()
+                if include_body:
+                    try:
+                        self.wfile.write(html)
+                    except (BrokenPipeError, ConnectionResetError):
+                        pass
+
+            def do_GET(self):
+                self.handle_game_request(True)
+
+            def do_HEAD(self):
+                self.handle_game_request(False)
+
+            def do_POST(self):
+                self.send_error(405)
+
+        # There is no listener on 0.0.0.0, IPv6, or the local network.
+        # Do not offer static directory browsing, uploads, APIs, or file reads.
+        self.httpd = ThreadingHTTPServer(("127.0.0.1", port), Handler)
+        self.httpd.daemon_threads = True
+        self.url = f"http://127.0.0.1:{self.httpd.server_port}{resource_path}"
+        self.thread = None
+        self.stopped = False
+
+    def start(self):
+        self.thread = threading.Thread(target=self.httpd.serve_forever,
+                                       name="KingPongLoopback", daemon=True)
+        self.thread.start()
+        return self.url
+
+    def stop(self):
+        if self.stopped:
+            return
+        self.stopped = True
+        if self.thread is not None:
+            self.httpd.shutdown()
+            self.thread.join(timeout=2)
+        self.httpd.server_close()
+
 
 
 def battery_state_from_properties(properties):
@@ -312,7 +394,16 @@ def main():
             print(f"Icon-file warning: {exc}", file=sys.stderr)
 
     from gi.repository import GLib, Gio
-    game_base_uri = GAME_PATH.resolve().as_uri()
+    # A local, non-file origin uses WebSocket directly, avoiding the Linux-only
+    # signaling iframe and its blocked Cloudflare frame-ancestors policy.
+    try:
+        game_server = LocalGameServer(GAME_PATH)
+    except OSError as exc:
+        raise RuntimeError(
+            f"Cannot start private King Pong loopback server on 127.0.0.1:{LOOPBACK_PORT}; "
+            "another instance may already be running"
+        ) from exc
+    game_base_uri = game_server.start()
     from king_pong_lan import LanBridge
     def send_lan_event(event):
         def deliver():
@@ -336,7 +427,8 @@ def main():
     # Mark this packaged runtime so the shared game HTML can use the Linux WebKitGTK audio keep-alive only here.
     try:
         linux_audio_script = WebKit2.UserScript.new(
-            "window.KingPongLinuxWebKitAudioKeepAlive = true;",
+            ("window.KingPongLinuxWebKitAudioKeepAlive = true;"
+             + ("window.KingPongDebugOnline = true;" if DEBUG_ONLINE else "")),
             WebKit2.UserContentInjectedFrames.TOP_FRAME,
             WebKit2.UserScriptInjectionTime.START,
             [],
@@ -521,9 +613,6 @@ def main():
             decision.ignore()
             return True
         if policy_type == WebKit2.PolicyDecisionType.NAVIGATION_ACTION:
-            if (decision.get_request().get_uri() == "https://king-pong-signaling.kingalexgilbert.workers.dev/v1/native-bridge"
-                    and decision.get_navigation_action().get_frame_name() == "king-pong-signaling"):
-                return False
             if urldefrag(decision.get_request().get_uri() or "")[0] != game_base_uri:
                 decision.ignore()
                 return True
@@ -533,6 +622,9 @@ def main():
 
     webview.connect("decide-policy", on_decide_policy)
     settings = webview.get_settings()
+    if DEBUG_ONLINE:
+        settings.set_property("enable-developer-extras", True)
+        print("King Pong online diagnostics enabled: press F12 for WebKit Inspector", file=sys.stderr)
 
     for property_name, value in (
         ("enable-javascript", True),
@@ -568,6 +660,7 @@ def main():
         battery_closed = True
         lan_bridge.close()
         battery_monitor.stop()
+        game_server.stop()
         try:
             Gtk.main_quit()
         finally:
@@ -579,6 +672,9 @@ def main():
 
     def on_key_press(_widget, event):
         ctrl = bool(event.state & Gdk.ModifierType.CONTROL_MASK)
+        if DEBUG_ONLINE and event.keyval == Gdk.KEY_F12:
+            webview.get_inspector().show()
+            return True
         if ctrl and event.keyval in (Gdk.KEY_q, Gdk.KEY_Q):
             close_game()
             window.destroy()
@@ -633,7 +729,7 @@ def main():
     window.show_all()
     window.fullscreen()
 
-    game_uri = GAME_PATH.resolve().as_uri() + "#kingpong_fullscreen=1"
+    game_uri = game_base_uri + "#kingpong_fullscreen=1"
     print(f"Using WebKitGTK API {version}", file=sys.stderr)
     print(
         f"Renderer: {'safe fallback' if SAFE_RENDERER else 'accelerated'}; "
@@ -641,7 +737,7 @@ def main():
         f"policy: {acceleration_policy_name(WebKit2, settings)}",
         file=sys.stderr,
     )
-    print(f"Loading {game_uri}", file=sys.stderr)
+    print("Loading King Pong via private 127.0.0.1 origin", file=sys.stderr)
     webview.load_uri(game_uri)
     webview.grab_focus()
 
@@ -652,6 +748,7 @@ def main():
         battery_closed = True
         lan_bridge.close()
         battery_monitor.stop()
+        game_server.stop()
     return 0
 
 

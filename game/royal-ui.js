@@ -26,7 +26,9 @@ function royalPortraitVisible() { return Boolean(byId('rotateDevice') && !byId('
 function royalInputModal() {
   if (multiplayerDisconnect) return byId('multiplayerDisconnected');
   if (royalPortraitVisible()) return byId('rotateDevice');
-  return multiplayerLeaveRequest ? byId('multiplayerLeave') : null;
+  if (multiplayerLeaveRequest) return byId('multiplayerLeave');
+  if (multiplayerRestartVisible()) return byId('multiplayerRestartPrompt');
+  return null;
 }
 
 function guardMultiplayerLeave(action) {
@@ -77,6 +79,7 @@ function finishMultiplayerLeave(leave = false) {
 window.KingPongMatchNavigation = {back() {
   if (multiplayerDisconnect || royalPortraitVisible()) return true;
   if (multiplayerLeaveRequest) { finishMultiplayerLeave(false); return true; }
+  if (multiplayerRestartVisible()) { declineMultiplayerRestart(); return true; }
   if (!onlineSession || !lanConnected) return false;
   if (!guardMultiplayerLeave(() => leaveMultiplayerSession())) leaveMultiplayerSession();
   return true;
@@ -122,7 +125,7 @@ function installRoyalPortraitModal() {
   // Block bubbling to the legacy fullscreen paddle/touch handlers even on the
   // two permitted buttons. Their own click handlers still run at the target.
   for (const type of ['pointerdown', 'pointermove', 'pointerup', 'touchstart', 'touchmove', 'touchend'])
-    for (const id of ['rotateDevice', 'multiplayerLeave', 'multiplayerDisconnected'])
+    for (const id of ['rotateDevice', 'multiplayerLeave', 'multiplayerDisconnected', 'multiplayerRestartPrompt'])
       byId(id).addEventListener(type, event => event.stopPropagation());
   window.addEventListener('keyup', event => {
     if (royalInputModal()) { event.preventDefault(); event.stopImmediatePropagation(); }
@@ -847,7 +850,9 @@ function syncRoyalUi(force = false) {
     online && !waitingForServe;
   byId('menuPaddle').parentElement.hidden = ['menuPaddle', 'menuPaddle2', 'menuArena'].every(id => byId(id).hidden);
   restartButton.hidden = title;
-  restartButton.disabled = online && (!lanConnected || lanRole === 'guest' || gameOver);
+  restartButton.disabled = online && (!lanConnected || gameOver ||
+    (onlineSession ? !onlineRematchReady || onlineMatchFlowBlocksPlay() ||
+      onlineSession.rematch?.phase !== 'playing' || Boolean(onlineSession.rematch?.restart) : lanRole === 'guest'));
   syncMatchRulesUi();
   if (typeof syncOnlineTransportUi === 'function') syncOnlineTransportUi();
   updateRoyalControlHint();
@@ -1003,7 +1008,7 @@ function royalActiveDialog() {
 function royalFocusables(panel) {
   return [...panel.querySelectorAll(
       'button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),summary')]
-    .concat(!['rotateDevice', 'multiplayerLeave', 'multiplayerDisconnected'].includes(panel.id) && byId('browserFullscreen') ? [byId('browserFullscreen')] : [])
+    .concat(!['rotateDevice', 'multiplayerLeave', 'multiplayerDisconnected', 'multiplayerRestartPrompt'].includes(panel.id) && byId('browserFullscreen') ? [byId('browserFullscreen')] : [])
     .filter(element => {
       if (!element.getClientRects().length || element.closest('[hidden],[inert]') ||
           getComputedStyle(element).visibility === 'hidden') return false;
@@ -1054,6 +1059,7 @@ function handleRoyalUiKey(event) {
     const controls = royalFocusables(panel);
     const index = controls.indexOf(document.activeElement);
     if (event.key === 'Escape' && panel.id === 'multiplayerLeave') finishMultiplayerLeave(false);
+    else if (event.key === 'Escape' && panel.id === 'multiplayerRestartPrompt') declineMultiplayerRestart();
     else if (['Tab', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) {
       const previous = event.shiftKey || ['ArrowLeft', 'ArrowUp'].includes(event.key);
       controls[(index + (previous ? -1 : 1) + controls.length) % controls.length]?.focus();
@@ -1125,6 +1131,7 @@ function pollRoyalUiGamepad(now) {
     if (panel.id === 'multiplayerResult') leaveMultiplayerSession();
     else if (panel.id === 'rotateDevice' || panel.id === 'multiplayerDisconnected') return;
     else if (panel.id === 'multiplayerLeave') finishMultiplayerLeave(false);
+    else if (panel.id === 'multiplayerRestartPrompt') declineMultiplayerRestart();
     else if (panel.id === 'matchSetup' && onlineTransportSelected) showTitleScreen();
     else toggleRoyalMenu();
   }

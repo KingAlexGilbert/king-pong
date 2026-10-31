@@ -11,6 +11,13 @@ class PackagedSignalingSocket {
     const target = new URL(url);
     target.protocol = target.protocol === 'wss:' ? 'https:' : 'http:';
     const path = target.pathname;
+    const kind = path.startsWith('/v1/queue/') ? 'matchmaking' :
+      path.startsWith('/v1/party/') ? 'private room' :
+      path.startsWith('/v1/match/') ? 'matched room' : 'other';
+    const trace = (step, detail = '') => {
+      if (window.KingPongDebugOnline) console.info(`[King Pong ${kind} bridge] ${step}`, detail);
+    };
+    trace('creating iframe signaling bridge');
     target.pathname = '/v1/native-bridge';
     const frame = this.frame = document.createElement('iframe');
     frame.hidden = true;
@@ -25,6 +32,7 @@ class PackagedSignalingSocket {
     this.port.onmessage = event => {
       if (this.readyState === 3) return;
       const m = event.data;
+      trace('message from bridge', m?.type || 'unknown');
       if (m.type === 'open') { this.readyState = 1; this.onopen?.(); }
       else if (m.type === 'message') this.onmessage?.({data: m.data});
       else if (m.type === 'error') this.onerror?.();
@@ -35,11 +43,19 @@ class PackagedSignalingSocket {
       else if (m.type === 'close') { this.close(); this.onclose?.(); }
     };
     frame.onload = () => {
+      trace('iframe loaded');
       if (this.readyState === 3) return;
-      frame.contentWindow.postMessage({type: 'king-pong-signaling', path}, target.origin, [channel.port2]);
+      try {
+        frame.contentWindow.postMessage({type: 'king-pong-signaling', path}, target.origin, [channel.port2]);
+        trace('MessagePort transferred to iframe');
+      } catch (error) {
+        trace('MessagePort transfer failed', error?.message || String(error));
+        throw error;
+      }
     };
-    frame.onerror = () => this.onerror?.();
+    frame.onerror = () => { trace('iframe load failed'); this.onerror?.(); };
     document.body.append(frame);
+    trace('iframe appended');
   }
 
   send(data) {

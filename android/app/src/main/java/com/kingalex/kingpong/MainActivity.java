@@ -7,6 +7,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.ActivityInfo;
+import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.graphics.Color;
@@ -118,7 +119,10 @@ public final class MainActivity extends Activity {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             settings.setSafeBrowsingEnabled(true);
         }
-        WebView.setWebContentsDebuggingEnabled(false);
+        // Remote inspection is permitted only for a debuggable development APK.
+        // The published release APK explicitly disables this process-wide flag.
+        WebView.setWebContentsDebuggingEnabled(
+                (getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0);
 
         bossAudio = new BossAudioCache(getCacheDir());
         webView.addJavascriptInterface(new BossAudioBridge(), "KingPongBossAudio");
