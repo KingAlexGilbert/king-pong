@@ -9,7 +9,7 @@ function multiplayerRematch() {
         n => n.toString(16).padStart(8, '0')).join('') : null, lastSend: -Infinity,
       restart: null, ignoredRestarts: [], requestLock: false, requestId: null,
       remoteRequestId: null, rejectedRequests: [], declineNotice: null,
-      pendingDecline: null, acknowledgedDeclines: []};
+      pendingDecline: null, acknowledgedDeclines: [], declineConfirmation: null};
   }
   return onlineSession.rematch;
 }
@@ -42,7 +42,9 @@ function newMultiplayerRematchRequestId() {
 function requestMultiplayerRematch() {
   const state = multiplayerRematch();
   if (!multiplayerRematchVisible() || !onlineRematchReady || onlineGameBlocked ||
-      !state || state.phase !== 'playing' || state.local || (state.requestLock && !state.remote)) return;
+      !state || state.phase !== 'playing' || state.local ||
+      state.declineNotice || state.declineConfirmation && !rematchDeclineCompleted(state) ||
+      (state.requestLock && !state.remote)) return;
   state.requestId = state.remoteRequestId || newMultiplayerRematchRequestId();
   state.local = true;
   state.declineNotice = null;
@@ -68,13 +70,25 @@ function declineMultiplayerRematch() {
   state.remote = false;
   state.remoteRequestId = null;
   state.declineNotice = 'self';
+  state.declineConfirmation = {id, round: state.round, local: false, remote: false,
+    confirmationAcked: false, lastAt: -Infinity};
   syncRoyalUi(true);
 }
 
+// A network receipt is not a user's acknowledgment. Retain the decline popup
+// until both humans press OK, without creating another top-level modal.
+function rematchDeclineCompleted(state) {
+  return Boolean(state?.declineConfirmation?.local && state.declineConfirmation.remote);
+}
+
 function acknowledgeMultiplayerRematchDecline() {
-  const state = multiplayerRematch();
-  if (!state) return;
-  state.declineNotice = null;
+  const state = multiplayerRematch(), confirmation = state?.declineConfirmation;
+  if (!multiplayerRematchVisible() || !confirmation || !state.declineNotice) return;
+  confirmation.local = true;
+  confirmation.lastAt = performance.now();
+  sendRematch('decline-confirm', confirmation.round,
+    confirmation.id === 'legacy' ? null : confirmation.id);
+  if (rematchDeclineCompleted(state)) state.declineNotice = null;
   syncRoyalUi(true);
 }
 
@@ -238,6 +252,7 @@ function receiveMultiplayerRematch(message) {
     state.requestLock = false; state.requestId = state.remoteRequestId = null;
     state.declineNotice = null; state.rejectedRequests = [];
     state.pendingDecline = null; state.acknowledgedDeclines = [];
+    state.declineConfirmation = null;
     state.restart = null;
     state.transition = null;
     lanRemoteInput = {axis: 0, targetY: null, lastAt: 0};
@@ -256,6 +271,8 @@ function receiveMultiplayerRematch(message) {
   } else if (message.kind === 'accept' && message.round === state.round && gameOver &&
              state.phase === 'playing') {
     const id = /^[a-f0-9]{32}$/.test(message.requestId || '') ? message.requestId : 'legacy';
+    // A later rematch must not bypass either player's outstanding decline popup.
+    if (state.declineConfirmation && !rematchDeclineCompleted(state)) return;
     // Duplicate accept packets can arrive after a decline. Reaffirm the decline
     // without opening a second request or releasing the requester's lock.
     if (state.rejectedRequests.includes(id)) {
@@ -269,8 +286,9 @@ function receiveMultiplayerRematch(message) {
     if (state.remote && state.remoteRequestId !== id && !state.local) return;
     state.remote = true;
     state.remoteRequestId = id;
-    state.requestLock = false; // The other player has initiated a fresh request.
+    state.requestLock = false; // The declining peer has initiated a new request.
     state.declineNotice = null;
+    state.declineConfirmation = null;
     prepareMultiplayerRematch();
   } else if (message.kind === 'decline' && message.round === state.round &&
              gameOver && state.phase === 'playing') {
@@ -287,14 +305,31 @@ function receiveMultiplayerRematch(message) {
     state.remote = false;
     state.requestId = null;
     state.remoteRequestId = null;
-    state.requestLock = true; // Only a new request from the other peer unlocks it.
+    state.requestLock = true; // Requester cannot issue another request.
     state.declineNotice = 'opponent';
+    state.declineConfirmation = {id, round: state.round, local: false, remote: false,
+      confirmationAcked: false, lastAt: -Infinity};
     sendRematch('decline-ack', state.round, id === 'legacy' ? null : id);
   } else if (message.kind === 'decline-ack' && message.round === state.round &&
              gameOver && state.phase === 'playing') {
     const id = /^[a-f0-9]{32}$/.test(message.requestId || '') ? message.requestId : 'legacy';
     if (state.pendingDecline?.id !== id || state.pendingDecline.round !== message.round) return;
     state.pendingDecline = null;
+  } else if (message.kind === 'decline-confirm' && message.round === state.round &&
+             gameOver && state.phase === 'playing') {
+    const id = /^[a-f0-9]{32}$/.test(message.requestId || '') ? message.requestId : 'legacy';
+    const confirmation = state.declineConfirmation;
+    if (!confirmation || confirmation.id !== id || confirmation.round !== state.round) return;
+    confirmation.remote = true;
+    sendRematch('decline-confirm-ack', state.round, id === 'legacy' ? null : id);
+    if (rematchDeclineCompleted(state)) state.declineNotice = null;
+  } else if (message.kind === 'decline-confirm-ack' && message.round === state.round &&
+             gameOver && state.phase === 'playing') {
+    const id = /^[a-f0-9]{32}$/.test(message.requestId || '') ? message.requestId : 'legacy';
+    const confirmation = state.declineConfirmation;
+    if (!confirmation || confirmation.id !== id || confirmation.round !== state.round ||
+        !confirmation.local) return;
+    confirmation.confirmationAcked = true;
   }
   syncRoyalUi(true);
 }
@@ -339,6 +374,13 @@ function tickMultiplayerRematch() {
     const pending = state.pendingDecline;
     pending.lastAt = now;
     sendRematch('decline', pending.round, pending.id === 'legacy' ? null : pending.id);
+  } else if (gameOver && state.declineConfirmation?.local &&
+             !state.declineConfirmation.confirmationAcked &&
+             now - state.declineConfirmation.lastAt >= 1200) {
+    const confirmation = state.declineConfirmation;
+    confirmation.lastAt = now;
+    sendRematch('decline-confirm', confirmation.round,
+      confirmation.id === 'legacy' ? null : confirmation.id);
   } else if (gameOver && state.local) sendRematch('accept', state.round, state.requestId);
 }
 
@@ -350,6 +392,7 @@ function finishMultiplayerRematchSnapshot() {
     state.requestLock = false; state.requestId = state.remoteRequestId = null;
     state.declineNotice = null; state.rejectedRequests = [];
     state.pendingDecline = null; state.acknowledgedDeclines = [];
+    state.declineConfirmation = null;
     state.restart = null;
     state.transition = null;
     clearHeldInput();
@@ -453,6 +496,7 @@ function initMultiplayerRematchUi() {
   panel.setAttribute('aria-modal', 'true');
   panel.setAttribute('aria-labelledby', 'multiplayerResultTitle');
   const card = document.createElement('div'); card.className = 'online-flow-card';
+  card.id = 'multiplayerNormalResultCard';
   const title = document.createElement('h2'); title.id = 'multiplayerResultTitle';
   const score = document.createElement('p'); score.id = 'multiplayerResultScore';
   const note = document.createElement('p'); note.id = 'multiplayerResultNote';
@@ -460,9 +504,20 @@ function initMultiplayerRematchUi() {
   const actions = document.createElement('div'); actions.className = 'online-flow-actions';
   actions.append(royalButton('multiplayerRematch', 'Rematch', requestMultiplayerRematch, 'match-primary'),
     royalButton('multiplayerRematchDecline', 'Decline Rematch', declineMultiplayerRematch),
-    royalButton('multiplayerRematchAcknowledge', 'OK', acknowledgeMultiplayerRematchDecline),
     royalButton('multiplayerBack', 'Back', () => leaveMultiplayerSession()));
-  card.append(title, score, actions, note); panel.append(card); document.body.append(panel);
+  card.append(title, score, actions, note);
+  const declinedCard = document.createElement('div');
+  declinedCard.id = 'multiplayerDeclinedCard';
+  declinedCard.className = 'online-flow-card';
+  declinedCard.hidden = true;
+  const declinedTitle = document.createElement('h2'); declinedTitle.id = 'multiplayerDeclinedTitle';
+  const declinedNote = document.createElement('p'); declinedNote.id = 'multiplayerDeclinedNote';
+  declinedNote.setAttribute('role', 'status'); declinedNote.setAttribute('aria-live', 'polite');
+  const declinedActions = document.createElement('div'); declinedActions.className = 'online-flow-actions';
+  declinedActions.append(royalButton('multiplayerDeclinedOk', 'OK', acknowledgeMultiplayerRematchDecline, 'match-primary'),
+    royalButton('multiplayerDeclinedLeave', 'Leave Match', () => leaveMultiplayerSession()));
+  declinedCard.append(declinedTitle, declinedNote, declinedActions);
+  panel.append(card, declinedCard); document.body.append(panel);
 
   const restartPanel = document.createElement('section');
   restartPanel.id = 'multiplayerRestartPrompt';
@@ -508,20 +563,34 @@ function syncMultiplayerRematchUi() {
   panel.hidden = !multiplayerRematchVisible() || document.body.classList.contains('title-active');
   if (panel.hidden) return;
   const state = multiplayerRematch(), inverted = lanRole === 'guest';
-  royalText(byId('multiplayerResultTitle'), state.declineNotice === 'opponent' ?
-    'Your opponent declined the rematch.' : state.declineNotice === 'self' ?
-    'You declined the rematch.' : multiplayerVictoryText());
+  royalText(byId('multiplayerResultTitle'), multiplayerVictoryText());
   byId('multiplayerResultScore').textContent = inverted ? right.score + ' – ' + left.score : left.score + ' – ' + right.score;
   const notice = Boolean(state.declineNotice);
+  const declinedCard = byId('multiplayerDeclinedCard');
+  byId('multiplayerNormalResultCard').hidden = notice;
+  declinedCard.hidden = !notice;
+  panel.setAttribute('aria-labelledby', notice ? 'multiplayerDeclinedTitle' : 'multiplayerResultTitle');
   byId('multiplayerRematch').hidden = notice;
   byId('multiplayerRematch').disabled = !onlineRematchReady || state.local || onlineGameBlocked ||
     state.phase !== 'playing' || (state.requestLock && !state.remote);
   royalText(byId('multiplayerRematch'), state.remote && !state.local ? 'Accept Rematch' : 'Rematch');
   byId('multiplayerRematchDecline').hidden = notice || !state.remote || state.local || state.phase !== 'playing';
-  byId('multiplayerRematchAcknowledge').hidden = !notice;
   royalText(byId('multiplayerResultNote'), !onlineRematchReady ? 'Both players must reload the latest game.' :
     state.declineNotice === 'opponent' ? 'Only your opponent can request another rematch.' :
     state.declineNotice === 'self' ? 'You may request a rematch later.' :
     state.local ? 'Waiting for opponent...' : state.remote ? 'Your opponent wants a rematch.' :
     state.requestLock ? 'Only your opponent can request another rematch.' : '');
+  if (notice) {
+    royalText(byId('multiplayerDeclinedTitle'), state.declineNotice === 'self' ?
+      'You declined the rematch.' : 'Your opponent declined the rematch.');
+    const confirmed = Boolean(state.declineConfirmation?.local);
+    royalText(byId('multiplayerDeclinedNote'), confirmed ?
+      'Waiting for your opponent to acknowledge...' :
+      'Press OK to acknowledge the declined rematch. Both players must acknowledge.');
+    byId('multiplayerDeclinedOk').disabled = confirmed;
+    if (!confirmed && !declinedCard.contains(document.activeElement))
+      byId('multiplayerDeclinedOk').focus({preventScroll: true});
+  } else if (declinedCard.contains(document.activeElement)) {
+    byId('multiplayerBack').focus({preventScroll: true});
+  }
 }
