@@ -257,7 +257,7 @@ node --test tests/*.mjs
 King Pong uses two open-source libraries for QR code pairing:
 - jsQR — Apache License 2.0
 - QR Creator — MIT License
-- 
+
 Both libraries and their license information are included in `game/vendor/`.
 
 ## Documentation & History
